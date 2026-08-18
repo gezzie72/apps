@@ -487,7 +487,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-08-18 · rest-timer";
+const APP_VERSION = "2026-08-18 · cardio-periods";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -910,6 +910,12 @@ function sessionCardio(sess){
 function sessionSteps(sess){
   let n=0; sess.exercises.forEach(ex=> ex.sets.forEach(st=> n += Number(st.steps)||0 )); return n;
 }
+// Cardio minutes logged per date, for period totals.
+function dailyCardioMap(){
+  const m={};
+  for(const [d,s] of Object.entries(state.sessions)){ const n=sessionCardio(s); if(n) m[d]=(m[d]||0)+n; }
+  return m;
+}
 // Merge standalone daily steps with any Walking/Hiking session steps, keyed by date.
 function dailyStepsMap(){
   const m={};
@@ -984,9 +990,13 @@ function renderProgress(){
     statsHTML += volStat("Volume today", vp.today) + volStat("Volume this week", vp.week)
               + volStat("Volume this month", vp.month) + volStat("Volume this year", vp.year);
   }
-  statsHTML += `
-    <div class="stat"><div class="k">Cardio minutes</div><div class="v">${totalCardio}</div></div>
-    <div class="stat"><div class="k">Current streak</div><div class="v up">${streak}🔥</div></div>`;
+  if(totalCardio>0){
+    const cp = periodTotals(dailyCardioMap());
+    const cStat = (k,v)=>`<div class="stat"><div class="k">${k}</div><div class="v">${Math.round(v).toLocaleString()}<span style="font-size:calc(14px * var(--tscale))"> min</span></div></div>`;
+    statsHTML += cStat("Cardio today", cp.today) + cStat("Cardio this week", cp.week)
+              + cStat("Cardio this month", cp.month) + cStat("Cardio this year", cp.year);
+  }
+  statsHTML += `<div class="stat"><div class="k">Current streak</div><div class="v up">${streak}🔥</div></div>`;
   if(totalSteps>0){
     const sp = stepPeriodTotals();
     const stepStat = (k,v)=>`<div class="stat"><div class="k">${k}</div><div class="v">${Math.round(v).toLocaleString()}</div></div>`;
