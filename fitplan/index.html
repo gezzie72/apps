@@ -868,8 +868,14 @@ function allSessionsSorted(){
 }
 function sessionVolume(sess){
   let v=0;
-  sess.exercises.forEach(ex=>{ if(ex.type!=="cardio") ex.sets.forEach(st=>{ if(st.done!==false){} v += (Number(st.reps)||0)*(Number(st.weight)||0); }); });
+  sess.exercises.forEach(ex=>{ if(ex.type!=="cardio") ex.sets.forEach(st=>{ if(st.done===true) v += (Number(st.reps)||0)*(Number(st.weight)||0); }); });
   return v;
+}
+// Completed-set volume logged per date (reps × weight), for period totals.
+function dailyVolumeMap(){
+  const m={};
+  for(const [d,s] of Object.entries(state.sessions)){ const v=sessionVolume(s); if(v) m[d]=(m[d]||0)+v; }
+  return m;
 }
 function sessionCardio(sess){
   let m=0; sess.exercises.forEach(ex=>{ if(ex.type==="cardio") ex.sets.forEach(st=> m += Number(st.mins)||0 ); });
@@ -944,9 +950,14 @@ function renderProgress(){
   }
   const totalSteps = totalStepsAll();
   const totalDist  = sessions.reduce((a,[,s])=>a+sessionDistance(s),0);
-  let statsHTML = `
-    <div class="stat"><div class="k">Workouts logged</div><div class="v">${totalWorkouts}</div></div>
-    <div class="stat"><div class="k">Total volume</div><div class="v">${Math.round(totalVol).toLocaleString()}</div></div>
+  let statsHTML = `<div class="stat"><div class="k">Workouts logged</div><div class="v">${totalWorkouts}</div></div>`;
+  if(totalVol>0){
+    const vp = periodTotals(dailyVolumeMap());
+    const volStat = (k,v)=>`<div class="stat"><div class="k">${k}</div><div class="v">${Math.round(v).toLocaleString()}</div></div>`;
+    statsHTML += volStat("Volume today", vp.today) + volStat("Volume this week", vp.week)
+              + volStat("Volume this month", vp.month) + volStat("Volume this year", vp.year);
+  }
+  statsHTML += `
     <div class="stat"><div class="k">Cardio minutes</div><div class="v">${totalCardio}</div></div>
     <div class="stat"><div class="k">Current streak</div><div class="v up">${streak}🔥</div></div>`;
   if(totalSteps>0){
