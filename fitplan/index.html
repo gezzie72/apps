@@ -4,44 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FitPlan — Monthly Gym Planner</title>
+<meta name="theme-color" content="#0e1116">
 <style>
   :root{
     --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a323d;
     --txt:#e6edf3; --muted:#8b949e; --accent:#3fb950; --accent2:#58a6ff;
     --warn:#f0883e; --rest:#3a2d1a; --restline:#6b4e22; --danger:#f85149;
     --cardio:#58a6ff; --weight:#bc8cff;
+    --headerA:#12171e; --headerB:#0e1116;
+    --tscale:1;   /* user text-size multiplier (set from Setup) */
+  }
+  /* Light palette: used when the system prefers light AND no manual choice is set,
+     or whenever the user explicitly picks Light. A manual Dark choice keeps :root. */
+  @media (prefers-color-scheme:light){
+    :root:not([data-theme]){
+      --bg:#f4f6f8; --panel:#ffffff; --panel2:#eef1f5; --line:#d8dee6;
+      --txt:#1b2027; --muted:#5a6673; --accent:#2ea043; --accent2:#2f6fed;
+      --warn:#bf6a1a; --rest:#fbefd8; --restline:#e3c48a; --danger:#d1242f;
+      --cardio:#2f6fed; --weight:#8250df;
+      --headerA:#ffffff; --headerB:#eef1f5;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6f8; --panel:#ffffff; --panel2:#eef1f5; --line:#d8dee6;
+    --txt:#1b2027; --muted:#5a6673; --accent:#2ea043; --accent2:#2f6fed;
+    --warn:#bf6a1a; --rest:#fbefd8; --restline:#e3c48a; --danger:#d1242f;
+    --cardio:#2f6fed; --weight:#8250df;
+    --headerA:#ffffff; --headerB:#eef1f5;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:var(--bg); color:var(--txt); font-size:15px; line-height:1.45;
+    background:var(--bg); color:var(--txt); font-size:calc(15px * var(--tscale)); line-height:1.45;
   }
   header{
     padding:16px 20px; border-bottom:1px solid var(--line);
     display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-    background:linear-gradient(180deg,#12171e,#0e1116);
+    background:linear-gradient(180deg,var(--headerA),var(--headerB));
     position:sticky; top:0; z-index:20;
   }
-  header h1{font-size:20px; margin:0; letter-spacing:.3px}
+  header h1{font-size:calc(20px * var(--tscale)); margin:0; letter-spacing:.3px}
   header h1 .logo{color:var(--accent)}
   .tabs{display:flex; gap:4px; margin-left:auto; flex-wrap:wrap}
   .tab{
     background:none; border:1px solid transparent; color:var(--muted);
-    padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600;
+    padding:8px 14px; border-radius:8px; cursor:pointer; font-size:calc(14px * var(--tscale)); font-weight:600;
   }
   .tab:hover{color:var(--txt); background:var(--panel)}
   .tab.active{color:var(--txt); background:var(--panel); border-color:var(--line)}
   .synctop{display:flex; align-items:center; gap:8px; order:3}
-  .synctop #syncLastTop{font-size:12px; white-space:nowrap; transition:color .3s}
+  .synctop #syncLastTop{font-size:calc(12px * var(--tscale)); white-space:nowrap; transition:color .3s}
   .synctop #syncLastTop.flash{color:var(--accent); font-weight:700}
   .tabs{order:2}
   main{max-width:1100px; margin:0 auto; padding:20px}
   .view{display:none} .view.active{display:block}
-  h2{font-size:16px; margin:0 0 12px; font-weight:700}
-  h3{font-size:14px; margin:18px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px}
+  h2{font-size:calc(16px * var(--tscale)); margin:0 0 12px; font-weight:700}
+  h3{font-size:calc(14px * var(--tscale)); margin:18px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px}
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:18px}
-  button, select, input{font-family:inherit; font-size:14px}
+  button, select, input{font-family:inherit; font-size:calc(14px * var(--tscale))}
   .btn{
     background:var(--panel2); color:var(--txt); border:1px solid var(--line);
     padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600;
@@ -49,7 +70,7 @@
   .btn:hover{border-color:var(--accent2)}
   .btn.primary{background:var(--accent); color:#04150a; border-color:var(--accent)}
   .btn.primary:hover{filter:brightness(1.08)}
-  .btn.sm{padding:4px 8px; font-size:13px}
+  .btn.sm{padding:4px 8px; font-size:calc(13px * var(--tscale))}
   .spinner{display:inline-block; width:12px; height:12px; border:2px solid rgba(0,0,0,.3); border-top-color:currentColor; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-1px; margin-right:6px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .btn.danger{color:var(--danger)}
@@ -62,17 +83,17 @@
   .muted{color:var(--muted)}
   /* Month controls */
   .monthbar{display:flex; align-items:center; gap:12px; margin-bottom:14px}
-  .monthbar .title{font-size:18px; font-weight:700; min-width:180px; text-align:center}
+  .monthbar .title{font-size:calc(18px * var(--tscale)); font-weight:700; min-width:180px; text-align:center}
   /* Weekday rest toggles */
   .weekdays{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
   .wd{
     border:1px solid var(--line); border-radius:8px; padding:6px 10px; cursor:pointer;
-    background:var(--panel2); font-size:13px; user-select:none; font-weight:600;
+    background:var(--panel2); font-size:calc(13px * var(--tscale)); user-select:none; font-weight:600;
   }
   .wd.rest{background:var(--rest); border-color:var(--restline); color:var(--warn)}
   /* Calendar */
   .cal{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px}
-  .cal .dow{text-align:center; color:var(--muted); font-size:12px; font-weight:700; padding-bottom:2px}
+  .cal .dow{text-align:center; color:var(--muted); font-size:calc(12px * var(--tscale)); font-weight:700; padding-bottom:2px}
   .day{
     background:var(--panel2); border:1px solid var(--line); border-radius:10px;
     min-height:82px; padding:8px; cursor:pointer; position:relative; display:flex; flex-direction:column; gap:4px;
@@ -83,16 +104,16 @@
   .day.today{outline:2px solid var(--accent2)}
   .day.past{opacity:.5}
   .day.past:hover{opacity:.85}
-  .day .num{font-weight:700; font-size:13px}
-  .day .tag{font-size:11px; color:var(--muted)}
+  .day .num{font-weight:700; font-size:calc(13px * var(--tscale))}
+  .day .tag{font-size:calc(11px * var(--tscale)); color:var(--muted)}
   .day .badge{
-    position:absolute; top:6px; right:6px; font-size:11px; padding:1px 6px; border-radius:20px;
+    position:absolute; top:6px; right:6px; font-size:calc(11px * var(--tscale)); padding:1px 6px; border-radius:20px;
     background:var(--panel); border:1px solid var(--line);
   }
   .day.done .badge{background:var(--accent); color:#04150a; border-color:var(--accent)}
-  .day .rtag{color:var(--warn); font-size:11px; font-weight:700}
+  .day .rtag{color:var(--warn); font-size:calc(11px * var(--tscale)); font-weight:700}
   .dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
-  .legend{display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-top:10px}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; font-size:calc(12px * var(--tscale)); color:var(--muted); margin-top:10px}
   /* Agenda (mobile) */
   .agenda{display:flex; flex-direction:column; gap:8px}
   .agenda-day{display:flex; gap:12px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px 12px; position:relative; cursor:pointer}
@@ -101,19 +122,19 @@
   .agenda-day.today{outline:2px solid var(--accent2)}
   .agenda-day.past{opacity:.5}
   .agenda-day.past:hover{opacity:.8}
-  .agenda-day .badge{position:absolute; top:8px; right:8px; font-size:11px; padding:1px 6px; border-radius:20px; background:var(--panel); border:1px solid var(--line)}
+  .agenda-day .badge{position:absolute; top:8px; right:8px; font-size:calc(11px * var(--tscale)); padding:1px 6px; border-radius:20px; background:var(--panel); border:1px solid var(--line)}
   .agenda-day.done .badge{background:var(--accent); color:#04150a; border-color:var(--accent)}
   .agenda-day.done{padding-right:34px}
   .ad-date{display:flex; flex-direction:column; align-items:center; min-width:40px; padding-top:2px}
-  .ad-dow{font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase}
-  .ad-num{font-size:20px; font-weight:800; line-height:1.1}
+  .ad-dow{font-size:calc(11px * var(--tscale)); color:var(--muted); font-weight:700; text-transform:uppercase}
+  .ad-num{font-size:calc(20px * var(--tscale)); font-weight:800; line-height:1.1}
   .ad-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; justify-content:center}
-  .ad-rest{color:var(--warn); font-weight:700; font-size:13px}
-  .ad-training{color:var(--muted); font-size:13px}
+  .ad-rest{color:var(--warn); font-weight:700; font-size:calc(13px * var(--tscale))}
+  .ad-training{color:var(--muted); font-size:calc(13px * var(--tscale))}
   .ad-ex{display:flex; flex-wrap:wrap; gap:4px}
-  .ad-chip{font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:2px 9px; white-space:nowrap}
+  .ad-chip{font-size:calc(12px * var(--tscale)); background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:2px 9px; white-space:nowrap}
   .ad-chip.ex-done{color:var(--muted); text-decoration:line-through}
-  .agenda-day .note-preview{position:static; margin-top:0; white-space:normal; color:var(--accent2); font-size:12px; line-height:1.3; max-width:100%; overflow:visible; text-overflow:clip}
+  .agenda-day .note-preview{position:static; margin-top:0; white-space:normal; color:var(--accent2); font-size:calc(12px * var(--tscale)); line-height:1.3; max-width:100%; overflow:visible; text-overflow:clip}
   /* Modal */
   .overlay{
     position:fixed; inset:0; background:rgba(0,0,0,.6); display:none;
@@ -128,19 +149,19 @@
   .ex{border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; background:var(--panel2)}
   .ex-head{display:flex; align-items:center; gap:8px; margin-bottom:8px}
   .ex-head .name{font-weight:700}
-  .pill{font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700}
+  .pill{font-size:calc(11px * var(--tscale)); padding:2px 8px; border-radius:20px; font-weight:700}
   .pill.cardio{background:rgba(88,166,255,.15); color:var(--cardio)}
   .pill.weight{background:rgba(188,140,255,.15); color:var(--weight)}
-  table.sets{width:100%; border-collapse:collapse; font-size:13px}
-  table.sets th{color:var(--muted); font-weight:600; text-align:left; padding:4px 6px; font-size:12px}
+  table.sets{width:100%; border-collapse:collapse; font-size:calc(13px * var(--tscale))}
+  table.sets th{color:var(--muted); font-weight:600; text-align:left; padding:4px 6px; font-size:calc(12px * var(--tscale))}
   table.sets td{padding:3px 6px}
   table.sets input{width:100%; min-width:52px}
   .set-done{width:22px;height:22px;cursor:pointer}
   /* Stats */
   .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px}
   .stat{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:14px}
-  .stat .k{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px}
-  .stat .v{font-size:26px; font-weight:800; margin-top:4px}
+  .stat .k{font-size:calc(12px * var(--tscale)); color:var(--muted); text-transform:uppercase; letter-spacing:.5px}
+  .stat .v{font-size:calc(26px * var(--tscale)); font-weight:800; margin-top:4px}
   .stat .v.up{color:var(--accent)} .stat .v.down{color:var(--danger)}
   /* Chart */
   .chartwrap{overflow-x:auto}
@@ -151,34 +172,36 @@
   .notes-head{display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap}
   .notes-head #saveNote{margin-left:auto}
   .caps-toggle.on{background:var(--accent); color:#04150a; border-color:var(--accent)}
-  .notes-label{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:700}
+  .notes-label{font-size:calc(12px * var(--tscale)); color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:700}
   .notes textarea{
     width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line);
-    border-radius:8px; padding:9px 10px; font-family:inherit; font-size:14px; resize:vertical; line-height:1.4;
+    border-radius:8px; padding:9px 10px; font-family:inherit; font-size:calc(14px * var(--tscale)); resize:vertical; line-height:1.4;
   }
   .notes textarea:focus{outline:none; border-color:var(--accent2)}
   .day .exlist{display:flex; flex-direction:column; gap:1px; margin-top:2px; width:100%}
   .day .exline{
-    font-size:10px; line-height:1.3; color:var(--txt);
+    font-size:calc(10px * var(--tscale)); line-height:1.3; color:var(--txt);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
   }
   .day .exline.muted{color:var(--muted)}
   .day .exline.ex-done{color:var(--muted); text-decoration:line-through}
   .day .note-preview{
-    font-size:10px; line-height:1.25; color:var(--accent2); margin-top:auto;
+    font-size:calc(10px * var(--tscale)); line-height:1.25; color:var(--accent2); margin-top:auto;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
   }
-  .machine-chip{display:inline-flex; align-items:center; gap:4px; background:var(--panel2); border:1px solid var(--line); border-radius:20px; padding:4px 4px 4px 12px; font-size:13px}
-  .chip-x{background:none; border:none; color:var(--danger); cursor:pointer; font-size:12px; line-height:1; padding:4px 6px; border-radius:50%}
+  .machine-chip{display:inline-flex; align-items:center; gap:4px; background:var(--panel2); border:1px solid var(--line); border-radius:20px; padding:4px 4px 4px 12px; font-size:calc(13px * var(--tscale))}
+  .chip-x{background:none; border:none; color:var(--danger); cursor:pointer; font-size:calc(12px * var(--tscale)); line-height:1; padding:4px 6px; border-radius:50%}
   .chip-x:hover{background:rgba(248,81,73,.18)}
+  .chip-edit{background:none; border:none; color:var(--accent2); cursor:pointer; font-size:calc(12px * var(--tscale)); line-height:1; padding:4px 5px; border-radius:50%}
+  .chip-edit:hover{background:rgba(88,166,255,.18)}
   #mName{flex:1; min-width:170px}
   .addbar{display:flex; gap:8px; align-items:center; margin-top:14px; flex-wrap:wrap}
   .addbar select{flex:1; min-width:190px}
-  .addbar .hint{font-size:11px; color:var(--muted); flex-basis:100%}
+  .addbar .hint{font-size:calc(11px * var(--tscale)); color:var(--muted); flex-basis:100%}
   .wlog{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px}
-  table.hist{width:100%; border-collapse:collapse; font-size:13px}
+  table.hist{width:100%; border-collapse:collapse; font-size:calc(13px * var(--tscale))}
   table.hist th,table.hist td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left}
-  table.hist th{color:var(--muted); font-size:12px}
+  table.hist th{color:var(--muted); font-size:calc(12px * var(--tscale))}
   .chg.up{color:var(--accent); font-weight:700}
   .chg.down{color:var(--danger); font-weight:700}
   .wk-up{color:var(--danger); font-weight:700}    /* weight gained on the week */
@@ -192,7 +215,7 @@
   a.link{color:var(--accent2); cursor:pointer}
   @media(max-width:640px){
     .day{min-height:64px; padding:5px} .day .tag{display:none}
-    header h1{font-size:17px} main{padding:14px}
+    header h1{font-size:calc(17px * var(--tscale))} main{padding:14px}
   }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -350,6 +373,23 @@
       </div>
     </div>
     <div class="panel">
+      <h2>Appearance</h2>
+      <p class="muted">Choose light or dark, or follow your device.</p>
+      <div class="row" id="themeCtl" style="margin-top:8px; gap:8px">
+        <button class="btn" data-t="system">System</button>
+        <button class="btn" data-t="light">Light</button>
+        <button class="btn" data-t="dark">Dark</button>
+      </div>
+      <h2 style="margin-top:16px">Text size</h2>
+      <p class="muted">Adjust the reading text size on this device.</p>
+      <div class="row" id="textSize" style="margin-top:8px; gap:8px">
+        <button class="btn" data-s="0.9">Small</button>
+        <button class="btn" data-s="1">Medium</button>
+        <button class="btn" data-s="1.15">Large</button>
+        <button class="btn" data-s="1.3">Extra large</button>
+      </div>
+    </div>
+    <div class="panel">
       <h2>Sync across devices (GitHub Gist)</h2>
       <p class="muted">Keep desktop and phone in sync via a <b>private</b> GitHub gist. Create a token with only the <b>gist</b> scope, paste it on each device, and share the same Gist ID. Your token is stored locally in this browser and never leaves it except to talk to GitHub.</p>
       <div id="syncDisconnected">
@@ -368,7 +408,7 @@
         <div class="row" style="margin-top:6px"><span class="muted">Last synced:</span> <span id="syncLast">never</span></div>
         <div class="row" style="margin-top:10px">
           <span class="muted">Gist ID</span>
-          <code id="syncGistId" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:13px"></code>
+          <code id="syncGistId" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:calc(13px * var(--tscale))"></code>
           <button class="btn sm" id="ghCopyGist">Copy</button>
           <a class="link" id="syncGistLink" target="_blank" rel="noopener">View ↗</a>
         </div>
@@ -419,6 +459,8 @@
 
 <script>
 "use strict";
+// Apply a saved theme immediately to avoid a flash of the wrong palette.
+try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -446,9 +488,12 @@ const defaultTemplate = [
 ];
 // Exercises that log custom metrics instead of the default cardio/weight columns.
 const SPECIAL_METRICS = {
-  "Walking":         [["mins","Duration (min)"],["steps","Steps"]],
-  "Hiking":          [["mins","Duration (min)"],["steps","Steps"]],
-  "Outdoor Cycling": [["distance","Distance (km)"],["mins","Duration (min)"]],
+  "Treadmill":       [["distance","Distance"],["mins","Duration (min)"]],
+  "Exercise Bike":   [["distance","Distance"],["mins","Duration (min)"]],
+  "Rowing Machine":  [["distance","Distance"],["mins","Duration (min)"]],
+  "Walking":         [["distance","Distance"],["mins","Duration (min)"],["steps","Steps"]],
+  "Hiking":          [["distance","Distance"],["mins","Duration (min)"],["steps","Steps"]],
+  "Outdoor Cycling": [["distance","Distance"],["mins","Duration (min)"]],
 };
 // Body weight is stored canonically in kg. These factors convert kg -> display unit.
 const KG = { kg:1, st:0.1574730444, lb:2.2046226218 };
@@ -839,6 +884,33 @@ function dailyStepsMap(){
 }
 function totalStepsAll(){ return Object.values(dailyStepsMap()).reduce((a,b)=>a+b,0); }
 function stepsSorted(){ return Object.entries(state.steps||{}).filter(([,v])=>Number(v)>0).sort((a,b)=>a[0]<b[0]?-1:1); }
+// Monday of the current week, as YYYY-MM-DD.
+function weekStartISO(){
+  const d=new Date(todayISO()+"T00:00:00");
+  const day=(d.getDay()+6)%7;                 // Mon=0 … Sun=6
+  d.setDate(d.getDate()-day);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+// Totals for the current day / week / month / year from a {date: value} map (each resets at its boundary).
+function periodTotals(map){
+  const t=todayISO(), mo=t.slice(0,7), yr=t.slice(0,4), ws=weekStartISO();
+  let today=0, week=0, month=0, year=0;
+  for(const [d,v] of Object.entries(map||{})){
+    const n=Number(v)||0; if(!n) continue;
+    if(d===t) today+=n;
+    if(d>=ws && d<=t) week+=n;
+    if(d.slice(0,7)===mo) month+=n;
+    if(d.slice(0,4)===yr) year+=n;
+  }
+  return {today,week,month,year};
+}
+// Distance logged per date (sum across that day's session exercises).
+function dailyDistanceMap(){
+  const m={};
+  for(const [d,s] of Object.entries(state.sessions)){ const n=sessionDistance(s); if(n) m[d]=(m[d]||0)+n; }
+  return m;
+}
+function stepPeriodTotals(){ return periodTotals(dailyStepsMap()); }
 function sessionDistance(sess){
   let d=0; sess.exercises.forEach(ex=> ex.sets.forEach(st=> d += Number(st.distance)||0 )); return d;
 }
@@ -867,8 +939,19 @@ function renderProgress(){
     <div class="stat"><div class="k">Total volume</div><div class="v">${Math.round(totalVol).toLocaleString()}</div></div>
     <div class="stat"><div class="k">Cardio minutes</div><div class="v">${totalCardio}</div></div>
     <div class="stat"><div class="k">Current streak</div><div class="v up">${streak}🔥</div></div>`;
-  if(totalSteps>0) statsHTML += `<div class="stat"><div class="k">Total steps</div><div class="v">${Math.round(totalSteps).toLocaleString()}</div></div>`;
-  if(totalDist>0)  statsHTML += `<div class="stat"><div class="k">Total distance</div><div class="v">${(+totalDist.toFixed(1)).toLocaleString()}<span style="font-size:14px"> ${distUnit()}</span></div></div>`;
+  if(totalSteps>0){
+    const sp = stepPeriodTotals();
+    const stepStat = (k,v)=>`<div class="stat"><div class="k">${k}</div><div class="v">${Math.round(v).toLocaleString()}</div></div>`;
+    statsHTML += stepStat("Steps today", sp.today) + stepStat("Steps this week", sp.week)
+              + stepStat("Steps this month", sp.month) + stepStat("Steps this year", sp.year);
+  }
+  if(totalDist>0){
+    const dp = periodTotals(dailyDistanceMap());
+    const u = distUnit();
+    const distStat = (k,v)=>`<div class="stat"><div class="k">${k}</div><div class="v">${(+v.toFixed(1)).toLocaleString()}<span style="font-size:calc(14px * var(--tscale))"> ${u}</span></div></div>`;
+    statsHTML += distStat("Distance today", dp.today) + distStat("Distance this week", dp.week)
+              + distStat("Distance this month", dp.month) + distStat("Distance this year", dp.year);
+  }
   $("#progressStats").innerHTML = statsHTML;
   // exercise selector
   const exNames = [...new Set(sessions.flatMap(([,s])=>s.exercises.filter(e=>e.type!=="cardio").map(e=>e.name)))];
@@ -1021,7 +1104,7 @@ function renderWeight(){
     const cls=v=>v<0?"up":(v>0?"down":"");
     const sign=v=>(v>0?"+":"")+v.toFixed(bodyDp());
     statsHTML = `
-      <div class="stat"><div class="k">Current</div><div class="v">${wDisp(latestKg).toFixed(bodyDp())}<span style="font-size:14px"> ${u}</span></div></div>
+      <div class="stat"><div class="k">Current</div><div class="v">${wDisp(latestKg).toFixed(bodyDp())}<span style="font-size:calc(14px * var(--tscale))"> ${u}</span></div></div>
       <div class="stat"><div class="k">This week</div><div class="v ${weekChg===null?"":cls(weekChg)}">${weekChg===null?"—":sign(weekChg)}</div></div>
       <div class="stat"><div class="k">Since start</div><div class="v ${cls(totalChg)}">${sign(totalChg)}</div></div>
       ${toTarget!==null?`<div class="stat"><div class="k">To target</div><div class="v ${cls(toTarget)}">${sign(toTarget)}</div></div>`
@@ -1105,13 +1188,21 @@ function renderMachines(){
     if(!items.length){ wrap.innerHTML=`<span class="muted">No machines in this group.</span>`; }
     items.forEach((n,i)=>{
       const chip=document.createElement("span"); chip.className="machine-chip";
-      chip.innerHTML = `${n.replace(/</g,"&lt;")} <button class="chip-x" data-g="${group.replace(/"/g,"&quot;")}" data-i="${i}" title="Remove">✕</button>`;
+      const gEsc = group.replace(/"/g,"&quot;");
+      chip.innerHTML = `${n.replace(/</g,"&lt;")} <button class="chip-edit" data-g="${gEsc}" data-i="${i}" title="Rename">✎</button><button class="chip-x" data-g="${gEsc}" data-i="${i}" title="Remove">✕</button>`;
       wrap.appendChild(chip);
     });
     g.appendChild(wrap); c.appendChild(g);
   }
   c.querySelectorAll(".chip-x").forEach(b=> b.onclick=()=>{
     state.machines[b.dataset.g].splice(Number(b.dataset.i),1); save(); renderMachines();
+  });
+  c.querySelectorAll(".chip-edit").forEach(b=> b.onclick=()=>{
+    const g=b.dataset.g, i=Number(b.dataset.i), cur=state.machines[g][i];
+    const nn=(prompt("Rename machine:", cur)||"").trim();
+    if(!nn || nn===cur) return;
+    if(state.machines[g].some((m,idx)=> idx!==i && m.toLowerCase()===nn.toLowerCase())){ toast("Already in the list"); return; }
+    state.machines[g][i]=nn; save(); renderMachines(); toast("Renamed");
   });
   $("#mGroup").innerHTML = Object.keys(state.machines).map(g=>`<option>${g}</option>`).join("")
     + `<option value="__newgroup__">+ New group…</option>`;
@@ -1305,6 +1396,32 @@ $("#ghShowToken").onclick = ()=>{
   if(show && t) markSync(`Token check: ${t.length} chars, starts "${t.slice(0,4)}" — classic tokens start "ghp_" (~40 chars); a space or line break means a bad paste.`);
 };
 $("#ghDisconnect").onclick = ()=>{ if(confirm("Disconnect sync on this device? Your local data stays; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+
+/* ---------- Appearance / theme (per-device preference) ---------- */
+const THEME_KEY = "fitplan.theme";
+function getTheme(){ try{ return localStorage.getItem(THEME_KEY) || "system"; }catch(e){ return "system"; } }
+let theme = getTheme();
+function applyTheme(v){
+  const r = document.documentElement;
+  if(v==="system") r.removeAttribute("data-theme"); else r.setAttribute("data-theme", v);
+  const isLight = v==="light" || (v==="system" && window.matchMedia && matchMedia("(prefers-color-scheme:light)").matches);
+  const mc = document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content", isLight ? "#f4f6f8" : "#0e1116");
+}
+function renderTheme(){ document.querySelectorAll('#themeCtl button').forEach(b=> b.classList.toggle('primary', b.dataset.t===theme)); }
+function setTheme(v){ theme=v; try{ localStorage.setItem(THEME_KEY, v); }catch(e){} applyTheme(v); renderTheme(); }
+document.querySelectorAll('#themeCtl button').forEach(b=> b.onclick = ()=> setTheme(b.dataset.t));
+if(window.matchMedia) matchMedia("(prefers-color-scheme:light)").addEventListener("change", ()=>{ if(theme==="system") applyTheme("system"); });
+applyTheme(theme); renderTheme();
+
+/* ---------- Text size (per-device preference) ---------- */
+const TSCALE_KEY = "fitplan.textScale";
+function getScale(){ try{ return localStorage.getItem(TSCALE_KEY) || "1"; }catch(e){ return "1"; } }
+let textScale = getScale();
+function applyScale(v){ document.documentElement.style.setProperty("--tscale", v); }
+function renderTextSize(){ document.querySelectorAll('#textSize button').forEach(b=> b.classList.toggle('primary', b.dataset.s===textScale)); }
+function setScale(v){ textScale=v; try{ localStorage.setItem(TSCALE_KEY, v); }catch(e){} applyScale(v); renderTextSize(); }
+document.querySelectorAll('#textSize button').forEach(b=> b.onclick = ()=> setScale(b.dataset.s));
+applyScale(textScale); renderTextSize();
 
 /* ---------- Init ---------- */
 function initAll(){
