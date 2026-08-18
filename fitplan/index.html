@@ -196,6 +196,15 @@
   .chip-edit:hover{background:rgba(88,166,255,.18)}
   .grp-btn{background:none; border:1px solid var(--line); color:var(--muted); cursor:pointer; font-size:calc(12px * var(--tscale)); line-height:1; padding:3px 8px; border-radius:6px}
   .grp-btn:hover{color:var(--txt); border-color:var(--accent2)}
+  #restTimer{position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:80; display:none; align-items:center; gap:8px;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); box-shadow:0 8px 28px rgba(0,0,0,.4); max-width:calc(100vw - 16px)}
+  #restTimer.show{display:flex}
+  #restTimer.done{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 16%, var(--panel))}
+  #restTimer .rt-label{color:var(--muted); font-size:calc(13px * var(--tscale))}
+  #restTimer .rt-time{font-weight:700; font-size:calc(21px * var(--tscale)); min-width:60px; text-align:center; font-variant-numeric:tabular-nums}
+  #restTimer .rt-btn{background:var(--panel2); border:1px solid var(--line); color:var(--txt); border-radius:9px; padding:7px 9px; cursor:pointer; font-size:calc(14px * var(--tscale)); white-space:nowrap}
+  #restTimer .rt-btn:hover{border-color:var(--accent2)}
+  @media (max-width:430px){ #restTimer .rt-label{display:none} #restTimer{gap:6px} }
   #mName{flex:1; min-width:170px}
   .addbar{display:flex; gap:8px; align-items:center; margin-top:14px; flex-wrap:wrap}
   .addbar select{flex:1; min-width:190px}
@@ -373,6 +382,11 @@
         <label>Distance unit</label>
         <select id="distSel"><option value="km">km</option><option value="mi">miles</option></select>
       </div>
+      <div class="row" style="margin-top:10px; flex-wrap:wrap">
+        <label>Rest timer (sec)</label>
+        <input type="number" id="restSecsInp" min="5" step="5" style="width:90px">
+        <label class="row" style="gap:6px; margin:0"><input type="checkbox" id="restAutoChk"> Auto-start after each set</label>
+      </div>
     </div>
     <div class="panel">
       <h2>Appearance</h2>
@@ -439,6 +453,7 @@
       <p class="muted" style="margin-top:6px">🏋 FitPlan — <a class="link" href="https://gezzie72.github.io/apps/fitplan/" target="_blank" rel="noopener">gezzie72.github.io/apps/fitplan</a></p>
       <p class="muted" style="margin-top:6px">💡 IdeaPad — <a class="link" href="https://gezzie72.github.io/apps/ideapad/" target="_blank" rel="noopener">gezzie72.github.io/apps/ideapad</a></p>
     </div>
+    <p class="muted" id="verLine" style="text-align:center; margin-top:16px"></p>
   </section>
 </main>
 
@@ -452,6 +467,7 @@
     <div id="dayBody"></div>
     <div class="row" style="margin-top:14px">
       <button class="btn" id="toggleRestBtn">Toggle rest day</button>
+      <button class="btn" id="restBtn">Rest ⏱</button>
       <button class="btn primary" id="markDoneBtn" style="margin-left:auto">Mark complete</button>
     </div>
   </div>
@@ -459,10 +475,19 @@
 
 <div class="toast" id="toast"></div>
 
+<div id="restTimer">
+  <span class="rt-label">Rest</span>
+  <button class="rt-btn" id="rtMinus" title="−15s">−15</button>
+  <span class="rt-time" id="rtTime">0:00</span>
+  <button class="rt-btn" id="rtPlus" title="+15s">+15</button>
+  <button class="rt-btn" id="rtSkip">Skip</button>
+</div>
+
 <script>
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
+const APP_VERSION = "2026-08-18 · rest-timer";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -775,6 +800,7 @@ function renderDayBody(){
       const {e,s}=cb.dataset;
       state.sessions[openDate].exercises[e].sets[s].done = cb.checked;
       save();
+      if(cb.checked && state.restAuto!==false) startRest();   // rest timer after a completed set
     };
   });
   body.querySelectorAll("[data-del]").forEach(b=>{
@@ -953,7 +979,8 @@ function renderProgress(){
   let statsHTML = `<div class="stat"><div class="k">Workouts logged</div><div class="v">${totalWorkouts}</div></div>`;
   if(totalVol>0){
     const vp = periodTotals(dailyVolumeMap());
-    const volStat = (k,v)=>`<div class="stat"><div class="k">${k}</div><div class="v">${Math.round(v).toLocaleString()}</div></div>`;
+    const vu = state.unit;   // kg or lb
+    const volStat = (k,v)=>`<div class="stat"><div class="k">${k}</div><div class="v">${Math.round(v).toLocaleString()}<span style="font-size:calc(14px * var(--tscale))"> ${vu}</span></div></div>`;
     statsHTML += volStat("Volume today", vp.today) + volStat("Volume this week", vp.week)
               + volStat("Volume this month", vp.month) + volStat("Volume this year", vp.year);
   }
@@ -1170,6 +1197,9 @@ function renderWeight(){
 function renderTemplate(){
   $("#unitSel").value=state.unit;
   $("#distSel").value=distUnit();
+  $("#restSecsInp").value = restSecsPref();
+  $("#restAutoChk").checked = state.restAuto!==false;
+  $("#verLine").textContent = "FitPlan · " + APP_VERSION;
   const c=$("#templateList"); c.innerHTML="";
   if(!state.template.length){ c.innerHTML=`<p class="muted">No exercises in template.</p>`; }
   state.template.forEach((t,i)=>{
@@ -1466,6 +1496,43 @@ function renderTextSize(){ document.querySelectorAll('#textSize button').forEach
 function setScale(v){ textScale=v; try{ localStorage.setItem(TSCALE_KEY, v); }catch(e){} applyScale(v); renderTextSize(); }
 document.querySelectorAll('#textSize button').forEach(b=> b.onclick = ()=> setScale(b.dataset.s));
 applyScale(textScale); renderTextSize();
+
+/* ---------- Rest timer ---------- */
+function restSecsPref(){ const n=Number(state.restSecs); return (n && n>=5) ? n : 90; }
+let restEnd=0, restTick=null, _ac=null;
+function fmtClock(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function primeAudio(){ try{ _ac=_ac||new (window.AudioContext||window.webkitAudioContext)(); if(_ac && _ac.state==="suspended") _ac.resume(); }catch(e){} }
+function beep(){ try{ primeAudio(); if(!_ac) return; const o=_ac.createOscillator(), g=_ac.createGain(); o.connect(g); g.connect(_ac.destination); o.type="sine"; o.frequency.value=880; const t=_ac.currentTime; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.3,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.6); o.start(t); o.stop(t+0.6); }catch(e){} }
+function rtRender(){
+  const rem=(restEnd-Date.now())/1000;
+  $("#rtTime").textContent = rem>0 ? fmtClock(rem) : "Done ✓";
+  if(rem<=0 && restTick){ clearInterval(restTick); restTick=null; restFinished(); }
+}
+function restFinished(){
+  const el=$("#restTimer"); el.classList.add("done");
+  try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch(e){}
+  beep();
+  clearTimeout(el._hide); el._hide=setTimeout(stopRest, 5000);
+}
+function startRest(secs){
+  primeAudio();
+  restEnd = Date.now() + (secs||restSecsPref())*1000;
+  const el=$("#restTimer"); el.classList.add("show"); el.classList.remove("done"); clearTimeout(el._hide);
+  rtRender(); clearInterval(restTick); restTick=setInterval(rtRender, 250);
+}
+function stopRest(){ clearInterval(restTick); restTick=null; const el=$("#restTimer"); el.classList.remove("show","done"); clearTimeout(el._hide); }
+function bumpRest(delta){
+  const el=$("#restTimer"); if(!el.classList.contains("show")) return;
+  restEnd = Math.max(Date.now(), restEnd) + delta*1000;
+  if(el.classList.contains("done")){ el.classList.remove("done"); clearTimeout(el._hide); clearInterval(restTick); restTick=setInterval(rtRender,250); }
+  rtRender();
+}
+$("#rtSkip").onclick = stopRest;
+$("#rtMinus").onclick = ()=> bumpRest(-15);
+$("#rtPlus").onclick  = ()=> bumpRest(15);
+$("#restBtn").onclick = ()=> startRest();
+$("#restSecsInp").onchange = ()=>{ const v=parseInt($("#restSecsInp").value,10); state.restSecs=(isNaN(v)||v<5)?90:v; $("#restSecsInp").value=state.restSecs; save(); };
+$("#restAutoChk").onchange = ()=>{ state.restAuto=$("#restAutoChk").checked; save(); };
 
 /* ---------- Init ---------- */
 function initAll(){
