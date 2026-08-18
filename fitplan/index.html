@@ -490,7 +490,8 @@ const defaultTemplate = [
 const SPECIAL_METRICS = {
   "Treadmill":       [["distance","Distance"],["mins","Duration (min)"]],
   "Exercise Bike":   [["distance","Distance"],["mins","Duration (min)"]],
-  "Rowing Machine":  [["distance","Distance"],["mins","Duration (min)"]],
+  "Rowing Machine":  [["meters","Distance (m)"],["mins","Duration (min)"]],
+  "Ski Erg":         [["meters","Distance (m)"],["mins","Duration (min)"]],
   "Walking":         [["distance","Distance"],["mins","Duration (min)"],["steps","Steps"]],
   "Hiking":          [["distance","Distance"],["mins","Duration (min)"],["steps","Steps"]],
   "Outdoor Cycling": [["distance","Distance"],["mins","Duration (min)"]],
@@ -911,8 +912,15 @@ function dailyDistanceMap(){
   return m;
 }
 function stepPeriodTotals(){ return periodTotals(dailyStepsMap()); }
+// Metres (rowing / ski erg) are folded into the chosen distance unit so all distance totals stay unified.
+function metersToUnit(m){ return distUnit()==="mi" ? m/1609.344 : m/1000; }
 function sessionDistance(sess){
-  let d=0; sess.exercises.forEach(ex=> ex.sets.forEach(st=> d += Number(st.distance)||0 )); return d;
+  let d=0;
+  sess.exercises.forEach(ex=> ex.sets.forEach(st=>{
+    d += Number(st.distance)||0;
+    d += metersToUnit(Number(st.meters)||0);
+  }));
+  return d;
 }
 function exerciseTopWeight(sess,name){
   let w=0; sess.exercises.forEach(ex=>{ if(ex.name===name) ex.sets.forEach(st=> w=Math.max(w, Number(st.weight)||0) ); });
