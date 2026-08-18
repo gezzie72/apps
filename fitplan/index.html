@@ -194,6 +194,8 @@
   .chip-x:hover{background:rgba(248,81,73,.18)}
   .chip-edit{background:none; border:none; color:var(--accent2); cursor:pointer; font-size:calc(12px * var(--tscale)); line-height:1; padding:4px 5px; border-radius:50%}
   .chip-edit:hover{background:rgba(88,166,255,.18)}
+  .grp-btn{background:none; border:1px solid var(--line); color:var(--muted); cursor:pointer; font-size:calc(12px * var(--tscale)); line-height:1; padding:3px 8px; border-radius:6px}
+  .grp-btn:hover{color:var(--txt); border-color:var(--accent2)}
   #mName{flex:1; min-width:170px}
   .addbar{display:flex; gap:8px; align-items:center; margin-top:14px; flex-wrap:wrap}
   .addbar select{flex:1; min-width:190px}
@@ -1191,7 +1193,12 @@ function renderMachines(){
   const c=$("#machineEditor"); c.innerHTML="";
   for(const [group, items] of Object.entries(state.machines)){
     const g=document.createElement("div"); g.style.marginBottom="12px";
-    g.innerHTML = `<h3 style="margin:8px 0 6px">${group}${group==="Cardio"?" ⏱️":""}</h3>`;
+    const gEscH = group.replace(/"/g,"&quot;");
+    g.innerHTML = `<h3 style="margin:8px 0 6px; display:flex; align-items:center; gap:8px">
+      <span>${group.replace(/</g,"&lt;")}${group==="Cardio"?" ⏱️":""}</span>
+      <button class="grp-btn" data-grename="${gEscH}" title="Rename group">✎</button>
+      <button class="grp-btn" data-grdel="${gEscH}" title="Delete group">🗑</button>
+    </h3>`;
     const wrap=document.createElement("div"); wrap.className="row";
     if(!items.length){ wrap.innerHTML=`<span class="muted">No machines in this group.</span>`; }
     items.forEach((n,i)=>{
@@ -1211,6 +1218,24 @@ function renderMachines(){
     if(!nn || nn===cur) return;
     if(state.machines[g].some((m,idx)=> idx!==i && m.toLowerCase()===nn.toLowerCase())){ toast("Already in the list"); return; }
     state.machines[g][i]=nn; save(); renderMachines(); toast("Renamed");
+  });
+  c.querySelectorAll("[data-grdel]").forEach(b=> b.onclick=()=>{
+    const g=b.dataset.grdel, n=(state.machines[g]||[]).length;
+    const msg = g==="Cardio"
+      ? "Delete the Cardio group? Cardio logging (minutes/distance) uses this group — those options will be removed."
+      : n>0 ? `Delete the "${g}" group and its ${n} machine${n>1?"s":""}?`
+            : `Delete the empty "${g}" group?`;
+    if(!confirm(msg)) return;
+    delete state.machines[g]; save(); renderMachines(); toast("Group deleted");
+  });
+  c.querySelectorAll("[data-grename]").forEach(b=> b.onclick=()=>{
+    const g=b.dataset.grename;
+    if(g==="Cardio"){ toast("The Cardio group name is used to detect cardio, so it can't be renamed."); return; }
+    const nn=(prompt("Rename group:", g)||"").trim();
+    if(!nn || nn===g) return;
+    if(state.machines[nn]){ toast("A group with that name already exists"); return; }
+    const rebuilt={}; for(const [k,v] of Object.entries(state.machines)){ rebuilt[k===g?nn:k]=v; }  // keep order
+    state.machines=rebuilt; save(); renderMachines(); toast("Group renamed");
   });
   $("#mGroup").innerHTML = Object.keys(state.machines).map(g=>`<option>${g}</option>`).join("")
     + `<option value="__newgroup__">+ New group…</option>`;
