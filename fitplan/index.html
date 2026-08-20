@@ -233,7 +233,6 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <header>
@@ -263,8 +262,7 @@
       <button class="btn" id="prevMonth">‹</button>
       <div class="title" id="monthTitle"></div>
       <button class="btn" id="nextMonth">›</button>
-      <button class="btn" id="todayBtn">Today</button>
-      <button class="btn primary" id="fillMonth" style="margin-left:auto">Auto-fill routine</button>
+      <button class="btn" id="todayBtn" style="margin-left:auto">Today</button>
     </div>
 
     <div class="panel">
@@ -351,7 +349,7 @@
   <section class="view" id="view-settings">
     <div class="panel">
       <h2>Default routine template</h2>
-      <p class="muted">These exercises are used by <b>Auto-fill routine</b>. Cardio and weight-machine exercises with target sets &amp; reps.</p>
+      <p class="muted">Your saved go-to routine — cardio and weight-machine exercises with target sets &amp; reps.</p>
       <div id="templateList"></div>
       <div class="row" style="margin-top:10px">
         <input type="text" id="tName" placeholder="Exercise name (e.g. Leg Press)">
@@ -487,7 +485,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-08-18 · cardio-periods";
+const APP_VERSION = "2026-08-20 · remove-set + open-on-today + no-autofill";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -726,7 +724,6 @@ function scrollAgendaToToday(smooth){
   const el = document.getElementById("agendaToday");
   if(el) el.scrollIntoView({behavior: smooth?"smooth":"auto", block:"center"});
 }
-$("#fillMonth").onclick=fillMonth;
 
 function fillMonth(){
   const y=viewDate.getFullYear(), m=viewDate.getMonth();
@@ -767,7 +764,7 @@ function renderDayBody(){
   if(s.rest){
     body.innerHTML = `<div class="empty-note">Rest day 🛌 — recovery matters. You can still toggle it to a training day below.</div>`;
   } else if(!s.exercises.length){
-    body.innerHTML = `<div class="empty-note">No exercises yet. Add one, or use “Auto-fill routine” on the schedule.</div>`;
+    body.innerHTML = `<div class="empty-note">No exercises yet. Add one below.</div>`;
   } else s.exercises.forEach((ex,ei)=>{
     const card = document.createElement("div"); card.className="ex";
     const isCardio = ex.type==="cardio";
@@ -777,11 +774,12 @@ function renderDayBody(){
         <span class="name">${ex.name}</span>
         <button class="btn sm danger" data-del="${ei}" style="margin-left:auto">Remove</button>
       </div>`;
-    let cols = `<tr><th>Set</th>${mets.map(m=>`<th>${m.label}</th>`).join("")}<th>Done</th></tr>`;
+    let cols = `<tr><th>Set</th>${mets.map(m=>`<th>${m.label}</th>`).join("")}<th>Done</th><th></th></tr>`;
     let rows = ex.sets.map((st,si)=>`<tr>
         <td>${si+1}</td>
         ${mets.map(m=>`<td><input type="number" step="any" data-e="${ei}" data-s="${si}" data-f="${m.key}" value="${st[m.key]??""}"></td>`).join("")}
         <td><input type="checkbox" class="set-done" data-e="${ei}" data-s="${si}" ${st.done?"checked":""}></td>
+        <td>${ex.sets.length>1?`<button class="btn sm danger set-del" data-e="${ei}" data-s="${si}" title="Remove this set">✕</button>`:``}</td>
       </tr>`).join("");
     card.innerHTML = head + `<table class="sets">${cols}${rows}</table>
       <button class="btn sm" data-addset="${ei}" style="margin-top:8px">+ Add set</button>`;
@@ -805,6 +803,14 @@ function renderDayBody(){
   });
   body.querySelectorAll("[data-del]").forEach(b=>{
     b.onclick = ()=>{ state.sessions[openDate].exercises.splice(Number(b.dataset.del),1); save(); renderDayBody(); };
+  });
+  body.querySelectorAll(".set-del").forEach(b=>{
+    b.onclick = ()=>{
+      const ex = state.sessions[openDate].exercises[b.dataset.e];
+      if(ex.sets.length<=1) return;            // never remove the last set
+      ex.sets.splice(Number(b.dataset.s),1);
+      save(); renderDayBody();
+    };
   });
   body.querySelectorAll("[data-addset]").forEach(b=>{
     b.onclick = ()=>{
@@ -1555,10 +1561,14 @@ function initAll(){
 // Re-render the calendar when crossing the mobile breakpoint so the exercise cap updates.
 window.matchMedia("(max-width:640px)").addEventListener("change", renderCalendar);
 initAll();
-// On mobile, open the agenda scrolled to today.
-if(window.matchMedia("(max-width:640px)").matches) scrollAgendaToToday(false);
-// Pull the latest from the gist on startup.
-if(GH.connected && GH.auto) syncPull(false).catch(e=>{ spin(false); markSync("Pull failed: "+e.message, true); });
+// On mobile, open the agenda scrolled to today (wait a frame so layout is settled).
+const onMobile = ()=>window.matchMedia("(max-width:640px)").matches;
+if(onMobile()) requestAnimationFrame(()=>scrollAgendaToToday(false));
+// Pull the latest from the gist on startup. A pull that brings changes re-renders
+// the agenda, so re-scroll to today once it resolves (otherwise it snaps to the month top).
+if(GH.connected && GH.auto) syncPull(false)
+  .then(()=>{ if(onMobile()) scrollAgendaToToday(false); })
+  .catch(e=>{ spin(false); markSync("Pull failed: "+e.message, true); });
 </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </body>
