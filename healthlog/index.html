@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthLog</title>
+<meta name="theme-color" content="#0e1116">
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a323d;
+    --txt:#e6edf3; --muted:#8b949e; --accent:#3fb950; --accent2:#58a6ff;
+    --warn:#f0883e; --danger:#f85149; --purple:#bc8cff;
+    --good:#3fb950; --high:#f85149; --low:#f0883e;
+    --headerA:#12171e; --headerB:#0e1116;
+    --tscale:1;
+  }
+  @media (prefers-color-scheme:light){
+    :root:not([data-theme]){
+      --bg:#f4f6f8; --panel:#ffffff; --panel2:#eef1f5; --line:#d8dee6;
+      --txt:#1b2027; --muted:#5a6673; --accent:#2ea043; --accent2:#2f6fed;
+      --warn:#bf6a1a; --danger:#d1242f; --purple:#8250df;
+      --good:#2ea043; --high:#d1242f; --low:#bf6a1a;
+      --headerA:#ffffff; --headerB:#eef1f5;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6f8; --panel:#ffffff; --panel2:#eef1f5; --line:#d8dee6;
+    --txt:#1b2027; --muted:#5a6673; --accent:#2ea043; --accent2:#2f6fed;
+    --warn:#bf6a1a; --danger:#d1242f; --purple:#8250df;
+    --good:#2ea043; --high:#d1242f; --low:#bf6a1a;
+    --headerA:#ffffff; --headerB:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--txt); font-size:calc(15px * var(--tscale)); line-height:1.45;
+  }
+  header{
+    padding:16px 20px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    background:linear-gradient(180deg,var(--headerA),var(--headerB));
+    position:sticky; top:0; z-index:20;
+  }
+  header h1{font-size:calc(20px * var(--tscale)); margin:0; letter-spacing:.3px}
+  header h1 .logo{color:var(--accent)}
+  .synctop{display:flex; align-items:center; gap:8px; order:3}
+  .synctop #syncLastTop{font-size:calc(12px * var(--tscale)); white-space:nowrap; transition:color .3s}
+  .synctop #syncLastTop.flash{color:var(--accent); font-weight:700}
+  .tabs{display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; order:2}
+  .tab{
+    position:relative;
+    background:none; border:1px solid transparent; color:var(--muted);
+    padding:8px 14px; border-radius:8px; cursor:pointer; font-size:calc(14px * var(--tscale)); font-weight:600;
+  }
+  .tab:hover{color:var(--txt); background:var(--panel)}
+  .tab.active{color:var(--txt); background:var(--panel); border-color:var(--line)}
+  .tab .dot{position:absolute; top:5px; right:6px; width:8px; height:8px; border-radius:50%; background:var(--danger); display:none}
+  .tab.hasdue .dot{display:block}
+  main{max-width:1000px; margin:0 auto; padding:20px}
+  .view{display:none} .view.active{display:block}
+  h2{font-size:calc(16px * var(--tscale)); margin:0 0 12px; font-weight:700}
+  h3{font-size:calc(13px * var(--tscale)); margin:16px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:18px}
+  button, select, input{font-family:inherit; font-size:calc(14px * var(--tscale))}
+  .btn{
+    background:var(--panel2); color:var(--txt); border:1px solid var(--line);
+    padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600;
+  }
+  .btn:hover{border-color:var(--accent2)}
+  .btn.primary{background:var(--accent); color:#04150a; border-color:var(--accent)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.sm{padding:4px 8px; font-size:calc(13px * var(--tscale))}
+  .btn.danger{color:var(--danger)}
+  .spinner{display:inline-block; width:12px; height:12px; border:2px solid rgba(128,128,128,.35); border-top-color:currentColor; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-1px; margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  input[type=number], input[type=text], input[type=date], input[type=time], input[type=datetime-local], select, textarea{
+    background:var(--bg); color:var(--txt); border:1px solid var(--line);
+    border-radius:7px; padding:7px 9px;
+  }
+  textarea{width:100%; font-family:inherit; resize:vertical}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .muted{color:var(--muted)}
+  .link{color:var(--accent2); text-decoration:none} .link:hover{text-decoration:underline}
+  label.fld{display:flex; flex-direction:column; gap:4px; font-size:calc(12px * var(--tscale)); color:var(--muted)}
+  label.fld input, label.fld select{font-size:calc(14px * var(--tscale))}
+  /* stat cards */
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px}
+  .card{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:14px}
+  .card .k{color:var(--muted); font-size:calc(12px * var(--tscale)); text-transform:uppercase; letter-spacing:.5px}
+  .card .v{font-size:calc(22px * var(--tscale)); font-weight:700; margin-top:4px}
+  .card .sub{color:var(--muted); font-size:calc(12px * var(--tscale)); margin-top:2px}
+  /* due banners */
+  .banner{border-radius:10px; padding:12px 14px; margin-bottom:10px; border:1px solid var(--line); background:var(--panel2); display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .banner.due{border-color:var(--warn); background:color-mix(in srgb, var(--warn) 14%, var(--panel))}
+  .banner.over{border-color:var(--danger); background:color-mix(in srgb, var(--danger) 16%, var(--panel))}
+  .banner.ok{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, var(--panel))}
+  .banner .em{font-size:calc(20px * var(--tscale))}
+  .banner .grow{flex:1; min-width:140px}
+  .banner b{font-weight:700}
+  /* history tables */
+  table.hist{width:100%; border-collapse:collapse; font-size:calc(13px * var(--tscale))}
+  table.hist th,table.hist td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap}
+  table.hist th{color:var(--muted); font-size:calc(12px * var(--tscale)); position:sticky; top:0; background:var(--panel)}
+  .scrollx{overflow-x:auto}
+  .pill{display:inline-block; padding:1px 8px; border-radius:20px; font-size:calc(12px * var(--tscale)); border:1px solid var(--line); background:var(--panel2)}
+  .pill.good{color:var(--good); border-color:var(--good)}
+  .pill.high{color:var(--high); border-color:var(--high)}
+  .pill.low{color:var(--low); border-color:var(--low)}
+  .delta{font-weight:700; font-size:calc(12px * var(--tscale))}
+  .delta.up{color:var(--warn)} .delta.down{color:var(--accent)} .delta.flat{color:var(--muted)}
+  .taglist{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+  .chip{border:1px solid var(--line); border-radius:8px; padding:4px 8px; background:var(--panel2); display:flex; gap:6px; align-items:center; font-size:calc(13px * var(--tscale))}
+  .chip button{background:none; border:none; color:var(--danger); cursor:pointer; font-size:calc(14px * var(--tscale)); padding:0; line-height:1}
+  .med{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--panel2)}
+  .med .mname{font-weight:700}
+  .doseline{display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px dashed var(--line)}
+  .doseline:first-of-type{border-top:none}
+  .doseline.done{opacity:.55}
+  .doseline .t{font-variant-numeric:tabular-nums; min-width:52px; font-weight:600}
+  .doseline .st{margin-left:auto}
+  /* calendar */
+  .monthbar{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+  .monthbar .title{font-size:calc(18px * var(--tscale)); font-weight:700; min-width:170px; text-align:center}
+  .cal{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px}
+  .cal .dow{text-align:center; color:var(--muted); font-size:calc(12px * var(--tscale)); font-weight:700}
+  .cday{background:var(--panel2); border:1px solid var(--line); border-radius:9px; min-height:62px; padding:6px; position:relative; font-size:calc(13px * var(--tscale)); display:flex; flex-direction:column; gap:3px}
+  .cday.empty{background:transparent; border:none}
+  .cday.today{outline:2px solid var(--accent2)}
+  .cday .num{color:var(--muted); font-weight:600}
+  .cday.inj{background:color-mix(in srgb, var(--purple) 22%, var(--panel2)); border-color:var(--purple)}
+  .cday.due{background:color-mix(in srgb, var(--warn) 22%, var(--panel2)); border-color:var(--warn)}
+  .cday .mk{font-size:calc(11px * var(--tscale)); font-weight:700}
+  .cday.inj .mk{color:var(--purple)} .cday.due .mk{color:var(--warn)}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+  .seg button{background:var(--panel2); border:none; padding:6px 12px; cursor:pointer; color:var(--muted); font-weight:600}
+  .seg button.on{background:var(--accent); color:#04150a}
+  /* toast */
+  #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--panel); border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:10px; opacity:0; pointer-events:none; transition:.25s; z-index:60; box-shadow:0 6px 24px rgba(0,0,0,.35)}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  .disc{font-size:calc(12px * var(--tscale)); color:var(--muted); margin-top:8px}
+  .empty-note{color:var(--muted); padding:8px 2px}
+  @media (max-width:640px){
+    main{padding:14px}
+    header{padding:12px 14px}
+  }
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+<header>
+  <h1><span class="logo">✚</span> HealthLog</h1>
+  <div class="synctop" id="synctop" style="display:none">
+    <span class="muted" id="syncLastTop">—</span>
+    <button class="btn sm" id="ghSyncTop" title="Sync now"><span class="spinner" id="topSpin" style="display:none"></span>🔄 Sync</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-view="today">Today<span class="dot"></span></button>
+    <button class="tab" data-view="diabetes">Diabetes</button>
+    <button class="tab" data-view="measure">Measurements</button>
+    <button class="tab" data-view="nebido">Nebido</button>
+    <button class="tab" data-view="setup">Setup</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ TODAY ============ -->
+  <section class="view active" id="view-today">
+    <div id="dueArea"></div>
+    <div class="panel">
+      <h2>At a glance</h2>
+      <div class="cards" id="glanceCards"></div>
+    </div>
+    <p class="disc">HealthLog is a personal tracker, not medical advice. Always follow your clinician's guidance for readings, medication and appointments.</p>
+  </section>
+
+  <!-- ============ DIABETES ============ -->
+  <section class="view" id="view-diabetes">
+    <div class="panel">
+      <h2>Log a blood glucose reading</h2>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld">Reading (<span class="gunit">mmol/L</span>)
+          <input type="number" step="any" id="gVal" style="width:110px">
+        </label>
+        <label class="fld">When
+          <input type="datetime-local" id="gWhen">
+        </label>
+        <label class="fld">Context
+          <select id="gTag">
+            <option value="">—</option>
+            <option>Fasting</option>
+            <option>Before meal</option>
+            <option>After meal</option>
+            <option>Bedtime</option>
+            <option>Exercise</option>
+            <option>Random</option>
+          </select>
+        </label>
+        <label class="fld" style="flex:1; min-width:160px">Note
+          <input type="text" id="gNote" placeholder="optional">
+        </label>
+        <button class="btn primary" id="gAdd">Add reading</button>
+      </div>
+      <div class="cards" id="gStats" style="margin-top:14px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Medications</h2>
+      <p class="muted" style="margin-top:0">Add each medication and the times you take it. HealthLog flags today's doses as due or overdue on the Today tab — tick them off as you take them.</p>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld">Name
+          <input type="text" id="mName" placeholder="e.g. Metformin">
+        </label>
+        <label class="fld">Dose
+          <input type="text" id="mDose" placeholder="e.g. 500mg" style="width:120px">
+        </label>
+        <button class="btn primary" id="mAdd">Add medication</button>
+      </div>
+      <div id="medList" style="margin-top:14px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Reading history</h2>
+      <div class="scrollx"><table class="hist" id="gHist"><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============ MEASUREMENTS ============ -->
+  <section class="view" id="view-measure">
+    <div class="panel">
+      <h2>New measurement check-in</h2>
+      <div class="row" style="align-items:flex-end; margin-bottom:6px">
+        <label class="fld">Date
+          <input type="date" id="msDate">
+        </label>
+        <span class="muted">Units: <span class="munit">cm</span> (change in Setup)</span>
+      </div>
+      <div class="cards" id="msInputs"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="msSave">Save check-in</button>
+        <span class="muted" id="msHint"></span>
+      </div>
+      <h3>Edit measurement list</h3>
+      <div class="row">
+        <input type="text" id="msNewField" placeholder="Add a measurement (e.g. Forearm)">
+        <button class="btn sm" id="msAddField">+ Add</button>
+      </div>
+      <div class="taglist" id="msFieldChips"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Latest &amp; change</h2>
+      <div class="cards" id="msLatest"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Review</h2>
+      <div class="row" style="margin-bottom:10px">
+        <span class="muted">Compare over:</span>
+        <div class="seg" id="msPeriod">
+          <button data-p="week" class="on">Week</button>
+          <button data-p="month">Month</button>
+          <button data-p="all">All time</button>
+        </div>
+      </div>
+      <div class="scrollx"><table class="hist" id="msReview"><tbody></tbody></table></div>
+      <h3>All check-ins</h3>
+      <div class="scrollx"><table class="hist" id="msHist"><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============ NEBIDO ============ -->
+  <section class="view" id="view-nebido">
+    <div class="panel">
+      <h2>Nebido injection schedule</h2>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld">Interval (weeks)
+          <input type="number" id="nbInterval" step="1" min="1" style="width:90px">
+        </label>
+        <button class="btn" id="nbSaveInt">Save interval</button>
+        <span class="muted">Typical range 10–14 weeks — follow your prescription.</span>
+      </div>
+      <div class="row" style="align-items:flex-end; margin-top:12px">
+        <label class="fld">Log an injection
+          <input type="date" id="nbDate">
+        </label>
+        <button class="btn primary" id="nbAdd">Add injection</button>
+      </div>
+      <div id="nbNext" style="margin-top:14px"></div>
+    </div>
+
+    <div class="panel">
+      <div class="monthbar">
+        <button class="btn" id="nbPrev">‹</button>
+        <div class="title" id="nbMonth"></div>
+        <button class="btn" id="nbNextM">›</button>
+        <button class="btn" id="nbToday" style="margin-left:auto">Today</button>
+      </div>
+      <div class="cal" id="nbCal"></div>
+      <p class="muted" style="margin-top:10px"><span class="pill" style="border-color:var(--purple);color:var(--purple)">Injection given</span> &nbsp; <span class="pill" style="border-color:var(--warn);color:var(--warn)">Next due</span></p>
+    </div>
+
+    <div class="panel">
+      <h2>Injection history</h2>
+      <div class="scrollx"><table class="hist" id="nbHist"><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============ SETUP ============ -->
+  <section class="view" id="view-setup">
+    <div class="panel">
+      <h2>Units</h2>
+      <div class="row">
+        <span class="muted">Blood glucose:</span>
+        <div class="seg" id="gUnitSeg">
+          <button data-u="mmol">mmol/L</button>
+          <button data-u="mgdl">mg/dL</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <span class="muted">Measurements:</span>
+        <div class="seg" id="mUnitSeg">
+          <button data-u="cm">cm</button>
+          <button data-u="in">inches</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Appearance</h2>
+      <div class="row" id="themeCtl" style="gap:8px">
+        <button class="btn" data-t="system">System</button>
+        <button class="btn" data-t="light">Light</button>
+        <button class="btn" data-t="dark">Dark</button>
+      </div>
+      <div class="row" id="textSize" style="margin-top:10px; gap:8px">
+        <button class="btn" data-s="0.9">Small</button>
+        <button class="btn" data-s="1">Medium</button>
+        <button class="btn" data-s="1.15">Large</button>
+        <button class="btn" data-s="1.3">Extra large</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Sync across devices (GitHub Gist)</h2>
+      <p class="muted">Keep desktop and phone in sync via a <b>private</b> GitHub gist. Create a token with only the <b>gist</b> scope, paste it on each device — it finds this app's sync automatically. Your token is stored only in this browser. HealthLog uses its own separate gist from FitPlan and IdeaPad.</p>
+      <div id="syncDisconnected">
+        <div class="row" style="margin-top:8px">
+          <input type="password" id="ghToken" placeholder="GitHub token (gist scope)" style="flex:1; min-width:220px" autocomplete="off" spellcheck="false">
+          <button class="btn sm" id="ghShowToken" type="button">Show</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input type="text" id="ghGist" placeholder="Gist ID (optional — leave blank, it auto-finds)" style="flex:1; min-width:220px" autocomplete="off">
+          <button class="btn primary" id="ghConnect"><span class="spinner" id="connSpin" style="display:none"></span>Connect</button>
+        </div>
+        <p class="muted" style="margin-top:6px"><a class="link" href="https://github.com/settings/tokens/new?scopes=gist&description=HealthLog%20sync" target="_blank" rel="noopener">Create a token →</a> — use a <b>classic</b> token, tick only <b>gist</b>, then copy it here. (Fine-grained tokens can't access gists.)</p>
+      </div>
+      <div id="syncConnected" style="display:none">
+        <div class="row"><span class="muted">Connected as:</span> <span id="syncUser">…</span></div>
+        <div class="row" style="margin-top:6px"><span class="muted">Last synced:</span> <span id="syncLast">never</span></div>
+        <div class="row" style="margin-top:10px">
+          <span class="muted">Gist ID</span>
+          <code id="syncGistId" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:calc(13px * var(--tscale))"></code>
+          <button class="btn sm" id="ghCopyGist">Copy</button>
+          <a class="link" id="syncGistLink" target="_blank" rel="noopener">View ↗</a>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="ghSyncNow"><span class="spinner" id="syncSpin" style="display:none"></span>Sync now</button>
+          <label class="row" style="gap:6px; margin:0"><input type="checkbox" id="ghAuto"> Auto-sync on changes</label>
+          <button class="btn danger" id="ghDisconnect" style="margin-left:auto">Disconnect</button>
+        </div>
+      </div>
+      <div id="syncMsg" class="muted" style="margin-top:12px; min-height:1.2em"></div>
+    </div>
+    <div class="panel">
+      <h2>Data</h2>
+      <div class="row">
+        <button class="btn" id="exportBtn">Export JSON</button>
+        <button class="btn" id="importBtn">Import JSON</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none">
+        <button class="btn danger" id="resetBtn">Reset everything</button>
+      </div>
+      <p class="muted" style="margin-top:8px">All data is stored locally in your browser and (if connected) your private gist.</p>
+    </div>
+    <div class="panel">
+      <h2>My apps</h2>
+      <p class="muted">Open on any device, then use your browser menu → <b>Install</b> / <b>Add to Home screen</b>.</p>
+      <p class="muted" style="margin-top:6px">✚ HealthLog — <a class="link" href="https://gezzie72.github.io/apps/healthlog/" target="_blank" rel="noopener">gezzie72.github.io/apps/healthlog</a></p>
+      <p class="muted" style="margin-top:6px">🏋 FitPlan — <a class="link" href="https://gezzie72.github.io/apps/fitplan/" target="_blank" rel="noopener">gezzie72.github.io/apps/fitplan</a></p>
+      <p class="muted" style="margin-top:6px">💡 IdeaPad — <a class="link" href="https://gezzie72.github.io/apps/ideapad/" target="_blank" rel="noopener">gezzie72.github.io/apps/ideapad</a></p>
+    </div>
+    <p class="muted" id="verLine" style="text-align:center; margin-top:16px"></p>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const APP_VERSION = "2026-08-21 · v1";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const LS_KEY = "healthlog.state.v1";
+
+function iso(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function parseISO(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function todayISO(){ return iso(new Date()); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function pad(n){ return String(n).padStart(2,"0"); }
+function nowLocalInput(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function fmtDate(isoStr){ if(!isoStr) return ""; const d=parseISO(isoStr); return `${DOW[d.getDay()]} ${d.getDate()} ${MONS[d.getMonth()]} ${d.getFullYear()}`; }
+function fmtDateShort(isoStr){ if(!isoStr) return ""; const d=parseISO(isoStr); return `${d.getDate()} ${MONS[d.getMonth()]}`; }
+function fmtDT(s){ if(!s) return ""; const [dpart,tpart]=s.split("T"); const d=parseISO(dpart); return `${DOW[d.getDay()]} ${d.getDate()} ${MONS[d.getMonth()]}${tpart?" · "+tpart:""}`; }
+function addDays(isoStr,n){ const d=parseISO(isoStr); d.setDate(d.getDate()+n); return iso(d); }
+function daysBetween(aISO,bISO){ return Math.round((parseISO(bISO)-parseISO(aISO))/86400000); }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
+
+/* ---------- State ---------- */
+const defaultFields = ["Waist","Chest","Hips","Neck","Left arm","Right arm","Left thigh","Right thigh"];
+function defaultState(){
+  return {
+    version:1, updatedAt:0,
+    glucoseUnit:"mmol", measureUnit:"cm",
+    glucose:[],                 // {id, dt:"YYYY-MM-DDTHH:MM", value, unit, tag, note}
+    meds:[],                    // {id, name, dose, times:["08:00",...], active}
+    medLog:[],                  // {medId, date:"YYYY-MM-DD", time:"HH:MM"}
+    measureFields:[...defaultFields],
+    measurements:[],            // {id, date:"YYYY-MM-DD", unit, values:{field:number}, note}
+    nebido:{ intervalWeeks:12, history:[] }   // history: ["YYYY-MM-DD", ...]
+  };
+}
+function normalize(s){
+  const d=defaultState();
+  s = s && typeof s==="object" ? s : {};
+  for(const k of Object.keys(d)) if(s[k]===undefined) s[k]=d[k];
+  if(!s.nebido || typeof s.nebido!=="object") s.nebido={intervalWeeks:12,history:[]};
+  if(!Array.isArray(s.nebido.history)) s.nebido.history=[];
+  if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
+  ["glucose","meds","medLog","measurements"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  return s;
+}
+function load(){ try{ const raw=localStorage.getItem(LS_KEY); return raw?normalize(JSON.parse(raw)):defaultState(); }catch(e){ return defaultState(); } }
+let state = load();
+function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function save(){ state.updatedAt=Date.now(); persist(); schedulePush(); refreshDue(); }
+
+/* ---------- Glucose helpers ---------- */
+const MMOL_TO_MGDL = 18.0182;
+function toDisplayGlucose(v, unit){        // convert stored value(unit) to current display unit
+  if(unit===state.glucoseUnit) return v;
+  return state.glucoseUnit==="mgdl" ? v*MMOL_TO_MGDL : v/MMOL_TO_MGDL;
+}
+function gUnitLabel(){ return state.glucoseUnit==="mgdl" ? "mg/dL" : "mmol/L"; }
+function gRound(v){ return state.glucoseUnit==="mgdl" ? Math.round(v) : Math.round(v*10)/10; }
+function gBand(displayVal){                 // rough general bands (not medical advice)
+  const mmol = state.glucoseUnit==="mgdl" ? displayVal/MMOL_TO_MGDL : displayVal;
+  if(mmol < 4) return "low";
+  if(mmol > 10) return "high";
+  return "good";
+}
+
+/* ---------- TODAY / due logic ---------- */
+function medDoseState(m, timeStr){
+  const t=todayISO();
+  const taken = state.medLog.some(l=>l.medId===m.id && l.date===t && l.time===timeStr);
+  if(taken) return "done";
+  const now=new Date(); const cur=pad(now.getHours())+":"+pad(now.getMinutes());
+  return timeStr <= cur ? "over" : "due";
+}
+function nebidoNextDue(){
+  const h=[...state.nebido.history].sort();
+  if(!h.length) return null;
+  return addDays(h[h.length-1], (Number(state.nebido.intervalWeeks)||12)*7);
+}
+function lastMeasureISO(){
+  if(!state.measurements.length) return null;
+  return [...state.measurements].sort((a,b)=>a.date<b.date?1:-1)[0].date;
+}
+function computeDue(){
+  const items=[]; const t=todayISO();
+  // meds
+  state.meds.filter(m=>m.active!==false).forEach(m=>{
+    (m.times||[]).forEach(tm=>{
+      const st=medDoseState(m,tm);
+      if(st==="over") items.push({sev:"over", kind:"med", txt:`${m.name}${m.dose?" ("+m.dose+")":""} due at ${tm}`, med:m, time:tm});
+      else if(st==="due") items.push({sev:"due", kind:"med", txt:`${m.name}${m.dose?" ("+m.dose+")":""} at ${tm}`, med:m, time:tm});
+    });
+  });
+  // nebido
+  const due=nebidoNextDue();
+  if(due){
+    const diff=daysBetween(t,due);
+    if(diff<0) items.push({sev:"over", kind:"neb", txt:`Nebido injection overdue by ${-diff} day${diff===-1?"":"s"} (was due ${fmtDateShort(due)})`});
+    else if(diff<=7) items.push({sev:"due", kind:"neb", txt:`Nebido injection due ${diff===0?"today":"in "+diff+" day"+(diff===1?"":"s")} (${fmtDateShort(due)})`});
+  }
+  // measurements weekly nudge
+  const lm=lastMeasureISO();
+  if(lm){ const gap=daysBetween(lm,t); if(gap>=7) items.push({sev:"due", kind:"meas", txt:`Body measurement check-in due — last was ${gap} days ago`}); }
+  return items;
+}
+function refreshDue(){
+  const items=computeDue();
+  const over=items.some(i=>i.sev==="over");
+  $$('.tab[data-view="today"]').forEach(t=>t.classList.toggle("hasdue", over));
+  // Only rebuild the Today view contents when it's visible-ish; cheap anyway.
+  renderToday();
+}
+function renderToday(){
+  const area=$("#dueArea"); area.innerHTML="";
+  const items=computeDue();
+  if(!items.length){
+    area.innerHTML=`<div class="banner ok"><span class="em">✅</span><div class="grow"><b>All clear.</b> Nothing due right now.</div></div>`;
+  } else {
+    items.forEach(it=>{
+      const cls = it.sev==="over" ? "over" : "due";
+      const em = it.kind==="med" ? "💊" : it.kind==="neb" ? "💉" : "📏";
+      let action="";
+      if(it.kind==="med") action=`<button class="btn sm primary" data-take="${it.med.id}" data-tt="${it.time}">Take</button>`;
+      else if(it.kind==="neb") action=`<button class="btn sm" id="quickInject">Log today</button>`;
+      area.insertAdjacentHTML("beforeend",
+        `<div class="banner ${cls}"><span class="em">${em}</span><div class="grow">${it.txt}</div>${action}</div>`);
+    });
+    area.querySelectorAll("[data-take]").forEach(b=> b.onclick=()=>{ takeMed(b.dataset.take, b.dataset.tt); });
+    const qi=area.querySelector("#quickInject");
+    if(qi) qi.onclick=()=>{ addInjection(todayISO()); toast("Injection logged for today"); };
+  }
+  // glance cards
+  const g=$("#glanceCards");
+  const lastG=[...state.glucose].sort((a,b)=>a.dt<b.dt?1:-1)[0];
+  const due=nebidoNextDue();
+  const lm=lastMeasureISO();
+  const medsToday = state.meds.filter(m=>m.active!==false).reduce((n,m)=>n+(m.times||[]).length,0);
+  const medsDone = state.meds.filter(m=>m.active!==false).reduce((n,m)=>n+(m.times||[]).filter(tm=>medDoseState(m,tm)==="done").length,0);
+  g.innerHTML=[
+    card("Latest glucose", lastG?`${gRound(toDisplayGlucose(lastG.value,lastG.unit))} <span class="muted" style="font-size:.6em">${gUnitLabel()}</span>`:"—", lastG?fmtDT(lastG.dt):"no readings yet"),
+    card("Meds today", `${medsDone}/${medsToday}`, medsToday?"doses taken":"none set up"),
+    card("Next Nebido", due?fmtDateShort(due):"—", due?`${daysBetween(todayISO(),due)>=0?"in "+daysBetween(todayISO(),due)+" days":"overdue"}`:"log one to start"),
+    card("Last measured", lm?fmtDateShort(lm):"—", lm?`${daysBetween(lm,todayISO())} days ago`:"none yet")
+  ].join("");
+}
+function card(k,v,sub){ return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="sub">${sub||""}</div></div>`; }
+function takeMed(medId, time){
+  const t=todayISO();
+  const i=state.medLog.findIndex(l=>l.medId===medId && l.date===t && l.time===time);
+  if(i>=0) state.medLog.splice(i,1); else state.medLog.push({medId, date:t, time});
+  save(); renderMeds();
+}
+
+/* ---------- DIABETES ---------- */
+function renderGlucoseUI(){
+  $$(".gunit").forEach(e=>e.textContent=gUnitLabel());
+  // stats
+  const rows=[...state.glucose].map(r=>({...r, disp:toDisplayGlucose(r.value,r.unit)}));
+  const now=Date.now();
+  const wk=rows.filter(r=> now-new Date(r.dt).getTime() <= 7*86400000);
+  const avg = wk.length ? wk.reduce((a,r)=>a+r.disp,0)/wk.length : null;
+  const inRange = wk.length ? Math.round(100*wk.filter(r=>gBand(r.disp)==="good").length/wk.length) : null;
+  $("#gStats").innerHTML=[
+    card("Readings logged", String(state.glucose.length), "all time"),
+    card("7-day average", avg!=null?`${gRound(avg)} <span class="muted" style="font-size:.6em">${gUnitLabel()}</span>`:"—", `${wk.length} reading${wk.length===1?"":"s"}`),
+    card("In range (7d)", inRange!=null?inRange+"%":"—", "rough guide only")
+  ].join("");
+  // history
+  const hist=[...state.glucose].sort((a,b)=>a.dt<b.dt?1:-1);
+  const tb=$("#gHist").querySelector("tbody");
+  if(!hist.length){ tb.innerHTML=`<tr><td class="muted">No readings yet.</td></tr>`; }
+  else{
+    tb.innerHTML=`<tr><th>When</th><th>Reading</th><th>Context</th><th>Note</th><th></th></tr>`+
+      hist.map(r=>{ const dv=gRound(toDisplayGlucose(r.value,r.unit)); const b=gBand(toDisplayGlucose(r.value,r.unit));
+        return `<tr><td>${fmtDT(r.dt)}</td><td><span class="pill ${b}">${dv} ${gUnitLabel()}</span></td><td>${r.tag||""}</td><td>${(r.note||"").replace(/</g,"&lt;")}</td>
+          <td><button class="btn sm danger" data-gdel="${r.id}">✕</button></td></tr>`; }).join("");
+    tb.querySelectorAll("[data-gdel]").forEach(b=> b.onclick=()=>{ state.glucose=state.glucose.filter(x=>x.id!==b.dataset.gdel); save(); renderGlucoseUI(); });
+  }
+}
+function renderMeds(){
+  const el=$("#medList");
+  if(!state.meds.length){ el.innerHTML=`<div class="empty-note">No medications added yet.</div>`; return; }
+  el.innerHTML=state.meds.map(m=>{
+    const times=(m.times||[]).slice().sort();
+    const doses=times.map(tm=>{
+      const st=medDoseState(m,tm);
+      const label = st==="done"?"✓ Taken": st==="over"?"Take (overdue)":"Take";
+      const cls = st==="done"?"done":"";
+      const bcls = st==="done"?"btn sm":"btn sm primary";
+      return `<div class="doseline ${cls}"><span class="t">${tm}</span>
+        <button class="${bcls}" data-take="${m.id}" data-tt="${tm}">${label}</button>
+        <button class="btn sm danger st" data-rmtime="${m.id}" data-tt="${tm}" title="Remove this time">✕</button></div>`;
+    }).join("") || `<div class="muted" style="padding:4px 0">No times set.</div>`;
+    return `<div class="med">
+      <div class="row"><span class="mname">${m.name.replace(/</g,"&lt;")}</span>
+        ${m.dose?`<span class="pill">${m.dose.replace(/</g,"&lt;")}</span>`:""}
+        <button class="btn sm danger" data-meddel="${m.id}" style="margin-left:auto">Remove med</button></div>
+      <div style="margin-top:6px">${doses}</div>
+      <div class="row" style="margin-top:8px">
+        <input type="time" data-newtime="${m.id}" style="width:120px">
+        <button class="btn sm" data-addtime="${m.id}">+ Add time</button>
+      </div>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-take]").forEach(b=> b.onclick=()=> takeMed(b.dataset.take,b.dataset.tt));
+  el.querySelectorAll("[data-meddel]").forEach(b=> b.onclick=()=>{ if(confirm("Remove this medication and its schedule?")){ state.meds=state.meds.filter(m=>m.id!==b.dataset.meddel); save(); renderMeds(); } });
+  el.querySelectorAll("[data-rmtime]").forEach(b=> b.onclick=()=>{ const m=state.meds.find(x=>x.id===b.dataset.rmtime); if(m){ m.times=(m.times||[]).filter(t=>t!==b.dataset.tt); save(); renderMeds(); } });
+  el.querySelectorAll("[data-addtime]").forEach(b=> b.onclick=()=>{
+    const inp=el.querySelector(`[data-newtime="${b.dataset.addtime}"]`); const v=inp.value;
+    if(!v){ toast("Pick a time first"); return; }
+    const m=state.meds.find(x=>x.id===b.dataset.addtime);
+    if(m){ m.times=m.times||[]; if(!m.times.includes(v)) m.times.push(v); save(); renderMeds(); }
+  });
+}
+
+/* ---------- MEASUREMENTS ---------- */
+let msPeriod="week";
+function muLabel(){ return state.measureUnit==="in"?"in":"cm"; }
+function sortedMeasure(){ return [...state.measurements].sort((a,b)=>a.date<b.date?1:-1); } // newest first
+function renderMeasureUI(){
+  $$(".munit").forEach(e=>e.textContent=muLabel());
+  if(!$("#msDate").value) $("#msDate").value=todayISO();
+  // input grid
+  const prev=sortedMeasure()[0];
+  $("#msInputs").innerHTML=state.measureFields.map(f=>{
+    const pv = prev && prev.values[f]!=null ? ` <span class="muted" style="font-size:.75em">was ${prev.values[f]}</span>`:"";
+    return `<label class="fld">${f}${pv}<input type="number" step="any" data-mf="${f}" placeholder="${muLabel()}"></label>`;
+  }).join("");
+  // field chips
+  $("#msFieldChips").innerHTML=state.measureFields.map(f=>`<span class="chip">${f}<button data-delfield="${f}" title="Remove">✕</button></span>`).join("");
+  $("#msFieldChips").querySelectorAll("[data-delfield]").forEach(b=> b.onclick=()=>{
+    if(confirm(`Remove "${b.dataset.delfield}" from the measurement list? Past check-ins keep their data.`)){
+      state.measureFields=state.measureFields.filter(x=>x!==b.dataset.delfield); save(); renderMeasureUI();
+    }
+  });
+  renderMeasureLatest();
+  renderMeasureReview();
+  renderMeasureHist();
+}
+function renderMeasureLatest(){
+  const list=sortedMeasure();
+  const el=$("#msLatest");
+  if(list.length<1){ el.innerHTML=`<div class="empty-note">No check-ins yet — save one above.</div>`; return; }
+  const latest=list[0], prev=list[1];
+  el.innerHTML=state.measureFields.map(f=>{
+    const cur=latest.values[f];
+    if(cur==null) return "";
+    let sub="latest";
+    if(prev && prev.values[f]!=null){
+      const d=cur-prev.values[f]; const cls=d>0?"up":d<0?"down":"flat"; const arr=d>0?"▲":d<0?"▼":"–";
+      sub=`<span class="delta ${cls}">${arr} ${d>0?"+":""}${Math.round(d*10)/10} ${muLabel()}</span> vs last`;
+    }
+    return `<div class="card"><div class="k">${f}</div><div class="v">${cur} <span class="muted" style="font-size:.55em">${muLabel()}</span></div><div class="sub">${sub}</div></div>`;
+  }).join("");
+}
+// Baseline to compare the latest check-in against, given the selected period.
+// week/month: the most recent check-in that is at least 7/30 days older than the
+// latest (i.e. "roughly a week/month ago"); if none is that old, fall back to the
+// oldest check-in so you still see a change. all: the very first check-in.
+function baselineFor(list, latest){         // list newest-first, latest=list[0]
+  const older=list.filter(m=>m.date<latest.date);
+  if(!older.length) return latest;
+  if(msPeriod==="all") return older[older.length-1];
+  const days=msPeriod==="week"?7:30;
+  const target=addDays(latest.date,-days);
+  const aged=older.filter(m=>m.date<=target);   // still newest-first
+  return aged.length ? aged[0] : older[older.length-1];
+}
+function renderMeasureReview(){
+  const list=sortedMeasure();               // newest first
+  const tb=$("#msReview").querySelector("tbody");
+  if(list.length<1){ tb.innerHTML=`<tr><td class="muted">Nothing to review yet.</td></tr>`; return; }
+  const latest=list[0];
+  const baseline=baselineFor(list, latest);
+  if(baseline===latest){ tb.innerHTML=`<tr><td class="muted">Only one check-in so far — add another to see change.</td></tr>`; return; }
+  let rows=`<tr><th>Measurement</th><th>Then (${fmtDateShort(baseline.date)})</th><th>Now (${fmtDateShort(latest.date)})</th><th>Change</th></tr>`;
+  rows+=state.measureFields.map(f=>{
+    const a=baseline.values[f], b=latest.values[f];
+    if(a==null && b==null) return "";
+    let change="—";
+    if(a!=null && b!=null){ const d=b-a; const cls=d>0?"up":d<0?"down":"flat"; const arr=d>0?"▲":d<0?"▼":"–"; change=`<span class="delta ${cls}">${arr} ${d>0?"+":""}${Math.round(d*10)/10} ${muLabel()}</span>`; }
+    return `<tr><td>${f}</td><td>${a??"—"}</td><td>${b??"—"}</td><td>${change}</td></tr>`;
+  }).join("");
+  tb.innerHTML=rows;
+}
+function renderMeasureHist(){
+  const list=sortedMeasure();
+  const tb=$("#msHist").querySelector("tbody");
+  if(list.length<1){ tb.innerHTML=`<tr><td class="muted">No check-ins yet.</td></tr>`; return; }
+  let head=`<tr><th>Date</th>${state.measureFields.map(f=>`<th>${f}</th>`).join("")}<th></th></tr>`;
+  let body=list.map(m=>`<tr><td>${fmtDateShort(m.date)} '${String(parseISO(m.date).getFullYear()).slice(2)}</td>`+
+    state.measureFields.map(f=>`<td>${m.values[f]??"—"}</td>`).join("")+
+    `<td><button class="btn sm danger" data-msdel="${m.id}">✕</button></td></tr>`).join("");
+  tb.innerHTML=head+body;
+  tb.querySelectorAll("[data-msdel]").forEach(b=> b.onclick=()=>{ if(confirm("Delete this check-in?")){ state.measurements=state.measurements.filter(x=>x.id!==b.dataset.msdel); save(); renderMeasureUI(); } });
+}
+
+/* ---------- NEBIDO ---------- */
+let nbView=new Date();
+function addInjection(dateISO){
+  if(!state.nebido.history.includes(dateISO)) state.nebido.history.push(dateISO);
+  state.nebido.history.sort();
+  save(); renderNebidoUI();
+}
+function renderNebidoUI(){
+  $("#nbInterval").value = state.nebido.intervalWeeks || 12;
+  if(!$("#nbDate").value) $("#nbDate").value=todayISO();
+  // next due banner
+  const due=nebidoNextDue(); const el=$("#nbNext");
+  if(!due){ el.innerHTML=`<div class="banner"><span class="em">💉</span><div class="grow">Log your most recent injection to start tracking the next one.</div></div>`; }
+  else{
+    const diff=daysBetween(todayISO(),due);
+    const cls=diff<0?"over":diff<=7?"due":"ok";
+    const msg = diff<0?`<b>Overdue by ${-diff} day${diff===-1?"":"s"}</b> — was due ${fmtDate(due)}`
+      : diff===0?`<b>Due today</b> (${fmtDate(due)})`
+      : `Next injection <b>${fmtDate(due)}</b> — in ${diff} day${diff===1?"":"s"}`;
+    el.innerHTML=`<div class="banner ${cls}"><span class="em">💉</span><div class="grow">${msg}</div><button class="btn sm primary" id="nbLogToday">Log injection today</button></div>`;
+    el.querySelector("#nbLogToday").onclick=()=>{ addInjection(todayISO()); toast("Injection logged"); };
+  }
+  renderNebidoCal();
+  // history
+  const tb=$("#nbHist").querySelector("tbody");
+  const h=[...state.nebido.history].sort().reverse();
+  if(!h.length){ tb.innerHTML=`<tr><td class="muted">No injections logged.</td></tr>`; }
+  else{
+    tb.innerHTML=`<tr><th>Date</th><th>Gap since previous</th><th></th></tr>`+
+      h.map((d,i)=>{ const prev=h[i+1]; const gap=prev?`${daysBetween(prev,d)} days`:"—";
+        return `<tr><td>${fmtDate(d)}</td><td class="muted">${gap}</td><td><button class="btn sm danger" data-nbdel="${d}">✕</button></td></tr>`; }).join("");
+    tb.querySelectorAll("[data-nbdel]").forEach(b=> b.onclick=()=>{ state.nebido.history=state.nebido.history.filter(x=>x!==b.dataset.nbdel); save(); renderNebidoUI(); });
+  }
+}
+function renderNebidoCal(){
+  $("#nbMonth").textContent=MON[nbView.getMonth()]+" "+nbView.getFullYear();
+  const cal=$("#nbCal"); cal.innerHTML="";
+  DOW.forEach(d=>{ const h=document.createElement("div"); h.className="dow"; h.textContent=d; cal.appendChild(h); });
+  const y=nbView.getFullYear(), m=nbView.getMonth();
+  const first=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
+  const due=nebidoNextDue();
+  for(let i=0;i<first;i++){ const e=document.createElement("div"); e.className="cday empty"; cal.appendChild(e); }
+  for(let d=1;d<=days;d++){
+    const ds=iso(new Date(y,m,d));
+    const isInj=state.nebido.history.includes(ds);
+    const isDue=due===ds;
+    const cell=document.createElement("div");
+    cell.className="cday"+(isInj?" inj":"")+(isDue&&!isInj?" due":"")+(ds===todayISO()?" today":"");
+    cell.innerHTML=`<div class="num">${d}</div>`+(isInj?`<div class="mk">💉 Given</div>`:isDue?`<div class="mk">Due</div>`:"");
+    cell.onclick=()=>{ if(isInj){ if(confirm("Remove the injection logged on "+fmtDate(ds)+"?")){ state.nebido.history=state.nebido.history.filter(x=>x!==ds); save(); renderNebidoUI(); } } else { if(confirm("Log a Nebido injection on "+fmtDate(ds)+"?")) addInjection(ds); } };
+    cal.appendChild(cell);
+  }
+}
+
+/* ---------- Tabs ---------- */
+$$(".tab").forEach(t=>t.addEventListener("click",()=>{
+  $$(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  const v=t.dataset.view;
+  $$(".view").forEach(s=>s.classList.remove("active"));
+  $("#view-"+v).classList.add("active");
+  if(v==="today") renderToday();
+  if(v==="diabetes"){ renderGlucoseUI(); renderMeds(); }
+  if(v==="measure") renderMeasureUI();
+  if(v==="nebido") renderNebidoUI();
+}));
+
+/* ---------- Wire inputs ---------- */
+$("#gAdd").onclick=()=>{
+  const v=Number($("#gVal").value);
+  if(!v || v<=0){ toast("Enter a reading"); return; }
+  const when=$("#gWhen").value || nowLocalInput();
+  state.glucose.push({id:uid(), dt:when, value:v, unit:state.glucoseUnit, tag:$("#gTag").value, note:$("#gNote").value.trim()});
+  $("#gVal").value=""; $("#gNote").value=""; $("#gWhen").value=nowLocalInput();
+  save(); renderGlucoseUI(); toast("Reading added");
+};
+$("#mAdd").onclick=()=>{
+  const name=$("#mName").value.trim(); if(!name){ toast("Name the medication"); return; }
+  state.meds.push({id:uid(), name, dose:$("#mDose").value.trim(), times:[], active:true});
+  $("#mName").value=""; $("#mDose").value="";
+  save(); renderMeds(); toast("Medication added — now add its times");
+};
+$("#msSave").onclick=()=>{
+  const date=$("#msDate").value || todayISO();
+  const values={}; let any=false;
+  $$("#msInputs [data-mf]").forEach(inp=>{ if(inp.value!==""){ values[inp.dataset.mf]=Number(inp.value); any=true; } });
+  if(!any){ toast("Enter at least one measurement"); return; }
+  const existing=state.measurements.find(m=>m.date===date);
+  if(existing){ existing.values=Object.assign({}, existing.values, values); existing.unit=state.measureUnit; }
+  else state.measurements.push({id:uid(), date, unit:state.measureUnit, values});
+  save(); renderMeasureUI(); toast("Check-in saved");
+};
+$("#msAddField").onclick=()=>{
+  const v=$("#msNewField").value.trim(); if(!v) return;
+  if(!state.measureFields.includes(v)) state.measureFields.push(v);
+  $("#msNewField").value=""; save(); renderMeasureUI();
+};
+$("#msPeriod").querySelectorAll("button").forEach(b=> b.onclick=()=>{
+  msPeriod=b.dataset.p; $("#msPeriod").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); renderMeasureReview();
+});
+$("#nbSaveInt").onclick=()=>{ const v=Math.max(1,Math.round(Number($("#nbInterval").value)||12)); state.nebido.intervalWeeks=v; save(); renderNebidoUI(); toast("Interval saved"); };
+$("#nbAdd").onclick=()=>{ const d=$("#nbDate").value; if(!d){ toast("Pick a date"); return; } addInjection(d); toast("Injection added"); };
+$("#nbPrev").onclick=()=>{ nbView.setMonth(nbView.getMonth()-1); renderNebidoCal(); };
+$("#nbNextM").onclick=()=>{ nbView.setMonth(nbView.getMonth()+1); renderNebidoCal(); };
+$("#nbToday").onclick=()=>{ nbView=new Date(); renderNebidoCal(); };
+
+/* unit toggles */
+function renderUnitSegs(){
+  $("#gUnitSeg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.u===state.glucoseUnit));
+  $("#mUnitSeg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.u===state.measureUnit));
+}
+$("#gUnitSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{ state.glucoseUnit=b.dataset.u; save(); renderUnitSegs(); renderGlucoseUI(); });
+$("#mUnitSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{ state.measureUnit=b.dataset.u; save(); renderUnitSegs(); renderMeasureUI(); });
+
+/* data export/import/reset */
+$("#exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="healthlog-backup-"+todayISO()+".json"; a.click();
+};
+$("#importBtn").onclick=()=>$("#importFile").click();
+$("#importFile").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ state=normalize(JSON.parse(r.result)); save(); initAll(); toast("Imported"); }catch{ toast("Invalid file"); } }; r.readAsText(f); };
+$("#resetBtn").onclick=()=>{ if(confirm("Delete ALL HealthLog data on this device? This cannot be undone.")){ localStorage.removeItem(LS_KEY); state=defaultState(); save(); initAll(); toast("Reset done"); } };
+
+/* ---------- Sync (GitHub Gist) ---------- */
+const GH = {
+  get token(){ try{return localStorage.getItem("healthlog.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("healthlog.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("healthlog.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("healthlog.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("healthlog.gh.token",v):localStorage.removeItem("healthlog.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("healthlog.gh.gist",v):localStorage.removeItem("healthlog.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("healthlog.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("healthlog.gh.user",v):localStorage.removeItem("healthlog.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+async function ghApi(method, path, body){
+  let res;
+  try{
+    res = await fetch("https://api.github.com"+path, {
+      method, headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  }catch(e){ throw new Error("Can't reach GitHub — the browser blocked the request. If you opened the file directly (file://), serve it over http instead."); }
+  if(!res.ok){
+    let detail=""; try{ detail=(await res.json()).message||""; }catch(e){}
+    if(res.status===401) throw new Error("Invalid or expired token (401). Create a new classic token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited."+(detail?" "+detail:""));
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token)."+(detail?" "+detail:""));
+    throw new Error("GitHub "+res.status+(detail?" — "+detail:""));
+  }
+  return res.json();
+}
+function markSync(msg, err){ const m=$("#syncMsg"); if(m){ m.textContent=msg||""; m.style.color=err?"var(--danger)":"var(--muted)"; } }
+function setSyncTime(){ try{ localStorage.setItem("healthlog.gh.lastSync", String(Date.now())); }catch(e){} updateLastSync(); }
+function updateLastSync(){
+  let t=0; try{ t=Number(localStorage.getItem("healthlog.gh.lastSync"))||0; }catch(e){}
+  const rel = !t ? "never" : (()=>{ const s=Math.round((Date.now()-t)/1000);
+    return s<10?"just now" : s<60?s+"s ago" : s<3600?Math.round(s/60)+" min ago" : s<86400?Math.round(s/3600)+"h ago" : new Date(t).toLocaleString(); })();
+  const el=$("#syncLast"); if(el) el.textContent=rel;
+  const el2=$("#syncLastTop"); if(el2) el2.textContent = t ? "Synced "+rel : "Not synced";
+}
+function spin(on){ ["syncSpin","connSpin","topSpin"].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=on?"inline-block":"none"; }); }
+let flashTimer=null;
+function flashSynced(){ const el=$("#syncLastTop"); if(!el) return; el.classList.add("flash"); el.textContent="Updated ✓"; clearTimeout(flashTimer); flashTimer=setTimeout(()=>{ el.classList.remove("flash"); updateLastSync(); },2500); }
+setInterval(updateLastSync, 30000);
+let pushTimer=null;
+function schedulePush(){ if(!GH.connected || !GH.auto) return; clearTimeout(pushTimer); pushTimer=setTimeout(()=>{ syncPush().catch(e=>{ spin(false); markSync("Push failed: "+e.message,true); }); },1500); }
+async function syncPush(){
+  if(!GH.connected) return;
+  spin(true); markSync("Saving…");
+  try{ await ghApi("PATCH","/gists/"+GH.gist,{files:{"healthlog.json":{content:JSON.stringify(state)}}}); setSyncTime(); markSync("Synced"); }
+  finally{ spin(false); }
+}
+async function syncPull(force, quiet){
+  if(!GH.connected) return;
+  if(!quiet){ spin(true); markSync("Checking…"); }
+  try{
+    const g=await ghApi("GET","/gists/"+GH.gist);
+    const f=g.files && g.files["healthlog.json"];
+    if(!f || !f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+    const remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+    if(force || (remote.updatedAt||0) > (state.updatedAt||0)){
+      state=normalize(remote); persist(); initAll(); setSyncTime(); markSync("Pulled latest changes"); flashSynced(); return "pulled";
+    } else { setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+  } finally{ if(!quiet) spin(false); }
+}
+async function findGist(){
+  const list=await ghApi("GET","/gists?per_page=100");
+  const mine=(list||[]).filter(g => (g.files && g.files["healthlog.json"]) || g.description==="HealthLog sync");
+  if(!mine.length) return null;
+  mine.sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  return mine[0].id;
+}
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$("#syncUser"); if(el) el.textContent=u.login; }catch(e){} }
+function renderSync(){
+  $("#syncDisconnected").style.display=GH.connected?"none":"";
+  $("#syncConnected").style.display=GH.connected?"":"none";
+  $("#synctop").style.display=GH.connected?"flex":"none";
+  if(GH.connected){
+    $("#syncGistId").textContent=GH.gist;
+    $("#syncGistLink").href="https://gist.github.com/"+GH.gist;
+    $("#syncUser").textContent=GH.user||"…"; if(!GH.user) fetchUser();
+    $("#ghAuto").checked=GH.auto;
+  }
+  updateLastSync();
+}
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); }catch(e){ markSync("Sync failed: "+e.message,true); spin(false); } }
+setInterval(()=>{ if(!GH.connected||!GH.auto) return; if(document.hidden) return; syncPull(false,true).catch(()=>{}); }, 45000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && GH.connected && GH.auto) syncPull(false,true).catch(()=>{}); });
+$("#ghConnect").onclick=async ()=>{
+  const t=$("#ghToken").value.trim(); let gid=$("#ghGist").value.trim();
+  if(!t){ markSync("Paste your GitHub token first.",true); return; }
+  GH.token=t; spin(true); markSync("Connecting…");
+  try{
+    if(!gid){ gid=await findGist(); }
+    if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
+      if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your data."); } else markSync("Connected — using your existing sync."); }
+    else { const g=await ghApi("POST","/gists",{description:"HealthLog sync", public:false, files:{"healthlog.json":{content:JSON.stringify(state)}}}); GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
+    $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
+  }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
+  finally{ spin(false); }
+};
+$("#ghSyncNow").onclick=doSyncNow;
+$("#ghSyncTop").onclick=doSyncNow;
+$("#ghAuto").onchange=()=>{ GH.auto=$("#ghAuto").checked; if(GH.auto) schedulePush(); };
+$("#ghCopyGist").onclick=()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>toast("Gist ID copied"), ()=>toast(GH.gist)); };
+$("#ghShowToken").onclick=()=>{ const i=$("#ghToken"), show=i.type==="password"; i.type=show?"text":"password"; $("#ghShowToken").textContent=show?"Hide":"Show"; };
+$("#ghDisconnect").onclick=()=>{ if(confirm("Disconnect sync on this device? Your local data stays; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+
+/* ---------- Appearance ---------- */
+const THEME_KEY="healthlog.theme";
+function getTheme(){ try{ return localStorage.getItem(THEME_KEY)||"system"; }catch(e){ return "system"; } }
+let theme=getTheme();
+function applyTheme(v){ const r=document.documentElement; if(v==="system") r.removeAttribute("data-theme"); else r.setAttribute("data-theme",v);
+  const isLight=v==="light"||(v==="system"&&window.matchMedia&&matchMedia("(prefers-color-scheme:light)").matches);
+  const mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content", isLight?"#f4f6f8":"#0e1116"); }
+function renderTheme(){ $$('#themeCtl button').forEach(b=> b.classList.toggle('primary', b.dataset.t===theme)); }
+function setTheme(v){ theme=v; try{ localStorage.setItem(THEME_KEY,v); }catch(e){} applyTheme(v); renderTheme(); }
+$$('#themeCtl button').forEach(b=> b.onclick=()=> setTheme(b.dataset.t));
+if(window.matchMedia) matchMedia("(prefers-color-scheme:light)").addEventListener("change", ()=>{ if(theme==="system") applyTheme("system"); });
+applyTheme(theme); renderTheme();
+const TSCALE_KEY="healthlog.textScale";
+function getScale(){ try{ return localStorage.getItem(TSCALE_KEY)||"1"; }catch(e){ return "1"; } }
+let textScale=getScale();
+function applyScale(v){ document.documentElement.style.setProperty("--tscale",v); }
+function renderTextSize(){ $$('#textSize button').forEach(b=> b.classList.toggle('primary', b.dataset.s===textScale)); }
+function setScale(v){ textScale=v; try{ localStorage.setItem(TSCALE_KEY,v); }catch(e){} applyScale(v); renderTextSize(); }
+$$('#textSize button').forEach(b=> b.onclick=()=> setScale(b.dataset.s));
+applyScale(textScale); renderTextSize();
+
+/* ---------- Init ---------- */
+function initAll(){
+  $("#gWhen").value=nowLocalInput();
+  $("#nbDate").value=todayISO();
+  $("#msDate").value=todayISO();
+  renderUnitSegs();
+  renderToday();
+  renderGlucoseUI();
+  renderMeds();
+  renderMeasureUI();
+  renderNebidoUI();
+  renderSync();
+  $("#verLine").textContent="HealthLog · "+APP_VERSION;
+}
+initAll();
+if(GH.connected && GH.auto) syncPull(false).catch(e=>{ spin(false); markSync("Pull failed: "+e.message,true); });
+// Recompute due flags each minute so overdue times flip over without a reload.
+setInterval(refreshDue, 60000);
+</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+</body>
+</html>
