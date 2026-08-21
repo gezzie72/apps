@@ -1,5 +1,5 @@
 /* HealthLog service worker - offline app shell, network-first so updates land. */
-const CACHE = "healthlog-v1";
+const CACHE = "healthlog-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

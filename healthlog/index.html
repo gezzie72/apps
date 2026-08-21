@@ -114,11 +114,6 @@
   .chip button{background:none; border:none; color:var(--danger); cursor:pointer; font-size:calc(14px * var(--tscale)); padding:0; line-height:1}
   .med{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--panel2)}
   .med .mname{font-weight:700}
-  .doseline{display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px dashed var(--line)}
-  .doseline:first-of-type{border-top:none}
-  .doseline.done{opacity:.55}
-  .doseline .t{font-variant-numeric:tabular-nums; min-width:52px; font-weight:600}
-  .doseline .st{margin-left:auto}
   /* calendar */
   .monthbar{display:flex; align-items:center; gap:12px; margin-bottom:14px}
   .monthbar .title{font-size:calc(18px * var(--tscale)); font-weight:700; min-width:170px; text-align:center}
@@ -208,14 +203,20 @@
     </div>
 
     <div class="panel">
-      <h2>Medications</h2>
-      <p class="muted" style="margin-top:0">Add each medication and the times you take it. HealthLog flags today's doses as due or overdue on the Today tab — tick them off as you take them.</p>
+      <h2>My medications</h2>
+      <p class="muted" style="margin-top:0">A reference list of the medications you take regularly, with dosage — grouped by type. No daily reminders; just edit or remove as things change.</p>
       <div class="row" style="align-items:flex-end">
         <label class="fld">Name
           <input type="text" id="mName" placeholder="e.g. Metformin">
         </label>
         <label class="fld">Dose
-          <input type="text" id="mDose" placeholder="e.g. 500mg" style="width:120px">
+          <input type="text" id="mDose" placeholder="e.g. 500mg twice daily" style="min-width:170px">
+        </label>
+        <label class="fld">Type
+          <select id="mCat">
+            <option value="Diabetes">Diabetes</option>
+            <option value="Other">Other</option>
+          </select>
         </label>
         <button class="btn primary" id="mAdd">Add medication</button>
       </div>
@@ -397,7 +398,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-08-21 · v1";
+const APP_VERSION = "2026-08-21 · v2 meds-list";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -425,8 +426,7 @@ function defaultState(){
     version:1, updatedAt:0,
     glucoseUnit:"mmol", measureUnit:"cm",
     glucose:[],                 // {id, dt:"YYYY-MM-DDTHH:MM", value, unit, tag, note}
-    meds:[],                    // {id, name, dose, times:["08:00",...], active}
-    medLog:[],                  // {medId, date:"YYYY-MM-DD", time:"HH:MM"}
+    meds:[],                    // {id, name, dose, category:"Diabetes"|"Other"}  (reference list, no reminders)
     measureFields:[...defaultFields],
     measurements:[],            // {id, date:"YYYY-MM-DD", unit, values:{field:number}, note}
     nebido:{ intervalWeeks:12, history:[] }   // history: ["YYYY-MM-DD", ...]
@@ -439,7 +439,10 @@ function normalize(s){
   if(!s.nebido || typeof s.nebido!=="object") s.nebido={intervalWeeks:12,history:[]};
   if(!Array.isArray(s.nebido.history)) s.nebido.history=[];
   if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
-  ["glucose","meds","medLog","measurements"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ["glucose","meds","measurements"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  // Meds are now a simple reference list — migrate any older reminder-shaped meds.
+  s.meds.forEach(m=>{ if(!m.category) m.category="Diabetes"; delete m.times; delete m.active; });
+  delete s.medLog;
   return s;
 }
 function load(){ try{ const raw=localStorage.getItem(LS_KEY); return raw?normalize(JSON.parse(raw)):defaultState(); }catch(e){ return defaultState(); } }
@@ -463,13 +466,6 @@ function gBand(displayVal){                 // rough general bands (not medical 
 }
 
 /* ---------- TODAY / due logic ---------- */
-function medDoseState(m, timeStr){
-  const t=todayISO();
-  const taken = state.medLog.some(l=>l.medId===m.id && l.date===t && l.time===timeStr);
-  if(taken) return "done";
-  const now=new Date(); const cur=pad(now.getHours())+":"+pad(now.getMinutes());
-  return timeStr <= cur ? "over" : "due";
-}
 function nebidoNextDue(){
   const h=[...state.nebido.history].sort();
   if(!h.length) return null;
@@ -481,14 +477,6 @@ function lastMeasureISO(){
 }
 function computeDue(){
   const items=[]; const t=todayISO();
-  // meds
-  state.meds.filter(m=>m.active!==false).forEach(m=>{
-    (m.times||[]).forEach(tm=>{
-      const st=medDoseState(m,tm);
-      if(st==="over") items.push({sev:"over", kind:"med", txt:`${m.name}${m.dose?" ("+m.dose+")":""} due at ${tm}`, med:m, time:tm});
-      else if(st==="due") items.push({sev:"due", kind:"med", txt:`${m.name}${m.dose?" ("+m.dose+")":""} at ${tm}`, med:m, time:tm});
-    });
-  });
   // nebido
   const due=nebidoNextDue();
   if(due){
@@ -518,12 +506,10 @@ function renderToday(){
       const cls = it.sev==="over" ? "over" : "due";
       const em = it.kind==="med" ? "💊" : it.kind==="neb" ? "💉" : "📏";
       let action="";
-      if(it.kind==="med") action=`<button class="btn sm primary" data-take="${it.med.id}" data-tt="${it.time}">Take</button>`;
-      else if(it.kind==="neb") action=`<button class="btn sm" id="quickInject">Log today</button>`;
+      if(it.kind==="neb") action=`<button class="btn sm" id="quickInject">Log today</button>`;
       area.insertAdjacentHTML("beforeend",
         `<div class="banner ${cls}"><span class="em">${em}</span><div class="grow">${it.txt}</div>${action}</div>`);
     });
-    area.querySelectorAll("[data-take]").forEach(b=> b.onclick=()=>{ takeMed(b.dataset.take, b.dataset.tt); });
     const qi=area.querySelector("#quickInject");
     if(qi) qi.onclick=()=>{ addInjection(todayISO()); toast("Injection logged for today"); };
   }
@@ -532,23 +518,14 @@ function renderToday(){
   const lastG=[...state.glucose].sort((a,b)=>a.dt<b.dt?1:-1)[0];
   const due=nebidoNextDue();
   const lm=lastMeasureISO();
-  const medsToday = state.meds.filter(m=>m.active!==false).reduce((n,m)=>n+(m.times||[]).length,0);
-  const medsDone = state.meds.filter(m=>m.active!==false).reduce((n,m)=>n+(m.times||[]).filter(tm=>medDoseState(m,tm)==="done").length,0);
   g.innerHTML=[
     card("Latest glucose", lastG?`${gRound(toDisplayGlucose(lastG.value,lastG.unit))} <span class="muted" style="font-size:.6em">${gUnitLabel()}</span>`:"—", lastG?fmtDT(lastG.dt):"no readings yet"),
-    card("Meds today", `${medsDone}/${medsToday}`, medsToday?"doses taken":"none set up"),
+    card("Medications", String(state.meds.length), state.meds.length?"on your list":"none listed yet"),
     card("Next Nebido", due?fmtDateShort(due):"—", due?`${daysBetween(todayISO(),due)>=0?"in "+daysBetween(todayISO(),due)+" days":"overdue"}`:"log one to start"),
     card("Last measured", lm?fmtDateShort(lm):"—", lm?`${daysBetween(lm,todayISO())} days ago`:"none yet")
   ].join("");
 }
 function card(k,v,sub){ return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="sub">${sub||""}</div></div>`; }
-function takeMed(medId, time){
-  const t=todayISO();
-  const i=state.medLog.findIndex(l=>l.medId===medId && l.date===t && l.time===time);
-  if(i>=0) state.medLog.splice(i,1); else state.medLog.push({medId, date:t, time});
-  save(); renderMeds();
-}
-
 /* ---------- DIABETES ---------- */
 function renderGlucoseUI(){
   $$(".gunit").forEach(e=>e.textContent=gUnitLabel());
@@ -575,39 +552,60 @@ function renderGlucoseUI(){
     tb.querySelectorAll("[data-gdel]").forEach(b=> b.onclick=()=>{ state.glucose=state.glucose.filter(x=>x.id!==b.dataset.gdel); save(); renderGlucoseUI(); });
   }
 }
+const MED_CATS=["Diabetes","Other"];
+let editMedId=null;
+function medRowStatic(m){
+  return `<div class="med" data-medid="${m.id}">
+    <div class="row"><span class="mname">${m.name.replace(/</g,"&lt;")}</span>
+      ${m.dose?`<span class="pill">${m.dose.replace(/</g,"&lt;")}</span>`:""}
+      <span class="row" style="margin-left:auto; gap:6px">
+        <button class="btn sm" data-meded="${m.id}">Edit</button>
+        <button class="btn sm danger" data-meddel="${m.id}">Remove</button>
+      </span>
+    </div>
+  </div>`;
+}
+function medRowEdit(m){
+  const opts=MED_CATS.map(c=>`<option ${c===m.category?"selected":""}>${c}</option>`).join("");
+  return `<div class="med" data-medid="${m.id}">
+    <div class="row" style="align-items:flex-end">
+      <label class="fld">Name<input type="text" data-ef="name" value="${(m.name||"").replace(/"/g,"&quot;")}"></label>
+      <label class="fld">Dose<input type="text" data-ef="dose" value="${(m.dose||"").replace(/"/g,"&quot;")}" style="min-width:160px"></label>
+      <label class="fld">Type<select data-ef="cat">${opts}</select></label>
+      <span class="row" style="gap:6px">
+        <button class="btn sm primary" data-medsave="${m.id}">Save</button>
+        <button class="btn sm" data-medcancel="${m.id}">Cancel</button>
+      </span>
+    </div>
+  </div>`;
+}
 function renderMeds(){
   const el=$("#medList");
-  if(!state.meds.length){ el.innerHTML=`<div class="empty-note">No medications added yet.</div>`; return; }
-  el.innerHTML=state.meds.map(m=>{
-    const times=(m.times||[]).slice().sort();
-    const doses=times.map(tm=>{
-      const st=medDoseState(m,tm);
-      const label = st==="done"?"✓ Taken": st==="over"?"Take (overdue)":"Take";
-      const cls = st==="done"?"done":"";
-      const bcls = st==="done"?"btn sm":"btn sm primary";
-      return `<div class="doseline ${cls}"><span class="t">${tm}</span>
-        <button class="${bcls}" data-take="${m.id}" data-tt="${tm}">${label}</button>
-        <button class="btn sm danger st" data-rmtime="${m.id}" data-tt="${tm}" title="Remove this time">✕</button></div>`;
-    }).join("") || `<div class="muted" style="padding:4px 0">No times set.</div>`;
-    return `<div class="med">
-      <div class="row"><span class="mname">${m.name.replace(/</g,"&lt;")}</span>
-        ${m.dose?`<span class="pill">${m.dose.replace(/</g,"&lt;")}</span>`:""}
-        <button class="btn sm danger" data-meddel="${m.id}" style="margin-left:auto">Remove med</button></div>
-      <div style="margin-top:6px">${doses}</div>
-      <div class="row" style="margin-top:8px">
-        <input type="time" data-newtime="${m.id}" style="width:120px">
-        <button class="btn sm" data-addtime="${m.id}">+ Add time</button>
-      </div>
-    </div>`;
-  }).join("");
-  el.querySelectorAll("[data-take]").forEach(b=> b.onclick=()=> takeMed(b.dataset.take,b.dataset.tt));
-  el.querySelectorAll("[data-meddel]").forEach(b=> b.onclick=()=>{ if(confirm("Remove this medication and its schedule?")){ state.meds=state.meds.filter(m=>m.id!==b.dataset.meddel); save(); renderMeds(); } });
-  el.querySelectorAll("[data-rmtime]").forEach(b=> b.onclick=()=>{ const m=state.meds.find(x=>x.id===b.dataset.rmtime); if(m){ m.times=(m.times||[]).filter(t=>t!==b.dataset.tt); save(); renderMeds(); } });
-  el.querySelectorAll("[data-addtime]").forEach(b=> b.onclick=()=>{
-    const inp=el.querySelector(`[data-newtime="${b.dataset.addtime}"]`); const v=inp.value;
-    if(!v){ toast("Pick a time first"); return; }
-    const m=state.meds.find(x=>x.id===b.dataset.addtime);
-    if(m){ m.times=m.times||[]; if(!m.times.includes(v)) m.times.push(v); save(); renderMeds(); }
+  if(!state.meds.length){ el.innerHTML=`<div class="empty-note">No medications listed yet — add one above.</div>`; }
+  else{
+    // group by category, known cats first then any others
+    const cats=[...MED_CATS, ...[...new Set(state.meds.map(m=>m.category))].filter(c=>!MED_CATS.includes(c))];
+    el.innerHTML=cats.map(cat=>{
+      const list=state.meds.filter(m=>(m.category||"Other")===cat);
+      if(!list.length) return "";
+      const rows=list.map(m=> m.id===editMedId ? medRowEdit(m) : medRowStatic(m)).join("");
+      return `<h3>${cat}</h3>${rows}`;
+    }).join("");
+  }
+  el.querySelectorAll("[data-meded]").forEach(b=> b.onclick=()=>{ editMedId=b.dataset.meded; renderMeds(); });
+  el.querySelectorAll("[data-medcancel]").forEach(b=> b.onclick=()=>{ editMedId=null; renderMeds(); });
+  el.querySelectorAll("[data-medsave]").forEach(b=> b.onclick=()=>{
+    const wrap=b.closest(".med"); const m=state.meds.find(x=>x.id===b.dataset.medsave); if(!m) return;
+    const name=wrap.querySelector('[data-ef="name"]').value.trim();
+    if(!name){ toast("Name can't be empty"); return; }
+    m.name=name;
+    m.dose=wrap.querySelector('[data-ef="dose"]').value.trim();
+    m.category=wrap.querySelector('[data-ef="cat"]').value;
+    editMedId=null; save(); renderMeds();
+  });
+  el.querySelectorAll("[data-meddel]").forEach(b=> b.onclick=()=>{
+    const m=state.meds.find(x=>x.id===b.dataset.meddel);
+    if(m && confirm(`Remove "${m.name}" from your medication list?`)){ state.meds=state.meds.filter(x=>x.id!==b.dataset.meddel); if(editMedId===b.dataset.meddel) editMedId=null; save(); renderMeds(); }
   });
 }
 
@@ -771,9 +769,9 @@ $("#gAdd").onclick=()=>{
 };
 $("#mAdd").onclick=()=>{
   const name=$("#mName").value.trim(); if(!name){ toast("Name the medication"); return; }
-  state.meds.push({id:uid(), name, dose:$("#mDose").value.trim(), times:[], active:true});
+  state.meds.push({id:uid(), name, dose:$("#mDose").value.trim(), category:$("#mCat").value||"Other"});
   $("#mName").value=""; $("#mDose").value="";
-  save(); renderMeds(); toast("Medication added — now add its times");
+  save(); renderMeds(); toast("Medication added");
 };
 $("#msSave").onclick=()=>{
   const date=$("#msDate").value || todayISO();
