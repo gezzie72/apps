@@ -127,6 +127,16 @@
   .cday.due{background:color-mix(in srgb, var(--warn) 22%, var(--panel2)); border-color:var(--warn)}
   .cday .mk{font-size:calc(11px * var(--tscale)); font-weight:700}
   .cday.inj .mk{color:var(--purple)} .cday.due .mk{color:var(--warn)}
+  .cday.appt{background:color-mix(in srgb, var(--accent2) 20%, var(--panel2)); border-color:var(--accent2)}
+  .cday.appt .mk{color:var(--accent2)}
+  .cday.blood{background:color-mix(in srgb, var(--danger) 18%, var(--panel2)); border-color:var(--danger)}
+  .cday.blood .mk{color:var(--danger)}
+  .appt-item{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--panel2)}
+  .appt-item .aptype{display:inline-block; font-weight:700; font-size:calc(12px * var(--tscale)); padding:1px 8px; border-radius:20px; border:1px solid var(--accent2); color:var(--accent2); margin-right:6px}
+  .appt-item .aptype.blood{border-color:var(--danger); color:var(--danger)}
+  .appt-item .awhen{font-weight:700}
+  .appt-item .ameta{color:var(--muted); font-size:calc(13px * var(--tscale)); margin-top:3px}
+  .appt-item .aresults{margin-top:8px; font-size:calc(13px * var(--tscale)); white-space:pre-wrap; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px}
   .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
   .seg button{background:var(--panel2); border:none; padding:6px 12px; cursor:pointer; color:var(--muted); font-weight:600}
   .seg button.on{background:var(--accent); color:#04150a}
@@ -156,7 +166,9 @@
     <button class="tab active" data-view="today">Today<span class="dot"></span></button>
     <button class="tab" data-view="diabetes">Diabetes</button>
     <button class="tab" data-view="measure">Measurements</button>
+    <button class="tab" data-view="vitals">Vitals</button>
     <button class="tab" data-view="nebido">Nebido</button>
+    <button class="tab" data-view="appts">Appointments<span class="dot"></span></button>
     <button class="tab" data-view="setup">Setup</button>
   </div>
 </header>
@@ -273,6 +285,54 @@
     </div>
   </section>
 
+  <!-- ============ VITALS ============ -->
+  <section class="view" id="view-vitals">
+    <div class="panel">
+      <h2>Blood type</h2>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld">Your blood type
+          <select id="btSel">
+            <option value="">Unknown / not set</option>
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option>
+            <option>O+</option><option>O-</option>
+          </select>
+        </label>
+        <span class="muted">Stored for your reference — check with your clinician if unsure.</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Log a blood pressure reading</h2>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld">Systolic (top)
+          <input type="number" step="1" id="bpSys" style="width:100px" placeholder="e.g. 120">
+        </label>
+        <label class="fld">Diastolic (bottom)
+          <input type="number" step="1" id="bpDia" style="width:100px" placeholder="e.g. 80">
+        </label>
+        <label class="fld">Pulse (bpm)
+          <input type="number" step="1" id="bpPulse" style="width:100px" placeholder="optional">
+        </label>
+        <label class="fld">When
+          <input type="datetime-local" id="bpWhen">
+        </label>
+        <label class="fld" style="flex:1; min-width:160px">Note
+          <input type="text" id="bpNote" placeholder="optional">
+        </label>
+        <button class="btn primary" id="bpAdd">Add reading</button>
+      </div>
+      <div class="cards" id="bpStats" style="margin-top:14px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Blood pressure history</h2>
+      <div class="scrollx"><table class="hist" id="bpHist"><tbody></tbody></table></div>
+      <p class="disc">Categories are a rough general guide (based on common adult ranges), not a diagnosis. Follow your clinician's advice.</p>
+    </div>
+  </section>
+
   <!-- ============ NEBIDO ============ -->
   <section class="view" id="view-nebido">
     <div class="panel">
@@ -307,6 +367,77 @@
     <div class="panel">
       <h2>Injection history</h2>
       <div class="scrollx"><table class="hist" id="nbHist"><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============ APPOINTMENTS ============ -->
+  <section class="view" id="view-appts">
+    <div id="apDueArea"></div>
+
+    <div class="panel">
+      <h2 id="apFormTitle">Add an appointment</h2>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld">Type
+          <select id="apType">
+            <option>Doctor</option>
+            <option>Hospital</option>
+            <option>Nurse</option>
+            <option>Blood test</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label class="fld">With / department
+          <input type="text" id="apWho" placeholder="e.g. Dr Smith / Cardiology" style="min-width:180px">
+        </label>
+        <label class="fld">Date
+          <input type="date" id="apDate">
+        </label>
+        <label class="fld">Time
+          <input type="time" id="apTime">
+        </label>
+        <label class="fld" style="flex:1; min-width:160px">Location
+          <input type="text" id="apLoc" placeholder="optional">
+        </label>
+      </div>
+      <div class="row" style="align-items:flex-end; margin-top:10px">
+        <label class="fld" style="flex:1; min-width:220px">Notes
+          <input type="text" id="apNotes" placeholder="optional — reason, what to bring, etc.">
+        </label>
+        <button class="btn primary" id="apAdd">Add appointment</button>
+        <button class="btn" id="apCancel" style="display:none">Cancel</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Blood test reminder</h2>
+      <div class="row" style="align-items:center; flex-wrap:wrap">
+        <label class="row" style="gap:6px; margin:0"><input type="checkbox" id="btrOn"> Remind me to book a blood test</label>
+        <label class="fld">Every (weeks)
+          <input type="number" id="btrWeeks" step="1" min="1" style="width:90px">
+        </label>
+      </div>
+      <div id="btrInfo" class="muted" style="margin-top:10px"></div>
+    </div>
+
+    <div class="panel">
+      <div class="monthbar">
+        <button class="btn" id="apPrev">‹</button>
+        <div class="title" id="apMonth"></div>
+        <button class="btn" id="apNextM">›</button>
+        <button class="btn" id="apToday" style="margin-left:auto">Today</button>
+      </div>
+      <div class="cal" id="apCal"></div>
+      <p class="muted" style="margin-top:10px"><span class="pill" style="border-color:var(--accent2);color:var(--accent2)">Appointment</span> &nbsp; <span class="pill" style="border-color:var(--danger);color:var(--danger)">Blood test</span> &nbsp; Tap a day to add one.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Upcoming</h2>
+      <div id="apUpcoming"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Past</h2>
+      <div id="apPast"></div>
     </div>
   </section>
 
@@ -398,7 +529,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-08-21 · v2 meds-list";
+const APP_VERSION = "2026-08-22 · v3 vitals+appts";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -429,7 +560,11 @@ function defaultState(){
     meds:[],                    // {id, name, dose, category:"Diabetes"|"Other"}  (reference list, no reminders)
     measureFields:[...defaultFields],
     measurements:[],            // {id, date:"YYYY-MM-DD", unit, values:{field:number}, note}
-    nebido:{ intervalWeeks:12, history:[] }   // history: ["YYYY-MM-DD", ...]
+    nebido:{ intervalWeeks:12, history:[] },  // history: ["YYYY-MM-DD", ...]
+    bloodType:"",               // "" | "A+" | "O-" | ...
+    bp:[],                      // {id, dt:"YYYY-MM-DDTHH:MM", sys, dia, pulse, note}
+    appts:[],                   // {id, type, who, date:"YYYY-MM-DD", time, loc, notes, results}
+    bloodTestReminder:{ enabled:false, weeks:12 }
   };
 }
 function normalize(s){
@@ -439,7 +574,11 @@ function normalize(s){
   if(!s.nebido || typeof s.nebido!=="object") s.nebido={intervalWeeks:12,history:[]};
   if(!Array.isArray(s.nebido.history)) s.nebido.history=[];
   if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
-  ["glucose","meds","measurements"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ["glucose","meds","measurements","bp","appts"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  if(typeof s.bloodType!=="string") s.bloodType="";
+  if(!s.bloodTestReminder || typeof s.bloodTestReminder!=="object") s.bloodTestReminder={enabled:false,weeks:12};
+  s.bloodTestReminder.enabled=!!s.bloodTestReminder.enabled;
+  s.bloodTestReminder.weeks=Math.max(1,Math.round(Number(s.bloodTestReminder.weeks)||12));
   // Meds are now a simple reference list — migrate any older reminder-shaped meds.
   s.meds.forEach(m=>{ if(!m.category) m.category="Diabetes"; delete m.times; delete m.active; });
   delete s.medLog;
@@ -487,12 +626,40 @@ function computeDue(){
   // measurements weekly nudge
   const lm=lastMeasureISO();
   if(lm){ const gap=daysBetween(lm,t); if(gap>=7) items.push({sev:"due", kind:"meas", txt:`Body measurement check-in due — last was ${gap} days ago`}); }
+  // upcoming appointments within the next 7 days
+  [...state.appts].filter(a=>a.date).sort((a,b)=>a.date<b.date?-1:1).forEach(a=>{
+    const diff=daysBetween(t,a.date);
+    if(diff>=0 && diff<=7){
+      const label=(a.type||"Appointment")+(a.who?" · "+a.who:"");
+      const when=diff===0?"today":"in "+diff+" day"+(diff===1?"":"s");
+      items.push({sev:"due", kind:a.type==="Blood test"?"blood":"appt", txt:`${label} ${when}${a.time?" at "+a.time:""} (${fmtDateShort(a.date)})`});
+    }
+  });
+  // blood test booking reminder
+  const btr=state.bloodTestReminder;
+  if(btr && btr.enabled && !hasFutureBloodTest()){
+    const weeks=Number(btr.weeks)||12;
+    const last=lastBloodTestISO();
+    if(last){
+      const dueD=addDays(last, weeks*7);
+      const diff=daysBetween(t,dueD);
+      if(diff<0) items.push({sev:"over", kind:"blood", txt:`Blood test overdue to book — last test ${fmtDateShort(last)} (recommended every ${weeks} wk)`});
+      else if(diff<=14) items.push({sev:"due", kind:"blood", txt:`Time to book your next blood test (due ${fmtDateShort(dueD)})`});
+    } else {
+      items.push({sev:"due", kind:"blood", txt:`No blood test on record yet — book your first one`});
+    }
+  }
   return items;
 }
+function hasFutureBloodTest(){ const t=todayISO(); return state.appts.some(a=>a.type==="Blood test" && a.date>=t); }
+function lastBloodTestISO(){ const t=todayISO(); const l=state.appts.filter(a=>a.type==="Blood test" && a.date && a.date<t).map(a=>a.date).sort(); return l.length?l[l.length-1]:null; }
+function nextApptISO(){ const t=todayISO(); const l=state.appts.filter(a=>a.date && a.date>=t).map(a=>a.date).sort(); return l.length?l[0]:null; }
 function refreshDue(){
   const items=computeDue();
   const over=items.some(i=>i.sev==="over");
   $$('.tab[data-view="today"]').forEach(t=>t.classList.toggle("hasdue", over));
+  const apOver=items.some(i=>i.sev==="over" && (i.kind==="appt"||i.kind==="blood"));
+  $$('.tab[data-view="appts"]').forEach(t=>t.classList.toggle("hasdue", apOver));
   // Only rebuild the Today view contents when it's visible-ish; cheap anyway.
   renderToday();
 }
@@ -504,7 +671,7 @@ function renderToday(){
   } else {
     items.forEach(it=>{
       const cls = it.sev==="over" ? "over" : "due";
-      const em = it.kind==="med" ? "💊" : it.kind==="neb" ? "💉" : "📏";
+      const em = it.kind==="med" ? "💊" : it.kind==="neb" ? "💉" : it.kind==="appt" ? "🩺" : it.kind==="blood" ? "🩸" : "📏";
       let action="";
       if(it.kind==="neb") action=`<button class="btn sm" id="quickInject">Log today</button>`;
       area.insertAdjacentHTML("beforeend",
@@ -518,8 +685,13 @@ function renderToday(){
   const lastG=[...state.glucose].sort((a,b)=>a.dt<b.dt?1:-1)[0];
   const due=nebidoNextDue();
   const lm=lastMeasureISO();
+  const lastBP=[...state.bp].sort((a,b)=>a.dt<b.dt?1:-1)[0];
+  const nextAp=nextApptISO();
+  const nextApObj=nextAp?[...state.appts].filter(a=>a.date===nextAp).sort((a,b)=>(a.time||"")<(b.time||"")?-1:1)[0]:null;
   g.innerHTML=[
     card("Latest glucose", lastG?`${gRound(toDisplayGlucose(lastG.value,lastG.unit))} <span class="muted" style="font-size:.6em">${gUnitLabel()}</span>`:"—", lastG?fmtDT(lastG.dt):"no readings yet"),
+    card("Latest BP", lastBP?`${lastBP.sys}/${lastBP.dia}`:"—", lastBP?fmtDT(lastBP.dt):"no readings yet"),
+    card("Next appointment", nextAp?fmtDateShort(nextAp):"—", nextApObj?`${nextApObj.type}${nextApObj.who?" · "+nextApObj.who:""}`:"none booked"),
     card("Medications", String(state.meds.length), state.meds.length?"on your list":"none listed yet"),
     card("Next Nebido", due?fmtDateShort(due):"—", due?`${daysBetween(todayISO(),due)>=0?"in "+daysBetween(todayISO(),due)+" days":"overdue"}`:"log one to start"),
     card("Last measured", lm?fmtDateShort(lm):"—", lm?`${daysBetween(lm,todayISO())} days ago`:"none yet")
@@ -745,6 +917,161 @@ function renderNebidoCal(){
   }
 }
 
+/* ---------- VITALS (blood type + blood pressure) ---------- */
+function bpCat(sys,dia){                 // rough general adult guide, not a diagnosis
+  if(sys>=180||dia>=120) return {label:"Crisis",cls:"high"};
+  if(sys>=140||dia>=90)  return {label:"High (stage 2)",cls:"high"};
+  if(sys>=130||dia>=80)  return {label:"High (stage 1)",cls:"high"};
+  if(sys>=120&&dia<80)   return {label:"Elevated",cls:"low"};
+  return {label:"Normal",cls:"good"};
+}
+function renderVitals(){
+  $("#btSel").value=state.bloodType||"";
+  if(!$("#bpWhen").value) $("#bpWhen").value=nowLocalInput();
+  const rows=[...state.bp];
+  const now=Date.now();
+  const wk=rows.filter(r=> now-new Date(r.dt).getTime() <= 7*86400000);
+  const avgS = wk.length ? Math.round(wk.reduce((a,r)=>a+r.sys,0)/wk.length) : null;
+  const avgD = wk.length ? Math.round(wk.reduce((a,r)=>a+r.dia,0)/wk.length) : null;
+  const last=[...state.bp].sort((a,b)=>a.dt<b.dt?1:-1)[0];
+  const lc=last?bpCat(last.sys,last.dia):null;
+  $("#bpStats").innerHTML=[
+    card("Readings logged", String(state.bp.length), "all time"),
+    card("7-day average", avgS!=null?`${avgS}/${avgD}`:"—", `${wk.length} reading${wk.length===1?"":"s"}`),
+    card("Latest category", lc?`<span class="pill ${lc.cls}" style="font-size:.7em">${lc.label}</span>`:"—", last?`${last.sys}/${last.dia}${last.pulse?" · "+last.pulse+" bpm":""}`:"—")
+  ].join("");
+  const hist=[...state.bp].sort((a,b)=>a.dt<b.dt?1:-1);
+  const tb=$("#bpHist").querySelector("tbody");
+  if(!hist.length){ tb.innerHTML=`<tr><td class="muted">No readings yet.</td></tr>`; }
+  else{
+    tb.innerHTML=`<tr><th>When</th><th>Reading</th><th>Pulse</th><th>Category</th><th>Note</th><th></th></tr>`+
+      hist.map(r=>{ const c=bpCat(r.sys,r.dia);
+        return `<tr><td>${fmtDT(r.dt)}</td><td><b>${r.sys}/${r.dia}</b></td><td>${r.pulse||"—"}</td><td><span class="pill ${c.cls}">${c.label}</span></td><td>${(r.note||"").replace(/</g,"&lt;")}</td><td><button class="btn sm danger" data-bpdel="${r.id}">✕</button></td></tr>`; }).join("");
+    tb.querySelectorAll("[data-bpdel]").forEach(b=> b.onclick=()=>{ state.bp=state.bp.filter(x=>x.id!==b.dataset.bpdel); save(); renderVitals(); });
+  }
+}
+
+/* ---------- APPOINTMENTS ---------- */
+let apView=new Date();
+let editApptId=null;
+let editResultsId=null;
+function renderApptsUI(){
+  $("#btrOn").checked=state.bloodTestReminder.enabled;
+  $("#btrWeeks").value=state.bloodTestReminder.weeks;
+  renderBtrInfo();
+  renderApptDue();
+  renderApptCal();
+  renderApptLists();
+}
+function renderBtrInfo(){
+  const el=$("#btrInfo"); const btr=state.bloodTestReminder;
+  if(!btr.enabled){ el.textContent="Off — turn on to get a nudge on the Today tab when a blood test is due to be booked."; return; }
+  if(hasFutureBloodTest()){ el.textContent="A blood test is already booked — you'll be reminded again once it's in the past."; return; }
+  const last=lastBloodTestISO();
+  if(!last){ el.textContent="On — no past blood test on record yet, so you'll see a nudge to book your first one."; return; }
+  const dueD=addDays(last, (Number(btr.weeks)||12)*7);
+  const diff=daysBetween(todayISO(),dueD);
+  el.textContent=`Last blood test ${fmtDate(last)} · next due ${fmtDate(dueD)} (${diff<0?(-diff)+" days ago":"in "+diff+" days"}).`;
+}
+function renderApptDue(){
+  const area=$("#apDueArea"); area.innerHTML="";
+  const items=computeDue().filter(i=>i.kind==="appt"||i.kind==="blood");
+  items.forEach(it=>{ const cls=it.sev==="over"?"over":"due"; const em=it.kind==="blood"?"🩸":"🩺";
+    area.insertAdjacentHTML("beforeend", `<div class="banner ${cls}"><span class="em">${em}</span><div class="grow">${it.txt}</div></div>`); });
+}
+function renderApptCal(){
+  $("#apMonth").textContent=MON[apView.getMonth()]+" "+apView.getFullYear();
+  const cal=$("#apCal"); cal.innerHTML="";
+  DOW.forEach(d=>{ const h=document.createElement("div"); h.className="dow"; h.textContent=d; cal.appendChild(h); });
+  const y=apView.getFullYear(), m=apView.getMonth();
+  const first=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
+  for(let i=0;i<first;i++){ const e=document.createElement("div"); e.className="cday empty"; cal.appendChild(e); }
+  for(let d=1;d<=days;d++){
+    const ds=iso(new Date(y,m,d));
+    const list=state.appts.filter(a=>a.date===ds);
+    const hasBlood=list.some(a=>a.type==="Blood test");
+    const cell=document.createElement("div");
+    cell.className="cday"+(list.length?(hasBlood?" blood":" appt"):"")+(ds===todayISO()?" today":"");
+    let mk="";
+    if(list.length){ mk=`<div class="mk">${hasBlood?"🩸":"🩺"}${list.length>1?" ×"+list.length:""}</div>`; }
+    cell.innerHTML=`<div class="num">${d}</div>`+mk;
+    cell.title=list.length?list.map(a=>a.type+(a.who?" · "+a.who:"")+(a.time?" "+a.time:"")).join("\n"):"Add an appointment";
+    cell.onclick=()=>{ startAddAppt(ds); };
+    cal.appendChild(cell);
+  }
+}
+function apItemHTML(a){
+  const isBlood=a.type==="Blood test";
+  const meta=[a.time?("🕑 "+a.time):"", a.loc?("📍 "+a.loc):"", a.notes?("📝 "+a.notes):""].filter(Boolean).map(s=>s.replace(/</g,"&lt;")).join(" &nbsp;·&nbsp; ");
+  let results="";
+  if(isBlood){
+    if(a.id===editResultsId){
+      results=`<div style="margin-top:8px"><textarea data-resarea rows="4" placeholder="Enter blood test results…">${(a.results||"").replace(/</g,"&lt;")}</textarea>
+        <div class="row" style="margin-top:6px"><button class="btn sm primary" data-ressave="${a.id}">Save results</button><button class="btn sm" data-rescancel="1">Cancel</button></div></div>`;
+    } else if(a.results){
+      results=`<div class="aresults">${a.results.replace(/</g,"&lt;")}</div>`;
+    }
+  }
+  const resBtn = isBlood ? `<button class="btn sm" data-resedit="${a.id}">${a.results?"Edit results":"Add results"}</button>` : "";
+  return `<div class="appt-item" data-apid="${a.id}">
+    <div class="row" style="align-items:flex-start">
+      <div style="flex:1; min-width:180px">
+        <span class="aptype ${isBlood?"blood":""}">${a.type}</span>
+        <span class="awhen">${fmtDate(a.date)}${a.time?" · "+a.time:""}</span>
+        ${a.who?`<div class="ameta">${a.who.replace(/</g,"&lt;")}</div>`:""}
+        ${meta?`<div class="ameta">${meta}</div>`:""}
+      </div>
+      <span class="row" style="gap:6px">
+        ${resBtn}
+        <button class="btn sm" data-apedit="${a.id}">Edit</button>
+        <button class="btn sm danger" data-apdel="${a.id}">Remove</button>
+      </span>
+    </div>
+    ${results}
+  </div>`;
+}
+function renderApptLists(){
+  const t=todayISO();
+  const up=state.appts.filter(a=>a.date>=t).sort((a,b)=> a.date!==b.date ? (a.date<b.date?-1:1) : ((a.time||"")<(b.time||"")?-1:1));
+  const past=state.appts.filter(a=>a.date<t).sort((a,b)=> a.date!==b.date ? (a.date<b.date?1:-1) : ((a.time||"")<(b.time||"")?1:-1));
+  $("#apUpcoming").innerHTML = up.length? up.map(apItemHTML).join("") : `<div class="empty-note">No upcoming appointments — add one above.</div>`;
+  $("#apPast").innerHTML = past.length? past.map(apItemHTML).join("") : `<div class="empty-note">Nothing in the past yet.</div>`;
+  wireApptItems();
+}
+function wireApptItems(){
+  $$("[data-apedit]").forEach(b=> b.onclick=()=> startEditAppt(b.dataset.apedit));
+  $$("[data-apdel]").forEach(b=> b.onclick=()=>{ const a=state.appts.find(x=>x.id===b.dataset.apdel);
+    if(a && confirm(`Remove this ${a.type} appointment on ${fmtDate(a.date)}?`)){ state.appts=state.appts.filter(x=>x.id!==b.dataset.apdel); if(editApptId===b.dataset.apdel) cancelApptForm(); save(); renderApptsUI(); } });
+  $$("[data-resedit]").forEach(b=> b.onclick=()=>{ editResultsId=b.dataset.resedit; renderApptLists(); });
+  $$("[data-rescancel]").forEach(b=> b.onclick=()=>{ editResultsId=null; renderApptLists(); });
+  $$("[data-ressave]").forEach(b=> b.onclick=()=>{ const a=state.appts.find(x=>x.id===b.dataset.ressave); if(!a) return;
+    const wrap=b.closest(".appt-item"); a.results=wrap.querySelector("[data-resarea]").value.trim(); editResultsId=null; save(); renderApptLists(); toast("Results saved"); });
+}
+function startAddAppt(dateISO){
+  editApptId=null;
+  $("#apFormTitle").textContent="Add an appointment";
+  $("#apAdd").textContent="Add appointment";
+  $("#apCancel").style.display="none";
+  if(dateISO) $("#apDate").value=dateISO;
+  $("#apFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function startEditAppt(id){
+  const a=state.appts.find(x=>x.id===id); if(!a) return;
+  editApptId=id;
+  $("#apType").value=a.type; $("#apWho").value=a.who||""; $("#apDate").value=a.date||""; $("#apTime").value=a.time||""; $("#apLoc").value=a.loc||""; $("#apNotes").value=a.notes||"";
+  $("#apFormTitle").textContent="Edit appointment";
+  $("#apAdd").textContent="Save changes";
+  $("#apCancel").style.display="";
+  $("#apFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function cancelApptForm(){
+  editApptId=null;
+  $("#apType").value="Doctor"; $("#apWho").value=""; $("#apTime").value=""; $("#apLoc").value=""; $("#apNotes").value="";
+  $("#apFormTitle").textContent="Add an appointment";
+  $("#apAdd").textContent="Add appointment";
+  $("#apCancel").style.display="none";
+}
+
 /* ---------- Tabs ---------- */
 $$(".tab").forEach(t=>t.addEventListener("click",()=>{
   $$(".tab").forEach(x=>x.classList.remove("active"));
@@ -755,7 +1082,9 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
   if(v==="today") renderToday();
   if(v==="diabetes"){ renderGlucoseUI(); renderMeds(); }
   if(v==="measure") renderMeasureUI();
+  if(v==="vitals") renderVitals();
   if(v==="nebido") renderNebidoUI();
+  if(v==="appts") renderApptsUI();
 }));
 
 /* ---------- Wire inputs ---------- */
@@ -796,6 +1125,34 @@ $("#nbAdd").onclick=()=>{ const d=$("#nbDate").value; if(!d){ toast("Pick a date
 $("#nbPrev").onclick=()=>{ nbView.setMonth(nbView.getMonth()-1); renderNebidoCal(); };
 $("#nbNextM").onclick=()=>{ nbView.setMonth(nbView.getMonth()+1); renderNebidoCal(); };
 $("#nbToday").onclick=()=>{ nbView=new Date(); renderNebidoCal(); };
+
+/* vitals */
+$("#btSel").onchange=()=>{ state.bloodType=$("#btSel").value; save(); toast(state.bloodType?("Blood type set: "+state.bloodType):"Blood type cleared"); };
+$("#bpAdd").onclick=()=>{
+  const sys=Math.round(Number($("#bpSys").value)), dia=Math.round(Number($("#bpDia").value));
+  if(!sys||!dia||sys<=0||dia<=0){ toast("Enter systolic and diastolic"); return; }
+  const pulseV=$("#bpPulse").value?Math.round(Number($("#bpPulse").value)):null;
+  const when=$("#bpWhen").value || nowLocalInput();
+  state.bp.push({id:uid(), dt:when, sys, dia, pulse:pulseV, note:$("#bpNote").value.trim()});
+  $("#bpSys").value=""; $("#bpDia").value=""; $("#bpPulse").value=""; $("#bpNote").value=""; $("#bpWhen").value=nowLocalInput();
+  save(); renderVitals(); toast("Reading added");
+};
+
+/* appointments */
+$("#apAdd").onclick=()=>{
+  const date=$("#apDate").value;
+  if(!date){ toast("Pick a date"); return; }
+  const data={ type:$("#apType").value, who:$("#apWho").value.trim(), date, time:$("#apTime").value, loc:$("#apLoc").value.trim(), notes:$("#apNotes").value.trim() };
+  if(editApptId){ const a=state.appts.find(x=>x.id===editApptId); if(a) Object.assign(a,data); cancelApptForm(); toast("Appointment updated"); }
+  else { state.appts.push({id:uid(), results:"", ...data}); cancelApptForm(); toast("Appointment added"); }
+  save(); renderApptsUI();
+};
+$("#apCancel").onclick=cancelApptForm;
+$("#apPrev").onclick=()=>{ apView.setMonth(apView.getMonth()-1); renderApptCal(); };
+$("#apNextM").onclick=()=>{ apView.setMonth(apView.getMonth()+1); renderApptCal(); };
+$("#apToday").onclick=()=>{ apView=new Date(); renderApptCal(); };
+$("#btrOn").onchange=()=>{ state.bloodTestReminder.enabled=$("#btrOn").checked; save(); renderApptsUI(); };
+$("#btrWeeks").onchange=()=>{ state.bloodTestReminder.weeks=Math.max(1,Math.round(Number($("#btrWeeks").value)||12)); save(); renderApptsUI(); };
 
 /* unit toggles */
 function renderUnitSegs(){
@@ -947,12 +1304,17 @@ function initAll(){
   $("#gWhen").value=nowLocalInput();
   $("#nbDate").value=todayISO();
   $("#msDate").value=todayISO();
+  $("#bpWhen").value=nowLocalInput();
+  $("#apDate").value=todayISO();
+  editApptId=null; editResultsId=null;
   renderUnitSegs();
   renderToday();
   renderGlucoseUI();
   renderMeds();
   renderMeasureUI();
+  renderVitals();
   renderNebidoUI();
+  renderApptsUI();
   renderSync();
   $("#verLine").textContent="HealthLog · "+APP_VERSION;
 }
