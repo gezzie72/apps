@@ -964,6 +964,18 @@ async function ghApi(method, path, body){
   return res.json();
 }
 function markSync(msg, err){ const m=$("syncMsg"); if(m){ m.textContent=msg||""; m.style.color=err?"var(--danger)":"var(--muted)"; } if(err) setSyncDot("err"); }
+function markSyncMismatch(){
+  setSyncDot("err");
+  const m=$("syncMsg"); if(!m) return;
+  m.textContent = "";
+  const span=document.createElement("span");
+  span.innerHTML = "Synced vault uses a <b>different master password</b> on this device. ";
+  const btn=document.createElement("button");
+  btn.className="toast-undo"; btn.textContent="↺ Replace this device from sync";
+  btn.onclick=openReplaceFromSync;
+  m.append(span, btn);
+  m.style.color="var(--danger)";
+}
 function setSyncDot(state){ const d=$("syncDot"); if(!d) return; d.classList.remove("on","err"); if(state==="on") d.classList.add("on"); else if(state==="err") d.classList.add("err"); }
 function updateSyncDot(){ setSyncDot(GH.connected ? "on" : ""); }
 function spin(on){ const el=$("syncSpin"); if(el) el.textContent = on ? "⟳ " : ""; }
@@ -1000,7 +1012,7 @@ async function syncPull(force, quiet){
       const rkey=await deriveKey(MASTER_PW, rsalt);
       const rplain=await crypto.subtle.decrypt({name:"AES-GCM", iv:riv}, rkey, b64.dec(outer.data));
       remote=JSON.parse(dec.decode(rplain));
-    }catch(e){ markSync("Synced vault uses a DIFFERENT master password on this device.",true); return "mismatch"; }
+    }catch(e){ markSyncMismatch(); return "mismatch"; }
     const changed = mergeRemote(remote);
     if(changed){ await encryptVault(); render(); setSyncTime(); markSync("Pulled latest changes"); setSyncDot("on"); return "pulled"; }
     else { setSyncTime(); if(!quiet) markSync("Up to date"); setSyncDot("on"); return "uptodate"; }
@@ -1289,7 +1301,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
 window.addEventListener("error", e=>{ try{ toast("⚠ Error: " + (e.message || (e.error && e.error.message) || e.type)); }catch{} });
 window.addEventListener("unhandledrejection", e=>{ try{ toast("⚠ Error: " + ((e.reason && (e.reason.message||e.reason)) || "promise rejected")); }catch{} });
 
-const VERSION = "v17 · 2026-08-23 · replace-this-device from sync";
+const VERSION = "v18 · 2026-08-23 · one-tap fix in mismatch message";
 ["verLock","verApp"].forEach(id=>{ const el=$(id); if(el) el.textContent = "Build " + VERSION; });
 
 initLock();
