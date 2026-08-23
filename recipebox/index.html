@@ -149,6 +149,25 @@
   .stepper button{background:none; border:none; color:var(--text); font-size:16px; cursor:pointer; width:22px}
   .card-lite{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px}
 
+  /* Week plan */
+  .planday{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:11px 13px; margin-bottom:10px}
+  .planday.istoday{border-color:color-mix(in srgb,var(--accent) 55%, var(--line))}
+  .pd-head{display:flex; align-items:center; gap:8px; margin-bottom:6px}
+  .pd-head .dow{font-weight:700}
+  .pd-head .dt{font-size:12px; color:var(--muted)}
+  .pd-head .today-badge{font-size:10px; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line)); border-radius:999px; padding:1px 7px}
+  .pd-add{margin-left:auto; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:4px 10px; font-size:13px; cursor:pointer; color:var(--accent)}
+  .pd-empty{font-size:12.5px; color:var(--muted); padding:2px 0}
+  .pd-item{display:flex; align-items:center; gap:8px; padding:5px 0}
+  .pd-item .t{flex:1; min-width:0; font-size:13.5px}
+  .pd-item .stepper{transform:scale(.9)}
+  .pickrow{display:flex; align-items:center; gap:10px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; margin-bottom:6px; cursor:pointer; background:var(--panel2)}
+  .pickrow:hover{border-color:var(--accent)}
+  .pickrow .t{flex:1; min-width:0}
+  .pickrow .t b{font-size:14px}
+  .pickrow .t span{font-size:11.5px; color:var(--muted)}
+  .pickrow .plus{color:var(--accent); font-weight:700; font-size:18px}
+
   /* Shopping */
   .shopitem{display:flex; align-items:center; gap:11px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:11px 13px; margin-bottom:8px}
   .shopitem input[type=checkbox]{width:20px; height:20px; accent-color:var(--accent); flex:0 0 auto; cursor:pointer}
@@ -193,6 +212,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
   <div class="tabs" id="tabs">
     <button data-tab="cookbook" class="active">Cookbook</button>
     <button data-tab="today">Today</button>
+    <button data-tab="plan">Plan</button>
     <button data-tab="shopping">Shopping</button>
     <button data-tab="setup">Setup</button>
   </div>
@@ -230,6 +250,22 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
       <div class="miniinfo" id="todayMini"></div>
       <div id="plateList"></div>
       <button class="btn" id="todayToShopping" style="margin-top:12px;width:100%">🛒 Add today's ingredients to shopping list</button>
+    </div>
+
+    <!-- PLAN -->
+    <div class="page" id="tab-plan" style="display:none">
+      <div class="card-lite">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <button class="btn ghost sm" id="weekPrev">◀</button>
+          <b style="font-size:15px" id="weekRange"></b>
+          <button class="btn ghost sm" id="weekNext">▶</button>
+          <button class="btn ghost sm" id="weekThis" style="margin-left:auto">This week</button>
+          <button class="btn danger sm" id="clearWeek">Clear week</button>
+        </div>
+        <div class="muted" style="font-size:13px;margin-bottom:10px">Plan meals for the week, then build one shopping list from the lot.</div>
+        <button class="btn primary" id="buildWeekShop" style="width:100%">🛒 Add this week's ingredients to shopping list</button>
+      </div>
+      <div id="planDays"></div>
     </div>
 
     <!-- SHOPPING -->
@@ -401,6 +437,15 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
   </div>
 </div>
 
+<!-- RECIPE PICKER (for the week plan) -->
+<div class="overlay" id="pickerOverlay">
+  <div class="sheet">
+    <div class="sheethead"><h2 id="pickerTitle">Add to day</h2><button class="close" id="pickerClose">✕</button></div>
+    <input class="in" id="pickerSearch" placeholder="Search recipes…" autocomplete="off" style="margin-bottom:10px">
+    <div id="pickerList" style="max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -408,7 +453,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v7.1 low-added-sugar filter";
+const APP_VERSION = "2026-08-23 · v9 week-plan";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -646,7 +691,7 @@ function freshState(){
   const t = now();
   // Stable IDs for seed recipes so the same starter recipe has one identity across devices (no sync duplicates).
   const recipes = SEED.map((r,i)=> Object.assign({}, r, {id:"seed-"+i, favorite:false, seed:true, createdAt:t-i, updatedAt:t-i, order:i}));
-  return { recipes, deleted:{}, profile:defaultProfile(), today:{date:todayISO(), items:[]}, shopping:{items:[]}, updatedAt:t };
+  return { recipes, deleted:{}, profile:defaultProfile(), today:{date:todayISO(), items:[]}, week:emptyWeek(), shopping:{items:[]}, updatedAt:t };
 }
 function normalizeRecipe(r){
   r.title=r.title||"Untitled";
@@ -722,9 +767,23 @@ function migrate(s){
   if(!Array.isArray(s.today.items)) s.today.items=[];
   s.shopping = s.shopping||{items:[]};
   if(!Array.isArray(s.shopping.items)) s.shopping.items=[];
+  s.week = normalizeWeek(s.week);
   s.updatedAt = s.updatedAt||now();
   return s;
 }
+// ---- Week meal plan ----
+function mondayOf(d){ const x=new Date(d); const g=(x.getDay()+6)%7; x.setDate(x.getDate()-g); x.setHours(0,0,0,0); return x; }
+function isoOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function emptyWeek(){ return { start: isoOf(mondayOf(new Date())), days:[[],[],[],[],[],[],[]] }; }
+function normalizeWeek(w){
+  if(!w || typeof w!=="object") return emptyWeek();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(w.start||"")) w.start = isoOf(mondayOf(new Date()));
+  if(!Array.isArray(w.days)) w.days=[[],[],[],[],[],[],[]];
+  for(let i=0;i<7;i++){ if(!Array.isArray(w.days[i])) w.days[i]=[]; }
+  w.days = w.days.slice(0,7);
+  return w;
+}
+function weekItems(){ return (state.week.days||[]).flat(); }
 let state = load();
 function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
 function touch(){ state.updatedAt = now(); persist(); schedulePush(); }
@@ -753,9 +812,10 @@ $("#tabs").querySelectorAll("button").forEach(b=> b.onclick=()=> setTab(b.datase
 function setTab(t){
   activeTab=t;
   $("#tabs").querySelectorAll("button").forEach(b=> b.classList.toggle("active", b.dataset.tab===t));
-  ["cookbook","today","shopping","setup"].forEach(id=> $("#tab-"+id).style.display = id===t?"":"none");
+  ["cookbook","today","plan","shopping","setup"].forEach(id=> $("#tab-"+id).style.display = id===t?"":"none");
   if(t==="cookbook") renderGrid();   // reflect any allergy/diet/dislike changes made in Setup
   if(t==="today") renderToday();
+  if(t==="plan") renderPlan();
   if(t==="shopping") renderShopping();
   if(t==="setup") renderSetup();
 }
@@ -1061,10 +1121,9 @@ $("#todayToShopping").onclick=()=>{ const n=buildShoppingFromToday(); if(n===nul
 function shopKey(text){ return text.toLowerCase().replace(/\s+/g," ").trim(); }
 // Merge every ingredient line from the recipes on Today's plate into the list.
 // Idempotent: existing items (by normalized text) gain the recipe as a source but aren't duplicated; ticked state is kept.
-function buildShoppingFromToday(){
-  ensureToday();
-  const items = state.today.items||[];
-  if(!items.length) return null;
+// Merge the ingredients of a set of {recipeId,servings} entries into the shopping list (deduped).
+function buildShoppingFromItems(items){
+  if(!items || !items.length) return null;
   const byKey = {};
   state.shopping.items.forEach(it=> byKey[shopKey(it.text)] = it);
   let added = 0;
@@ -1082,6 +1141,8 @@ function buildShoppingFromToday(){
   if(activeTab==="shopping") renderShopping();
   return added;
 }
+function buildShoppingFromToday(){ ensureToday(); return buildShoppingFromItems(state.today.items||[]); }
+function buildShoppingFromWeek(){ return buildShoppingFromItems(weekItems()); }
 function addShopItem(text){
   const t=(text||"").trim(); if(!t) return;
   const key=shopKey(t);
@@ -1110,6 +1171,69 @@ $("#shopAddBtn").onclick=()=>{ addShopItem($("#shopAdd").value); $("#shopAdd").v
 $("#shopAdd").addEventListener("keydown", e=>{ if(e.key==="Enter"){ addShopItem($("#shopAdd").value); $("#shopAdd").value=""; } });
 $("#clearChecked").onclick=()=>{ if(!state.shopping.items.some(i=>i.checked)){ toast("Nothing ticked"); return; } state.shopping.items=state.shopping.items.filter(i=>!i.checked); touch(); renderShopping(); };
 $("#clearShop").onclick=()=>{ if(!state.shopping.items.length){ toast("Nothing to clear"); return; } if(confirm("Clear the whole shopping list?")){ state.shopping.items=[]; touch(); renderShopping(); } };
+
+/* ================= week meal plan ================= */
+const DOW = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+function weekDates(){ const start=new Date(state.week.start+"T00:00:00"); return Array.from({length:7},(_,i)=>{ const d=new Date(start); d.setDate(start.getDate()+i); return d; }); }
+function fmtDayShort(d){ try{ return d.toLocaleDateString(undefined,{day:"numeric",month:"short"}); }catch(e){ return isoOf(d); } }
+function shiftWeek(deltaDays){ const s=new Date(state.week.start+"T00:00:00"); s.setDate(s.getDate()+deltaDays); state.week.start=isoOf(mondayOf(s)); touch(); renderPlan(); }
+function renderPlan(){
+  const dates=weekDates();
+  $("#weekRange").textContent = fmtDayShort(dates[0])+" – "+fmtDayShort(dates[6]);
+  const todayI = isoOf(new Date());
+  const box=$("#planDays");
+  box.innerHTML = DOW.map((name,i)=>{
+    const iso=isoOf(dates[i]);
+    const items=state.week.days[i]||[];
+    const rows = items.length ? items.map(it=>{ const r=recipeById(it.recipeId); if(!r) return "";
+      return `<div class="pd-item" data-day="${i}" data-id="${it.id}">
+        <span class="t">${esc(r.title)}</span>
+        <div class="stepper"><button data-minus>−</button><span>${it.servings}</span><button data-plus>+</button></div>
+        <button class="btn danger sm" data-rm>✕</button>
+      </div>`; }).join("") : `<div class="pd-empty">No meals planned.</div>`;
+    return `<div class="planday${iso===todayI?" istoday":""}">
+      <div class="pd-head">
+        <span class="dow">${name}</span><span class="dt">${fmtDayShort(dates[i])}</span>
+        ${iso===todayI?`<span class="today-badge">Today</span>`:""}
+        <button class="pd-add" data-add="${i}">＋ Add</button>
+      </div>
+      ${rows}
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-add]").forEach(b=> b.onclick=()=> openPicker(+b.dataset.add));
+  box.querySelectorAll(".pd-item [data-plus]").forEach(b=> b.onclick=()=>{ const it=b.closest(".pd-item"); chgPlanServ(+it.dataset.day, it.dataset.id, 1); });
+  box.querySelectorAll(".pd-item [data-minus]").forEach(b=> b.onclick=()=>{ const it=b.closest(".pd-item"); chgPlanServ(+it.dataset.day, it.dataset.id, -1); });
+  box.querySelectorAll(".pd-item [data-rm]").forEach(b=> b.onclick=()=>{ const it=b.closest(".pd-item"); const d=+it.dataset.day; state.week.days[d]=state.week.days[d].filter(x=>x.id!==it.dataset.id); touch(); renderPlan(); });
+}
+function chgPlanServ(day,id,delta){ const it=(state.week.days[day]||[]).find(x=>x.id===id); if(!it) return; it.servings=Math.max(1,it.servings+delta); touch(); renderPlan(); }
+function addToPlan(day, recipeId){
+  const list=state.week.days[day]||(state.week.days[day]=[]);
+  const existing=list.find(x=>x.recipeId===recipeId);
+  if(existing) existing.servings++; else list.push({id:uid(), recipeId, servings:1});
+  touch(); renderPlan();
+}
+$("#weekPrev").onclick=()=>shiftWeek(-7);
+$("#weekNext").onclick=()=>shiftWeek(7);
+$("#weekThis").onclick=()=>{ state.week.start=isoOf(mondayOf(new Date())); touch(); renderPlan(); };
+$("#clearWeek").onclick=()=>{ if(!weekItems().length){ toast("Week is already empty"); return; } if(confirm("Clear all meals planned for this week?")){ state.week.days=[[],[],[],[],[],[],[]]; touch(); renderPlan(); } };
+$("#buildWeekShop").onclick=()=>{ const n=buildShoppingFromWeek(); if(n===null){ toast("Plan some meals first"); return; } setTab("shopping"); toast(n>0? n+" item"+(n===1?"":"s")+" added":"Shopping list already up to date"); };
+
+/* Recipe picker for the week plan */
+let pickerDay=0;
+function openPicker(day){ pickerDay=day; $("#pickerTitle").textContent="Add to "+DOW[day]; $("#pickerSearch").value=""; renderPicker(""); $("#pickerOverlay").classList.add("open"); $("#pickerSearch").focus(); }
+function closePicker(){ $("#pickerOverlay").classList.remove("open"); }
+function renderPicker(q){
+  q=(q||"").toLowerCase().trim();
+  let list=state.recipes.slice().sort((a,b)=> (a.category===b.category? a.title.localeCompare(b.title): CATEGORIES.indexOf(a.category)-CATEGORIES.indexOf(b.category)));
+  if(q) list=list.filter(r=> r.title.toLowerCase().includes(q) || (r.ingredients||[]).join(" ").toLowerCase().includes(q));
+  const box=$("#pickerList");
+  box.innerHTML = list.length ? list.map(r=>`<div class="pickrow" data-id="${r.id}"><div class="t"><b>${esc(r.title)}</b><br><span>${esc(r.category)} · ${r.carbs}g carbs · ${r.cal} kcal</span></div><span class="plus">＋</span></div>`).join("")
+    : `<div class="empty">No recipes match.</div>`;
+  box.querySelectorAll(".pickrow").forEach(row=> row.onclick=()=>{ const r=recipeById(row.dataset.id); addToPlan(pickerDay, row.dataset.id); toast((r?r.title:"Recipe")+" → "+DOW[pickerDay]); });
+}
+$("#pickerClose").onclick=closePicker;
+$("#pickerOverlay").onclick=e=>{ if(e.target===$("#pickerOverlay")) closePicker(); };
+$("#pickerSearch").oninput=e=>renderPicker(e.target.value);
 
 /* ================= setup: profile ================= */
 function renderSetup(){
@@ -1300,8 +1424,9 @@ function mergeRemote(remote){
   if(!newToday || newToday.date!==todayISO()) newToday={date:todayISO(), items:(newToday&&newToday.date===todayISO())?newToday.items:[]};
   let newShopping = remoteNewer && remote.shopping ? remote.shopping : local.shopping;
   if(!newShopping || !Array.isArray(newShopping.items)) newShopping={items:[]};
-  if(remoteNewer && (JSON.stringify(newProfile)!==JSON.stringify(local.profile) || JSON.stringify(newToday)!==JSON.stringify(local.today) || JSON.stringify(newShopping)!==JSON.stringify(local.shopping))) changed=true;
-  state={ recipes:merged.map(normalizeRecipe), deleted, profile:newProfile, today:newToday, shopping:newShopping, updatedAt:Math.max(local.updatedAt||0, remote.updatedAt||0) };
+  let newWeek = normalizeWeek(remoteNewer && remote.week ? remote.week : local.week);
+  if(remoteNewer && (JSON.stringify(newProfile)!==JSON.stringify(local.profile) || JSON.stringify(newToday)!==JSON.stringify(local.today) || JSON.stringify(newShopping)!==JSON.stringify(local.shopping) || JSON.stringify(newWeek)!==JSON.stringify(local.week))) changed=true;
+  state={ recipes:merged.map(normalizeRecipe), deleted, profile:newProfile, today:newToday, week:newWeek, shopping:newShopping, updatedAt:Math.max(local.updatedAt||0, remote.updatedAt||0) };
   // Collapse any identical-content duplicates introduced by cross-device seeding, and push the
   // resulting tombstones back up so every device converges on a single copy of each recipe.
   if(dedupeRecipes(state)){ changed=true; state.updatedAt=now(); schedulePush(); }
@@ -1340,7 +1465,7 @@ async function syncPull(force, quiet){
     const remote=JSON.parse(f.truncated&&f.raw_url? await (await fetch(f.raw_url)).text() : f.content);
     const changed=mergeRemote(remote);
     if(force||changed){
-      renderChips(); renderGrid(); if(activeTab==="today") renderToday(); if(activeTab==="shopping") renderShopping(); if(activeTab==="setup") renderSetup();
+      renderChips(); renderGrid(); if(activeTab==="today") renderToday(); if(activeTab==="plan") renderPlan(); if(activeTab==="shopping") renderShopping(); if(activeTab==="setup") renderSetup();
       setSyncTime();
       if(changed){ markSync("Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date");
       return changed?"pulled":"uptodate";
