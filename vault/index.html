@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vault">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Vault — Password Manager</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#191d31; --panel2:#212642; --line:#2c3355;
+    --text:#e8eaf6; --muted:#9aa3c7; --accent:#6c8cff; --accent2:#4cc9a0;
+    --danger:#ff6b6b; --work:#6c8cff; --personal:#4cc9a0; --shadow:0 12px 40px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',system-ui,Arial,sans-serif;background:
+    radial-gradient(1200px 600px at 80% -10%,#1b2140 0,transparent 60%),
+    radial-gradient(900px 500px at -10% 110%,#152033 0,transparent 55%),var(--bg);
+    color:var(--text);min-height:100dvh}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px}
+  input,select{font-family:inherit;font-size:16px;color:var(--text);background:#0f1326;
+    border:1px solid var(--line);border-radius:10px;padding:11px 12px;outline:none;width:100%}
+  input:focus,select:focus{border-color:var(--accent)}
+  .hidden{display:none!important}
+  /* visually hidden but still programmatically clickable (iOS Safari won't open a display:none file input) */
+  .sr-file{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+  /* ---------- Lock screen ---------- */
+  #lock{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .lockcard{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--line);
+    border-radius:18px;padding:34px 30px;box-shadow:var(--shadow);text-align:center}
+  .logo{font-size:44px;margin-bottom:6px}
+  .lockcard h1{margin:0 0 4px;font-size:22px}
+  .lockcard p{color:var(--muted);margin:0 0 22px;font-size:13px;line-height:1.5}
+  .lockcard input{text-align:center;font-size:16px;letter-spacing:1px;margin-bottom:12px}
+  .primary{background:linear-gradient(135deg,var(--accent),#8b6cff);color:#fff;
+    padding:12px;width:100%;font-size:15px;font-weight:600}
+  .primary:hover{filter:brightness(1.08)}
+  .err{color:var(--danger);font-size:13px;min-height:18px;margin-top:8px}
+  .pwwrap{position:relative}
+  .pwwrap input{padding-right:42px}
+  .eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;
+    width:32px;height:32px;font-size:16px;line-height:1;color:var(--muted);
+    display:flex;align-items:center;justify-content:center}
+  .eye:hover{color:var(--text)}
+
+  /* ---------- App ---------- */
+  #app{max-width:960px;margin:0 auto;padding:22px 18px 60px}
+  header.top{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+  header.top .brand{font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px}
+  header.top .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent2)}
+  .grow{flex:1}
+  .btn{background:var(--panel2);color:var(--text);padding:10px 14px;border:1px solid var(--line);font-size:14px}
+  .btn:hover{border-color:var(--accent)}
+  .btn.accent{background:linear-gradient(135deg,var(--accent),#8b6cff);border:none;color:#fff;font-weight:600}
+  .dotsync{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-left:2px}
+  .dotsync.on{background:var(--accent2)}
+  .dotsync.err{background:var(--danger)}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .toolbar .search{flex:1;min-width:180px}
+  .tabs{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
+  .tab{background:transparent;color:var(--muted);padding:8px 14px;font-size:13px;font-weight:600}
+  .tab.active{background:var(--panel2);color:var(--text)}
+
+  .stats{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;flex:1;min-width:120px}
+  .stat .n{font-size:22px;font-weight:700}
+  .stat .l{color:var(--muted);font-size:12px}
+
+  .list{display:flex;flex-direction:column;gap:10px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+    display:flex;align-items:center;gap:14px;transition:border-color .15s}
+  .card:hover{border-color:var(--accent)}
+  .avatar{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:17px;color:#fff;flex-shrink:0}
+  .card .meta{flex:1;min-width:0}
+  .card .title{font-weight:600;display:flex;align-items:center;gap:8px}
+  .badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+  .badge.work{background:rgba(108,140,255,.18);color:#9db3ff}
+  .badge.personal{background:rgba(76,201,160,.18);color:#6fe0bd}
+  .card .sub{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .actions{display:flex;gap:6px;flex-shrink:0}
+  .icon{background:var(--panel2);border:1px solid var(--line);color:var(--muted);width:34px;height:34px;
+    display:flex;align-items:center;justify-content:center;font-size:15px}
+  .icon:hover{color:var(--text);border-color:var(--accent)}
+  .empty{text-align:center;color:var(--muted);padding:50px 20px}
+  .empty .big{font-size:40px;margin-bottom:8px}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(6,8,18,.7);backdrop-filter:blur(3px);
+    display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);
+    border-radius:18px;padding:24px;box-shadow:var(--shadow);max-height:92dvh;overflow:auto}
+  .modal h2{margin:0 0 18px;font-size:18px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+  .field .opt{color:#6570a0;font-weight:400;text-transform:none}
+  .pwrow{display:flex;gap:8px}
+  .pwrow input{flex:1;font-family:ui-monospace,Consolas,monospace}
+  .seg{display:flex;gap:8px}
+  .seg button{flex:1;padding:11px;background:#0f1326;border:1px solid var(--line);color:var(--muted);font-weight:600}
+  .seg button.on[data-v="work"]{border-color:var(--work);color:#9db3ff;background:rgba(108,140,255,.12)}
+  .seg button.on[data-v="personal"]{border-color:var(--personal);color:#6fe0bd;background:rgba(76,201,160,.12)}
+  .modal-actions{display:flex;gap:10px;margin-top:8px}
+  .modal-actions .primary{flex:1}
+  .link{background:none;color:var(--muted);padding:12px;font-size:14px}
+  .link:hover{color:var(--text)}
+  .link.danger:hover{color:var(--danger)}
+  a.link{text-decoration:none}
+  .strength{height:5px;border-radius:4px;background:var(--line);margin-top:8px;overflow:hidden}
+  .strength i{display:block;height:100%;width:0;transition:.2s}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);
+    border:1px solid var(--line);padding:11px 20px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);
+    z-index:99;opacity:0;transition:.25s;pointer-events:none;
+    display:inline-flex;align-items:center;gap:16px;max-width:calc(100vw - 32px)}
+  .toast.show{opacity:1;pointer-events:auto}
+  .toast-undo{background:none;border:none;color:var(--accent);font-weight:700;font-size:14px;
+    cursor:pointer;padding:2px 4px;border-radius:6px;flex-shrink:0}
+  .toast-undo:hover{text-decoration:underline}
+  .genopts{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px;align-items:center}
+  .genopts label{display:flex;align-items:center;gap:5px;cursor:pointer}
+  .genopts input[type=range]{width:110px}
+  .fineprint{color:#6570a0;font-size:11px;text-align:center;margin-top:18px;line-height:1.5}
+  .ver{color:#4a5280;font-size:10px;text-align:center;margin-top:14px;letter-spacing:.3px}
+  .healthhead{display:flex;align-items:center;gap:16px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:12px;padding:16px;margin-bottom:20px}
+  .healthscore{font-size:38px;font-weight:800;line-height:1;min-width:70px;text-align:center}
+  .auditsec{margin-bottom:20px}
+  .auditsec h3{font-size:14px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .auditsec h3 .c{font-size:11px;color:var(--muted);font-weight:400}
+  .auditrow{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:9px 11px;margin-bottom:8px}
+  .auditrow .t{flex:1;min-width:0}
+  .auditrow .t .n{font-weight:600;display:flex;align-items:center;gap:8px}
+  .auditrow .t .s{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .auditrow .btn{padding:7px 12px;font-size:13px}
+  .auditok{color:#6fe0bd;font-size:13px;background:rgba(76,201,160,.1);border:1px solid rgba(76,201,160,.25);
+    border-radius:10px;padding:12px}
+  .auditgroup{border:1px dashed var(--line);border-radius:10px;padding:10px;margin-bottom:10px}
+  .auditlabel{font-size:12px;color:#ff9b9b;margin-bottom:8px;font-weight:600}
+  .chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
+  .chip.bad{background:rgba(255,107,107,.18);color:#ff9b9b}
+  .chip.mid{background:rgba(255,212,59,.16);color:#ffd43b}
+  .countbadge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;margin-left:4px;
+    background:rgba(255,107,107,.2);color:#ff9b9b}
+  /* ---------- sync ---------- */
+  .synrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .kv{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .kv .k{color:var(--muted)}
+  .kv .v{text-align:right;word-break:break-all}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text);cursor:pointer}
+  .toggle input{width:auto}
+  #syncMsg{font-size:13px;min-height:18px;margin-top:6px}
+  .muted{color:var(--muted)}
+
+  /* ---------- small screens ---------- */
+  @media (max-width:480px){
+    #app{padding:16px 12px 50px}
+    .overlay{padding:10px}
+    .modal{padding:18px 16px;border-radius:14px}
+    .modal h2{margin-bottom:14px}
+    .field{margin-bottom:12px}
+    .genopts{gap:8px 10px}
+    .genopts input[type=range]{width:88px}
+    .modal-actions{flex-wrap:wrap}
+    .modal-actions .primary{flex:1 1 100%;order:-1}
+    .modal-actions .link{flex:1}
+    .healthhead{gap:12px;padding:12px}
+    .healthscore{font-size:30px;min-width:52px}
+    .auditrow{flex-wrap:wrap}
+    .auditrow .t{flex:1 1 100%;order:-1}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOCK SCREEN ================= -->
+<div id="lock">
+  <div class="lockcard">
+    <div class="logo">🔐</div>
+    <h1>Vault</h1>
+    <p id="lockSub">Enter a master password to unlock your vault.</p>
+    <div class="pwwrap">
+      <input type="password" id="masterInput" placeholder="Master password" autocomplete="current-password">
+      <button type="button" class="eye" title="Show/hide" onclick="toggleEye(this,'masterInput')">👁</button>
+    </div>
+    <div class="pwwrap" id="confirmWrap" style="margin-top:12px">
+      <input type="password" id="masterConfirm" class="hidden" placeholder="Confirm master password" autocomplete="new-password">
+      <button type="button" class="eye hidden" id="confirmEye" title="Show/hide" onclick="toggleEye(this,'masterConfirm')">👁</button>
+    </div>
+    <button class="primary" id="unlockBtn">Unlock</button>
+    <div class="err" id="lockErr"></div>
+    <div class="fineprint">Your vault is encrypted with AES-GCM (PBKDF2) and stored only on this device.
+      Sync stores only the encrypted blob in your private gist. There is no recovery — if you
+      forget the master password, the data cannot be read. Use the <b>same</b> master password on every device.</div>
+    <div class="ver" id="verLock"></div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="brand"><span class="dot"></span> Vault</div>
+    <div class="grow"></div>
+    <button class="btn" id="auditBtn" title="Check for weak or reused passwords">🛡 Audit</button>
+    <button class="btn" id="settingsBtn" title="Sync &amp; settings">⚙ Sync <span class="dotsync" id="syncDot"></span></button>
+    <button class="btn" id="exportBtn" title="Download an encrypted backup file">⬇ Backup</button>
+    <button class="btn" id="importBtn" title="Restore from a .vault backup or import a .csv file">⬆ Restore</button>
+    <button class="btn" id="csvBtn" title="Import entries from a CSV file">📄 CSV</button>
+    <button class="btn" id="lockNowBtn">🔒 Lock</button>
+    <button class="btn accent" id="addBtn">+ Add entry</button>
+    <input type="file" id="importFile" accept=".vault,.json,.csv,application/json,text/csv" class="sr-file">
+    <input type="file" id="csvFile" accept=".csv,text/csv" class="sr-file">
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <input class="search" id="search" placeholder="🔍  Search title, username, or email…">
+    <div class="tabs">
+      <button class="tab active" data-filter="all">All</button>
+      <button class="tab" data-filter="work">Work</button>
+      <button class="tab" data-filter="personal">Personal</button>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div class="ver" id="verApp"></div>
+</div>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Vault — client-side encrypted password manager + gist sync (PWA)
+   Local:  localStorage "vault.v1" = { salt, iv, data(cipher), updatedAt }
+   Gist:   file "vault.json" = same encrypted object (zero-knowledge)
+   Crypto: PBKDF2(SHA-256, 200k) -> AES-GCM 256
+   Payload (encrypted): { entries:[...], deleted:{id:ts}, updatedAt }
+============================================================ */
+const LS_KEY = "vault.v1";
+const enc = new TextEncoder(), dec = new TextDecoder();
+let CRYPTO_KEY = null;      // derived AES key (in memory only)
+let SALT = null;           // Uint8Array
+let MASTER_PW = "";        // kept in memory to decrypt remote (which may use a different salt)
+let entries = [];          // decrypted entries
+let deleted = {};          // tombstones { id: deletedAtMs }
+let vaultUpdatedAt = 0;
+let filter = "all", query = "";
+
+const $ = id => document.getElementById(id);
+
+/* ---------- crypto helpers ---------- */
+const b64 = {
+  enc: buf => btoa(String.fromCharCode(...new Uint8Array(buf))),
+  dec: str => Uint8Array.from(atob(str), c => c.charCodeAt(0))
+};
+async function deriveKey(password, salt){
+  const base = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt, iterations:200000, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+// Encrypt current payload to localStorage, then schedule a background push.
+async function encryptVault(){
+  try{
+    if(!CRYPTO_KEY || !SALT) throw new Error("Vault is locked");
+    vaultUpdatedAt = Date.now();
+    const payload = { entries, deleted, updatedAt: vaultUpdatedAt };
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const cipher = await crypto.subtle.encrypt({name:"AES-GCM", iv}, CRYPTO_KEY, enc.encode(JSON.stringify(payload)));
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      salt: b64.enc(SALT), iv: b64.enc(iv), data: b64.enc(cipher), updatedAt: vaultUpdatedAt
+    }));
+    schedulePush();
+    return true;
+  }catch(err){
+    console.error("Vault save failed:", err);
+    toast("⚠ Save failed: " + (err.message || err));
+    return false;
+  }
+}
+async function tryDecrypt(password){
+  const store = JSON.parse(localStorage.getItem(LS_KEY));
+  const salt = b64.dec(store.salt), iv = b64.dec(store.iv);
+  const key = await deriveKey(password, salt);
+  const plain = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, b64.dec(store.data)); // throws if wrong
+  const payload = JSON.parse(dec.decode(plain));
+  if(Array.isArray(payload)){ entries = payload; deleted = {}; }     // legacy format
+  else { entries = payload.entries || []; deleted = payload.deleted || {}; }
+  vaultUpdatedAt = (payload && payload.updatedAt) || store.updatedAt || Date.now();
+  CRYPTO_KEY = key; SALT = salt; MASTER_PW = password;
+  sanitizeEntries();
+}
+const hasVault = () => !!localStorage.getItem(LS_KEY);
+
+/* ---------- merge (per-entry, tombstone-aware) ---------- */
+function mergeRemote(remote){
+  let changed = false;
+  const rEntries = Array.isArray(remote) ? remote : (remote.entries || []);
+  const rDeleted = (remote && remote.deleted) || {};
+  for(const id in rDeleted){
+    if(!deleted[id] || rDeleted[id] > deleted[id]){ deleted[id] = rDeleted[id]; changed = true; }
+  }
+  const byId = {}; entries.forEach(e => byId[e.id] = e);
+  for(const re of rEntries){
+    if(!re || !re.id) continue;
+    const le = byId[re.id];
+    if(!le){ entries.push(re); byId[re.id] = re; changed = true; }
+    else if((re.updated||0) > (le.updated||0)){ Object.assign(le, re); changed = true; }
+  }
+  const before = entries.length;
+  entries = entries.filter(e => !(deleted[e.id] && deleted[e.id] >= (e.updated||0)));
+  if(entries.length !== before) changed = true;
+  if(changed) sanitizeEntries();
+  return changed;
+}
+
+/* ---------- lock screen ---------- */
+const eyeTimers = {};
+function toggleEye(btn, inputId){
+  const inp = $(inputId);
+  const show = inp.type === "password";
+  inp.type = show ? "text" : "password";
+  btn.textContent = show ? "🙈" : "👁";
+  clearTimeout(eyeTimers[inputId]);
+  if(show){
+    eyeTimers[inputId] = setTimeout(()=>{
+      const el = $(inputId);
+      if(el && el.type === "text"){ el.type = "password"; btn.textContent = "👁"; }
+    }, 5000);
+  }
+}
+window.toggleEye = toggleEye;
+
+function initLock(){
+  if(!hasVault()){
+    $("lockSub").textContent = "Create a master password to protect your new vault.";
+    $("masterConfirm").classList.remove("hidden");
+    $("confirmEye").classList.remove("hidden");
+    $("unlockBtn").textContent = "Create vault";
+  }
+}
+async function handleUnlock(){
+  const pw = $("masterInput").value;
+  const errEl = $("lockErr"); errEl.textContent = "";
+  if(!pw){ errEl.textContent = "Enter a password."; return; }
+  if(!hasVault()){
+    if(pw.length < 6){ errEl.textContent = "Use at least 6 characters."; return; }
+    if(pw !== $("masterConfirm").value){ errEl.textContent = "Passwords don't match."; return; }
+    SALT = crypto.getRandomValues(new Uint8Array(16));
+    CRYPTO_KEY = await deriveKey(pw, SALT);
+    MASTER_PW = pw; entries = []; deleted = {};
+    await encryptVault();
+    openApp();
+  } else {
+    try { await tryDecrypt(pw); openApp(); }
+    catch(e){ errEl.textContent = "Wrong master password."; $("masterInput").select(); }
+  }
+}
+function openApp(){
+  $("masterInput").value = ""; $("masterConfirm").value = "";
+  $("lock").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  render();
+  updateSyncDot();
+  if(GH.connected) syncPull(false, true).catch(()=>{});   // quiet initial pull
+}
+function lockNow(){
+  CRYPTO_KEY = null; entries = []; deleted = {}; SALT = null; MASTER_PW = "";
+  $("app").classList.add("hidden");
+  $("lock").classList.remove("hidden");
+  $("lockErr").textContent = "";
+  $("masterInput").focus();
+}
+
+/* ---------- rendering ---------- */
+function colorFor(str){
+  str = str || "";
+  let h=0; for(const c of str) h=(h*31+c.charCodeAt(0))%360;
+  return `hsl(${h} 60% 45%)`;
+}
+function sanitizeEntries(){
+  let changed = false;
+  if(!Array.isArray(entries)){ entries = []; return true; }
+  entries = entries.filter(e => e && typeof e === "object");
+  for(const e of entries){
+    if(!e.id){ e.id = crypto.randomUUID(); changed = true; }
+    for(const k of ["title","username","email","url","password"]){
+      if(typeof e[k] !== "string"){ e[k] = (e[k]==null) ? "" : String(e[k]); changed = true; }
+    }
+    if(!e.title.trim()){ e.title = (e.username || e.email || e.url || "Untitled").trim() || "Untitled"; changed = true; }
+    if(e.category !== "work" && e.category !== "personal"){ e.category = "personal"; changed = true; }
+    if(!e.updated) e.updated = e.created || Date.now();
+  }
+  return changed;
+}
+function render(){
+  sanitizeEntries();
+  const q = query.toLowerCase();
+  const shown = entries
+    .filter(e => filter==="all" || e.category===filter)
+    .filter(e => !q || ((e.title||"")+(e.username||"")+(e.email||"")).toLowerCase().includes(q))
+    .sort((a,b)=>(a.title||"").localeCompare(b.title||""));
+
+  const work = entries.filter(e=>e.category==="work").length;
+  const personal = entries.filter(e=>e.category==="personal").length;
+  const h = vaultHealth();
+  $("stats").innerHTML = `
+    <div class="stat"><div class="n">${entries.length}</div><div class="l">Total entries</div></div>
+    <div class="stat"><div class="n">${work}</div><div class="l">Work</div></div>
+    <div class="stat"><div class="n">${personal}</div><div class="l">Personal</div></div>
+    <div class="stat"><div class="n" style="color:${h==null?'var(--muted)':healthColor(h)}">${h==null?'—':h+'%'}</div>
+      <div class="l">Password health</div></div>`;
+
+  updateAuditBadge();
+
+  const list = $("list");
+  if(!shown.length){
+    list.innerHTML = `<div class="empty"><div class="big">🗂️</div>
+      ${entries.length ? "No entries match your search." : "Your vault is empty. Add your first entry."}</div>`;
+    return;
+  }
+  list.innerHTML = shown.map(e=>{
+    const initial = ((e.title||"?")[0]||"?").toUpperCase();
+    const sub = [e.username, e.email].filter(Boolean).join("  ·  ") || "—";
+    return `<div class="card">
+      <div class="avatar" style="background:${colorFor(e.title||"")}">${initial}</div>
+      <div class="meta">
+        <div class="title">${esc(e.title)} <span class="badge ${e.category}">${e.category}</span></div>
+        <div class="sub">${esc(sub)}</div>
+        <div class="sub" style="font-size:11px;color:#6570a0;margin-top:2px">Added ${fmtDate(e.created||e.updated)}</div>
+      </div>
+      <div class="actions">
+        ${e.url ? `<button class="icon" title="Open website" onclick="openSite('${e.id}')">↗</button>` : ""}
+        ${e.password ? `<button class="icon" title="Copy password" onclick="copyPw('${e.id}')">📋</button>` : ""}
+        <button class="icon" title="Edit" onclick="editEntry('${e.id}')">✏️</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+const esc = s => (s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtDate = ts => ts ? new Date(ts).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "";
+
+function openUrl(u){
+  u = (u||"").trim(); if(!u) return;
+  if(!/^https?:\/\//i.test(u)) u = "https://" + u;
+  window.open(u, "_blank", "noopener");
+}
+function openUrlField(){ openUrl($("fUrl").value); }
+window.openUrl = openUrl; window.openUrlField = openUrlField;
+window.openSite = id => { const e = entries.find(x=>x.id===id); if(e) openUrl(e.url); };
+
+/* ---------- clipboard ---------- */
+async function copyText(text){
+  if(!text) return false;
+  try{
+    await navigator.clipboard.writeText(text);
+    setTimeout(()=>navigator.clipboard.writeText("").catch(()=>{}), 20000);
+    return true;
+  }catch{}
+  try{
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  }catch{ return false; }
+}
+async function copyPw(id){
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  if(!e.password){ toast("No password saved for this entry"); return; }
+  toast(await copyText(e.password) ? "Password copied — clears in 20s" : "Copy failed");
+}
+window.copyPw = copyPw;
+
+let toastT;
+function toast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); t.textContent=""; },2200);
+}
+function toastUndo(msg, onUndo){
+  const t=$("toast"); t.textContent = "";
+  const span = document.createElement("span"); span.textContent = msg;
+  const btn = document.createElement("button"); btn.className = "toast-undo"; btn.textContent = "Undo";
+  btn.onclick = async ()=>{ clearTimeout(toastT); t.classList.remove("show"); t.textContent=""; await onUndo(); };
+  t.append(span, btn); t.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(()=>{ t.classList.remove("show"); t.textContent=""; }, 6000);
+}
+
+/* ---------- password generator ---------- */
+function genPassword(len=18, opts={upper:true,lower:true,num:true,sym:true}){
+  let pool="";
+  if(opts.lower) pool+="abcdefghijkmnpqrstuvwxyz";
+  if(opts.upper) pool+="ABCDEFGHJKLMNPQRSTUVWXYZ";
+  if(opts.num)   pool+="23456789";
+  if(opts.sym)   pool+="!@#$%^&*()-_=+[]{}";
+  if(!pool) pool="abcdefghijkmnpqrstuvwxyz";
+  const a=crypto.getRandomValues(new Uint32Array(len));
+  return Array.from(a,x=>pool[x%pool.length]).join("");
+}
+function strength(pw){
+  let s=0; if(pw.length>=8)s++; if(pw.length>=14)s++;
+  if(/[a-z]/.test(pw)&&/[A-Z]/.test(pw))s++;
+  if(/\d/.test(pw))s++; if(/[^A-Za-z0-9]/.test(pw))s++;
+  return Math.min(s,4);
+}
+
+/* ---------- modal (add / edit) ---------- */
+function openModal(entry){
+  const isEdit = !!entry;
+  const e = entry || {id:null,title:"",username:"",email:"",password:"",category:"personal"};
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>${isEdit?"Edit entry":"New entry"}</h2>
+      ${isEdit ? `<p style="color:#6570a0;font-size:12px;margin:-8px 0 16px">
+        Added ${fmtDate(e.created||e.updated)}${e.updated&&e.updated!==(e.created||e.updated)
+          ? ` · last edited ${fmtDate(e.updated)}` : ""}</p>` : ""}
+      <div class="field">
+        <label>Title / Service</label>
+        <input id="fTitle" placeholder="e.g. Gmail, GitHub, Bank" value="${esc(e.title)}">
+      </div>
+      <div class="field">
+        <label>Username <span class="opt">— optional</span></label>
+        <input id="fUser" placeholder="username" value="${esc(e.username)}">
+      </div>
+      <div class="field">
+        <label>Email <span class="opt">— optional</span></label>
+        <input id="fEmail" type="email" placeholder="name@example.com" value="${esc(e.email)}">
+      </div>
+      <div class="field">
+        <label>Website <span class="opt">— optional</span></label>
+        <div class="pwrow">
+          <input id="fUrl" type="url" placeholder="https://example.com" value="${esc(e.url||'')}">
+          <button class="icon" type="button" title="Open website" onclick="openUrlField()">↗</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Password <span class="opt">— optional</span></label>
+        <div class="pwrow">
+          <input id="fPass" type="text" placeholder="password" value="${esc(e.password)}">
+          <button class="icon" type="button" title="Copy password" onclick="copyField()">📋</button>
+          <button class="icon" type="button" title="Generate" onclick="regen()">🎲</button>
+        </div>
+        <div class="strength"><i id="strBar"></i></div>
+        <div class="genopts">
+          <label><input type="checkbox" id="oUpper" checked> A-Z</label>
+          <label><input type="checkbox" id="oLower" checked> a-z</label>
+          <label><input type="checkbox" id="oNum" checked> 0-9</label>
+          <label><input type="checkbox" id="oSym" checked> !@#</label>
+          <label>Len <input type="range" id="oLen" min="8" max="40" value="18">
+            <span id="oLenV">18</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <div class="seg" id="seg">
+          <button type="button" data-v="work" class="${e.category==='work'?'on':''}">💼 Work</button>
+          <button type="button" data-v="personal" class="${e.category==='personal'?'on':''}">🏠 Personal</button>
+        </div>
+      </div>
+      <div class="err" id="modalErr" style="min-height:0;margin-top:0;margin-bottom:6px"></div>
+      <div class="modal-actions">
+        ${isEdit?'<button class="link danger" onclick="deleteEntry()">Delete</button>':''}
+        <button class="link" onclick="closeModal()">Cancel</button>
+        <button class="primary" onclick="saveEntry()">${isEdit?"Save":"Add entry"}</button>
+      </div>
+    </div>
+  </div>`;
+  $("modalRoot").dataset.id = e.id || "";
+  $("modalRoot").dataset.cat = e.category;
+  $("seg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    $("seg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on"); $("modalRoot").dataset.cat=b.dataset.v;
+  });
+  const fPass=$("fPass");
+  const upd=()=>{ const s=strength(fPass.value);
+    const bar=$("strBar"); bar.style.width=(s*25)+"%";
+    bar.style.background=["#ff6b6b","#ffa94d","#ffd43b","#69db7c","#4cc9a0"][s]; };
+  fPass.oninput=upd; upd();
+  $("oLen").oninput=e2=>$("oLenV").textContent=e2.target.value;
+  bindOverlayClose();
+  $("fTitle").focus();
+}
+function regen(){
+  const len=+$("oLen").value;
+  const pw=genPassword(len,{upper:$("oUpper").checked,lower:$("oLower").checked,
+    num:$("oNum").checked,sym:$("oSym").checked});
+  $("fPass").value=pw; $("fPass").dispatchEvent(new Event("input"));
+}
+async function copyField(){
+  const pw = $("fPass").value; if(!pw) return;
+  toast(await copyText(pw) ? "Password copied — clears in 20s" : "Copy failed");
+}
+window.copyField = copyField; window.regen = regen;
+function closeModal(){ $("modalRoot").innerHTML=""; }
+window.closeModal = closeModal;
+function bindOverlayClose(){
+  const ov = $("overlay");
+  let downOnSelf = false;
+  ov.addEventListener("mousedown", e => { downOnSelf = (e.target === ov); });
+  ov.addEventListener("click", e => { if(e.target === ov && downOnSelf) closeModal(); });
+}
+
+async function saveEntry(){
+  $("modalErr").textContent = "";
+  const title=$("fTitle").value.trim();
+  const password=$("fPass").value;
+  if(!title){ $("modalErr").textContent = "Title is required."; $("fTitle").focus(); return; }
+  const myId = $("modalRoot").dataset.id;
+  const nUser = $("fUser").value.trim().toLowerCase();
+  const nEmail = $("fEmail").value.trim().toLowerCase();
+  const dupe = entries.find(x => x.id !== myId
+    && (x.title||"").toLowerCase() === title.toLowerCase()
+    && (x.username||"").toLowerCase() === nUser
+    && (x.email||"").toLowerCase() === nEmail);
+  if(dupe){
+    $("modalErr").textContent = `Duplicate blocked — "${title}" with the same username and email already exists.`;
+    toast("Duplicate entry blocked");
+    return;
+  }
+  const prev = myId ? entries.find(x=>x.id===myId) : null;
+  const id = myId || crypto.randomUUID();
+  const rec={
+    id, title, username:$("fUser").value.trim(), email:$("fEmail").value.trim(),
+    url:$("fUrl").value.trim(),
+    password, category:$("modalRoot").dataset.cat || "personal",
+    created: (prev && prev.created) || (prev && prev.updated) || Date.now(),
+    updated: Date.now()
+  };
+  if(deleted[id]) delete deleted[id];        // re-adding clears any tombstone
+  const i=entries.findIndex(x=>x.id===rec.id);
+  if(i>=0) entries[i]=rec; else entries.push(rec);
+  closeModal(); render();
+  const ok = await encryptVault();
+  if(ok) toast("Saved");
+}
+async function deleteEntry(){
+  const id = $("modalRoot").dataset.id;
+  const removed = entries.find(x=>x.id===id);
+  if(!removed) return;
+  entries = entries.filter(x=>x.id!==id);
+  deleted[id] = Date.now();
+  closeModal(); render();
+  await encryptVault();
+  toastUndo(`Deleted "${removed.title||"entry"}"`, async ()=>{
+    if(!entries.some(x=>x.id===removed.id)){
+      delete deleted[removed.id];
+      removed.updated = Date.now();          // beat the tombstone on merge
+      entries.push(removed); render();
+      await encryptVault(); toast("Restored");
+    }
+  });
+}
+window.editEntry = id => openModal(entries.find(x=>x.id===id));
+window.saveEntry = saveEntry; window.deleteEntry = deleteEntry;
+
+/* ---------- backup export / import ---------- */
+async function exportBackup(){
+  await encryptVault();
+  const store = JSON.parse(localStorage.getItem(LS_KEY));
+  const payload = { app:"vault", version:3, salt:store.salt, iv:store.iv, data:store.data, exported:new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `vault-backup-${new Date().toISOString().slice(0,10)}.vault`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  toast("Encrypted backup downloaded");
+}
+function importBackup(){ $("importFile").value=""; $("importFile").click(); }
+
+async function handleImportFile(e){
+  const file = e.target.files[0]; if(!file) return;
+  let text;
+  try { text = await file.text(); }
+  catch { toast("Couldn't read that file"); return; }
+  let store = null;
+  try { store = JSON.parse(text); } catch { /* not JSON */ }
+  if(store && store.plain && Array.isArray(store.entries)){   // legacy plain backup
+    await mergeEntries(store.entries); return;
+  }
+  const isBackup = store && store.salt && store.iv && store.data;
+  if(!isBackup){
+    if(/\.csv$/i.test(file.name) || file.type === "text/csv" || (!store && text.includes(","))){
+      await importCsvText(text); return;
+    }
+    toast("Not a Vault backup or CSV file"); return;
+  }
+  openPasswordPrompt(async (pw, fail)=>{
+    try{
+      const salt = b64.dec(store.salt), iv = b64.dec(store.iv);
+      const key  = await deriveKey(pw, salt);
+      const plain = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, b64.dec(store.data));
+      const payload = JSON.parse(dec.decode(plain));
+      const imported = Array.isArray(payload) ? payload : (payload.entries || []);
+      await mergeEntries(imported);
+      return true;
+    }catch{ fail("Wrong password for this backup, or the file is corrupt."); return false; }
+  });
+}
+const sameContent = (a,b) =>
+  (a.title||"").toLowerCase() === (b.title||"").toLowerCase() &&
+  (a.username||"").toLowerCase() === (b.username||"").toLowerCase() &&
+  (a.email||"").toLowerCase() === (b.email||"").toLowerCase();
+
+async function mergeEntries(imported){
+  let added=0, updated=0, skipped=0;
+  for(const rec of imported){
+    if(!rec || !rec.title) continue;
+    rec.category = rec.category==="work" ? "work" : "personal";
+    let i = rec.id ? entries.findIndex(x=>x.id===rec.id) : -1;
+    if(i<0) i = entries.findIndex(x=>sameContent(x, rec));
+    if(i<0){
+      if(!rec.id) rec.id = crypto.randomUUID();
+      if(!rec.updated) rec.updated = Date.now();
+      entries.push(rec); added++;
+    } else if((rec.updated||0) > (entries[i].updated||0)){
+      rec.id = entries[i].id; rec.created = entries[i].created || rec.created;
+      entries[i] = rec; updated++;
+    } else skipped++;
+  }
+  await encryptVault(); render();
+  toast(`Restored — ${added} added, ${updated} updated, ${skipped} duplicate${skipped===1?"":"s"} skipped`);
+}
+/* ---------- CSV import ---------- */
+function parseCSV(text){
+  text = text.replace(/^﻿/, "");
+  const rows=[]; let row=[], field="", inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else inQ=false; }
+      else field += c;
+    } else if(c === '"') inQ=true;
+    else if(c === ',') { row.push(field); field=""; }
+    else if(c === '\r') { /* skip */ }
+    else if(c === '\n') { row.push(field); rows.push(row); row=[]; field=""; }
+    else field += c;
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => !(r.length===1 && r[0].trim()===""));
+}
+function importCsv(){ $("csvFile").value=""; $("csvFile").click(); }
+async function handleCsvFile(e){
+  const file = e.target.files[0]; if(!file) return;
+  let text;
+  try { text = await file.text(); }
+  catch { toast("Couldn't read that CSV file"); return; }
+  await importCsvText(text);
+}
+async function importCsvText(text){
+  let rows;
+  try { rows = parseCSV(text); }
+  catch { toast("Couldn't read that CSV file"); return; }
+  if(rows.length < 2){ toast("CSV has no data rows"); return; }
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const col = (...names) => { for(const n of names){ const i=header.indexOf(n); if(i>=0) return i; } return -1; };
+  const iTitle = col("title","name","account","service","item name","entry");
+  const iUser  = col("username","user","login_username","login name","login","user name");
+  const iEmail = col("email","e-mail","email address");
+  const iPass  = col("password","login_password","pass","pwd");
+  const iUrl   = col("url","website","site","login_uri","web site","link","address");
+  const iCat   = col("category","type","folder","grouping","group");
+  if(iTitle<0 && iUser<0 && iEmail<0 && iUrl<0){ toast("No recognizable columns in that CSV"); return; }
+  const now = Date.now();
+  const g = (row,i) => (i>=0 && i<row.length) ? (row[i]||"").trim() : "";
+  let added=0, skipped=0;
+  for(let r=1; r<rows.length; r++){
+    const row = rows[r];
+    let title = g(row,iTitle);
+    const username=g(row,iUser), password=g(row,iPass), url=g(row,iUrl);
+    let email=g(row,iEmail);
+    if(!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username)) email = username;
+    if(!title) title = url || username || email;
+    if(!title || (!password && !username && !email)) continue;
+    const cat = g(row,iCat).toLowerCase();
+    const category = (cat.includes("work") || cat.includes("business")) ? "work" : "personal";
+    const rec = { id:crypto.randomUUID(), title, username, email, url, password, category, created:now, updated:now };
+    if(entries.some(x => sameContent(x, rec))) { skipped++; continue; }
+    entries.push(rec); added++;
+  }
+  if(!added && !skipped){ toast("No usable entries found in CSV"); return; }
+  await encryptVault(); render();
+  toast(`Imported — ${added} added, ${skipped} duplicate${skipped===1?"":"s"} skipped`);
+}
+
+function openPasswordPrompt(onSubmit){
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal" style="max-width:380px">
+      <h2>Restore backup</h2>
+      <p class="muted" style="font-size:13px;margin:0 0 14px;line-height:1.5">
+        Enter the master password that this backup was created with. Its entries are merged
+        into your current vault (newer entries win on conflict).</p>
+      <div class="field">
+        <div class="pwwrap">
+          <input id="ppPass" type="password" placeholder="Backup master password" autocomplete="off">
+          <button type="button" class="eye" title="Show/hide" onclick="toggleEye(this,'ppPass')">👁</button>
+        </div>
+        <div class="err" id="ppErr" style="min-height:16px;margin-top:6px"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="link" onclick="closeModal()">Cancel</button>
+        <button class="primary" id="ppOk">Restore</button>
+      </div>
+    </div>
+  </div>`;
+  const submit = async ()=>{
+    const pw = $("ppPass").value; if(!pw) return;
+    const ok = await onSubmit(pw, msg=>{ $("ppErr").textContent=msg; $("ppPass").select(); });
+    if(ok) closeModal();
+  };
+  $("ppOk").onclick = submit;
+  $("ppPass").addEventListener("keydown", e=>{ if(e.key==="Enter") submit(); });
+  bindOverlayClose();
+  $("ppPass").focus();
+}
+
+/* ---------- password health ---------- */
+const withPassword = () => entries.filter(e => e.password);
+function reusedPasswordSet(){
+  const counts = {};
+  withPassword().forEach(e => counts[e.password] = (counts[e.password]||0)+1);
+  return new Set(Object.keys(counts).filter(k => counts[k] > 1));
+}
+function entryHealth(e, reused){
+  let score = strength(e.password) / 4 * 100;
+  if(reused.has(e.password)) score = Math.min(score, 40);
+  return Math.round(score);
+}
+function vaultHealth(){
+  const scored = withPassword();
+  if(!scored.length) return null;
+  const reused = reusedPasswordSet();
+  const avg = scored.reduce((a,e)=>a+entryHealth(e,reused),0) / scored.length;
+  return Math.round(avg);
+}
+const healthColor = h => h>=80 ? "#4cc9a0" : h>=50 ? "#ffd43b" : "#ff6b6b";
+const healthLabel = h => h>=80 ? "Strong" : h>=50 ? "Fair" : "At risk";
+
+/* ---------- password audit ---------- */
+function groupByPassword(){
+  const m = {};
+  withPassword().forEach(e => { (m[e.password] = m[e.password] || []).push(e); });
+  return m;
+}
+function auditIssueIds(){
+  const ids = new Set();
+  Object.values(groupByPassword()).forEach(g => { if(g.length>1) g.forEach(e=>ids.add(e.id)); });
+  withPassword().forEach(e => { if(strength(e.password) <= 2) ids.add(e.id); });
+  return ids;
+}
+function updateAuditBadge(){
+  const n = auditIssueIds().size;
+  $("auditBtn").innerHTML = n ? `🛡 Audit <span class="countbadge">${n}</span>` : "🛡 Audit";
+}
+function auditRow(e){
+  const s = strength(e.password);
+  const chip = s <= 1 ? '<span class="chip bad">very weak</span>'
+             : s === 2 ? '<span class="chip mid">weak</span>' : '';
+  const sub = [e.username, e.email].filter(Boolean).join("  ·  ") || "—";
+  return `<div class="auditrow">
+    <div class="avatar" style="width:34px;height:34px;font-size:14px;background:${colorFor(e.title)}">${((e.title||"?")[0]||"?").toUpperCase()}</div>
+    <div class="t"><div class="n">${esc(e.title)} ${chip}</div><div class="s">${esc(sub)}</div></div>
+    <button class="btn accent" onclick="regenReplace('${e.id}')" title="Generate a strong password, save it, and copy it">🎲 Replace</button>
+    <button class="icon" onclick="editFromAudit('${e.id}')" title="Edit manually">✏️</button>
+  </div>`;
+}
+function openAudit(){
+  const h = vaultHealth();
+  const issueCount = auditIssueIds().size;
+  const reused = Object.values(groupByPassword()).filter(g => g.length > 1);
+  const weak = withPassword().filter(e => strength(e.password) <= 2).sort((a,b)=>strength(a.password)-strength(b.password));
+  const reusedHtml = reused.length
+    ? reused.map(g => `<div class="auditgroup">
+        <div class="auditlabel">🔁 One password shared by ${g.length} entries</div>
+        ${g.map(auditRow).join("")}</div>`).join("")
+    : `<div class="auditok">✓ No reused passwords — every entry has a unique password.</div>`;
+  const weakHtml = weak.length ? weak.map(auditRow).join("")
+    : `<div class="auditok">✓ No weak passwords found.</div>`;
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>🛡 Password audit</h2>
+      ${h==null ? "" : `<div class="healthhead">
+        <div class="healthscore" style="color:${healthColor(h)}">${h}<span style="font-size:16px">%</span></div>
+        <div style="flex:1">
+          <div style="font-weight:600">Vault health: ${healthLabel(h)}</div>
+          <div class="strength" style="margin-top:8px"><i style="width:${h}%;background:${healthColor(h)}"></i></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">${issueCount} of ${entries.length} entries need attention</div>
+        </div>
+      </div>`}
+      <div class="auditsec">
+        <h3>Reused passwords <span class="c">${reused.length? "— fix these first" : ""}</span></h3>
+        ${reusedHtml}
+      </div>
+      <div class="auditsec">
+        <h3>Weak passwords <span class="c">${weak.length? "— under 14 chars or low variety" : ""}</span></h3>
+        ${weakHtml}
+      </div>
+      <div class="modal-actions"><button class="primary" onclick="closeModal()">Done</button></div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+}
+window.editFromAudit = id => { closeModal(); editEntry(id); };
+window.openAudit = openAudit;
+async function regenReplace(id){
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  e.password = genPassword(18, {upper:true,lower:true,num:true,sym:true});
+  e.updated = Date.now();
+  await encryptVault();
+  toast(await copyText(e.password)
+    ? "New strong password generated & copied — update it on the site"
+    : "New strong password generated & saved");
+  render(); openAudit();
+}
+window.regenReplace = regenReplace;
+
+/* ============================================================
+   GitHub gist sync (stores only the ENCRYPTED blob)
+============================================================ */
+const GH = {
+  get token(){ try{return localStorage.getItem("vault.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("vault.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("vault.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("vault.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("vault.gh.token",v):localStorage.removeItem("vault.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("vault.gh.gist",v):localStorage.removeItem("vault.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("vault.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("vault.gh.user",v):localStorage.removeItem("vault.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+async function ghApi(method, path, body){
+  let res;
+  try{
+    res = await fetch("https://api.github.com"+path, {
+      method, headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  }catch(e){ throw new Error("Can't reach GitHub (network/CORS)."); }
+  if(!res.ok){
+    let detail=""; try{ detail=(await res.json()).message||""; }catch(e){}
+    if(res.status===401) throw new Error("Invalid or expired token (401). Create a new classic token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited."+(detail?" "+detail:""));
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(detail?" — "+detail:""));
+  }
+  return res.json();
+}
+function markSync(msg, err){ const m=$("syncMsg"); if(m){ m.textContent=msg||""; m.style.color=err?"var(--danger)":"var(--muted)"; } if(err) setSyncDot("err"); }
+function setSyncDot(state){ const d=$("syncDot"); if(!d) return; d.classList.remove("on","err"); if(state==="on") d.classList.add("on"); else if(state==="err") d.classList.add("err"); }
+function updateSyncDot(){ setSyncDot(GH.connected ? "on" : ""); }
+function spin(on){ const el=$("syncSpin"); if(el) el.textContent = on ? "⟳ " : ""; }
+function setSyncTime(){ try{ localStorage.setItem("vault.gh.lastSync", String(Date.now())); }catch(e){} updateLastSync(); }
+function updateLastSync(){
+  let t=0; try{ t=Number(localStorage.getItem("vault.gh.lastSync"))||0; }catch(e){}
+  const rel = !t ? "never" : (()=>{ const s=Math.round((Date.now()-t)/1000);
+    return s<10?"just now" : s<60?s+"s ago" : s<3600?Math.round(s/60)+" min ago" : s<86400?Math.round(s/3600)+"h ago" : new Date(t).toLocaleString(); })();
+  const el=$("syncLast"); if(el) el.textContent=rel;
+}
+let pushTimer=null;
+function schedulePush(){ if(!GH.connected || !GH.auto) return; clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>{ syncPush().catch(e=>{ spin(false); markSync("Push failed: "+e.message,true); }); },1500); }
+async function syncPush(){
+  if(!GH.connected || !CRYPTO_KEY) return;
+  spin(true); markSync("Saving…");
+  try{
+    const store = localStorage.getItem(LS_KEY);      // the current encrypted blob
+    await ghApi("PATCH","/gists/"+GH.gist,{files:{"vault.json":{content:store}}});
+    setSyncTime(); markSync("Synced"); setSyncDot("on");
+  } finally{ spin(false); }
+}
+async function syncPull(force, quiet){
+  if(!GH.connected || !CRYPTO_KEY) return;
+  if(!quiet){ spin(true); markSync("Checking…"); }
+  try{
+    const g=await ghApi("GET","/gists/"+GH.gist);
+    const f=g.files && g.files["vault.json"];
+    if(!f || !f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+    const outer=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+    let remote;
+    try{
+      const rsalt=b64.dec(outer.salt), riv=b64.dec(outer.iv);
+      const rkey=await deriveKey(MASTER_PW, rsalt);
+      const rplain=await crypto.subtle.decrypt({name:"AES-GCM", iv:riv}, rkey, b64.dec(outer.data));
+      remote=JSON.parse(dec.decode(rplain));
+    }catch(e){ markSync("Synced vault uses a DIFFERENT master password on this device.",true); return "mismatch"; }
+    const changed = mergeRemote(remote);
+    if(changed){ await encryptVault(); render(); setSyncTime(); markSync("Pulled latest changes"); setSyncDot("on"); return "pulled"; }
+    else { setSyncTime(); if(!quiet) markSync("Up to date"); setSyncDot("on"); return "uptodate"; }
+  } finally{ if(!quiet) spin(false); }
+}
+async function findGist(){
+  const list=await ghApi("GET","/gists?per_page=100");
+  const mine=(list||[]).filter(g => (g.files && g.files["vault.json"]) || g.description==="Vault sync");
+  if(!mine.length) return null;
+  mine.sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  return mine[0].id;
+}
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$("syncUser"); if(el) el.textContent=u.login; }catch(e){} }
+async function ghConnect(){
+  const t=$("ghToken").value.trim();
+  if(!t){ markSync("Paste your GitHub token first.",true); return; }
+  if(!CRYPTO_KEY){ markSync("Unlock the vault first.",true); return; }
+  GH.token=t; spin(true); markSync("Connecting…");
+  try{
+    let gid=await findGist();
+    if(gid){
+      GH.gist=gid;
+      const r=await syncPull(true);
+      if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your vault."); }
+      else if(r==="mismatch"){ /* message set; keep connected so user can retry with same pw */ }
+      else markSync("Connected — using your existing sync.");
+    } else {
+      await encryptVault();
+      const store = localStorage.getItem(LS_KEY);
+      const g=await ghApi("POST","/gists",{description:"Vault sync", public:false, files:{"vault.json":{content:store}}});
+      GH.gist=g.id; setSyncTime(); markSync("Connected — new encrypted sync created.");
+    }
+    $("ghToken").value=""; fetchUser(); renderSyncModal(); updateSyncDot();
+  }catch(e){ GH.token=""; GH.gist=""; markSync("Couldn't connect: "+e.message,true); renderSyncModal(); }
+  finally{ spin(false); }
+}
+function ghDisconnect(){
+  GH.token=""; GH.gist=""; GH.user="";
+  updateSyncDot(); toast("Disconnected — local vault kept, gist untouched"); renderSyncModal();
+}
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); }catch(e){ markSync("Sync failed: "+e.message,true); spin(false); } }
+
+function openSettings(){
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>⚙ Sync &amp; settings</h2>
+      <div id="syncBody"></div>
+      <div id="syncMsg"></div>
+      <div class="modal-actions" style="margin-top:14px"><button class="primary" onclick="closeModal()">Done</button></div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  renderSyncModal();
+}
+function renderSyncModal(){
+  const body = $("syncBody"); if(!body) return;
+  if(GH.connected){
+    body.innerHTML = `
+      <p class="muted" style="margin:0 0 12px;font-size:13px">Your encrypted vault syncs across devices via a private gist. Only the encrypted blob is stored — never your passwords in the clear.</p>
+      <div class="kv"><span class="k">Account</span><span class="v" id="syncUser">${esc(GH.user)||"…"}</span></div>
+      <div class="kv"><span class="k">Gist ID</span><span class="v"><a class="link" style="padding:0" id="syncGistLink" target="_blank" rel="noopener" href="https://gist.github.com/${esc(GH.gist)}">${esc(GH.gist)}</a></span></div>
+      <div class="kv"><span class="k">Last sync</span><span class="v"><span id="syncSpin"></span><span id="syncLast">never</span></span></div>
+      <label class="toggle" style="margin:14px 0"><input type="checkbox" id="ghAuto" ${GH.auto?"checked":""}> Auto-sync (push on change, pull in background)</label>
+      <div class="synrow">
+        <button class="btn accent" id="ghSyncNow" style="flex:1">🔄 Sync now</button>
+        <button class="btn" id="ghCopyGist">Copy ID</button>
+        <button class="link danger" id="ghDisconnect">Disconnect</button>
+      </div>`;
+    $("ghAuto").onchange=()=>{ GH.auto=$("ghAuto").checked; if(GH.auto) schedulePush(); };
+    $("ghSyncNow").onclick=doSyncNow;
+    $("ghCopyGist").onclick=()=>{ copyText(GH.gist).then(ok=>toast(ok?"Gist ID copied":GH.gist)); };
+    $("ghDisconnect").onclick=ghDisconnect;
+    if(!GH.user) fetchUser();
+    updateLastSync();
+  } else {
+    body.innerHTML = `
+      <p class="muted" style="margin:0 0 12px;font-size:13px">Keep desktop &amp; phone in sync via a <b>private</b> GitHub gist. Create a token with only the <b>gist</b> scope and paste it on each device — it finds this vault's gist automatically. Your token stays only in this browser. Use the <b>same master password</b> on every device.</p>
+      <div class="field">
+        <div class="pwwrap">
+          <input id="ghToken" type="password" placeholder="GitHub token (gist scope)" autocomplete="off" spellcheck="false">
+          <button type="button" class="eye" title="Show/hide" onclick="toggleEye(this,'ghToken')">👁</button>
+        </div>
+      </div>
+      <button class="primary" id="ghConnect">Connect</button>
+      <p class="muted" style="margin-top:10px;font-size:12px"><a class="link" style="padding:0" href="https://github.com/settings/tokens/new?scopes=gist&description=Vault%20sync" target="_blank" rel="noopener">Create a token →</a> — use a <b>classic</b> token, tick only <b>gist</b>. (Fine-grained tokens can't access gists.)</p>`;
+    $("ghConnect").onclick=ghConnect;
+  }
+}
+window.openSettings = openSettings;
+
+/* periodic + focus pulls */
+setInterval(()=>{ if(!GH.connected||!GH.auto||!CRYPTO_KEY) return; if(document.hidden) return; syncPull(false,true).catch(()=>{}); }, 45000);
+setInterval(updateLastSync, 30000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && GH.connected && GH.auto && CRYPTO_KEY) syncPull(false,true).catch(()=>{}); });
+
+/* ---------- wire up ---------- */
+$("auditBtn").onclick = openAudit;
+$("settingsBtn").onclick = openSettings;
+$("exportBtn").onclick = exportBackup;
+$("importBtn").onclick = importBackup;
+$("importFile").addEventListener("change", handleImportFile);
+$("csvBtn").onclick = importCsv;
+$("csvFile").addEventListener("change", handleCsvFile);
+$("unlockBtn").onclick = handleUnlock;
+$("masterInput").addEventListener("keydown",e=>{ if(e.key==="Enter") handleUnlock(); });
+$("masterConfirm").addEventListener("keydown",e=>{ if(e.key==="Enter") handleUnlock(); });
+$("addBtn").onclick = ()=>openModal(null);
+$("lockNowBtn").onclick = lockNow;
+$("search").addEventListener("input",e=>{ query=e.target.value; render(); });
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active"); filter=t.dataset.filter; render();
+});
+window.addEventListener("error", e=>{ try{ toast("⚠ Error: " + (e.message || (e.error && e.error.message) || e.type)); }catch{} });
+window.addEventListener("unhandledrejection", e=>{ try{ toast("⚠ Error: " + ((e.reason && (e.reason.message||e.reason)) || "promise rejected")); }catch{} });
+
+const VERSION = "v13 · 2026-08-23 · PWA + encrypted gist sync";
+["verLock","verApp"].forEach(id=>{ const el=$(id); if(el) el.textContent = "Build " + VERSION; });
+
+initLock();
+$("masterInput").focus();
+
+if("serviceWorker" in navigator){ window.addEventListener("load", ()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+</script>
+</body>
+</html>
