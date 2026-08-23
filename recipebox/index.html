@@ -317,10 +317,12 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
       <div class="card-lite">
         <b style="font-size:16px">Data</b>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn" id="dedupeBtn">Remove duplicates</button>
           <button class="btn" id="exportBtn">Export JSON</button>
           <button class="btn" id="importBtn">Import JSON</button>
           <button class="btn danger" id="resetBtn">Reset all</button>
         </div>
+        <div class="muted" style="font-size:12px;margin-top:8px">"Remove duplicates" merges any repeated recipes into one — handy if two devices synced before this was fixed.</div>
         <input type="file" id="importFile" accept="application/json" style="display:none">
       </div>
 
@@ -387,7 +389,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v5 dedupe";
+const APP_VERSION = "2026-08-23 · v5.1 dedupe-btn";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -1009,6 +1011,14 @@ $("#importFile").onchange=e=>{
   const rd=new FileReader();
   rd.onload=()=>{ try{ const s=JSON.parse(rd.result); if(!s.recipes) throw 0; state=migrate(s); touch(); renderGrid(); renderSetup(); toast("Imported"); }catch(err){ toast("Not a valid RecipeBox file"); } };
   rd.readAsText(f); e.target.value="";
+};
+$("#dedupeBtn").onclick=()=>{
+  const before=state.recipes.length;
+  const changed=dedupeRecipes(state);
+  const removed=before-state.recipes.length;
+  if(!changed || removed<=0){ toast("No duplicates found"); return; }
+  touch(); renderChips(); renderGrid();
+  toast("Removed "+removed+" duplicate"+(removed===1?"":"s"));
 };
 $("#resetBtn").onclick=()=>{
   if(!confirm("Reset everything back to the starter cookbook? This clears your added recipes, targets and today's plate on this device.")) return;
