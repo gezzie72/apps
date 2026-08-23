@@ -137,6 +137,10 @@
   .appt-item .awhen{font-weight:700}
   .appt-item .ameta{color:var(--muted); font-size:calc(13px * var(--tscale)); margin-top:3px}
   .appt-item .aresults{margin-top:8px; font-size:calc(13px * var(--tscale)); white-space:pre-wrap; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px}
+  .cday.bw-good{background:color-mix(in srgb, var(--good) 18%, var(--panel2)); border-color:var(--good)}
+  .cday.bw-low{background:color-mix(in srgb, var(--warn) 20%, var(--panel2)); border-color:var(--warn)}
+  .cday.bw-high{background:color-mix(in srgb, var(--danger) 18%, var(--panel2)); border-color:var(--danger)}
+  .cday.bw-good .mk{color:var(--good)} .cday.bw-low .mk{color:var(--warn)} .cday.bw-high .mk{color:var(--danger)}
   .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
   .seg button{background:var(--panel2); border:none; padding:6px 12px; cursor:pointer; color:var(--muted); font-weight:600}
   .seg button.on{background:var(--accent); color:#04150a}
@@ -167,6 +171,7 @@
     <button class="tab" data-view="diabetes">Diabetes</button>
     <button class="tab" data-view="measure">Measurements</button>
     <button class="tab" data-view="vitals">Vitals</button>
+    <button class="tab" data-view="bowel">Bowel</button>
     <button class="tab" data-view="nebido">Nebido</button>
     <button class="tab" data-view="appts">Appointments<span class="dot"></span></button>
     <button class="tab" data-view="setup">Setup</button>
@@ -177,6 +182,11 @@
   <!-- ============ TODAY ============ -->
   <section class="view active" id="view-today">
     <div id="dueArea"></div>
+    <div class="panel" id="insightsPanel">
+      <h2>Health insights</h2>
+      <div id="insightsArea"></div>
+      <p class="disc">General information based on common public health ranges — not a diagnosis or medical advice. Always discuss any changes or concerns with your GP or clinician.</p>
+    </div>
     <div class="panel">
       <h2>At a glance</h2>
       <div class="cards" id="glanceCards"></div>
@@ -288,9 +298,13 @@
   <!-- ============ VITALS ============ -->
   <section class="view" id="view-vitals">
     <div class="panel">
-      <h2>Blood type</h2>
-      <div class="row" style="align-items:flex-end">
-        <label class="fld">Your blood type
+      <h2>Profile</h2>
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap">
+        <label class="fld">Date of birth
+          <input type="date" id="dobIn">
+        </label>
+        <div class="card" style="min-width:110px"><div class="k">Age</div><div class="v" id="ageOut">—</div><div class="sub">from DOB</div></div>
+        <label class="fld">Blood type
           <select id="btSel">
             <option value="">Unknown / not set</option>
             <option>A+</option><option>A-</option>
@@ -299,8 +313,32 @@
             <option>O+</option><option>O-</option>
           </select>
         </label>
-        <span class="muted">Stored for your reference — check with your clinician if unsure.</span>
       </div>
+      <div class="row" style="align-items:flex-end; margin-top:12px; flex-wrap:wrap">
+        <span class="muted">Height:</span>
+        <div id="htInputs" class="row" style="align-items:flex-end; gap:8px"></div>
+        <div class="seg" id="htUnitSeg"><button data-u="cm">cm</button><button data-u="ftin">ft / in</button></div>
+        <button class="btn" id="htSave">Save height</button>
+        <span class="muted" id="htHint"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Weight</h2>
+      <div class="row" style="margin-bottom:10px">
+        <span class="muted">Units:</span>
+        <div class="seg" id="wUnitSeg"><button data-u="kg">kg</button><button data-u="st">stone &amp; lb</button></div>
+      </div>
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap">
+        <label class="fld">Date
+          <input type="date" id="wDate">
+        </label>
+        <div id="wInputs" class="row" style="align-items:flex-end; gap:8px"></div>
+        <button class="btn primary" id="wAdd">Add weight</button>
+      </div>
+      <div class="cards" id="wStats" style="margin-top:14px"></div>
+      <h3>Weight history</h3>
+      <div class="scrollx"><table class="hist" id="wHist"><tbody></tbody></table></div>
     </div>
 
     <div class="panel">
@@ -330,6 +368,51 @@
       <h2>Blood pressure history</h2>
       <div class="scrollx"><table class="hist" id="bpHist"><tbody></tbody></table></div>
       <p class="disc">Categories are a rough general guide (based on common adult ranges), not a diagnosis. Follow your clinician's advice.</p>
+    </div>
+  </section>
+
+  <!-- ============ BOWEL ============ -->
+  <section class="view" id="view-bowel">
+    <div class="panel">
+      <h2>Log a bowel movement</h2>
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap">
+        <label class="fld">When
+          <input type="datetime-local" id="bwWhen">
+        </label>
+        <label class="fld">Bristol type
+          <select id="bwType">
+            <option value="1">Type 1 — separate hard lumps</option>
+            <option value="2">Type 2 — lumpy &amp; sausage-shaped</option>
+            <option value="3">Type 3 — sausage with cracks</option>
+            <option value="4" selected>Type 4 — smooth soft sausage</option>
+            <option value="5">Type 5 — soft blobs, clear edges</option>
+            <option value="6">Type 6 — mushy, ragged edges</option>
+            <option value="7">Type 7 — watery, no solids</option>
+          </select>
+        </label>
+        <label class="fld" style="flex:1; min-width:160px">Note
+          <input type="text" id="bwNote" placeholder="optional">
+        </label>
+        <button class="btn primary" id="bwAdd">Add</button>
+      </div>
+      <div class="cards" id="bwStats" style="margin-top:14px"></div>
+    </div>
+
+    <div class="panel">
+      <div class="monthbar">
+        <button class="btn" id="bwPrev">‹</button>
+        <div class="title" id="bwMonth"></div>
+        <button class="btn" id="bwNextM">›</button>
+        <button class="btn" id="bwToday" style="margin-left:auto">Today</button>
+      </div>
+      <div class="cal" id="bwCal"></div>
+      <p class="muted" style="margin-top:10px"><span class="pill" style="border-color:var(--good);color:var(--good)">Types 3–4 (normal)</span> &nbsp; <span class="pill" style="border-color:var(--warn);color:var(--warn)">Types 1–2 (firm)</span> &nbsp; <span class="pill" style="border-color:var(--danger);color:var(--danger)">Types 6–7 (loose)</span></p>
+    </div>
+
+    <div class="panel">
+      <h2>History</h2>
+      <div class="scrollx"><table class="hist" id="bwHist"><tbody></tbody></table></div>
+      <p class="disc">The Bristol Stool Scale is a widely-used general reference. Types 3–4 are usually considered normal; persistent 1–2 (constipation) or 6–7 (loose) is worth mentioning to your GP. This is general information, not medical advice.</p>
     </div>
   </section>
 
@@ -530,7 +613,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-08-22 · v3 vitals+appts";
+const APP_VERSION = "2026-08-23 · v4 bowel+weight+insights";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -565,7 +648,13 @@ function defaultState(){
     bloodType:"",               // "" | "A+" | "O-" | ...
     bp:[],                      // {id, dt:"YYYY-MM-DDTHH:MM", sys, dia, pulse, note}
     appts:[],                   // {id, type, who, date:"YYYY-MM-DD", time, loc, notes, results}
-    bloodTestReminder:{ enabled:false, weeks:12 }
+    bloodTestReminder:{ enabled:false, weeks:12 },
+    dob:"",                     // "YYYY-MM-DD"
+    heightCm:null,              // number (canonical cm)
+    heightUnit:"cm",            // "cm" | "ftin" (display only)
+    weightUnit:"kg",            // "kg" | "st" (display only; weights stored in kg)
+    weights:[],                 // {id, date:"YYYY-MM-DD", kg}
+    bowel:[]                    // {id, dt:"YYYY-MM-DDTHH:MM", bristol:1-7, note}
   };
 }
 function normalize(s){
@@ -575,11 +664,15 @@ function normalize(s){
   if(!s.nebido || typeof s.nebido!=="object") s.nebido={intervalWeeks:12,history:[]};
   if(!Array.isArray(s.nebido.history)) s.nebido.history=[];
   if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
-  ["glucose","meds","measurements","bp","appts"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ["glucose","meds","measurements","bp","appts","weights","bowel"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   if(typeof s.bloodType!=="string") s.bloodType="";
   if(!s.bloodTestReminder || typeof s.bloodTestReminder!=="object") s.bloodTestReminder={enabled:false,weeks:12};
   s.bloodTestReminder.enabled=!!s.bloodTestReminder.enabled;
   s.bloodTestReminder.weeks=Math.max(1,Math.round(Number(s.bloodTestReminder.weeks)||12));
+  if(typeof s.dob!=="string") s.dob="";
+  s.heightCm = (s.heightCm==null||isNaN(Number(s.heightCm))) ? null : Number(s.heightCm);
+  if(s.heightUnit!=="ftin") s.heightUnit="cm";
+  if(s.weightUnit!=="st") s.weightUnit="kg";
   // Meds are now a simple reference list — migrate any older reminder-shaped meds.
   s.meds.forEach(m=>{ if(!m.category) m.category="Diabetes"; delete m.times; delete m.active; });
   delete s.medLog;
@@ -692,11 +785,13 @@ function renderToday(){
   g.innerHTML=[
     card("Latest glucose", lastG?`${gRound(toDisplayGlucose(lastG.value,lastG.unit))} <span class="muted" style="font-size:.6em">${gUnitLabel()}</span>`:"—", lastG?fmtDT(lastG.dt):"no readings yet"),
     card("Latest BP", lastBP?`${lastBP.sys}/${lastBP.dia}`:"—", lastBP?fmtDT(lastBP.dt):"no readings yet"),
+    card("Latest weight", latestWeightKg()!=null?fmtWeight(latestWeightKg()):"—", latestWeightKg()!=null?"":"none yet"),
     card("Next appointment", nextAp?fmtDateShort(nextAp):"—", nextApObj?`${nextApObj.type}${nextApObj.who?" · "+nextApObj.who:""}`:"none booked"),
     card("Medications", String(state.meds.length), state.meds.length?"on your list":"none listed yet"),
     card("Next Nebido", due?fmtDateShort(due):"—", due?`${daysBetween(todayISO(),due)>=0?"in "+daysBetween(todayISO(),due)+" days":"overdue"}`:"log one to start"),
     card("Last measured", lm?fmtDateShort(lm):"—", lm?`${daysBetween(lm,todayISO())} days ago`:"none yet")
   ].join("");
+  renderInsights();
 }
 function card(k,v,sub){ return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="sub">${sub||""}</div></div>`; }
 /* ---------- DIABETES ---------- */
@@ -926,7 +1021,158 @@ function bpCat(sys,dia){                 // rough general adult guide, not a dia
   if(sys>=120&&dia<80)   return {label:"Elevated",cls:"low"};
   return {label:"Normal",cls:"good"};
 }
+
+/* --- profile / height / weight / bmi helpers --- */
+const KG_PER_LB=0.45359237, LB_PER_STONE=14;
+function ageFromDOB(dob){ if(!dob) return null; const b=parseISO(dob); if(isNaN(b)) return null; const t=new Date(); let a=t.getFullYear()-b.getFullYear(); const m=t.getMonth()-b.getMonth(); if(m<0||(m===0&&t.getDate()<b.getDate())) a--; return a>=0&&a<150?a:null; }
+function kgToStLb(kg){ let totalLb=kg/KG_PER_LB; let st=Math.floor(totalLb/LB_PER_STONE); let lb=Math.round(totalLb-st*LB_PER_STONE); if(lb>=LB_PER_STONE){ st++; lb-=LB_PER_STONE; } return {st,lb}; }
+function stLbToKg(st,lb){ return ((Number(st)||0)*LB_PER_STONE+(Number(lb)||0))*KG_PER_LB; }
+function fmtWeight(kg){ if(kg==null) return "—"; if(state.weightUnit==="st"){ const {st,lb}=kgToStLb(kg); return `${st} st ${lb} lb`; } return `${Math.round(kg*10)/10} kg`; }
+function cmToFtIn(cm){ let totalIn=cm/2.54; let ft=Math.floor(totalIn/12); let inch=Math.round(totalIn-ft*12); if(inch>=12){ ft++; inch-=12; } return {ft,inch}; }
+function ftInToCm(ft,inch){ return ((Number(ft)||0)*12+(Number(inch)||0))*2.54; }
+function fmtHeight(cm){ if(!cm) return "—"; if(state.heightUnit==="ftin"){ const {ft,inch}=cmToFtIn(cm); return `${ft} ft ${inch} in`; } return `${Math.round(cm)} cm`; }
+function latestWeightKg(){ const w=[...state.weights].sort((a,b)=>a.date<b.date?1:-1)[0]; return w?w.kg:null; }
+function bmiValue(){ const kg=latestWeightKg(); if(kg==null||!state.heightCm) return null; const m=state.heightCm/100; return kg/(m*m); }
+function bmiCat(bmi){ if(bmi<18.5) return {label:"Underweight",cls:"low"}; if(bmi<25) return {label:"Healthy",cls:"good"}; if(bmi<30) return {label:"Overweight",cls:"low"}; return {label:"Obese",cls:"high"}; }
+
+function renderHeightInputs(){
+  const el=$("#htInputs"); if(!el) return;
+  $("#htUnitSeg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.u===state.heightUnit));
+  if(state.heightUnit==="ftin"){
+    const {ft,inch}=state.heightCm?cmToFtIn(state.heightCm):{ft:"",inch:""};
+    el.innerHTML=`<input type="number" step="1" data-ht="ft" value="${ft}" placeholder="ft" style="width:70px"><input type="number" step="1" data-ht="in" value="${inch}" placeholder="in" style="width:70px">`;
+  } else {
+    el.innerHTML=`<input type="number" step="any" data-ht="cm" value="${state.heightCm||""}" placeholder="cm" style="width:90px">`;
+  }
+  $("#htHint").textContent = state.heightCm ? "Saved: "+fmtHeight(state.heightCm) : "Needed for BMI";
+}
+function renderWeightInputs(){
+  const el=$("#wInputs"); if(!el) return;
+  $("#wUnitSeg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.u===state.weightUnit));
+  if(state.weightUnit==="st"){
+    el.innerHTML=`<label class="fld">Stone<input type="number" step="1" data-w="st" style="width:80px"></label><label class="fld">Pounds<input type="number" step="any" data-w="lb" style="width:80px"></label>`;
+  } else {
+    el.innerHTML=`<label class="fld">Weight (kg)<input type="number" step="any" data-w="kg" style="width:100px"></label>`;
+  }
+}
+function renderWeight(){
+  renderWeightInputs();
+  const list=[...state.weights].sort((a,b)=>a.date<b.date?1:-1);   // newest first
+  const latest=list[0], prev=list[1];
+  const bmi=bmiValue();
+  const cards=[ card("Latest weight", latest?fmtWeight(latest.kg):"—", latest?fmtDate(latest.date):"none yet") ];
+  if(latest && prev){ const d=latest.kg-prev.kg; const cls=d>0?"up":d<0?"down":"flat"; const arr=d>0?"▲":d<0?"▼":"–";
+    const dTxt = state.weightUnit==="st" ? `${arr} ${Math.round(Math.abs(d)/KG_PER_LB*10)/10} lb` : `${arr} ${d>0?"+":""}${Math.round(d*10)/10} kg`;
+    cards.push(card("Change", `<span class="delta ${cls}">${dTxt}</span>`, "vs previous")); }
+  if(bmi!=null){ const bc=bmiCat(bmi); cards.push(card("BMI", `${Math.round(bmi*10)/10}`, `<span class="pill ${bc.cls}">${bc.label}</span>`)); }
+  else if(latest && !state.heightCm){ cards.push(card("BMI", "—", "add height above")); }
+  $("#wStats").innerHTML=cards.join("");
+  const tb=$("#wHist").querySelector("tbody");
+  if(!list.length){ tb.innerHTML=`<tr><td class="muted">No weigh-ins yet.</td></tr>`; }
+  else{
+    const hasH=!!state.heightCm;
+    tb.innerHTML=`<tr><th>Date</th><th>Weight</th>${hasH?"<th>BMI</th>":""}<th></th></tr>`+
+      list.map(w=>{ let bmiCell=""; if(hasH){ const m=state.heightCm/100; const b=w.kg/(m*m); bmiCell=`<td>${Math.round(b*10)/10}</td>`; }
+        return `<tr><td>${fmtDate(w.date)}</td><td>${fmtWeight(w.kg)}</td>${bmiCell}<td><button class="btn sm danger" data-wdel="${w.id}">✕</button></td></tr>`; }).join("");
+    tb.querySelectorAll("[data-wdel]").forEach(b=> b.onclick=()=>{ state.weights=state.weights.filter(x=>x.id!==b.dataset.wdel); save(); renderVitals(); });
+  }
+}
+
+/* --- Bowel (Bristol scale) --- */
+const BRISTOL=[null,
+  "Type 1 · separate hard lumps",
+  "Type 2 · lumpy, sausage-shaped",
+  "Type 3 · sausage with cracks",
+  "Type 4 · smooth soft sausage",
+  "Type 5 · soft blobs, clear edges",
+  "Type 6 · mushy, ragged edges",
+  "Type 7 · watery, no solids"];
+function bristolClass(n){ if(n<=2) return "low"; if(n>=6) return "high"; return "good"; }
+let bwView=new Date();
+function renderBowel(){
+  if(!$("#bwWhen").value) $("#bwWhen").value=nowLocalInput();
+  const all=[...state.bowel];
+  const now=Date.now();
+  const wk=all.filter(r=> now-new Date(r.dt).getTime() <= 7*86400000);
+  let common="—";
+  if(all.length){ const counts={}; all.forEach(r=>counts[r.bristol]=(counts[r.bristol]||0)+1); const top=Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0]; common="Type "+top; }
+  $("#bwStats").innerHTML=[
+    card("Logged", String(all.length), "all time"),
+    card("Last 7 days", String(wk.length), wk.length===1?"movement":"movements"),
+    card("Most common", common, "by Bristol type")
+  ].join("");
+  renderBowelCal();
+  const hist=[...state.bowel].sort((a,b)=>a.dt<b.dt?1:-1);
+  const tb=$("#bwHist").querySelector("tbody");
+  if(!hist.length){ tb.innerHTML=`<tr><td class="muted">Nothing logged yet.</td></tr>`; }
+  else{
+    tb.innerHTML=`<tr><th>When</th><th>Bristol type</th><th>Note</th><th></th></tr>`+
+      hist.map(r=>`<tr><td>${fmtDT(r.dt)}</td><td><span class="pill ${bristolClass(r.bristol)}">${BRISTOL[r.bristol]||("Type "+r.bristol)}</span></td><td>${(r.note||"").replace(/</g,"&lt;")}</td><td><button class="btn sm danger" data-bwdel="${r.id}">✕</button></td></tr>`).join("");
+    tb.querySelectorAll("[data-bwdel]").forEach(b=> b.onclick=()=>{ state.bowel=state.bowel.filter(x=>x.id!==b.dataset.bwdel); save(); renderBowel(); });
+  }
+}
+function renderBowelCal(){
+  $("#bwMonth").textContent=MON[bwView.getMonth()]+" "+bwView.getFullYear();
+  const cal=$("#bwCal"); cal.innerHTML="";
+  DOW.forEach(d=>{ const h=document.createElement("div"); h.className="dow"; h.textContent=d; cal.appendChild(h); });
+  const y=bwView.getFullYear(), m=bwView.getMonth();
+  const first=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
+  for(let i=0;i<first;i++){ const e=document.createElement("div"); e.className="cday empty"; cal.appendChild(e); }
+  for(let d=1;d<=days;d++){
+    const ds=iso(new Date(y,m,d));
+    const list=state.bowel.filter(r=>r.dt.slice(0,10)===ds);
+    let tone="";
+    if(list.length){ if(list.some(r=>r.bristol>=6)) tone="bw-high"; else if(list.some(r=>r.bristol<=2)) tone="bw-low"; else tone="bw-good"; }
+    const cell=document.createElement("div");
+    cell.className="cday"+(tone?" "+tone:"")+(ds===todayISO()?" today":"");
+    cell.innerHTML=`<div class="num">${d}</div>`+(list.length?`<div class="mk">🚽 ×${list.length}</div>`:"");
+    cell.title=list.length?list.map(r=>BRISTOL[r.bristol]).join("\n"):"";
+    cal.appendChild(cell);
+  }
+}
+
+/* --- Health insights (Today) --- */
+function computeInsights(){
+  const out=[]; const age=ageFromDOB(state.dob);
+  const lastBP=[...state.bp].sort((a,b)=>a.dt<b.dt?1:-1)[0];
+  const bmi=bmiValue();
+  if(lastBP){
+    const c=bpCat(lastBP.sys,lastBP.dia);
+    let msg=`Latest blood pressure <b>${lastBP.sys}/${lastBP.dia}</b> — ${c.label.toLowerCase()}.`;
+    if(c.cls!=="good"){ msg += (age!=null && age>=80) ? ` Over 80, a target below 150/90 is commonly cited.` : ` For most adults a target below 140/90 is commonly cited.`; }
+    out.push({sev:c.cls==="good"?"info":(c.label==="Crisis"?"flag":"watch"), txt:msg});
+  }
+  if(bmi!=null){
+    const bc=bmiCat(bmi);
+    out.push({sev:bc.cls==="good"?"info":(bc.label==="Obese"?"flag":"watch"), txt:`BMI <b>${Math.round(bmi*10)/10}</b> — ${bc.label.toLowerCase()} range (from your height and latest weight).`});
+  } else if(state.weights.length && !state.heightCm){
+    out.push({sev:"info", txt:`Add your height in Vitals to see your BMI here.`});
+  }
+  // combined view — the factors considered together
+  const flags=[];
+  if(lastBP && bpCat(lastBP.sys,lastBP.dia).cls!=="good") flags.push("raised blood pressure");
+  if(bmi!=null && bmi>=25) flags.push("a BMI above the healthy range");
+  if(flags.length>=2){
+    out.push({sev:"flag", txt:`A few things stack up together — ${flags.join(" and ")}${age!=null&&age>=50?", and your age is a factor too":""}. Combined, these can add to cardiovascular risk, so it's worth raising with your GP.`});
+  }
+  return {age, out};
+}
+function renderInsights(){
+  const el=$("#insightsArea"); if(!el) return;
+  const {age,out}=computeInsights();
+  let html="";
+  if(age!=null) html+=`<div class="cards" style="margin-bottom:12px"><div class="card"><div class="k">Age</div><div class="v">${age}</div><div class="sub">from your date of birth</div></div></div>`;
+  if(!out.length){ html+=`<p class="muted">Log your blood pressure and weight, and set your date of birth and height in <b>Vitals</b>, to see general insights here.</p>`; }
+  else html+=out.map(i=>{ const cls=i.sev==="flag"?"over":i.sev==="watch"?"due":"ok"; const em=i.sev==="flag"?"⚠️":i.sev==="watch"?"👀":"ℹ️"; return `<div class="banner ${cls}"><span class="em">${em}</span><div class="grow">${i.txt}</div></div>`; }).join("");
+  el.innerHTML=html;
+}
+
 function renderVitals(){
+  // profile
+  if($("#dobIn").value!==state.dob) $("#dobIn").value=state.dob||"";
+  $("#ageOut").textContent = ageFromDOB(state.dob)!=null ? ageFromDOB(state.dob) : "—";
+  renderHeightInputs();
+  renderWeight();
   $("#btSel").value=state.bloodType||"";
   if(!$("#bpWhen").value) $("#bpWhen").value=nowLocalInput();
   const rows=[...state.bp];
@@ -1084,6 +1330,7 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
   if(v==="diabetes"){ renderGlucoseUI(); renderMeds(); }
   if(v==="measure") renderMeasureUI();
   if(v==="vitals") renderVitals();
+  if(v==="bowel") renderBowel();
   if(v==="nebido") renderNebidoUI();
   if(v==="appts") renderApptsUI();
 }));
@@ -1129,6 +1376,26 @@ $("#nbToday").onclick=()=>{ nbView=new Date(); renderNebidoCal(); };
 
 /* vitals */
 $("#btSel").onchange=()=>{ state.bloodType=$("#btSel").value; save(); toast(state.bloodType?("Blood type set: "+state.bloodType):"Blood type cleared"); };
+$("#dobIn").onchange=()=>{ state.dob=$("#dobIn").value||""; save(); $("#ageOut").textContent=ageFromDOB(state.dob)!=null?ageFromDOB(state.dob):"—"; toast("Date of birth saved"); };
+$("#htUnitSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{ state.heightUnit=b.dataset.u; save(); renderHeightInputs(); });
+$("#htSave").onclick=()=>{
+  let cm=null;
+  if(state.heightUnit==="ftin"){ const ft=$('#htInputs [data-ht="ft"]').value, inch=$('#htInputs [data-ht="in"]').value; if(ft||inch) cm=ftInToCm(ft,inch); }
+  else { const v=$('#htInputs [data-ht="cm"]').value; if(v) cm=Number(v); }
+  if(cm && cm>0){ state.heightCm=Math.round(cm*10)/10; save(); renderVitals(); toast("Height saved: "+fmtHeight(state.heightCm)); }
+  else { state.heightCm=null; save(); renderVitals(); toast("Height cleared"); }
+};
+$("#wUnitSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{ state.weightUnit=b.dataset.u; save(); renderWeight(); });
+$("#wAdd").onclick=()=>{
+  const date=$("#wDate").value || todayISO();
+  let kg=null;
+  if(state.weightUnit==="st"){ const st=$('#wInputs [data-w="st"]').value, lb=$('#wInputs [data-w="lb"]').value; if(st||lb) kg=stLbToKg(st,lb); }
+  else { const v=$('#wInputs [data-w="kg"]').value; if(v) kg=Number(v); }
+  if(!kg||kg<=0){ toast("Enter a weight"); return; }
+  const existing=state.weights.find(w=>w.date===date);
+  if(existing) existing.kg=kg; else state.weights.push({id:uid(), date, kg});
+  save(); renderWeight(); toast("Weight saved");
+};
 $("#bpAdd").onclick=()=>{
   const sys=Math.round(Number($("#bpSys").value)), dia=Math.round(Number($("#bpDia").value));
   if(!sys||!dia||sys<=0||dia<=0){ toast("Enter systolic and diastolic"); return; }
@@ -1154,6 +1421,18 @@ $("#apNextM").onclick=()=>{ apView.setMonth(apView.getMonth()+1); renderApptCal(
 $("#apToday").onclick=()=>{ apView=new Date(); renderApptCal(); };
 $("#btrOn").onchange=()=>{ state.bloodTestReminder.enabled=$("#btrOn").checked; save(); renderApptsUI(); };
 $("#btrWeeks").onchange=()=>{ state.bloodTestReminder.weeks=Math.max(1,Math.round(Number($("#btrWeeks").value)||12)); save(); renderApptsUI(); };
+
+/* bowel */
+$("#bwAdd").onclick=()=>{
+  const when=$("#bwWhen").value || nowLocalInput();
+  const bristol=Number($("#bwType").value)||4;
+  state.bowel.push({id:uid(), dt:when, bristol, note:$("#bwNote").value.trim()});
+  $("#bwNote").value=""; $("#bwWhen").value=nowLocalInput();
+  save(); renderBowel(); toast("Logged");
+};
+$("#bwPrev").onclick=()=>{ bwView.setMonth(bwView.getMonth()-1); renderBowelCal(); };
+$("#bwNextM").onclick=()=>{ bwView.setMonth(bwView.getMonth()+1); renderBowelCal(); };
+$("#bwToday").onclick=()=>{ bwView=new Date(); renderBowelCal(); };
 
 /* unit toggles */
 function renderUnitSegs(){
@@ -1307,6 +1586,8 @@ function initAll(){
   $("#msDate").value=todayISO();
   $("#bpWhen").value=nowLocalInput();
   $("#apDate").value=todayISO();
+  $("#bwWhen").value=nowLocalInput();
+  $("#wDate").value=todayISO();
   editApptId=null; editResultsId=null;
   renderUnitSegs();
   renderToday();
@@ -1314,6 +1595,7 @@ function initAll(){
   renderMeds();
   renderMeasureUI();
   renderVitals();
+  renderBowel();
   renderNebidoUI();
   renderApptsUI();
   renderSync();
