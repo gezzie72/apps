@@ -498,7 +498,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v10 carbcount+GL+aisles";
+const APP_VERSION = "2026-08-23 · v10.1 per-serving-label";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -1008,11 +1008,12 @@ function openDetail(id){
       <button class="fav${r.favorite?" on":""}" data-fav="${r.id}" style="position:static;font-size:22px">${r.favorite?"★":"☆"}</button>
       <button class="close" id="detailClose">✕</button>
     </div>
-    <div><span class="pill cat">${esc(r.category)}</span> <span class="pill">${r.servings} serving${r.servings>1?"s":""}</span></div>
+    <div><span class="pill cat">${esc(r.category)}</span> <span class="pill">Serves ${r.servings}</span></div>
     ${lk.length?`<div class="likewarn" style="margin-top:12px">💚 Has ${lk.map(esc).join(", ")} — on your likes list</div>`:""}
     ${conf.length?`<div class="allerwarn" style="margin-top:12px">⚠ Contains ${conf.map(esc).join(", ")} — on your allergy list</div>`:""}
     ${dis.length?`<div class="dislikewarn" style="margin-top:12px">🙁 Contains ${dis.map(esc).join(", ")} — on your dislikes list</div>`:""}
-    <div class="nutgrid">
+    <div class="sec-h" style="margin-top:16px">Nutrition — per serving</div>
+    <div class="nutgrid" style="margin-top:0">
       <div class="nutbig carb"><b>${r.carbs}g</b><span>Carbs</span></div>
       <div class="nutbig"><b>${r.sugar}g</b><span>Sugar</span></div>
       <div class="nutbig"><b>${r.cal}</b><span>Kcal</span></div>
