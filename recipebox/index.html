@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>RecipeBox</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e7e9ee; --muted:#98a0ae; --accent:#38b98a; --accent2:#2f9e6f;
+    --danger:#ff6b6b; --warn:#f2b21e; --ok:#54d18c; --carb:#6ea8fe; --radius:14px;
+    --tscale:1;
+  }
+  @media (prefers-color-scheme:light){
+    :root:not([data-theme]){ --bg:#f4f6f5; --panel:#ffffff; --panel2:#eef2f0; --line:#dde3e0;
+      --text:#1b1f27; --muted:#5a6473; --accent:#1f9d6b; --accent2:#12855a; --carb:#2f6fed; }
+  }
+  :root[data-theme="light"]{ --bg:#f4f6f5; --panel:#ffffff; --panel2:#eef2f0; --line:#dde3e0;
+    --text:#1b1f27; --muted:#5a6473; --accent:#1f9d6b; --accent2:#12855a; --carb:#2f6fed; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{ margin:0; background:var(--bg); color:var(--text);
+    font:calc(15px*var(--tscale))/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%; overflow-x:hidden; }
+  button,input,textarea,select{font:inherit; color:inherit}
+  .app{display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden}
+
+  /* Top bar */
+  .top{display:flex; align-items:center; gap:10px; padding:12px 14px calc(12px + env(safe-area-inset-top)); padding-top:max(12px,env(safe-area-inset-top)); background:var(--panel); border-bottom:1px solid var(--line)}
+  .brand{display:flex; align-items:center; gap:9px}
+  .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px}
+  .brand h1{font-size:17px; margin:0; letter-spacing:.3px}
+  .synctop{margin-left:auto; display:flex; align-items:center; gap:8px; cursor:pointer}
+  .synclbl{font-size:11px; color:var(--muted)}
+  .synclbl.flash{color:var(--ok); font-weight:600}
+  .spin{width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;display:none;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* Tabs */
+  .tabs{display:flex; gap:4px; padding:8px 10px 0; background:var(--panel); border-bottom:1px solid var(--line); overflow-x:auto}
+  .tabs button{background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); padding:8px 14px; cursor:pointer; font-weight:600; white-space:nowrap}
+  .tabs button.active{color:var(--text); border-bottom-color:var(--accent)}
+
+  .wrap{flex:1; overflow-y:auto; min-height:0; padding:14px; padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+  .page{max-width:920px; margin:0 auto}
+
+  .muted{color:var(--muted)}
+  .btn{ background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap }
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none; color:#fff; font-weight:600}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:var(--danger); border-color:transparent; background:transparent}
+  .btn.sm{padding:5px 9px; font-size:13px; border-radius:8px}
+  .in{ width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px 12px; outline:none }
+  .in:focus{border-color:var(--accent)}
+  select.in{appearance:none}
+  label.fld{display:block; margin:10px 0}
+  label.fld>span{display:block; font-size:12px; color:var(--muted); margin-bottom:4px}
+
+  /* Cookbook toolbar */
+  .cbtools{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px}
+  .search{flex:1; min-width:180px}
+  .chips{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px}
+  .chip{background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:6px 12px; font-size:13px; color:var(--muted); cursor:pointer}
+  .chip.active{color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; font-weight:600}
+  .togs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
+  .tog{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:7px 11px; cursor:pointer}
+  .tog input{accent-color:var(--accent)}
+
+  /* Recipe grid */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:13px; cursor:pointer; display:flex; flex-direction:column; gap:8px; position:relative; transition:border-color .12s}
+  .card:hover{border-color:var(--accent)}
+  .card.warnrecipe{border-color:color-mix(in srgb,var(--danger) 45%, var(--line))}
+  .card h3{margin:0; font-size:15.5px; line-height:1.3; padding-right:26px}
+  .fav{position:absolute; top:11px; right:11px; font-size:17px; line-height:1; background:none; border:none; cursor:pointer; color:var(--muted)}
+  .fav.on{color:var(--warn)}
+  .pill{display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--panel2); color:var(--muted); border:1px solid var(--line)}
+  .pill.cat{color:var(--accent); border-color:color-mix(in srgb,var(--accent) 40%, var(--line))}
+  .nutrow{display:flex; gap:6px; flex-wrap:wrap}
+  .nut{display:flex; flex-direction:column; align-items:center; background:var(--panel2); border-radius:9px; padding:5px 9px; min-width:52px}
+  .nut b{font-size:14px}
+  .nut span{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px}
+  .nut.carb b{color:var(--carb)}
+  .tags{display:flex; gap:5px; flex-wrap:wrap}
+  .tag{font-size:10.5px; padding:1px 7px; border-radius:6px; background:var(--panel2); color:var(--muted)}
+  .tag.diet{color:var(--accent)}
+  .tag.al{color:var(--danger)}
+  .allerwarn{font-size:11.5px; color:var(--danger); font-weight:600; display:flex; align-items:center; gap:5px}
+  .empty{text-align:center; color:var(--muted); padding:50px 20px}
+
+  /* Overlays */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:flex-start; justify-content:center; padding:24px 14px; overflow-y:auto; z-index:40}
+  .overlay.open{display:flex}
+  .sheet{background:var(--panel); border:1px solid var(--line); border-radius:16px; width:100%; max-width:640px; padding:20px; margin:auto 0}
+  .sheet h2{margin:0 0 4px; font-size:20px}
+  .sheethead{display:flex; align-items:flex-start; gap:10px; margin-bottom:8px}
+  .sheethead h2{flex:1}
+  .close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:2px 6px}
+  .nutgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0}
+  .nutbig{background:var(--panel2); border-radius:12px; padding:10px; text-align:center}
+  .nutbig b{display:block; font-size:19px}
+  .nutbig.carb b{color:var(--carb)}
+  .nutbig span{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px}
+  .sec-h{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:16px 0 6px}
+  ul.ing{margin:0; padding-left:20px} ul.ing li{margin:3px 0}
+  ol.steps{margin:0; padding-left:20px} ol.steps li{margin:6px 0}
+  .checkgrid{display:flex; flex-wrap:wrap; gap:7px}
+  .cbx{display:inline-flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:6px 10px; font-size:13px; cursor:pointer}
+  .cbx input{accent-color:var(--accent)}
+  .cbx.al input{accent-color:var(--danger)}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .row3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+  .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:18px}
+  .actions .spacer{flex:1}
+
+  /* Today */
+  .targetgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px}
+  .meter{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:13px}
+  .meter .lbl{display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px}
+  .meter .lbl b{font-size:15px}
+  .bar{height:9px; border-radius:6px; background:var(--panel2); overflow:hidden}
+  .bar>i{display:block; height:100%; border-radius:6px; background:var(--accent); transition:width .25s}
+  .bar>i.warn{background:var(--warn)} .bar>i.over{background:var(--danger)}
+  .miniinfo{display:flex; gap:14px; margin-bottom:14px; flex-wrap:wrap}
+  .miniinfo div{font-size:13px; color:var(--muted)}
+  .miniinfo b{color:var(--text)}
+  .plateitem{display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px}
+  .plateitem .pi-main{flex:1; min-width:0}
+  .plateitem .pi-main .t{font-weight:600}
+  .plateitem .pi-main .s{font-size:12px; color:var(--muted)}
+  .stepper{display:inline-flex; align-items:center; gap:8px; background:var(--panel2); border-radius:9px; padding:3px 6px}
+  .stepper button{background:none; border:none; color:var(--text); font-size:16px; cursor:pointer; width:22px}
+  .card-lite{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px}
+
+  /* Sync sheet extras */
+  .kv{font-size:13px; color:var(--muted); margin:8px 0}
+  .kv b{color:var(--text); word-break:break-all}
+  .link{color:var(--accent); text-decoration:none}
+  a.link{cursor:pointer}
+  .disclaimer{font-size:12px; color:var(--muted); border-top:1px solid var(--line); margin-top:20px; padding-top:12px}
+  .toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:10px 16px; border-radius:10px; opacity:0; pointer-events:none; transition:opacity .2s; z-index:60; max-width:90vw; text-align:center}
+  .toast.show{opacity:1}
+  .themebtns,.sizebtns{display:flex; gap:6px}
+  .themebtns button,.sizebtns button{flex:1; background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:8px; cursor:pointer; color:var(--muted)}
+  .themebtns button.primary,.sizebtns button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent; font-weight:600}
+  .applist{display:flex; flex-direction:column; gap:8px}
+  .applist a{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+  @media (max-width:520px){ .nutgrid{grid-template-columns:repeat(3,1fr)} .targetgrid{grid-template-columns:1fr} .row2,.row3{grid-template-columns:1fr} }
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+<script>
+// Apply saved theme early to avoid a flash.
+try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") document.documentElement.setAttribute("data-theme", _t); }catch(e){}
+</script>
+
+<div class="app">
+  <div class="top">
+    <div class="brand"><div class="logo">🥗</div><h1>RecipeBox</h1></div>
+    <div class="synctop" id="syncTop"><div class="spin" id="topSpin"></div><span class="synclbl" id="syncLastTop">Not synced</span></div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button data-tab="cookbook" class="active">Cookbook</button>
+    <button data-tab="today">Today</button>
+    <button data-tab="setup">Setup</button>
+  </div>
+
+  <div class="wrap">
+    <!-- COOKBOOK -->
+    <div class="page" id="tab-cookbook">
+      <div class="cbtools">
+        <input class="in search" id="search" placeholder="Search recipes, ingredients…" autocomplete="off">
+        <button class="btn primary" id="addRecipe">＋ Recipe</button>
+      </div>
+      <div class="chips" id="catChips"></div>
+      <div class="togs">
+        <label class="tog"><input type="checkbox" id="togAllergen"> Hide recipes with my allergens</label>
+        <label class="tog"><input type="checkbox" id="togDiet"> Match my dietary needs only</label>
+      </div>
+      <div class="grid" id="recipeGrid"></div>
+      <div class="disclaimer">Nutrition values are approximate per-serving estimates to help with planning — not a substitute for advice from your GP, diabetes team or dietitian. Always follow their guidance and check labels for your own allergies.</div>
+    </div>
+
+    <!-- TODAY -->
+    <div class="page" id="tab-today" style="display:none">
+      <div class="card-lite">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <b style="font-size:16px">Today's plate</b>
+          <span class="muted" id="todayDate" style="font-size:13px"></span>
+          <button class="btn ghost sm" id="clearDay" style="margin-left:auto">Clear day</button>
+        </div>
+        <div class="muted" style="font-size:13px">Add recipes from the Cookbook to tally your day against your targets.</div>
+      </div>
+      <div class="targetgrid" id="targetMeters"></div>
+      <div class="miniinfo" id="todayMini"></div>
+      <div id="plateList"></div>
+    </div>
+
+    <!-- SETUP -->
+    <div class="page" id="tab-setup" style="display:none">
+      <div class="card-lite">
+        <b style="font-size:16px">Daily targets</b>
+        <div class="muted" style="font-size:13px;margin-bottom:8px">Editable — used on the Today tab. Carbs are usually the number that matters most for blood sugar.</div>
+        <div class="row2">
+          <label class="fld"><span>Calorie target (kcal)</span><input class="in" id="calTarget" type="number" inputmode="numeric" min="0"></label>
+          <label class="fld"><span>Carb target (g)</span><input class="in" id="carbTarget" type="number" inputmode="numeric" min="0"></label>
+        </div>
+      </div>
+
+      <div class="card-lite">
+        <b style="font-size:16px">My allergies</b>
+        <div class="muted" style="font-size:13px;margin-bottom:8px">Recipes containing these are flagged in red, and can be hidden from the Cookbook.</div>
+        <div class="checkgrid" id="allergyPicker"></div>
+      </div>
+
+      <div class="card-lite">
+        <b style="font-size:16px">Dietary requirements</b>
+        <div class="muted" style="font-size:13px;margin-bottom:8px">Use "Match my dietary needs only" in the Cookbook to show just recipes that fit.</div>
+        <div class="checkgrid" id="dietPicker"></div>
+      </div>
+
+      <div class="card-lite">
+        <b style="font-size:16px">Appearance</b>
+        <label class="fld" style="margin-top:10px"><span>Theme</span>
+          <div class="themebtns" id="themeCtl">
+            <button data-t="system">System</button><button data-t="light">Light</button><button data-t="dark">Dark</button>
+          </div>
+        </label>
+        <label class="fld"><span>Text size</span>
+          <div class="sizebtns" id="sizeCtl">
+            <button data-s="0.9">Small</button><button data-s="1">Default</button><button data-s="1.15">Large</button><button data-s="1.3">XL</button>
+          </div>
+        </label>
+      </div>
+
+      <div class="card-lite">
+        <b style="font-size:16px">Sync across devices</b>
+        <div class="muted" style="font-size:13px;margin:6px 0 10px">Keep desktop and phone in sync via a <b>private</b> GitHub gist. Paste a classic token with only the <b>gist</b> scope on each device — it finds your shared RecipeBox automatically. Your token stays in this browser and only talks to GitHub.</div>
+        <div id="syncDisconnected">
+          <label class="fld"><span>GitHub token (gist scope)</span>
+            <div style="display:flex;gap:8px"><input class="in" id="ghToken" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"><button class="btn sm" id="ghShowToken">Show</button></div>
+          </label>
+          <label class="fld"><span>Gist ID (optional — auto-detected)</span><input class="in" id="ghGist" placeholder="auto" autocomplete="off" spellcheck="false"></label>
+          <button class="btn primary" id="ghConnect">Connect</button>
+          <p class="muted" style="font-size:12px;margin-top:8px"><a class="link" href="https://github.com/settings/tokens/new?scopes=gist&description=RecipeBox%20sync" target="_blank" rel="noopener">Create a token →</a> use a <b>classic</b> token, tick only <b>gist</b>. (Fine-grained tokens can't access gists.)</p>
+        </div>
+        <div id="syncConnected" style="display:none">
+          <div class="kv">Account: <b id="syncUser">…</b></div>
+          <div class="kv">Gist ID: <b id="syncGistId"></b> <button class="btn sm" id="ghCopyGist" style="margin-left:4px">Copy</button> <a class="link" id="syncGistLink" href="#" target="_blank" rel="noopener" style="margin-left:6px">Open ↗</a></div>
+          <label class="tog" style="margin:8px 0"><input type="checkbox" id="ghAuto"> Auto-sync</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn" id="ghSyncNow">Sync now</button>
+            <button class="btn danger" id="ghDisconnect">Disconnect</button>
+          </div>
+          <div class="muted" id="syncMsg" style="font-size:12px;margin-top:8px"></div>
+          <div class="muted" style="font-size:12px">Last sync: <span id="syncLast">never</span></div>
+        </div>
+      </div>
+
+      <div class="card-lite">
+        <b style="font-size:16px">Data</b>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn" id="exportBtn">Export JSON</button>
+          <button class="btn" id="importBtn">Import JSON</button>
+          <button class="btn danger" id="resetBtn">Reset all</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json" style="display:none">
+      </div>
+
+      <div class="card-lite">
+        <b style="font-size:16px">My apps</b>
+        <div class="applist" style="margin-top:10px">
+          <a href="https://gezzie72.github.io/apps/" target="_blank" rel="noopener">🚀 <span>App launcher</span></a>
+          <a href="https://gezzie72.github.io/apps/fitplan/" target="_blank" rel="noopener">💪 <span>FitPlan</span></a>
+          <a href="https://gezzie72.github.io/apps/ideapad/" target="_blank" rel="noopener">💡 <span>IdeaPad</span></a>
+          <a href="https://gezzie72.github.io/apps/healthlog/" target="_blank" rel="noopener">➕ <span>HealthLog</span></a>
+          <a href="https://gezzie72.github.io/apps/vault/" target="_blank" rel="noopener">🔐 <span>Vault</span></a>
+        </div>
+        <div class="muted" id="appVersion" style="font-size:12px;margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL OVERLAY -->
+<div class="overlay" id="detailOverlay">
+  <div class="sheet" id="detailSheet"></div>
+</div>
+
+<!-- EDITOR OVERLAY -->
+<div class="overlay" id="editOverlay">
+  <div class="sheet">
+    <div class="sheethead"><h2 id="editTitle">New recipe</h2><button class="close" id="editClose">✕</button></div>
+    <label class="fld"><span>Title</span><input class="in" id="fTitle" placeholder="e.g. Veggie omelette"></label>
+    <div class="row2">
+      <label class="fld"><span>Category</span><select class="in" id="fCat"></select></label>
+      <label class="fld"><span>Servings</span><input class="in" id="fServings" type="number" min="1" value="1"></label>
+    </div>
+    <div class="sec-h">Per-serving nutrition</div>
+    <div class="row3">
+      <label class="fld"><span>Carbs (g)</span><input class="in" id="fCarbs" type="number" min="0" inputmode="decimal"></label>
+      <label class="fld"><span>Sugar (g)</span><input class="in" id="fSugar" type="number" min="0" inputmode="decimal"></label>
+      <label class="fld"><span>Calories</span><input class="in" id="fCal" type="number" min="0" inputmode="numeric"></label>
+    </div>
+    <div class="row3">
+      <label class="fld"><span>Protein (g)</span><input class="in" id="fProtein" type="number" min="0" inputmode="decimal"></label>
+      <label class="fld"><span>Fat (g)</span><input class="in" id="fFat" type="number" min="0" inputmode="decimal"></label>
+      <label class="fld"><span>Fibre (g)</span><input class="in" id="fFibre" type="number" min="0" inputmode="decimal"></label>
+    </div>
+    <label class="fld"><span>Ingredients (one per line)</span><textarea class="in" id="fIng" rows="5" placeholder="2 eggs&#10;Handful spinach&#10;…"></textarea></label>
+    <label class="fld"><span>Method (one step per line)</span><textarea class="in" id="fSteps" rows="5" placeholder="Whisk the eggs…&#10;Heat the pan…"></textarea></label>
+    <div class="sec-h">Allergens</div>
+    <div class="checkgrid" id="fAllergens"></div>
+    <div class="sec-h">Dietary tags</div>
+    <div class="checkgrid" id="fDiet"></div>
+    <label class="fld" style="margin-top:14px"><span>Notes (optional)</span><textarea class="in" id="fNotes" rows="2"></textarea></label>
+    <div class="actions">
+      <button class="btn danger" id="editDelete" style="display:none">Delete</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="editCancel">Cancel</button>
+      <button class="btn primary" id="editSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const now = () => Date.now();
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const APP_VERSION = "2026-08-23 · v1";
+const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let toastTimer=null;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function fmtDate(iso){ try{ return new Date(iso+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}); }catch(e){ return iso; } }
+function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+
+const CATEGORIES = ["Breakfast","Snack","Main","Fruit"];
+const ALLERGENS  = ["Gluten","Dairy","Egg","Nuts","Peanuts","Soy","Fish","Shellfish","Sesame"];
+const DIETS      = ["Vegetarian","Vegan","Low-carb","High-protein","Gluten-free","Dairy-free"];
+
+/* ================= seed cookbook ================= */
+function R(title,category,servings,n,ing,steps,allergens,diet,notes){
+  return {title,category,servings,
+    cal:n[0],carbs:n[1],sugar:n[2],protein:n[3],fat:n[4],fibre:n[5],
+    ingredients:ing, steps, allergens, diet, notes:notes||""};
+}
+// n = [cal, carbs, sugar, protein, fat, fibre]  (per serving)
+const SEED = [
+  R("Greek Yogurt & Berry Bowl","Breakfast",1,[180,14,10,15,6,3],
+    ["150g plain Greek yogurt","80g mixed berries","1 tbsp chopped almonds","Sprinkle of cinnamon"],
+    ["Spoon yogurt into a bowl.","Top with berries and almonds.","Dust with cinnamon and serve."],
+    ["Dairy","Nuts"],["Vegetarian","Low-carb","Gluten-free","High-protein"],
+    "Berries are lower-GI than tropical fruit — good for steady blood sugar."),
+  R("Veggie Omelette","Breakfast",1,[240,5,3,18,17,2],
+    ["2 eggs","Handful spinach","3 cherry tomatoes, halved","1 tbsp grated cheese","Salt & pepper","Small knob of butter"],
+    ["Whisk the eggs with seasoning.","Melt butter, wilt spinach and tomatoes for 1 min.","Pour in eggs, cook until nearly set.","Add cheese, fold and serve."],
+    ["Egg","Dairy"],["Vegetarian","Low-carb","Gluten-free","High-protein"],
+    "A low-carb classic — keeps you full without spiking sugar."),
+  R("Overnight Oats with Chia","Breakfast",1,[290,27,6,10,9,8],
+    ["40g rolled oats","1 tbsp chia seeds","150ml milk (or unsweetened alternative)","50g raspberries","Cinnamon"],
+    ["Mix oats, chia, milk and cinnamon in a jar.","Chill overnight.","Top with raspberries before eating."],
+    ["Gluten","Dairy"],["Vegetarian","High-protein"],
+    "Oats + chia fibre slows sugar release. Use certified GF oats if coeliac."),
+  R("Avocado & Egg on Rye","Breakfast",1,[300,18,2,13,19,7],
+    ["1 slice rye/seeded bread","½ avocado","1 poached or boiled egg","Chilli flakes","Squeeze of lemon"],
+    ["Toast the rye bread.","Mash avocado with lemon and spread on top.","Add the egg and finish with chilli flakes."],
+    ["Egg","Gluten"],["Vegetarian"],
+    "Dense rye/seeded bread has a lower GI than white."),
+  R("Smoked Salmon Scramble","Breakfast",1,[280,3,1,24,19,0],
+    ["2 eggs","40g smoked salmon","1 tbsp light cream cheese","Chives","Black pepper"],
+    ["Whisk eggs with pepper.","Softly scramble over low heat.","Fold through salmon, cream cheese and chives; serve."],
+    ["Fish","Egg","Dairy"],["Low-carb","Gluten-free","High-protein"],
+    "Almost carb-free and very filling."),
+
+  R("Hummus & Veg Sticks","Snack",1,[160,12,3,5,10,5],
+    ["3 tbsp hummus","Carrot, cucumber & pepper sticks"],
+    ["Cut vegetables into sticks.","Serve with hummus for dipping."],
+    ["Sesame"],["Vegan","Gluten-free","Dairy-free"],
+    "Fibre + protein snack that won't spike sugar."),
+  R("Apple & Peanut Butter","Snack",1,[210,20,14,6,13,5],
+    ["1 small apple, sliced","1 tbsp natural peanut butter"],
+    ["Slice the apple.","Serve with peanut butter to dip."],
+    ["Peanuts","Nuts"],["Vegan","Gluten-free","Dairy-free"],
+    "The peanut fat & protein blunt the apple's sugar rise."),
+  R("Cottage Cheese & Cucumber","Snack",1,[120,6,4,14,4,1],
+    ["100g cottage cheese","½ cucumber, sliced","Black pepper"],
+    ["Spoon cottage cheese into a bowl.","Add cucumber and pepper."],
+    ["Dairy"],["Vegetarian","Low-carb","Gluten-free","High-protein"],""),
+  R("Almonds & Cheese","Snack",1,[230,6,2,11,19,3],
+    ["25g almonds","30g cheese"],
+    ["Portion out and enjoy — great for steady energy."],
+    ["Nuts","Dairy"],["Vegetarian","Low-carb","Gluten-free"],
+    "Keep to a small handful — high in calories."),
+  R("Roasted Chickpeas","Snack",2,[190,22,1,8,6,7],
+    ["1 tin chickpeas, drained","1 tbsp olive oil","1 tsp paprika","Salt"],
+    ["Heat oven to 200°C.","Toss chickpeas with oil and spices.","Roast 25–30 min until crisp."],
+    [],["Vegan","Gluten-free","Dairy-free"],
+    "Crunchy high-fibre swap for crisps."),
+  R("Boiled Eggs & Tomatoes","Snack",1,[160,4,3,13,10,1],
+    ["2 eggs","Handful cherry tomatoes","Pinch of salt"],
+    ["Boil eggs 7–8 min.","Cool, peel and serve with tomatoes."],
+    ["Egg"],["Vegetarian","Low-carb","Gluten-free","Dairy-free","High-protein"],""),
+
+  R("Grilled Chicken & Roasted Veg","Main",1,[380,16,8,38,16,6],
+    ["1 chicken breast","Courgette, pepper & red onion, chopped","1 tbsp olive oil","Mixed herbs","Salt & pepper"],
+    ["Heat oven to 200°C.","Toss veg in oil and herbs, roast 25 min.","Season and grill/pan the chicken 6–7 min each side.","Plate together."],
+    [],["Low-carb","Gluten-free","Dairy-free","High-protein"],""),
+  R("Baked Salmon with Greens","Main",1,[400,8,3,34,25,4],
+    ["1 salmon fillet","Tenderstem broccoli & green beans","1 tbsp olive oil","Lemon","Garlic"],
+    ["Heat oven to 190°C.","Bake salmon with lemon and garlic 15 min.","Steam or sauté the greens.","Serve together."],
+    ["Fish"],["Low-carb","Gluten-free","Dairy-free","High-protein"],
+    "Oily fish gives omega-3 with barely any carbs."),
+  R("Turkey & Bean Chilli","Main",4,[340,28,7,30,10,10],
+    ["500g lean turkey mince","1 tin kidney beans","1 tin chopped tomatoes","1 onion","2 tsp chilli & cumin","Peppers"],
+    ["Brown the mince and onion.","Add peppers, spices, tomatoes and beans.","Simmer 25–30 min.","Serve as is or with a little brown rice."],
+    [],["Gluten-free","Dairy-free","High-protein"],
+    "Beans add slow-release carbs and fibre."),
+  R("Lentil & Vegetable Curry","Main",4,[320,35,8,15,9,12],
+    ["250g red lentils","1 tin coconut milk (light)","2 tbsp curry paste","Onion, spinach, cauliflower","1 tin chopped tomatoes"],
+    ["Soften onion, stir in curry paste.","Add lentils, tomatoes and coconut milk.","Simmer 25 min, adding veg.","Stir through spinach to wilt."],
+    [],["Vegan","Gluten-free","Dairy-free"],
+    "Lentils are low-GI — filling without a big sugar spike."),
+  R("Beef & Broccoli Stir-Fry","Main",2,[360,14,6,32,18,4],
+    ["300g lean beef strips","1 head broccoli","2 tbsp soy sauce","1 tsp sesame oil","Ginger & garlic","1 tsp cornflour"],
+    ["Sear beef in a hot pan, set aside.","Stir-fry broccoli, ginger and garlic.","Return beef with soy, sesame and a splash of water thickened with cornflour."],
+    ["Soy","Sesame"],["Dairy-free","Low-carb","High-protein"],
+    "Use reduced-salt soy sauce; skip cornflour to lower carbs further."),
+  R("Cauliflower-Crust Veggie Pizza","Main",2,[300,20,6,16,16,5],
+    ["1 cauliflower, riced","1 egg","60g grated mozzarella","2 tbsp passata","Peppers, mushrooms, rocket"],
+    ["Steam and squeeze dry the riced cauliflower.","Mix with egg and half the cheese; bake base 20 min at 200°C.","Top with passata, veg and remaining cheese; bake 10 min."],
+    ["Egg","Dairy"],["Vegetarian","Gluten-free"],
+    "A much lower-carb pizza night."),
+  R("Courgette Noodles & Meatballs","Main",2,[330,12,7,27,19,4],
+    ["300g lean beef/turkey mince","1 egg (binder)","2 large courgettes, spiralised","1 tin chopped tomatoes","Garlic & basil"],
+    ["Mix mince with egg and seasoning; roll into meatballs.","Brown, then simmer in the tomato sauce 15 min.","Quickly sauté the courgette noodles.","Serve sauce over the courgetti."],
+    ["Egg"],["Gluten-free","Dairy-free","Low-carb","High-protein"],
+    "Courgetti swaps out the pasta carbs."),
+
+  R("Berry & Nut Fruit Salad","Fruit",1,[150,18,12,4,8,5],
+    ["Strawberries, blueberries & raspberries","1 tbsp mixed chopped nuts","Squeeze of lime"],
+    ["Combine the berries.","Scatter nuts and finish with lime."],
+    ["Nuts"],["Vegan","Gluten-free","Dairy-free"],
+    "Berries are among the lower-sugar fruits."),
+  R("Pear & Walnut Bowl","Fruit",1,[180,22,15,3,10,6],
+    ["1 ripe pear, sliced","6 walnut halves","Cinnamon"],
+    ["Slice the pear.","Top with walnuts and a dusting of cinnamon."],
+    ["Nuts"],["Vegan","Gluten-free","Dairy-free"],
+    "Eat with the skin on for extra fibre to slow sugar release.")
+];
+
+/* ================= state ================= */
+const LS_KEY = "recipebox.data";
+function defaultProfile(){ return { calTarget:2000, carbTarget:130, allergies:[], diets:[] }; }
+function freshState(){
+  const t = now();
+  const recipes = SEED.map((r,i)=> Object.assign({}, r, {id:uid(), favorite:false, seed:true, createdAt:t-i, updatedAt:t-i, order:i}));
+  return { recipes, deleted:{}, profile:defaultProfile(), today:{date:todayISO(), items:[]}, updatedAt:t };
+}
+function normalizeRecipe(r){
+  r.title=r.title||"Untitled";
+  if(!CATEGORIES.includes(r.category)) r.category="Main";
+  r.servings=Math.max(1, parseInt(r.servings)||1);
+  ["cal","carbs","sugar","protein","fat","fibre"].forEach(k=> r[k]=num(r[k]));
+  if(!Array.isArray(r.ingredients)) r.ingredients = r.ingredients? String(r.ingredients).split("\n").filter(x=>x.trim()) : [];
+  if(!Array.isArray(r.steps)) r.steps = r.steps? String(r.steps).split("\n").filter(x=>x.trim()) : [];
+  r.allergens = (r.allergens||[]).filter(a=>ALLERGENS.includes(a));
+  r.diet = (r.diet||[]).filter(d=>DIETS.includes(d));
+  if(r.favorite===undefined) r.favorite=false;
+  r.notes = r.notes||"";
+  if(r.updatedAt===undefined) r.updatedAt = now();
+  return r;
+}
+function load(){
+  try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const s=JSON.parse(raw); return migrate(s); } }catch(e){}
+  return freshState();
+}
+function migrate(s){
+  s.recipes = (s.recipes||[]).map(normalizeRecipe);
+  s.deleted = s.deleted||{};
+  s.profile = Object.assign(defaultProfile(), s.profile||{});
+  s.today = s.today||{date:todayISO(), items:[]};
+  if(s.today.date!==todayISO()) s.today = {date:todayISO(), items:[]};
+  if(!Array.isArray(s.today.items)) s.today.items=[];
+  s.updatedAt = s.updatedAt||now();
+  return s;
+}
+let state = load();
+function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function touch(){ state.updatedAt = now(); persist(); schedulePush(); }
+
+/* ================= view state ================= */
+let activeTab="cookbook";
+let catFilter="All";
+let searchQ="";
+const VIEW = {
+  get hideAllergen(){ try{return localStorage.getItem("recipebox.hideAllergen")==="1"}catch(e){return false} },
+  set hideAllergen(v){ try{localStorage.setItem("recipebox.hideAllergen",v?"1":"0")}catch(e){} },
+  get dietOnly(){ try{return localStorage.getItem("recipebox.dietOnly")==="1"}catch(e){return false} },
+  set dietOnly(v){ try{localStorage.setItem("recipebox.dietOnly",v?"1":"0")}catch(e){} }
+};
+
+/* ================= tabs ================= */
+$("#tabs").querySelectorAll("button").forEach(b=> b.onclick=()=> setTab(b.dataset.tab));
+function setTab(t){
+  activeTab=t;
+  $("#tabs").querySelectorAll("button").forEach(b=> b.classList.toggle("active", b.dataset.tab===t));
+  ["cookbook","today","setup"].forEach(id=> $("#tab-"+id).style.display = id===t?"":"none");
+  if(t==="today") renderToday();
+  if(t==="setup") renderSetup();
+}
+
+/* ================= cookbook ================= */
+function recipeConflicts(r){ const a=state.profile.allergies||[]; return r.allergens.filter(x=>a.includes(x)); }
+function matchesDiet(r){ const d=state.profile.diets||[]; return d.every(x=> r.diet.includes(x)); }
+
+function renderChips(){
+  const cats=["All",...CATEGORIES,"Favorites"];
+  $("#catChips").innerHTML = cats.map(c=>`<button class="chip${c===catFilter?" active":""}" data-cat="${c}">${c==="Favorites"?"★ Favorites":esc(c)}</button>`).join("");
+  $("#catChips").querySelectorAll(".chip").forEach(b=> b.onclick=()=>{ catFilter=b.dataset.cat; renderChips(); renderGrid(); });
+}
+function renderGrid(){
+  $("#togAllergen").checked = VIEW.hideAllergen;
+  $("#togDiet").checked = VIEW.dietOnly;
+  let list = state.recipes.slice();
+  if(catFilter==="Favorites") list=list.filter(r=>r.favorite);
+  else if(catFilter!=="All") list=list.filter(r=>r.category===catFilter);
+  if(searchQ){
+    const q=searchQ.toLowerCase();
+    list=list.filter(r=> r.title.toLowerCase().includes(q) || (r.ingredients||[]).join(" ").toLowerCase().includes(q) || r.category.toLowerCase().includes(q));
+  }
+  if(VIEW.hideAllergen) list=list.filter(r=> recipeConflicts(r).length===0);
+  if(VIEW.dietOnly) list=list.filter(matchesDiet);
+  list.sort((a,b)=> (a.category===b.category? a.title.localeCompare(b.title) : CATEGORIES.indexOf(a.category)-CATEGORIES.indexOf(b.category)));
+
+  const g=$("#recipeGrid");
+  if(!list.length){ g.innerHTML=`<div class="empty">No recipes match.<br><span class="muted">Try clearing filters or add your own with ＋ Recipe.</span></div>`; return; }
+  g.innerHTML = list.map(r=>{
+    const conf=recipeConflicts(r);
+    const tags = r.diet.slice(0,3).map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")
+      + r.allergens.slice(0,3).map(a=>`<span class="tag al">${esc(a)}</span>`).join("");
+    return `<div class="card${conf.length?" warnrecipe":""}" data-id="${r.id}">
+      <button class="fav${r.favorite?" on":""}" data-fav="${r.id}" title="Favorite">${r.favorite?"★":"☆"}</button>
+      <div><span class="pill cat">${esc(r.category)}</span></div>
+      <h3>${esc(r.title)}</h3>
+      <div class="nutrow">
+        <div class="nut carb"><b>${r.carbs}g</b><span>Carbs</span></div>
+        <div class="nut"><b>${r.cal}</b><span>Kcal</span></div>
+        <div class="nut"><b>${r.sugar}g</b><span>Sugar</span></div>
+        <div class="nut"><b>${r.protein}g</b><span>Protein</span></div>
+      </div>
+      ${conf.length?`<div class="allerwarn">⚠ Contains ${conf.map(esc).join(", ")}</div>`:""}
+      <div class="tags">${tags}</div>
+    </div>`;
+  }).join("");
+  g.querySelectorAll(".card").forEach(c=> c.onclick=e=>{ if(e.target.closest(".fav")) return; openDetail(c.dataset.id); });
+  g.querySelectorAll(".fav").forEach(b=> b.onclick=e=>{ e.stopPropagation(); toggleFav(b.dataset.fav); });
+}
+function toggleFav(id){ const r=recipeById(id); if(!r) return; r.favorite=!r.favorite; r.updatedAt=now(); touch(); renderGrid(); if($("#detailOverlay").classList.contains("open")) openDetail(id); }
+function recipeById(id){ return state.recipes.find(r=>r.id===id); }
+
+$("#search").oninput = e=>{ searchQ=e.target.value.trim(); renderGrid(); };
+$("#addRecipe").onclick = ()=> openEditor(null);
+$("#togAllergen").onchange = e=>{ VIEW.hideAllergen=e.target.checked; renderGrid(); };
+$("#togDiet").onchange = e=>{ VIEW.dietOnly=e.target.checked; renderGrid(); };
+
+/* ================= detail ================= */
+function openDetail(id){
+  const r=recipeById(id); if(!r) return;
+  const conf=recipeConflicts(r);
+  const sheet=$("#detailSheet");
+  sheet.innerHTML = `
+    <div class="sheethead">
+      <h2>${esc(r.title)}</h2>
+      <button class="fav${r.favorite?" on":""}" data-fav="${r.id}" style="position:static;font-size:22px">${r.favorite?"★":"☆"}</button>
+      <button class="close" id="detailClose">✕</button>
+    </div>
+    <div><span class="pill cat">${esc(r.category)}</span> <span class="pill">${r.servings} serving${r.servings>1?"s":""}</span></div>
+    ${conf.length?`<div class="allerwarn" style="margin-top:12px">⚠ Contains ${conf.map(esc).join(", ")} — on your allergy list</div>`:""}
+    <div class="nutgrid">
+      <div class="nutbig carb"><b>${r.carbs}g</b><span>Carbs</span></div>
+      <div class="nutbig"><b>${r.sugar}g</b><span>Sugar</span></div>
+      <div class="nutbig"><b>${r.cal}</b><span>Kcal</span></div>
+      <div class="nutbig"><b>${r.protein}g</b><span>Protein</span></div>
+      <div class="nutbig"><b>${r.fat}g</b><span>Fat</span></div>
+      <div class="nutbig"><b>${r.fibre}g</b><span>Fibre</span></div>
+    </div>
+    ${r.diet.length?`<div class="tags">${r.diet.map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")}</div>`:""}
+    ${r.ingredients.length?`<div class="sec-h">Ingredients</div><ul class="ing">${r.ingredients.map(i=>`<li>${esc(i)}</li>`).join("")}</ul>`:""}
+    ${r.steps.length?`<div class="sec-h">Method</div><ol class="steps">${r.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol>`:""}
+    ${r.notes?`<div class="sec-h">Notes</div><div class="muted">${esc(r.notes)}</div>`:""}
+    <div class="actions">
+      <button class="btn ghost sm" id="detailEdit">Edit</button>
+      <div class="spacer"></div>
+      <div class="stepper" style="margin-right:6px"><button id="dServMinus">−</button><span id="dServ">1</span><button id="dServPlus">+</button></div>
+      <button class="btn primary" id="addToToday">＋ Add to Today</button>
+    </div>`;
+  $("#detailOverlay").classList.add("open");
+  let servings=1;
+  $("#detailClose").onclick=closeDetail;
+  sheet.querySelector(".fav").onclick=()=>toggleFav(r.id);
+  $("#detailEdit").onclick=()=>{ closeDetail(); openEditor(r.id); };
+  $("#dServMinus").onclick=()=>{ servings=Math.max(1,servings-1); $("#dServ").textContent=servings; };
+  $("#dServPlus").onclick=()=>{ servings++; $("#dServ").textContent=servings; };
+  $("#addToToday").onclick=()=>{ addToToday(r.id, servings); closeDetail(); toast("Added to Today"); };
+}
+function closeDetail(){ $("#detailOverlay").classList.remove("open"); }
+$("#detailOverlay").onclick = e=>{ if(e.target===$("#detailOverlay")) closeDetail(); };
+
+/* ================= editor ================= */
+let editingId=null;
+function buildPickers(){
+  $("#fCat").innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join("");
+  $("#fAllergens").innerHTML = ALLERGENS.map(a=>`<label class="cbx al"><input type="checkbox" value="${a}">${a}</label>`).join("");
+  $("#fDiet").innerHTML = DIETS.map(d=>`<label class="cbx"><input type="checkbox" value="${d}">${d}</label>`).join("");
+}
+function openEditor(id){
+  editingId=id;
+  const r = id? recipeById(id) : null;
+  $("#editTitle").textContent = r? "Edit recipe" : "New recipe";
+  $("#editDelete").style.display = r? "" : "none";
+  $("#fTitle").value=r?r.title:"";
+  $("#fCat").value=r?r.category:"Breakfast";
+  $("#fServings").value=r?r.servings:1;
+  $("#fCarbs").value=r?r.carbs:""; $("#fSugar").value=r?r.sugar:""; $("#fCal").value=r?r.cal:"";
+  $("#fProtein").value=r?r.protein:""; $("#fFat").value=r?r.fat:""; $("#fFibre").value=r?r.fibre:"";
+  $("#fIng").value=r?(r.ingredients||[]).join("\n"):"";
+  $("#fSteps").value=r?(r.steps||[]).join("\n"):"";
+  $("#fNotes").value=r?r.notes:"";
+  $("#fAllergens").querySelectorAll("input").forEach(c=> c.checked = r? r.allergens.includes(c.value):false);
+  $("#fDiet").querySelectorAll("input").forEach(c=> c.checked = r? r.diet.includes(c.value):false);
+  $("#editOverlay").classList.add("open");
+  $("#fTitle").focus();
+}
+function closeEditor(){ $("#editOverlay").classList.remove("open"); editingId=null; }
+$("#editClose").onclick=closeEditor; $("#editCancel").onclick=closeEditor;
+$("#editOverlay").onclick=e=>{ if(e.target===$("#editOverlay")) closeEditor(); };
+$("#editSave").onclick=()=>{
+  const title=$("#fTitle").value.trim();
+  if(!title){ toast("Give it a title first"); $("#fTitle").focus(); return; }
+  const data={
+    title, category:$("#fCat").value, servings:Math.max(1,parseInt($("#fServings").value)||1),
+    cal:num($("#fCal").value), carbs:num($("#fCarbs").value), sugar:num($("#fSugar").value),
+    protein:num($("#fProtein").value), fat:num($("#fFat").value), fibre:num($("#fFibre").value),
+    ingredients:$("#fIng").value.split("\n").map(x=>x.trim()).filter(Boolean),
+    steps:$("#fSteps").value.split("\n").map(x=>x.trim()).filter(Boolean),
+    allergens:[...$("#fAllergens").querySelectorAll("input:checked")].map(c=>c.value),
+    diet:[...$("#fDiet").querySelectorAll("input:checked")].map(c=>c.value),
+    notes:$("#fNotes").value.trim()
+  };
+  if(editingId){ const r=recipeById(editingId); Object.assign(r,data); r.updatedAt=now(); r.seed=false; }
+  else { const r=normalizeRecipe(Object.assign({id:uid(),favorite:false,createdAt:now(),updatedAt:now()},data)); state.recipes.push(r); }
+  touch(); renderGrid(); closeEditor(); toast("Saved");
+};
+$("#editDelete").onclick=()=>{
+  if(!editingId) return;
+  if(!confirm("Delete this recipe?")) return;
+  const id=editingId;
+  state.recipes = state.recipes.filter(r=>r.id!==id);
+  state.deleted[id]=now();
+  state.today.items = (state.today.items||[]).filter(it=>it.recipeId!==id);
+  touch(); renderGrid(); closeEditor(); toast("Deleted");
+};
+
+/* ================= today ================= */
+function ensureToday(){ if(state.today.date!==todayISO()){ state.today={date:todayISO(), items:[]}; touch(); } }
+function addToToday(recipeId, servings){
+  ensureToday();
+  const existing = state.today.items.find(it=>it.recipeId===recipeId);
+  if(existing) existing.servings += servings;
+  else state.today.items.push({id:uid(), recipeId, servings});
+  touch();
+  if(activeTab==="today") renderToday();
+}
+function todayTotals(){
+  const t={cal:0,carbs:0,sugar:0,protein:0,fat:0,fibre:0};
+  (state.today.items||[]).forEach(it=>{ const r=recipeById(it.recipeId); if(!r) return;
+    ["cal","carbs","sugar","protein","fat","fibre"].forEach(k=> t[k]+= r[k]*it.servings); });
+  Object.keys(t).forEach(k=> t[k]=Math.round(t[k]));
+  return t;
+}
+function meter(label, val, target, unit){
+  const pct = target>0? Math.min(100, Math.round(val/target*100)) : 0;
+  const raw = target>0? val/target : 0;
+  const cls = raw>1?"over": raw>0.85?"warn":"";
+  const overtxt = target>0 && val>target? ` · ${val-target}${unit} over` : "";
+  return `<div class="meter">
+    <div class="lbl"><span>${label}</span><span><b>${val}</b>${unit} / ${target}${unit}</span></div>
+    <div class="bar"><i class="${cls}" style="width:${pct}%"></i></div>
+    <div class="muted" style="font-size:11.5px;margin-top:6px">${target>0?pct+"% of target"+overtxt:"Set a target in Setup"}</div>
+  </div>`;
+}
+function renderToday(){
+  ensureToday();
+  $("#todayDate").textContent = fmtDate(state.today.date);
+  const t=todayTotals(), p=state.profile;
+  $("#targetMeters").innerHTML = meter("Carbs", t.carbs, p.carbTarget||0, "g") + meter("Calories", t.cal, p.calTarget||0, " kcal");
+  $("#todayMini").innerHTML = `<div>Sugar <b>${t.sugar}g</b></div><div>Protein <b>${t.protein}g</b></div><div>Fat <b>${t.fat}g</b></div><div>Fibre <b>${t.fibre}g</b></div>`;
+  const items=state.today.items||[];
+  const list=$("#plateList");
+  if(!items.length){ list.innerHTML=`<div class="empty">Nothing added yet.<br><span class="muted">Open a recipe in the Cookbook and tap “Add to Today”.</span></div>`; return; }
+  list.innerHTML = items.map(it=>{ const r=recipeById(it.recipeId); if(!r) return "";
+    return `<div class="plateitem" data-id="${it.id}">
+      <div class="pi-main"><div class="t">${esc(r.title)}</div><div class="s">${Math.round(r.carbs*it.servings)}g carbs · ${Math.round(r.cal*it.servings)} kcal</div></div>
+      <div class="stepper"><button data-minus="${it.id}">−</button><span>${it.servings}</span><button data-plus="${it.id}">+</button></div>
+      <button class="btn danger sm" data-rm="${it.id}">✕</button>
+    </div>`;
+  }).join("");
+  list.querySelectorAll("[data-plus]").forEach(b=> b.onclick=()=>chgServ(b.dataset.plus,1));
+  list.querySelectorAll("[data-minus]").forEach(b=> b.onclick=()=>chgServ(b.dataset.minus,-1));
+  list.querySelectorAll("[data-rm]").forEach(b=> b.onclick=()=>{ state.today.items=state.today.items.filter(x=>x.id!==b.dataset.rm); touch(); renderToday(); });
+}
+function chgServ(itemId, d){ const it=state.today.items.find(x=>x.id===itemId); if(!it) return; it.servings=Math.max(1,it.servings+d); touch(); renderToday(); }
+$("#clearDay").onclick=()=>{ if(!state.today.items.length){ toast("Nothing to clear"); return; } if(confirm("Clear today's plate?")){ state.today.items=[]; touch(); renderToday(); } };
+
+/* ================= setup: profile ================= */
+function renderSetup(){
+  $("#calTarget").value = state.profile.calTarget||"";
+  $("#carbTarget").value = state.profile.carbTarget||"";
+  $("#allergyPicker").innerHTML = ALLERGENS.map(a=>`<label class="cbx al"><input type="checkbox" value="${a}" ${state.profile.allergies.includes(a)?"checked":""}>${a}</label>`).join("");
+  $("#dietPicker").innerHTML = DIETS.map(d=>`<label class="cbx"><input type="checkbox" value="${d}" ${state.profile.diets.includes(d)?"checked":""}>${d}</label>`).join("");
+  $("#allergyPicker").querySelectorAll("input").forEach(c=> c.onchange=()=>{ state.profile.allergies=[...$("#allergyPicker").querySelectorAll("input:checked")].map(x=>x.value); touch(); });
+  $("#dietPicker").querySelectorAll("input").forEach(c=> c.onchange=()=>{ state.profile.diets=[...$("#dietPicker").querySelectorAll("input:checked")].map(x=>x.value); touch(); });
+  renderTheme(); renderTextSize(); renderSync();
+  $("#appVersion").textContent = "RecipeBox " + APP_VERSION;
+}
+$("#calTarget").oninput = e=>{ state.profile.calTarget=Math.max(0,parseInt(e.target.value)||0); touch(); };
+$("#carbTarget").oninput = e=>{ state.profile.carbTarget=Math.max(0,parseInt(e.target.value)||0); touch(); };
+
+/* ================= appearance ================= */
+const THEME_KEY="recipebox.theme";
+let theme = (()=>{ try{return localStorage.getItem(THEME_KEY)||"system"}catch(e){return "system"} })();
+function applyTheme(v){
+  const root=document.documentElement;
+  if(v==="system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme",v);
+  const isLight = v==="light" || (v==="system" && window.matchMedia && window.matchMedia("(prefers-color-scheme:light)").matches);
+  const mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content", isLight?"#f4f6f5":"#0f1115");
+}
+function renderTheme(){ const c=$("#themeCtl"); if(c) c.querySelectorAll("button").forEach(b=> b.classList.toggle("primary", b.dataset.t===theme)); }
+function setTheme(v){ theme=v; try{localStorage.setItem(THEME_KEY,v)}catch(e){} applyTheme(v); renderTheme(); }
+document.addEventListener("click", e=>{ const b=e.target.closest("#themeCtl button"); if(b) setTheme(b.dataset.t); });
+if(window.matchMedia) window.matchMedia("(prefers-color-scheme:light)").addEventListener("change", ()=>{ if(theme==="system") applyTheme("system"); });
+
+const SCALE_KEY="recipebox.scale";
+let textScale=(()=>{ try{return localStorage.getItem(SCALE_KEY)||"1"}catch(e){return "1"} })();
+function applyScale(v){ document.documentElement.style.setProperty("--tscale", v); }
+function renderTextSize(){ const c=$("#sizeCtl"); if(c) c.querySelectorAll("button").forEach(b=> b.classList.toggle("primary", b.dataset.s===textScale)); }
+function setScale(v){ textScale=v; try{localStorage.setItem(SCALE_KEY,v)}catch(e){} applyScale(v); renderTextSize(); }
+document.addEventListener("click", e=>{ const b=e.target.closest("#sizeCtl button"); if(b) setScale(b.dataset.s); });
+
+/* ================= data export/import/reset ================= */
+$("#exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="recipebox-"+todayISO()+".json"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+$("#importBtn").onclick=()=> $("#importFile").click();
+$("#importFile").onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ const s=JSON.parse(rd.result); if(!s.recipes) throw 0; state=migrate(s); touch(); renderGrid(); renderSetup(); toast("Imported"); }catch(err){ toast("Not a valid RecipeBox file"); } };
+  rd.readAsText(f); e.target.value="";
+};
+$("#resetBtn").onclick=()=>{
+  if(!confirm("Reset everything back to the starter cookbook? This clears your added recipes, targets and today's plate on this device.")) return;
+  state=freshState(); touch(); catFilter="All"; searchQ=""; $("#search").value=""; renderChips(); renderGrid(); renderSetup(); toast("Reset to starter cookbook");
+};
+
+/* ================= GitHub Gist sync (adapted from IdeaPad, per-recipe LWW) ================= */
+const GH = {
+  get token(){ try{return localStorage.getItem("recipebox.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("recipebox.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("recipebox.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("recipebox.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("recipebox.gh.token",v):localStorage.removeItem("recipebox.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("recipebox.gh.gist",v):localStorage.removeItem("recipebox.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("recipebox.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("recipebox.gh.user",v):localStorage.removeItem("recipebox.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+const GIST_FILE="recipebox.json";
+async function ghApi(method, path, body){
+  let res;
+  try{
+    res=await fetch("https://api.github.com"+path,{method,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+  }catch(e){ throw new Error("Can't reach GitHub — if you opened the file directly (file://), serve it over http instead."); }
+  if(!res.ok){
+    let detail=""; try{ detail=(await res.json()).message||""; }catch(e){}
+    if(res.status===403||res.status===429) pauseSync(retryAfterSecs(res));
+    if(res.status===401) throw new Error("Invalid or expired token (401). Create a new classic token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited."+(detail?" "+detail:""));
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(detail?" — "+detail:""));
+  }
+  return res.json();
+}
+function markSync(msg,err){ const m=$("#syncMsg"); if(m){ m.textContent=msg||""; m.style.color=err?"var(--danger)":"var(--muted)"; } }
+function setSyncTime(){ try{localStorage.setItem("recipebox.gh.lastSync",String(now()))}catch(e){} updateLastSync(); }
+function updateLastSync(){
+  let t=0; try{ t=Number(localStorage.getItem("recipebox.gh.lastSync"))||0; }catch(e){}
+  const rel=!t?"never":(()=>{ const s=Math.round((now()-t)/1000); return s<10?"just now":s<60?s+"s ago":s<3600?Math.round(s/60)+" min ago":s<86400?Math.round(s/3600)+"h ago":new Date(t).toLocaleString(); })();
+  const el=$("#syncLast"); if(el) el.textContent=rel;
+  const el2=$("#syncLastTop"); if(el2 && !el2.classList.contains("flash") && el2.textContent!=="Sync error — tap" && !syncPaused()){ el2.style.color=""; el2.textContent=GH.connected?"Synced "+rel:"Not synced"; }
+}
+function bgSyncError(){ if(syncPaused()) return; const el=$("#syncLastTop"); if(el){ el.classList.remove("flash"); el.style.color="var(--danger)"; el.textContent="Sync error — tap"; } }
+function spin(on){ ["topSpin"].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=on?"inline-block":"none"; }); }
+let flashTimer=null;
+function flashSynced(){ const el=$("#syncLastTop"); if(!el) return; el.classList.add("flash"); el.textContent="Updated ✓"; clearTimeout(flashTimer); flashTimer=setTimeout(()=>{ el.classList.remove("flash"); updateLastSync(); },2500); }
+setInterval(updateLastSync,30000);
+
+let syncPausedUntil=0, pendingPush=false;
+function syncPaused(){ return now()<syncPausedUntil; }
+function retryAfterSecs(res){
+  const ra=res.headers.get("Retry-After"); if(ra){ const n=parseInt(ra,10); if(n>0) return Math.min(3600,Math.max(30,n)); }
+  const reset=res.headers.get("X-RateLimit-Reset"); if(reset){ const ms=parseInt(reset,10)*1000-Date.now(); if(ms>0) return Math.min(3600,Math.ceil(ms/1000)); }
+  return 90;
+}
+function pauseSync(secs){ syncPausedUntil=now()+secs*1000; const el=$("#syncLastTop"); if(el){ el.classList.remove("flash"); el.style.color="var(--danger)"; el.textContent="Rate-limited — paused "+secs+"s"; } }
+
+let pushTimer=null;
+function schedulePush(){
+  if(!GH.connected||!GH.auto) return;
+  if(syncPaused()){ pendingPush=true; return; }
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>{ syncPush().then(()=>{pendingPush=false}).catch(e=>{ pendingPush=true; spin(false); if(!syncPaused()) markSync("Push failed: "+e.message,true); }); },1500);
+}
+async function syncPush(){
+  if(!GH.connected) return;
+  spin(true); markSync("Saving…");
+  try{ await ghApi("PATCH","/gists/"+GH.gist,{files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); setSyncTime(); markSync("Synced"); }
+  finally{ spin(false); }
+}
+function syncPushBeacon(){
+  if(!GH.connected) return;
+  try{ fetch("https://api.github.com/gists/"+GH.gist,{method:"PATCH",keepalive:true,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}})}).then(()=>{ try{localStorage.setItem("recipebox.gh.lastSync",String(now()))}catch(e){} }).catch(()=>{}); }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden && GH.connected && GH.auto && pendingPush) syncPushBeacon(); });
+
+// Merge remote into local: recipes per-id LWW + tombstones; profile & today from newer top-level updatedAt.
+function mergeRemote(remote){
+  const local=state;
+  const byId={};
+  (local.recipes||[]).forEach(r=> byId[r.id]={local:r});
+  (remote.recipes||[]).forEach(r=> (byId[r.id]=byId[r.id]||{}).remote=r);
+  const delLocal=local.deleted||{}, delRemote=remote.deleted||{}, deleted={};
+  new Set([...Object.keys(delLocal),...Object.keys(delRemote)]).forEach(id=> deleted[id]=Math.max(delLocal[id]||0,delRemote[id]||0));
+  const merged=[];
+  Object.keys(byId).forEach(id=>{
+    const {local:l, remote:r}=byId[id];
+    const pick = !l? r : !r? l : ((r.updatedAt||0)>(l.updatedAt||0)? r : l);
+    const delAt=deleted[id]||0;
+    if(delAt && delAt>=(pick.updatedAt||0)) return;
+    merged.push(pick);
+    if(delAt) delete deleted[id];
+  });
+  const cutoff=now()-60*86400*1000;
+  Object.keys(deleted).forEach(id=>{ if(deleted[id]<cutoff) delete deleted[id]; });
+  let changed = merged.length!==(local.recipes||[]).length;
+  if(!changed){ const lm={}; (local.recipes||[]).forEach(r=>lm[r.id]=r.updatedAt||0); changed=merged.some(r=>(lm[r.id]||-1)!==(r.updatedAt||0)); }
+  const remoteNewer = (remote.updatedAt||0) > (local.updatedAt||0);
+  const newProfile = remoteNewer && remote.profile ? Object.assign(defaultProfile(),remote.profile) : local.profile;
+  let newToday = remoteNewer && remote.today ? remote.today : local.today;
+  if(!newToday || newToday.date!==todayISO()) newToday={date:todayISO(), items:(newToday&&newToday.date===todayISO())?newToday.items:[]};
+  if(remoteNewer && (JSON.stringify(newProfile)!==JSON.stringify(local.profile) || JSON.stringify(newToday)!==JSON.stringify(local.today))) changed=true;
+  state={ recipes:merged.map(normalizeRecipe), deleted, profile:newProfile, today:newToday, updatedAt:Math.max(local.updatedAt||0, remote.updatedAt||0) };
+  persist();
+  return changed;
+}
+
+let gistEtag=null, pulling=false;
+async function gistGet(){
+  const headers={"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json"};
+  if(gistEtag) headers["If-None-Match"]=gistEtag;
+  let res;
+  try{ res=await fetch("https://api.github.com/gists/"+GH.gist,{headers,cache:"no-store"}); }
+  catch(e){ throw new Error("Can't reach GitHub (offline?)."); }
+  if(res.status===304) return {notModified:true};
+  if(!res.ok){
+    let detail=""; try{ detail=(await res.json()).message||""; }catch(e){}
+    if(res.status===403||res.status===429) pauseSync(retryAfterSecs(res));
+    if(res.status===401) throw new Error("Invalid or expired token (401).");
+    if(res.status===404) throw new Error("Gist not found (404).");
+    throw new Error("GitHub "+res.status+(detail?" — "+detail:""));
+  }
+  gistEtag=res.headers.get("ETag")||gistEtag;
+  return { data:await res.json() };
+}
+async function syncPull(force, quiet){
+  if(!GH.connected) return;
+  if(pulling && quiet) return;
+  pulling=true;
+  if(!quiet){ spin(true); markSync("Checking…"); }
+  try{
+    const r=await gistGet();
+    if(r.notModified){ setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+    const g=r.data, f=g.files&&g.files[GIST_FILE];
+    if(!f||!f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+    const remote=JSON.parse(f.truncated&&f.raw_url? await (await fetch(f.raw_url)).text() : f.content);
+    const changed=mergeRemote(remote);
+    if(force||changed){
+      renderChips(); renderGrid(); if(activeTab==="today") renderToday(); if(activeTab==="setup") renderSetup();
+      setSyncTime();
+      if(changed){ markSync("Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date");
+      return changed?"pulled":"uptodate";
+    } else { setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+  } finally{ pulling=false; if(!quiet) spin(false); }
+}
+async function findGist(){
+  const list=await ghApi("GET","/gists?per_page=100");
+  const mine=(list||[]).filter(g=> (g.files&&g.files[GIST_FILE]) || g.description==="RecipeBox sync");
+  if(!mine.length) return null;
+  mine.sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  return mine[0].id;
+}
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$("#syncUser"); if(el) el.textContent=u.login; }catch(e){} }
+function renderSync(){
+  const d=$("#syncDisconnected"), c=$("#syncConnected"); if(!d||!c) return;
+  d.style.display=GH.connected?"none":""; c.style.display=GH.connected?"":"none";
+  if(GH.connected){
+    $("#syncGistId").textContent=GH.gist;
+    $("#syncGistLink").href="https://gist.github.com/"+GH.gist;
+    $("#syncUser").textContent=GH.user||"…"; if(!GH.user) fetchUser();
+    $("#ghAuto").checked=GH.auto;
+  }
+  updateLastSync();
+}
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); updateLastSync(); toast("Synced"); }catch(e){ markSync("Sync failed: "+e.message,true); toast("Sync failed"); spin(false); } }
+function autoPull(){
+  if(!GH.connected||!GH.auto) return;
+  if(document.hidden) return;
+  if($("#editOverlay").classList.contains("open")) return;   // don't pull over an open editor
+  if(syncPaused()) return;
+  syncPull(false,true).then(r=>{ if(r) updateLastSync(); if(pendingPush) schedulePush(); }).catch(bgSyncError);
+}
+setInterval(autoPull,30000);
+let lastFgPull=0;
+function foregroundPull(){ const t=now(); if(t-lastFgPull<8000) return; lastFgPull=t; autoPull(); }
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) foregroundPull(); });
+window.addEventListener("focus", foregroundPull);
+window.addEventListener("pageshow", foregroundPull);
+
+$("#syncTop").onclick=()=>{ if(GH.connected) doSyncNow(); else { setTab("setup"); toast("Connect sync below"); } };
+$("#ghConnect").onclick=async ()=>{
+  const t=$("#ghToken").value.trim(); let gid=$("#ghGist").value.trim();
+  if(!t){ markSync("Paste your GitHub token first.",true); return; }
+  GH.token=t; spin(true); markSync("Connecting…");
+  try{
+    if(!gid) gid=await findGist();
+    if(gid){
+      GH.gist=gid; renderSync();
+      const r=await syncPull(true);
+      if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your cookbook."); }
+      else markSync("Connected — using your existing sync.");
+    } else {
+      const g=await ghApi("POST","/gists",{description:"RecipeBox sync",public:false,files:{[GIST_FILE]:{content:JSON.stringify(state)}}});
+      GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created.");
+    }
+    $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
+  }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
+  finally{ spin(false); }
+};
+$("#ghSyncNow").onclick=doSyncNow;
+$("#ghAuto").onchange=()=>{ GH.auto=$("#ghAuto").checked; if(GH.auto) schedulePush(); };
+$("#ghCopyGist").onclick=()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>toast("Gist ID copied"),()=>toast(GH.gist)); };
+$("#ghShowToken").onclick=()=>{ const i=$("#ghToken"); const show=i.type==="password"; i.type=show?"text":"password"; $("#ghShowToken").textContent=show?"Hide":"Show"; };
+$("#ghDisconnect").onclick=()=>{ if(confirm("Disconnect sync on this device? Your recipes stay here; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+
+/* ================= init ================= */
+buildPickers();
+applyTheme(theme); renderTheme();
+applyScale(textScale); renderTextSize();
+renderChips(); renderGrid();
+setTab("cookbook");
+if(GH.connected && GH.auto) syncPull(false).catch(e=>{ spin(false); markSync("Pull failed: "+e.message,true); });
+updateLastSync();
+</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+</body>
+</html>
