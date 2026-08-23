@@ -1074,11 +1074,14 @@ function renderSyncModal(){
         <button class="btn accent" id="ghSyncNow" style="flex:1">🔄 Sync now</button>
         <button class="btn" id="ghCopyGist">Copy ID</button>
         <button class="link danger" id="ghDisconnect">Disconnect</button>
-      </div>`;
+      </div>
+      <p class="muted" style="margin-top:14px;font-size:12px">Out of sync? Pull the gist down and <b>overwrite this device</b> (re-keys it to the sync's master password):</p>
+      <button class="link danger" id="ghReplace" style="padding:8px 0">↺ Replace this device from sync</button>`;
     $("ghAuto").onchange=()=>{ GH.auto=$("ghAuto").checked; if(GH.auto) schedulePush(); };
     $("ghSyncNow").onclick=doSyncNow;
     $("ghCopyGist").onclick=()=>{ copyText(GH.gist).then(ok=>toast(ok?"Gist ID copied":GH.gist)); };
     $("ghDisconnect").onclick=ghDisconnect;
+    $("ghReplace").onclick=openReplaceFromSync;
     if(!GH.user) fetchUser();
     updateLastSync();
   } else {
@@ -1170,6 +1173,57 @@ async function srRestore(){
 }
 window.openSyncRestore = openSyncRestore;
 
+/* ---- Replace THIS device's data from the connected sync (past the lock screen) ---- */
+function openReplaceFromSync(){
+  if(!GH.connected){ toast("Connect sync first"); return; }
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay"><div class="modal" style="max-width:400px">
+    <h2>↺ Replace this device from sync</h2>
+    <p class="muted" style="font-size:13px;margin:0 0 14px;line-height:1.5">This <b>discards this device's current entries</b> and replaces them with the synced vault from your gist. Enter the master password the sync was created with — this device will then use that password too.</p>
+    <div class="field">
+      <div class="pwwrap">
+        <input id="rpPass" type="password" placeholder="Sync's master password" autocomplete="off">
+        <button type="button" class="eye" title="Show/hide" onclick="toggleEye(this,'rpPass')">👁</button>
+      </div>
+      <div class="err" id="rpErr" style="min-height:16px;margin-top:6px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="link" onclick="openSettings()">Cancel</button>
+      <button class="primary" id="rpOk">Replace</button>
+    </div>
+  </div></div>`;
+  bindOverlayClose();
+  const go = async ()=>{
+    const pw=$("rpPass").value; if(!pw){ $("rpErr").textContent="Enter the master password."; return; }
+    $("rpErr").textContent="Fetching sync…";
+    let outer;
+    try{
+      const g=await ghApi("GET","/gists/"+GH.gist);
+      const f=g.files && g.files["vault.json"];
+      if(!f || !f.content){ $("rpErr").textContent="No data in the sync gist yet."; return; }
+      outer=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+    }catch(e){ $("rpErr").textContent = e.message || "Couldn't reach the sync gist."; return; }
+    let payload;
+    try{
+      const salt=b64.dec(outer.salt), iv=b64.dec(outer.iv);
+      const key=await deriveKey(pw, salt);
+      const plain=await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, b64.dec(outer.data));
+      payload=JSON.parse(dec.decode(plain));
+      SALT=salt; CRYPTO_KEY=key; MASTER_PW=pw;    // re-key local to match the sync
+    }catch(e){ $("rpErr").textContent="Wrong master password for this sync."; $("rpPass").select(); return; }
+    entries = Array.isArray(payload) ? payload : (payload.entries||[]);
+    deleted = (payload && payload.deleted) || {};
+    sanitizeEntries();
+    await encryptVault();
+    closeModal(); render();
+    toast("This device replaced from sync ✓");
+  };
+  $("rpOk").onclick=go;
+  $("rpPass").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+  $("rpPass").focus();
+}
+window.openReplaceFromSync = openReplaceFromSync;
+
 /* periodic + focus pulls */
 setInterval(()=>{ if(!GH.connected||!GH.auto||!CRYPTO_KEY) return; if(document.hidden) return; syncPull(false,true).catch(()=>{}); }, 45000);
 setInterval(updateLastSync, 30000);
@@ -1235,7 +1289,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
 window.addEventListener("error", e=>{ try{ toast("⚠ Error: " + (e.message || (e.error && e.error.message) || e.type)); }catch{} });
 window.addEventListener("unhandledrejection", e=>{ try{ toast("⚠ Error: " + ((e.reason && (e.reason.message||e.reason)) || "promise rejected")); }catch{} });
 
-const VERSION = "v16 · 2026-08-23 · restore-from-sync on new device";
+const VERSION = "v17 · 2026-08-23 · replace-this-device from sync";
 ["verLock","verApp"].forEach(id=>{ const el=$(id); if(el) el.textContent = "Build " + VERSION; });
 
 initLock();
