@@ -304,6 +304,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
           <b style="font-size:16px">Shopping list</b>
           <span class="muted" id="shopProgress" style="font-size:13px"></span>
           <button class="btn ghost sm" id="copyShop" style="margin-left:auto">📋 Copy</button>
+          <button class="btn ghost sm" id="emailShop">✉ Email</button>
           <button class="btn ghost sm" id="clearChecked">Clear ticked</button>
           <button class="btn danger sm" id="clearShop">Clear all</button>
         </div>
@@ -486,7 +487,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v9.3 copy-list";
+const APP_VERSION = "2026-08-23 · v9.4 email-list";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -1221,6 +1222,12 @@ $("#copyShop").onclick=()=>{
   const items=state.shopping.items||[];
   if(!items.length){ toast("Nothing to copy"); return; }
   copyText(shoppingText(), ()=> toast("Copied "+items.length+" item"+(items.length===1?"":"s")));
+};
+$("#emailShop").onclick=()=>{
+  const items=state.shopping.items||[];
+  if(!items.length){ toast("Nothing to email"); return; }
+  const url = "mailto:?subject="+encodeURIComponent("Shopping list")+"&body="+encodeURIComponent(shoppingText());
+  window.location.href = url;
 };
 
 /* ================= week meal plan ================= */
