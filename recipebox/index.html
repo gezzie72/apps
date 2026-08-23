@@ -90,6 +90,10 @@
   .allerwarn{font-size:11.5px; color:var(--danger); font-weight:600; display:flex; align-items:center; gap:5px}
   .card.dislikerecipe{border-color:color-mix(in srgb,var(--warn) 45%, var(--line))}
   .dislikewarn{font-size:11.5px; color:var(--warn); font-weight:600; display:flex; align-items:center; gap:5px}
+  .card.likerecipe{border-color:color-mix(in srgb,var(--accent) 55%, var(--line))}
+  .likewarn{font-size:11.5px; color:var(--accent); font-weight:600; display:flex; align-items:center; gap:5px}
+  .tag.natural{color:var(--ok)}
+  .tag.added{color:var(--warn)}
   .chiprow{display:flex; flex-wrap:wrap; gap:7px; margin-top:4px}
   .dchip{display:inline-flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:5px 6px 5px 11px; font-size:13px}
   .dchip button{background:none; border:none; color:var(--muted); cursor:pointer; font-size:15px; line-height:1; padding:0 2px}
@@ -113,6 +117,8 @@
   .portions{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:2px 0 10px}
   .batch{font-size:12.5px; margin-top:9px; background:var(--panel2); border-radius:9px; padding:8px 11px}
   .batch b{color:var(--text)}
+  .sugarnote{font-size:12.5px; color:var(--muted); background:var(--panel2); border-radius:9px; padding:8px 11px; margin-top:12px}
+  .sugarnote b{color:var(--text)}
   ul.ing{margin:0; padding-left:20px} ul.ing li{margin:3px 0}
   ol.steps{margin:0; padding-left:20px} ol.steps li{margin:6px 0}
   .checkgrid{display:flex; flex-wrap:wrap; gap:7px}
@@ -200,12 +206,13 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
       </div>
       <div class="chips" id="catChips"></div>
       <div class="togs">
+        <label class="tog"><input type="checkbox" id="togLikes"> 💚 Show foods I like first</label>
         <label class="tog"><input type="checkbox" id="togAllergen"> Hide recipes with my allergens</label>
         <label class="tog"><input type="checkbox" id="togDiet"> Match my dietary needs only</label>
         <label class="tog"><input type="checkbox" id="togDislike"> Hide foods I dislike</label>
       </div>
       <div class="grid" id="recipeGrid"></div>
-      <div class="disclaimer">Nutrition values are approximate per-serving estimates to help with planning — not a substitute for advice from your GP, diabetes team or dietitian. Always follow their guidance and check labels for your own allergies.</div>
+      <div class="disclaimer"><b>About the sugar figures:</b> the "Sugar" number is the total per serving, most of which here is <b>natural</b> sugar from fruit, dairy or veg — eaten with fibre, protein and fat that slow it down. Open any recipe to see "of which added sugar" (0g across the starter recipes — none contain free/added sugar). Natural sugars still affect blood glucose, so use your meter and portion sizes as your guide.<br><br>Nutrition values are approximate per-serving estimates to help with planning — not a substitute for advice from your GP, diabetes team or dietitian. Always follow their guidance and check labels for your own allergies.</div>
     </div>
 
     <!-- TODAY -->
@@ -264,6 +271,16 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
         <b style="font-size:16px">Dietary requirements</b>
         <div class="muted" style="font-size:13px;margin-bottom:8px">Use "Match my dietary needs only" in the Cookbook to show just recipes that fit. <b>Calorie-controlled</b> = recipes at or below 350 kcal per serving (or any you tag yourself).</div>
         <div class="checkgrid" id="dietPicker"></div>
+      </div>
+
+      <div class="card-lite">
+        <b style="font-size:16px">💚 Foods I like</b>
+        <div class="muted" style="font-size:13px;margin-bottom:8px">Add foods you love (e.g. chicken, salmon, berries). Recipes containing one get a green highlight, and "💚 Show foods I like first" in the Cookbook floats them to the top.</div>
+        <div style="display:flex;gap:8px">
+          <input class="in" id="likeAdd" placeholder="Add a food…" autocomplete="off">
+          <button class="btn" id="likeAddBtn">Add</button>
+        </div>
+        <div class="chiprow" id="likeChips"></div>
       </div>
 
       <div class="card-lite">
@@ -366,6 +383,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
       <label class="fld"><span>Fat (g)</span><input class="in" id="fFat" type="number" min="0" inputmode="decimal"></label>
       <label class="fld"><span>Fibre (g)</span><input class="in" id="fFibre" type="number" min="0" inputmode="decimal"></label>
     </div>
+    <label class="fld"><span>Of which added / free sugar (g) — usually 0 for whole-food recipes</span><input class="in" id="fAddedSugar" type="number" min="0" inputmode="decimal" placeholder="0"></label>
     <label class="fld"><span>Ingredients (one per line)</span><textarea class="in" id="fIng" rows="5" placeholder="2 eggs&#10;Handful spinach&#10;…"></textarea></label>
     <label class="fld"><span>Method (one step per line)</span><textarea class="in" id="fSteps" rows="5" placeholder="Whisk the eggs…&#10;Heat the pan…"></textarea></label>
     <div class="sec-h">Allergens</div>
@@ -389,7 +407,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v5.1 dedupe-btn";
+const APP_VERSION = "2026-08-23 · v7 40recipes+likes+addedsugar";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -406,12 +424,13 @@ function isCalCtrl(r){ return r.cal>0 && r.cal<=CAL_CTRL; }
 function displayDiets(r){ const d=(r.diet||[]).slice(); if(isCalCtrl(r) && !d.includes("Calorie-controlled")) d.push("Calorie-controlled"); return d; }
 
 /* ================= seed cookbook ================= */
-function R(title,category,servings,n,ing,steps,allergens,diet,notes){
+function R(title,category,servings,n,ing,steps,allergens,diet,notes,addedSugar){
   return {title,category,servings,
-    cal:n[0],carbs:n[1],sugar:n[2],protein:n[3],fat:n[4],fibre:n[5],
+    cal:n[0],carbs:n[1],sugar:n[2],protein:n[3],fat:n[4],fibre:n[5], addedSugar:addedSugar||0,
     ingredients:ing, steps, allergens, diet, notes:notes||""};
 }
-// n = [cal, carbs, sugar, protein, fat, fibre]  (per serving)
+// n = [cal, carbs, sugar, protein, fat, fibre]  (per serving). Last arg addedSugar defaults to 0
+// (all starter recipes are whole-food with no added/free sugar).
 const SEED = [
   R("Greek Yogurt & Berry Bowl","Breakfast",1,[180,14,10,15,6,3],
     ["150g plain Greek yogurt","80g mixed berries","1 tbsp chopped almonds","Sprinkle of cinnamon"],
@@ -512,12 +531,116 @@ const SEED = [
     ["1 ripe pear, sliced","6 walnut halves","Cinnamon"],
     ["Slice the pear.","Top with walnuts and a dusting of cinnamon."],
     ["Nuts"],["Vegan","Gluten-free","Dairy-free"],
-    "Eat with the skin on for extra fibre to slow sugar release.")
+    "Eat with the skin on for extra fibre to slow sugar release."),
+
+  R("Scrambled Tofu & Spinach","Breakfast",1,[220,8,3,18,13,3],
+    ["150g firm tofu, crumbled","Handful spinach","¼ tsp turmeric","Pinch of salt","1 tsp olive oil"],
+    ["Heat oil, add crumbled tofu and turmeric.","Cook 3–4 min, stirring.","Fold through spinach until wilted; season and serve."],
+    ["Soy"],["Vegan","Gluten-free","Dairy-free","Low-carb","High-protein"],
+    "A plant-based, low-carb start with plenty of protein."),
+  R("Chia Seed Pudding","Breakfast",1,[250,20,6,8,15,11],
+    ["3 tbsp chia seeds","200ml unsweetened almond milk","½ tsp vanilla extract","Handful raspberries"],
+    ["Stir chia, milk and vanilla in a jar.","Chill overnight (or 2 hrs).","Top with raspberries to serve."],
+    ["Nuts"],["Vegan","Gluten-free","Dairy-free"],
+    "High-fibre with no added sugar — the sweetness is just the berries."),
+  R("Mushroom & Egg Wrap","Breakfast",1,[300,22,3,18,15,5],
+    ["1 small wholemeal tortilla","2 eggs","Handful mushrooms, sliced","Handful spinach","1 tsp olive oil"],
+    ["Sauté mushrooms in oil until golden.","Add beaten eggs and spinach; scramble softly.","Spoon into the wrap, roll and serve."],
+    ["Gluten","Egg"],["Vegetarian","High-protein"],
+    "A wholemeal wrap keeps the GI lower than a white one."),
+  R("Cottage Cheese Pancakes","Breakfast",2,[280,18,5,22,12,2],
+    ["100g cottage cheese","2 eggs","40g oat flour","½ tsp baking powder","1 tsp olive oil"],
+    ["Blend cottage cheese, eggs, oat flour and baking powder.","Cook small pancakes in a little oil, 2 min each side.","Serve with a few berries."],
+    ["Dairy","Egg","Gluten"],["Vegetarian","High-protein"],
+    "Protein-packed pancakes with no added sugar."),
+
+  R("Celery & Cream Cheese","Snack",1,[110,5,3,4,8,2],
+    ["3 celery sticks","2 tbsp light cream cheese"],
+    ["Fill the celery sticks with cream cheese.","Cut into batons and serve."],
+    ["Dairy"],["Vegetarian","Low-carb","Gluten-free"],
+    "A crunchy, very low-carb nibble."),
+  R("Edamame with Sea Salt","Snack",1,[150,12,3,13,6,6],
+    ["150g edamame in pods","Pinch of sea salt"],
+    ["Steam or boil edamame 4–5 min.","Drain, sprinkle with salt and squeeze the beans out to eat."],
+    ["Soy"],["Vegan","Gluten-free","Dairy-free","High-protein"],
+    "High-protein, high-fibre and moreish."),
+  R("Kale Chips","Snack",2,[120,10,2,4,8,3],
+    ["1 head kale, torn","1 tbsp olive oil","Pinch of salt"],
+    ["Heat oven to 160°C.","Toss kale with oil and salt.","Bake 12–15 min until crisp."],
+    [],["Vegan","Gluten-free","Dairy-free"],
+    "A green, low-carb swap for crisps."),
+  R("Turkey & Cheese Roll-ups","Snack",1,[160,2,1,18,9,0],
+    ["3 slices roast turkey","30g cheese, cut into strips","A little mustard (optional)"],
+    ["Lay out the turkey slices.","Add cheese, roll up and serve."],
+    ["Dairy"],["Low-carb","Gluten-free","High-protein"],
+    "Almost no carbs — good for steady blood sugar."),
+
+  R("Baked Cod with Ratatouille","Main",2,[320,18,10,34,10,6],
+    ["2 cod fillets","1 courgette","1 aubergine","1 red pepper","1 tin chopped tomatoes","1 tbsp olive oil","Garlic & herbs"],
+    ["Heat oven to 190°C.","Chop veg, toss with oil, garlic and herbs; roast 20 min.","Add tomatoes, sit cod on top, bake 15 min until flaking."],
+    ["Fish"],["Gluten-free","Dairy-free","High-protein"],
+    "Lean white fish with a low-sugar veg stew."),
+  R("Chicken & Vegetable Soup","Main",4,[220,16,6,22,7,4],
+    ["2 chicken breasts, diced","1 onion","2 carrots","2 celery sticks","1 litre stock","Handful greens"],
+    ["Soften onion, carrot and celery.","Add chicken and stock; simmer 20 min.","Stir in greens for the last 2 min; season."],
+    [],["Gluten-free","Dairy-free","High-protein"],
+    "Filling and light — batch-cook and freeze portions."),
+  R("Chickpea & Spinach Curry","Main",4,[300,34,7,13,10,11],
+    ["2 tins chickpeas","2 large handfuls spinach","1 tin chopped tomatoes","1 onion","2 tbsp curry paste","1 tbsp oil"],
+    ["Soften onion, stir in curry paste.","Add chickpeas and tomatoes; simmer 20 min.","Wilt in the spinach and serve."],
+    [],["Vegan","Gluten-free","Dairy-free"],
+    "Fibre-rich pulses give a slow, steady energy release."),
+  R("Stuffed Peppers with Turkey","Main",2,[300,20,9,26,12,5],
+    ["2 large peppers, halved","250g turkey mince","1 small onion","2 tbsp passata","Mixed herbs","1 tsp oil"],
+    ["Heat oven to 190°C.","Brown mince with onion, herbs and passata.","Fill the peppers, bake 25 min."],
+    [],["Gluten-free","Dairy-free","High-protein"],
+    "The sweetness is just pepper and tomato — no added sugar."),
+  R("Tofu & Vegetable Stir-Fry","Main",2,[290,18,8,18,15,5],
+    ["300g firm tofu, cubed","1 head broccoli","1 pepper","2 tbsp reduced-salt soy sauce","1 tsp sesame oil","Ginger & garlic"],
+    ["Fry tofu until golden; set aside.","Stir-fry broccoli, pepper, ginger and garlic.","Return tofu with soy and sesame; toss and serve."],
+    ["Soy","Sesame"],["Vegan","Dairy-free","High-protein"],
+    "Plant-based and lower-carb without the rice."),
+  R("Grilled Mackerel with Salad","Main",1,[380,6,3,30,26,3],
+    ["1 mackerel fillet","Mixed leaves","½ cucumber","Cherry tomatoes","Squeeze of lemon","Drizzle of olive oil"],
+    ["Grill the mackerel 4–5 min skin-side up.","Toss the salad with lemon and oil.","Serve the fish over the salad."],
+    ["Fish"],["Gluten-free","Dairy-free","Low-carb","High-protein"],
+    "Oily fish rich in omega-3, with barely any carbs."),
+  R("Egg & Vegetable Frittata","Main",4,[260,8,5,18,17,2],
+    ["6 eggs","1 courgette, sliced","1 pepper","Handful spinach","30g cheese","1 tsp oil"],
+    ["Heat oven to 180°C.","Soften veg in an ovenproof pan.","Pour over beaten eggs, scatter cheese, bake 15 min until set."],
+    ["Egg","Dairy"],["Vegetarian","Low-carb","Gluten-free","High-protein"],
+    "Great cold too — slice for lunchboxes."),
+  R("Pork Loin with Braised Cabbage","Main",2,[350,12,8,32,18,4],
+    ["2 pork loin steaks","¼ red cabbage, shredded","1 apple, grated","1 tsp oil","Splash of vinegar"],
+    ["Sear the pork 4–5 min each side; rest.","Braise cabbage with apple and vinegar 10 min.","Slice pork over the cabbage."],
+    [],["Gluten-free","Dairy-free","Low-carb","High-protein"],
+    "The grated apple adds natural sweetness — no sugar needed."),
+
+  R("Greek Yogurt with Strawberries","Fruit",1,[140,14,11,12,3,2],
+    ["150g plain Greek yogurt","80g strawberries, sliced","A few chopped mint leaves"],
+    ["Spoon yogurt into a bowl.","Top with strawberries and mint."],
+    ["Dairy"],["Vegetarian","Gluten-free","High-protein"],
+    "Strawberries are one of the lower-sugar fruits."),
+  R("Orange & Almond Segments","Fruit",1,[160,20,15,4,8,4],
+    ["1 orange, segmented","1 tbsp flaked almonds","Pinch of cinnamon"],
+    ["Segment the orange into a bowl.","Scatter almonds and cinnamon over the top."],
+    ["Nuts"],["Vegan","Gluten-free","Dairy-free"],
+    "The almonds' fat and fibre slow the fruit sugar down."),
+  R("Grapefruit & Mint","Fruit",1,[90,20,15,2,0,3],
+    ["½ grapefruit, segmented","A few mint leaves"],
+    ["Segment the grapefruit into a bowl.","Scatter over the mint."],
+    [],["Vegan","Gluten-free","Dairy-free"],
+    "Low-GI and refreshing. Note: grapefruit can interact with some medicines (e.g. statins) — check with your pharmacist."),
+  R("Kiwi & Blueberry Cup","Fruit",1,[110,22,14,2,1,4],
+    ["2 kiwis, sliced","Handful blueberries"],
+    ["Peel and slice the kiwi.","Combine with blueberries and serve."],
+    [],["Vegan","Gluten-free","Dairy-free"],
+    "Kiwi and blueberries are lower-GI, high-vitamin choices.")
 ];
 
 /* ================= state ================= */
 const LS_KEY = "recipebox.data";
-function defaultProfile(){ return { calTarget:2000, carbTarget:130, allergies:[], diets:[], dislikes:[] }; }
+function defaultProfile(){ return { calTarget:2000, carbTarget:130, allergies:[], diets:[], dislikes:[], likes:[] }; }
 function freshState(){
   const t = now();
   // Stable IDs for seed recipes so the same starter recipe has one identity across devices (no sync duplicates).
@@ -528,7 +651,7 @@ function normalizeRecipe(r){
   r.title=r.title||"Untitled";
   if(!CATEGORIES.includes(r.category)) r.category="Main";
   r.servings=Math.max(1, parseInt(r.servings)||1);
-  ["cal","carbs","sugar","protein","fat","fibre"].forEach(k=> r[k]=num(r[k]));
+  ["cal","carbs","sugar","protein","fat","fibre","addedSugar"].forEach(k=> r[k]=num(r[k]));
   if(!Array.isArray(r.ingredients)) r.ingredients = r.ingredients? String(r.ingredients).split("\n").filter(x=>x.trim()) : [];
   if(!Array.isArray(r.steps)) r.steps = r.steps? String(r.steps).split("\n").filter(x=>x.trim()) : [];
   r.allergens = (r.allergens||[]).filter(a=>ALLERGENS.includes(a));
@@ -569,12 +692,30 @@ function dedupeRecipes(s){
   if(changed) s.recipes=keep;
   return changed;
 }
+// Add any starter recipes missing from an existing install (e.g. new ones shipped in an update),
+// without resurrecting ones the user deleted or duplicating ones already present under another id.
+function topUpSeeds(s){
+  const haveIds = new Set((s.recipes||[]).map(r=>r.id));
+  const haveSigs = new Set((s.recipes||[]).map(recipeSig));
+  const t=now(); let added=0;
+  SEED.forEach((r,i)=>{
+    const id="seed-"+i;
+    if(haveIds.has(id)) return;
+    if(s.deleted && s.deleted[id]) return;                 // user removed this starter recipe — respect it
+    const obj = normalizeRecipe(Object.assign({}, r, {id, favorite:false, seed:true, createdAt:t-i, updatedAt:t-i, order:100+i}));
+    if(haveSigs.has(recipeSig(obj))) return;               // same recipe already present under a different id
+    s.recipes.push(obj); haveSigs.add(recipeSig(obj)); added++;
+  });
+  return added;
+}
 function migrate(s){
   s.recipes = (s.recipes||[]).map(normalizeRecipe);
   s.deleted = s.deleted||{};
+  topUpSeeds(s);
   dedupeRecipes(s);
   s.profile = Object.assign(defaultProfile(), s.profile||{});
   if(!Array.isArray(s.profile.dislikes)) s.profile.dislikes=[];
+  if(!Array.isArray(s.profile.likes)) s.profile.likes=[];
   s.today = s.today||{date:todayISO(), items:[]};
   if(s.today.date!==todayISO()) s.today = {date:todayISO(), items:[]};
   if(!Array.isArray(s.today.items)) s.today.items=[];
@@ -598,7 +739,9 @@ const VIEW = {
   get dietOnly(){ try{return localStorage.getItem("recipebox.dietOnly")==="1"}catch(e){return false} },
   set dietOnly(v){ try{localStorage.setItem("recipebox.dietOnly",v?"1":"0")}catch(e){} },
   get hideDislike(){ try{return localStorage.getItem("recipebox.hideDislike")==="1"}catch(e){return false} },
-  set hideDislike(v){ try{localStorage.setItem("recipebox.hideDislike",v?"1":"0")}catch(e){} }
+  set hideDislike(v){ try{localStorage.setItem("recipebox.hideDislike",v?"1":"0")}catch(e){} },
+  get likesFirst(){ try{return localStorage.getItem("recipebox.likesFirst")==="1"}catch(e){return false} },
+  set likesFirst(v){ try{localStorage.setItem("recipebox.likesFirst",v?"1":"0")}catch(e){} }
 };
 
 /* ================= tabs ================= */
@@ -615,17 +758,18 @@ function setTab(t){
 
 /* ================= cookbook ================= */
 function recipeConflicts(r){ const a=state.profile.allergies||[]; return r.allergens.filter(x=>a.includes(x)); }
-// Free-text "foods I dislike": match each term at a word start in the title/ingredients
+// Free-text food matching: match each term at a word start in the title/ingredients
 // (so "mushroom" hits "mushrooms" but "egg" won't flag "veggie"). Returns matched terms.
-function recipeDislikes(r){
-  const dl = state.profile.dislikes||[];
-  if(!dl.length) return [];
+function matchTerms(r, terms){
+  if(!terms || !terms.length) return [];
   const hay = (r.title+" "+(r.ingredients||[]).join(" ")).toLowerCase();
-  return dl.filter(term=>{
+  return terms.filter(term=>{
     const t=(term||"").toLowerCase().trim(); if(!t) return false;
     return new RegExp("(^|[^a-z])"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).test(hay);
   });
 }
+function recipeDislikes(r){ return matchTerms(r, state.profile.dislikes||[]); }
+function recipeLikes(r){ return matchTerms(r, state.profile.likes||[]); }
 function matchesDiet(r){ const d=state.profile.diets||[]; return d.every(x=> x==="Calorie-controlled" ? (isCalCtrl(r)||r.diet.includes(x)) : r.diet.includes(x)); }
 
 function renderChips(){
@@ -634,6 +778,7 @@ function renderChips(){
   $("#catChips").querySelectorAll(".chip").forEach(b=> b.onclick=()=>{ catFilter=b.dataset.cat; renderChips(); renderGrid(); });
 }
 function renderGrid(){
+  $("#togLikes").checked = VIEW.likesFirst;
   $("#togAllergen").checked = VIEW.hideAllergen;
   $("#togDiet").checked = VIEW.dietOnly;
   $("#togDislike").checked = VIEW.hideDislike;
@@ -648,15 +793,20 @@ function renderGrid(){
   if(VIEW.dietOnly) list=list.filter(matchesDiet);
   if(VIEW.hideDislike) list=list.filter(r=> recipeDislikes(r).length===0);
   list.sort((a,b)=> (a.category===b.category? a.title.localeCompare(b.title) : CATEGORIES.indexOf(a.category)-CATEGORIES.indexOf(b.category)));
+  // "My likes first": float recipes containing a liked food to the top (stable within each group).
+  if(VIEW.likesFirst) list = list.map((r,i)=>({r,i,lk:recipeLikes(r).length?0:1})).sort((a,b)=> a.lk-b.lk || a.i-b.i).map(x=>x.r);
 
   const g=$("#recipeGrid");
   if(!list.length){ g.innerHTML=`<div class="empty">No recipes match.<br><span class="muted">Try clearing filters or add your own with ＋ Recipe.</span></div>`; return; }
   g.innerHTML = list.map(r=>{
     const conf=recipeConflicts(r);
     const dis=recipeDislikes(r);
+    const lk=recipeLikes(r);
     const tags = displayDiets(r).slice(0,3).map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")
       + r.allergens.slice(0,3).map(a=>`<span class="tag al">${esc(a)}</span>`).join("");
-    return `<div class="card${conf.length?" warnrecipe":(dis.length?" dislikerecipe":"")}" data-id="${r.id}">
+    const sugarNote = r.addedSugar>0 ? `<span class="tag added">${r.addedSugar}g added sugar</span>`
+      : (r.sugar>=8 ? `<span class="tag natural">no added sugar</span>` : "");
+    return `<div class="card${conf.length?" warnrecipe":(dis.length?" dislikerecipe":(lk.length?" likerecipe":""))}" data-id="${r.id}">
       <button class="fav${r.favorite?" on":""}" data-fav="${r.id}" title="Favorite">${r.favorite?"★":"☆"}</button>
       <div><span class="pill cat">${esc(r.category)}</span></div>
       <h3>${esc(r.title)}</h3>
@@ -666,9 +816,10 @@ function renderGrid(){
         <div class="nut"><b>${r.sugar}g</b><span>Sugar</span></div>
         <div class="nut"><b>${r.protein}g</b><span>Protein</span></div>
       </div>
+      ${lk.length?`<div class="likewarn">💚 Has ${lk.map(esc).join(", ")}</div>`:""}
       ${conf.length?`<div class="allerwarn">⚠ Contains ${conf.map(esc).join(", ")}</div>`:""}
       ${dis.length?`<div class="dislikewarn">🙁 Contains ${dis.map(esc).join(", ")}</div>`:""}
-      <div class="tags">${tags}</div>
+      <div class="tags">${tags}${sugarNote}</div>
     </div>`;
   }).join("");
   g.querySelectorAll(".card").forEach(c=> c.onclick=e=>{ if(e.target.closest(".fav")) return; openDetail(c.dataset.id); });
@@ -679,6 +830,7 @@ function recipeById(id){ return state.recipes.find(r=>r.id===id); }
 
 $("#search").oninput = e=>{ searchQ=e.target.value.trim(); renderGrid(); };
 $("#addRecipe").onclick = ()=> openEditor(null);
+$("#togLikes").onchange = e=>{ VIEW.likesFirst=e.target.checked; renderGrid(); };
 $("#togAllergen").onchange = e=>{ VIEW.hideAllergen=e.target.checked; renderGrid(); };
 $("#togDiet").onchange = e=>{ VIEW.dietOnly=e.target.checked; renderGrid(); };
 $("#togDislike").onchange = e=>{ VIEW.hideDislike=e.target.checked; renderGrid(); };
@@ -724,6 +876,7 @@ function openDetail(id){
   const r=recipeById(id); if(!r) return;
   const conf=recipeConflicts(r);
   const dis=recipeDislikes(r);
+  const lk=recipeLikes(r);
   const dd=displayDiets(r);
   const sheet=$("#detailSheet");
   sheet.innerHTML = `
@@ -733,6 +886,7 @@ function openDetail(id){
       <button class="close" id="detailClose">✕</button>
     </div>
     <div><span class="pill cat">${esc(r.category)}</span> <span class="pill">${r.servings} serving${r.servings>1?"s":""}</span></div>
+    ${lk.length?`<div class="likewarn" style="margin-top:12px">💚 Has ${lk.map(esc).join(", ")} — on your likes list</div>`:""}
     ${conf.length?`<div class="allerwarn" style="margin-top:12px">⚠ Contains ${conf.map(esc).join(", ")} — on your allergy list</div>`:""}
     ${dis.length?`<div class="dislikewarn" style="margin-top:12px">🙁 Contains ${dis.map(esc).join(", ")} — on your dislikes list</div>`:""}
     <div class="nutgrid">
@@ -743,6 +897,7 @@ function openDetail(id){
       <div class="nutbig"><b>${r.fat}g</b><span>Fat</span></div>
       <div class="nutbig"><b>${r.fibre}g</b><span>Fibre</span></div>
     </div>
+    <div class="sugarnote">Sugars: <b>${r.sugar}g</b> total${r.addedSugar>0?` · <b>${r.addedSugar}g</b> added (free) sugar` : ` · <b>0g</b> added — all natural (from fruit, dairy or veg)`}</div>
     ${dd.length?`<div class="tags">${dd.map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")}</div>`:""}
     ${r.ingredients.length?`<div class="sec-h">Ingredients</div>
       <div class="portions">
@@ -804,6 +959,7 @@ function openEditor(id){
   $("#fServings").value=r?r.servings:1;
   $("#fCarbs").value=r?r.carbs:""; $("#fSugar").value=r?r.sugar:""; $("#fCal").value=r?r.cal:"";
   $("#fProtein").value=r?r.protein:""; $("#fFat").value=r?r.fat:""; $("#fFibre").value=r?r.fibre:"";
+  $("#fAddedSugar").value=r? (r.addedSugar||"") : "";
   $("#fIng").value=r?(r.ingredients||[]).join("\n"):"";
   $("#fSteps").value=r?(r.steps||[]).join("\n"):"";
   $("#fNotes").value=r?r.notes:"";
@@ -820,7 +976,7 @@ $("#editSave").onclick=()=>{
   if(!title){ toast("Give it a title first"); $("#fTitle").focus(); return; }
   const data={
     title, category:$("#fCat").value, servings:Math.max(1,parseInt($("#fServings").value)||1),
-    cal:num($("#fCal").value), carbs:num($("#fCarbs").value), sugar:num($("#fSugar").value),
+    cal:num($("#fCal").value), carbs:num($("#fCarbs").value), sugar:num($("#fSugar").value), addedSugar:num($("#fAddedSugar").value),
     protein:num($("#fProtein").value), fat:num($("#fFat").value), fibre:num($("#fFibre").value),
     ingredients:$("#fIng").value.split("\n").map(x=>x.trim()).filter(Boolean),
     steps:$("#fSteps").value.split("\n").map(x=>x.trim()).filter(Boolean),
@@ -853,9 +1009,9 @@ function addToToday(recipeId, servings){
   if(activeTab==="today") renderToday();
 }
 function todayTotals(){
-  const t={cal:0,carbs:0,sugar:0,protein:0,fat:0,fibre:0};
+  const t={cal:0,carbs:0,sugar:0,addedSugar:0,protein:0,fat:0,fibre:0};
   (state.today.items||[]).forEach(it=>{ const r=recipeById(it.recipeId); if(!r) return;
-    ["cal","carbs","sugar","protein","fat","fibre"].forEach(k=> t[k]+= r[k]*it.servings); });
+    ["cal","carbs","sugar","addedSugar","protein","fat","fibre"].forEach(k=> t[k]+= (r[k]||0)*it.servings); });
   Object.keys(t).forEach(k=> t[k]=Math.round(t[k]));
   return t;
 }
@@ -875,7 +1031,7 @@ function renderToday(){
   $("#todayDate").textContent = fmtDate(state.today.date);
   const t=todayTotals(), p=state.profile;
   $("#targetMeters").innerHTML = meter("Carbs", t.carbs, p.carbTarget||0, "g") + meter("Calories", t.cal, p.calTarget||0, " kcal");
-  $("#todayMini").innerHTML = `<div>Sugar <b>${t.sugar}g</b></div><div>Protein <b>${t.protein}g</b></div><div>Fat <b>${t.fat}g</b></div><div>Fibre <b>${t.fibre}g</b></div>`;
+  $("#todayMini").innerHTML = `<div>Sugar <b>${t.sugar}g</b></div><div>Added sugar <b>${t.addedSugar}g</b></div><div>Protein <b>${t.protein}g</b></div><div>Fat <b>${t.fat}g</b></div><div>Fibre <b>${t.fibre}g</b></div>`;
   const items=state.today.items||[];
   const list=$("#plateList");
   if(!items.length){ list.innerHTML=`<div class="empty">Nothing added yet.<br><span class="muted">Open a recipe in the Cookbook and tap “Add to Today”.</span></div>`; return; }
@@ -956,10 +1112,25 @@ function renderSetup(){
   $("#dietPicker").innerHTML = DIETS.map(d=>`<label class="cbx"><input type="checkbox" value="${d}" ${state.profile.diets.includes(d)?"checked":""}>${d}</label>`).join("");
   $("#allergyPicker").querySelectorAll("input").forEach(c=> c.onchange=()=>{ state.profile.allergies=[...$("#allergyPicker").querySelectorAll("input:checked")].map(x=>x.value); touch(); });
   $("#dietPicker").querySelectorAll("input").forEach(c=> c.onchange=()=>{ state.profile.diets=[...$("#dietPicker").querySelectorAll("input:checked")].map(x=>x.value); touch(); });
-  renderDislikes();
+  renderLikes(); renderDislikes();
   renderTheme(); renderTextSize(); renderSync();
   $("#appVersion").textContent = "RecipeBox " + APP_VERSION;
 }
+function renderLikes(){
+  const ls = state.profile.likes||[];
+  const box=$("#likeChips");
+  box.innerHTML = ls.length ? ls.map(d=>`<span class="dchip">${esc(d)}<button data-del="${esc(d)}" title="Remove">✕</button></span>`).join("")
+    : `<span class="muted" style="font-size:13px">None yet.</span>`;
+  box.querySelectorAll("[data-del]").forEach(b=> b.onclick=()=>{ state.profile.likes=(state.profile.likes||[]).filter(x=>x!==b.dataset.del); touch(); renderLikes(); if(activeTab==="cookbook") renderGrid(); });
+}
+function addLike(text){
+  const t=(text||"").trim(); if(!t) return;
+  const ls=state.profile.likes||(state.profile.likes=[]);
+  if(ls.some(x=>x.toLowerCase()===t.toLowerCase())){ toast("Already on the list"); return; }
+  ls.push(t); touch(); renderLikes();
+}
+$("#likeAddBtn").onclick=()=>{ addLike($("#likeAdd").value); $("#likeAdd").value=""; $("#likeAdd").focus(); };
+$("#likeAdd").addEventListener("keydown", e=>{ if(e.key==="Enter"){ addLike($("#likeAdd").value); $("#likeAdd").value=""; } });
 function renderDislikes(){
   const dl = state.profile.dislikes||[];
   const box=$("#dislikeChips");
