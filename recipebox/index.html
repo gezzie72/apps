@@ -257,6 +257,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
     <div class="page" id="tab-cookbook">
       <div class="cbtools">
         <input class="in search" id="search" placeholder="Search recipes, ingredients…" autocomplete="off">
+        <button class="btn" id="surpriseBtn" title="Pick a random recipe">🎲 Surprise me</button>
         <button class="btn primary" id="addRecipe">＋ Recipe</button>
       </div>
       <div class="chips" id="catChips"></div>
@@ -499,7 +500,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v10.2 low-GI-filter";
+const APP_VERSION = "2026-08-23 · v10.3 surprise-me";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -899,13 +900,8 @@ function renderChips(){
   $("#catChips").innerHTML = cats.map(c=>`<button class="chip${c===catFilter?" active":""}" data-cat="${c}">${c==="Favorites"?"★ Favorites":esc(c)}</button>`).join("");
   $("#catChips").querySelectorAll(".chip").forEach(b=> b.onclick=()=>{ catFilter=b.dataset.cat; renderChips(); renderGrid(); });
 }
-function renderGrid(){
-  $("#togLikes").checked = VIEW.likesFirst;
-  $("#togLowGL").checked = VIEW.lowGL;
-  $("#togLowAdded").checked = VIEW.lowAdded;
-  $("#togAllergen").checked = VIEW.hideAllergen;
-  $("#togDiet").checked = VIEW.dietOnly;
-  $("#togDislike").checked = VIEW.hideDislike;
+// The recipes matching the current category, search and toggle filters (unsorted).
+function filteredRecipes(){
   let list = state.recipes.slice();
   if(catFilter==="Favorites") list=list.filter(r=>r.favorite);
   else if(catFilter!=="All") list=list.filter(r=>r.category===catFilter);
@@ -918,6 +914,16 @@ function renderGrid(){
   if(VIEW.hideDislike) list=list.filter(r=> recipeDislikes(r).length===0);
   if(VIEW.lowGL) list=list.filter(r=> glEstimate(r).level==="low");
   if(VIEW.lowAdded) list=list.filter(r=> (r.addedSugar||0) <= LOW_ADDED);
+  return list;
+}
+function renderGrid(){
+  $("#togLikes").checked = VIEW.likesFirst;
+  $("#togLowGL").checked = VIEW.lowGL;
+  $("#togLowAdded").checked = VIEW.lowAdded;
+  $("#togAllergen").checked = VIEW.hideAllergen;
+  $("#togDiet").checked = VIEW.dietOnly;
+  $("#togDislike").checked = VIEW.hideDislike;
+  let list = filteredRecipes();
   list.sort((a,b)=> (a.category===b.category? a.title.localeCompare(b.title) : CATEGORIES.indexOf(a.category)-CATEGORIES.indexOf(b.category)));
   // "My likes first": float recipes containing a liked food to the top (stable within each group).
   if(VIEW.likesFirst) list = list.map((r,i)=>({r,i,lk:recipeLikes(r).length?0:1})).sort((a,b)=> a.lk-b.lk || a.i-b.i).map(x=>x.r);
@@ -957,6 +963,17 @@ function recipeById(id){ return state.recipes.find(r=>r.id===id); }
 
 $("#search").oninput = e=>{ searchQ=e.target.value.trim(); renderGrid(); };
 $("#addRecipe").onclick = ()=> openEditor(null);
+// Pick a random recipe: respect the active filters, and always avoid the user's allergens/dislikes.
+function surpriseMe(){
+  let pool = filteredRecipes().filter(r=> recipeConflicts(r).length===0 && recipeDislikes(r).length===0);
+  if(!pool.length) pool = state.recipes.filter(r=> recipeConflicts(r).length===0 && recipeDislikes(r).length===0);
+  if(!pool.length) pool = state.recipes.slice();
+  if(!pool.length){ toast("No recipes to pick from"); return; }
+  const r = pool[Math.floor(Math.random()*pool.length)];
+  toast("🎲 "+r.title);
+  openDetail(r.id);
+}
+$("#surpriseBtn").onclick = surpriseMe;
 $("#togLikes").onchange = e=>{ VIEW.likesFirst=e.target.checked; renderGrid(); };
 $("#togLowGL").onchange = e=>{ VIEW.lowGL=e.target.checked; renderGrid(); };
 $("#togLowAdded").onchange = e=>{ VIEW.lowAdded=e.target.checked; renderGrid(); };
