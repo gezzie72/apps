@@ -502,7 +502,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v11 merge-import";
+const APP_VERSION = "2026-08-23 · v12 dessert-category";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -510,7 +510,7 @@ function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.get
 function fmtDate(iso){ try{ return new Date(iso+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}); }catch(e){ return iso; } }
 function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
 
-const CATEGORIES = ["Breakfast","Snack","Main","Fruit"];
+const CATEGORIES = ["Breakfast","Snack","Main","Fruit","Dessert"];
 const ALLERGENS  = ["Gluten","Dairy","Egg","Nuts","Peanuts","Soy","Fish","Shellfish","Sesame"];
 const DIETS      = ["Vegetarian","Vegan","Low-carb","High-protein","Gluten-free","Dairy-free","Calorie-controlled"];
 const CAL_CTRL   = 350;   // "Calorie-controlled" = at or below this many kcal per serving
