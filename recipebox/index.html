@@ -88,6 +88,12 @@
   .tag.diet{color:var(--accent)}
   .tag.al{color:var(--danger)}
   .allerwarn{font-size:11.5px; color:var(--danger); font-weight:600; display:flex; align-items:center; gap:5px}
+  .card.dislikerecipe{border-color:color-mix(in srgb,var(--warn) 45%, var(--line))}
+  .dislikewarn{font-size:11.5px; color:var(--warn); font-weight:600; display:flex; align-items:center; gap:5px}
+  .chiprow{display:flex; flex-wrap:wrap; gap:7px; margin-top:4px}
+  .dchip{display:inline-flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:5px 6px 5px 11px; font-size:13px}
+  .dchip button{background:none; border:none; color:var(--muted); cursor:pointer; font-size:15px; line-height:1; padding:0 2px}
+  .dchip button:hover{color:var(--danger)}
   .empty{text-align:center; color:var(--muted); padding:50px 20px}
 
   /* Overlays */
@@ -193,6 +199,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
       <div class="togs">
         <label class="tog"><input type="checkbox" id="togAllergen"> Hide recipes with my allergens</label>
         <label class="tog"><input type="checkbox" id="togDiet"> Match my dietary needs only</label>
+        <label class="tog"><input type="checkbox" id="togDislike"> Hide foods I dislike</label>
       </div>
       <div class="grid" id="recipeGrid"></div>
       <div class="disclaimer">Nutrition values are approximate per-serving estimates to help with planning — not a substitute for advice from your GP, diabetes team or dietitian. Always follow their guidance and check labels for your own allergies.</div>
@@ -254,6 +261,16 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
         <b style="font-size:16px">Dietary requirements</b>
         <div class="muted" style="font-size:13px;margin-bottom:8px">Use "Match my dietary needs only" in the Cookbook to show just recipes that fit.</div>
         <div class="checkgrid" id="dietPicker"></div>
+      </div>
+
+      <div class="card-lite">
+        <b style="font-size:16px">Foods I dislike</b>
+        <div class="muted" style="font-size:13px;margin-bottom:8px">Add any ingredient you'd rather avoid (e.g. mushrooms, olives, coriander). Recipes containing one are flagged in amber, and can be hidden with "Hide foods I dislike" in the Cookbook.</div>
+        <div style="display:flex;gap:8px">
+          <input class="in" id="dislikeAdd" placeholder="Add a food…" autocomplete="off">
+          <button class="btn" id="dislikeAddBtn">Add</button>
+        </div>
+        <div class="chiprow" id="dislikeChips"></div>
       </div>
 
       <div class="card-lite">
@@ -367,7 +384,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v2 shopping";
+const APP_VERSION = "2026-08-23 · v3 dislikes";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -491,7 +508,7 @@ const SEED = [
 
 /* ================= state ================= */
 const LS_KEY = "recipebox.data";
-function defaultProfile(){ return { calTarget:2000, carbTarget:130, allergies:[], diets:[] }; }
+function defaultProfile(){ return { calTarget:2000, carbTarget:130, allergies:[], diets:[], dislikes:[] }; }
 function freshState(){
   const t = now();
   const recipes = SEED.map((r,i)=> Object.assign({}, r, {id:uid(), favorite:false, seed:true, createdAt:t-i, updatedAt:t-i, order:i}));
@@ -519,6 +536,7 @@ function migrate(s){
   s.recipes = (s.recipes||[]).map(normalizeRecipe);
   s.deleted = s.deleted||{};
   s.profile = Object.assign(defaultProfile(), s.profile||{});
+  if(!Array.isArray(s.profile.dislikes)) s.profile.dislikes=[];
   s.today = s.today||{date:todayISO(), items:[]};
   if(s.today.date!==todayISO()) s.today = {date:todayISO(), items:[]};
   if(!Array.isArray(s.today.items)) s.today.items=[];
@@ -539,7 +557,9 @@ const VIEW = {
   get hideAllergen(){ try{return localStorage.getItem("recipebox.hideAllergen")==="1"}catch(e){return false} },
   set hideAllergen(v){ try{localStorage.setItem("recipebox.hideAllergen",v?"1":"0")}catch(e){} },
   get dietOnly(){ try{return localStorage.getItem("recipebox.dietOnly")==="1"}catch(e){return false} },
-  set dietOnly(v){ try{localStorage.setItem("recipebox.dietOnly",v?"1":"0")}catch(e){} }
+  set dietOnly(v){ try{localStorage.setItem("recipebox.dietOnly",v?"1":"0")}catch(e){} },
+  get hideDislike(){ try{return localStorage.getItem("recipebox.hideDislike")==="1"}catch(e){return false} },
+  set hideDislike(v){ try{localStorage.setItem("recipebox.hideDislike",v?"1":"0")}catch(e){} }
 };
 
 /* ================= tabs ================= */
@@ -548,6 +568,7 @@ function setTab(t){
   activeTab=t;
   $("#tabs").querySelectorAll("button").forEach(b=> b.classList.toggle("active", b.dataset.tab===t));
   ["cookbook","today","shopping","setup"].forEach(id=> $("#tab-"+id).style.display = id===t?"":"none");
+  if(t==="cookbook") renderGrid();   // reflect any allergy/diet/dislike changes made in Setup
   if(t==="today") renderToday();
   if(t==="shopping") renderShopping();
   if(t==="setup") renderSetup();
@@ -555,6 +576,17 @@ function setTab(t){
 
 /* ================= cookbook ================= */
 function recipeConflicts(r){ const a=state.profile.allergies||[]; return r.allergens.filter(x=>a.includes(x)); }
+// Free-text "foods I dislike": match each term at a word start in the title/ingredients
+// (so "mushroom" hits "mushrooms" but "egg" won't flag "veggie"). Returns matched terms.
+function recipeDislikes(r){
+  const dl = state.profile.dislikes||[];
+  if(!dl.length) return [];
+  const hay = (r.title+" "+(r.ingredients||[]).join(" ")).toLowerCase();
+  return dl.filter(term=>{
+    const t=(term||"").toLowerCase().trim(); if(!t) return false;
+    return new RegExp("(^|[^a-z])"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).test(hay);
+  });
+}
 function matchesDiet(r){ const d=state.profile.diets||[]; return d.every(x=> r.diet.includes(x)); }
 
 function renderChips(){
@@ -565,6 +597,7 @@ function renderChips(){
 function renderGrid(){
   $("#togAllergen").checked = VIEW.hideAllergen;
   $("#togDiet").checked = VIEW.dietOnly;
+  $("#togDislike").checked = VIEW.hideDislike;
   let list = state.recipes.slice();
   if(catFilter==="Favorites") list=list.filter(r=>r.favorite);
   else if(catFilter!=="All") list=list.filter(r=>r.category===catFilter);
@@ -574,15 +607,17 @@ function renderGrid(){
   }
   if(VIEW.hideAllergen) list=list.filter(r=> recipeConflicts(r).length===0);
   if(VIEW.dietOnly) list=list.filter(matchesDiet);
+  if(VIEW.hideDislike) list=list.filter(r=> recipeDislikes(r).length===0);
   list.sort((a,b)=> (a.category===b.category? a.title.localeCompare(b.title) : CATEGORIES.indexOf(a.category)-CATEGORIES.indexOf(b.category)));
 
   const g=$("#recipeGrid");
   if(!list.length){ g.innerHTML=`<div class="empty">No recipes match.<br><span class="muted">Try clearing filters or add your own with ＋ Recipe.</span></div>`; return; }
   g.innerHTML = list.map(r=>{
     const conf=recipeConflicts(r);
+    const dis=recipeDislikes(r);
     const tags = r.diet.slice(0,3).map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")
       + r.allergens.slice(0,3).map(a=>`<span class="tag al">${esc(a)}</span>`).join("");
-    return `<div class="card${conf.length?" warnrecipe":""}" data-id="${r.id}">
+    return `<div class="card${conf.length?" warnrecipe":(dis.length?" dislikerecipe":"")}" data-id="${r.id}">
       <button class="fav${r.favorite?" on":""}" data-fav="${r.id}" title="Favorite">${r.favorite?"★":"☆"}</button>
       <div><span class="pill cat">${esc(r.category)}</span></div>
       <h3>${esc(r.title)}</h3>
@@ -593,6 +628,7 @@ function renderGrid(){
         <div class="nut"><b>${r.protein}g</b><span>Protein</span></div>
       </div>
       ${conf.length?`<div class="allerwarn">⚠ Contains ${conf.map(esc).join(", ")}</div>`:""}
+      ${dis.length?`<div class="dislikewarn">🙁 Contains ${dis.map(esc).join(", ")}</div>`:""}
       <div class="tags">${tags}</div>
     </div>`;
   }).join("");
@@ -606,11 +642,13 @@ $("#search").oninput = e=>{ searchQ=e.target.value.trim(); renderGrid(); };
 $("#addRecipe").onclick = ()=> openEditor(null);
 $("#togAllergen").onchange = e=>{ VIEW.hideAllergen=e.target.checked; renderGrid(); };
 $("#togDiet").onchange = e=>{ VIEW.dietOnly=e.target.checked; renderGrid(); };
+$("#togDislike").onchange = e=>{ VIEW.hideDislike=e.target.checked; renderGrid(); };
 
 /* ================= detail ================= */
 function openDetail(id){
   const r=recipeById(id); if(!r) return;
   const conf=recipeConflicts(r);
+  const dis=recipeDislikes(r);
   const sheet=$("#detailSheet");
   sheet.innerHTML = `
     <div class="sheethead">
@@ -620,6 +658,7 @@ function openDetail(id){
     </div>
     <div><span class="pill cat">${esc(r.category)}</span> <span class="pill">${r.servings} serving${r.servings>1?"s":""}</span></div>
     ${conf.length?`<div class="allerwarn" style="margin-top:12px">⚠ Contains ${conf.map(esc).join(", ")} — on your allergy list</div>`:""}
+    ${dis.length?`<div class="dislikewarn" style="margin-top:12px">🙁 Contains ${dis.map(esc).join(", ")} — on your dislikes list</div>`:""}
     <div class="nutgrid">
       <div class="nutbig carb"><b>${r.carbs}g</b><span>Carbs</span></div>
       <div class="nutbig"><b>${r.sugar}g</b><span>Sugar</span></div>
@@ -819,9 +858,25 @@ function renderSetup(){
   $("#dietPicker").innerHTML = DIETS.map(d=>`<label class="cbx"><input type="checkbox" value="${d}" ${state.profile.diets.includes(d)?"checked":""}>${d}</label>`).join("");
   $("#allergyPicker").querySelectorAll("input").forEach(c=> c.onchange=()=>{ state.profile.allergies=[...$("#allergyPicker").querySelectorAll("input:checked")].map(x=>x.value); touch(); });
   $("#dietPicker").querySelectorAll("input").forEach(c=> c.onchange=()=>{ state.profile.diets=[...$("#dietPicker").querySelectorAll("input:checked")].map(x=>x.value); touch(); });
+  renderDislikes();
   renderTheme(); renderTextSize(); renderSync();
   $("#appVersion").textContent = "RecipeBox " + APP_VERSION;
 }
+function renderDislikes(){
+  const dl = state.profile.dislikes||[];
+  const box=$("#dislikeChips");
+  box.innerHTML = dl.length ? dl.map(d=>`<span class="dchip">${esc(d)}<button data-del="${esc(d)}" title="Remove">✕</button></span>`).join("")
+    : `<span class="muted" style="font-size:13px">None yet.</span>`;
+  box.querySelectorAll("[data-del]").forEach(b=> b.onclick=()=>{ state.profile.dislikes=(state.profile.dislikes||[]).filter(x=>x!==b.dataset.del); touch(); renderDislikes(); if(activeTab==="cookbook") renderGrid(); });
+}
+function addDislike(text){
+  const t=(text||"").trim(); if(!t) return;
+  const dl=state.profile.dislikes||(state.profile.dislikes=[]);
+  if(dl.some(x=>x.toLowerCase()===t.toLowerCase())){ toast("Already on the list"); return; }
+  dl.push(t); touch(); renderDislikes();
+}
+$("#dislikeAddBtn").onclick=()=>{ addDislike($("#dislikeAdd").value); $("#dislikeAdd").value=""; $("#dislikeAdd").focus(); };
+$("#dislikeAdd").addEventListener("keydown", e=>{ if(e.key==="Enter"){ addDislike($("#dislikeAdd").value); $("#dislikeAdd").value=""; } });
 $("#calTarget").oninput = e=>{ state.profile.calTarget=Math.max(0,parseInt(e.target.value)||0); touch(); };
 $("#carbTarget").oninput = e=>{ state.profile.carbTarget=Math.max(0,parseInt(e.target.value)||0); touch(); };
 
