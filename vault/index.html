@@ -1048,6 +1048,11 @@ function openSettings(){
       <h2>⚙ Sync &amp; settings</h2>
       <div id="syncBody"></div>
       <div id="syncMsg"></div>
+      <h2 style="font-size:15px;margin:22px 0 8px">My apps</h2>
+      <p class="muted" style="margin:0 0 4px">💡 IdeaPad — <a class="link" style="padding:0" href="https://gezzie72.github.io/apps/ideapad/" target="_blank" rel="noopener">gezzie72.github.io/apps/ideapad</a></p>
+      <p class="muted" style="margin:0 0 4px">🏋 FitPlan — <a class="link" style="padding:0" href="https://gezzie72.github.io/apps/fitplan/" target="_blank" rel="noopener">gezzie72.github.io/apps/fitplan</a></p>
+      <p class="muted" style="margin:0 0 4px">✚ HealthLog — <a class="link" style="padding:0" href="https://gezzie72.github.io/apps/healthlog/" target="_blank" rel="noopener">gezzie72.github.io/apps/healthlog</a></p>
+      <p class="muted" style="margin:0 0 4px">🔐 Vault — <a class="link" style="padding:0" href="https://gezzie72.github.io/apps/vault/" target="_blank" rel="noopener">gezzie72.github.io/apps/vault</a></p>
       <div class="modal-actions" style="margin-top:14px"><button class="primary" onclick="closeModal()">Done</button></div>
     </div>
   </div>`;
@@ -1155,7 +1160,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
 window.addEventListener("error", e=>{ try{ toast("⚠ Error: " + (e.message || (e.error && e.error.message) || e.type)); }catch{} });
 window.addEventListener("unhandledrejection", e=>{ try{ toast("⚠ Error: " + ((e.reason && (e.reason.message||e.reason)) || "promise rejected")); }catch{} });
 
-const VERSION = "v14 · 2026-08-23 · install hint button";
+const VERSION = "v15 · 2026-08-23 · My apps list";
 ["verLock","verApp"].forEach(id=>{ const el=$(id); if(el) el.textContent = "Build " + VERSION; });
 
 initLock();
