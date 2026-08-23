@@ -199,6 +199,7 @@
     <div class="fineprint">Your vault is encrypted with AES-GCM (PBKDF2) and stored only on this device.
       Sync stores only the encrypted blob in your private gist. There is no recovery — if you
       forget the master password, the data cannot be read. Use the <b>same</b> master password on every device.</div>
+    <button type="button" class="link hidden" id="installLink" style="font-size:13px;padding:8px" onclick="installOrHint()">📲 Install this app</button>
     <div class="ver" id="verLock"></div>
   </div>
 </div>
@@ -213,6 +214,7 @@
     <button class="btn" id="exportBtn" title="Download an encrypted backup file">⬇ Backup</button>
     <button class="btn" id="importBtn" title="Restore from a .vault backup or import a .csv file">⬆ Restore</button>
     <button class="btn" id="csvBtn" title="Import entries from a CSV file">📄 CSV</button>
+    <button class="btn hidden" id="installBtn" title="Install Vault as an app">⬇ Install</button>
     <button class="btn" id="lockNowBtn">🔒 Lock</button>
     <button class="btn accent" id="addBtn">+ Add entry</button>
     <input type="file" id="importFile" accept=".vault,.json,.csv,application/json,text/csv" class="sr-file">
@@ -1093,7 +1095,46 @@ setInterval(()=>{ if(!GH.connected||!GH.auto||!CRYPTO_KEY) return; if(document.h
 setInterval(updateLastSync, 30000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && GH.connected && GH.auto && CRYPTO_KEY) syncPull(false,true).catch(()=>{}); });
 
+/* ---------- install prompt ---------- */
+let deferredPrompt = null;
+const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+function showInstallUI(show){
+  const vis = show && !isStandalone();
+  const b=$("installBtn"), l=$("installLink");
+  if(b) b.classList.toggle("hidden", !vis);
+  if(l) l.classList.toggle("hidden", !vis);
+}
+window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); deferredPrompt = e; showInstallUI(true); });
+window.addEventListener("appinstalled", ()=>{ deferredPrompt = null; showInstallUI(false); toast("Installed ✓"); });
+async function installOrHint(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    try{ await deferredPrompt.userChoice; }catch(e){}
+    deferredPrompt = null; showInstallUI(false);
+    return;
+  }
+  showInstallHint();
+}
+function showInstallHint(){
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const android = /Android/.test(ua);
+  let steps, where;
+  if(ios){ steps = 'In <b>Safari</b>: tap the <b>Share</b> button (the □ with ↑), then <b>Add to Home Screen</b>.'; where = "home screen"; }
+  else if(android){ steps = 'In <b>Chrome</b>: tap the <b>⋮</b> menu, then <b>Install app</b> (or <b>Add to Home screen</b>).'; where = "home screen"; }
+  else { steps = 'In <b>Chrome</b> or <b>Edge</b>: click the <b>install icon</b> in the address bar, or open the <b>⋮</b> menu → <b>Install Vault…</b> (Edge: <b>Apps → Install this site as an app</b>).'; where = "desktop / taskbar"; }
+  $("modalRoot").innerHTML = `<div class="overlay" id="overlay"><div class="modal" style="max-width:400px">
+    <h2>📲 Install Vault</h2>
+    <p class="muted" style="font-size:14px;line-height:1.6">${steps}</p>
+    <p class="muted" style="font-size:12px;margin-top:10px">Installing adds a Vault icon to your ${where} and runs it in its own window — offline-capable, just like a native app.</p>
+    <div class="modal-actions" style="margin-top:14px"><button class="primary" onclick="closeModal()">Got it</button></div>
+  </div></div>`;
+  bindOverlayClose();
+}
+window.installOrHint = installOrHint;
+
 /* ---------- wire up ---------- */
+$("installBtn").onclick = installOrHint;
 $("auditBtn").onclick = openAudit;
 $("settingsBtn").onclick = openSettings;
 $("exportBtn").onclick = exportBackup;
@@ -1114,11 +1155,12 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
 window.addEventListener("error", e=>{ try{ toast("⚠ Error: " + (e.message || (e.error && e.error.message) || e.type)); }catch{} });
 window.addEventListener("unhandledrejection", e=>{ try{ toast("⚠ Error: " + ((e.reason && (e.reason.message||e.reason)) || "promise rejected")); }catch{} });
 
-const VERSION = "v13 · 2026-08-23 · PWA + encrypted gist sync";
+const VERSION = "v14 · 2026-08-23 · install hint button";
 ["verLock","verApp"].forEach(id=>{ const el=$(id); if(el) el.textContent = "Build " + VERSION; });
 
 initLock();
 $("masterInput").focus();
+showInstallUI(true);   // reveal the Install hint unless already running installed
 
 if("serviceWorker" in navigator){ window.addEventListener("load", ()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
 </script>
