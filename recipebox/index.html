@@ -110,6 +110,9 @@
   .nutbig.carb b{color:var(--carb)}
   .nutbig span{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px}
   .sec-h{font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:16px 0 6px}
+  .portions{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:2px 0 10px}
+  .batch{font-size:12.5px; margin-top:9px; background:var(--panel2); border-radius:9px; padding:8px 11px}
+  .batch b{color:var(--text)}
   ul.ing{margin:0; padding-left:20px} ul.ing li{margin:3px 0}
   ol.steps{margin:0; padding-left:20px} ol.steps li{margin:6px 0}
   .checkgrid{display:flex; flex-wrap:wrap; gap:7px}
@@ -259,7 +262,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 
       <div class="card-lite">
         <b style="font-size:16px">Dietary requirements</b>
-        <div class="muted" style="font-size:13px;margin-bottom:8px">Use "Match my dietary needs only" in the Cookbook to show just recipes that fit.</div>
+        <div class="muted" style="font-size:13px;margin-bottom:8px">Use "Match my dietary needs only" in the Cookbook to show just recipes that fit. <b>Calorie-controlled</b> = recipes at or below 350 kcal per serving (or any you tag yourself).</div>
         <div class="checkgrid" id="dietPicker"></div>
       </div>
 
@@ -384,7 +387,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v3 dislikes";
+const APP_VERSION = "2026-08-23 · v4 scale+calctrl";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -394,7 +397,11 @@ function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
 
 const CATEGORIES = ["Breakfast","Snack","Main","Fruit"];
 const ALLERGENS  = ["Gluten","Dairy","Egg","Nuts","Peanuts","Soy","Fish","Shellfish","Sesame"];
-const DIETS      = ["Vegetarian","Vegan","Low-carb","High-protein","Gluten-free","Dairy-free"];
+const DIETS      = ["Vegetarian","Vegan","Low-carb","High-protein","Gluten-free","Dairy-free","Calorie-controlled"];
+const CAL_CTRL   = 350;   // "Calorie-controlled" = at or below this many kcal per serving
+function isCalCtrl(r){ return r.cal>0 && r.cal<=CAL_CTRL; }
+// Diet tags to show = the recipe's own tags, plus a computed "Calorie-controlled" when it qualifies.
+function displayDiets(r){ const d=(r.diet||[]).slice(); if(isCalCtrl(r) && !d.includes("Calorie-controlled")) d.push("Calorie-controlled"); return d; }
 
 /* ================= seed cookbook ================= */
 function R(title,category,servings,n,ing,steps,allergens,diet,notes){
@@ -587,7 +594,7 @@ function recipeDislikes(r){
     return new RegExp("(^|[^a-z])"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).test(hay);
   });
 }
-function matchesDiet(r){ const d=state.profile.diets||[]; return d.every(x=> r.diet.includes(x)); }
+function matchesDiet(r){ const d=state.profile.diets||[]; return d.every(x=> x==="Calorie-controlled" ? (isCalCtrl(r)||r.diet.includes(x)) : r.diet.includes(x)); }
 
 function renderChips(){
   const cats=["All",...CATEGORIES,"Favorites"];
@@ -615,7 +622,7 @@ function renderGrid(){
   g.innerHTML = list.map(r=>{
     const conf=recipeConflicts(r);
     const dis=recipeDislikes(r);
-    const tags = r.diet.slice(0,3).map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")
+    const tags = displayDiets(r).slice(0,3).map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")
       + r.allergens.slice(0,3).map(a=>`<span class="tag al">${esc(a)}</span>`).join("");
     return `<div class="card${conf.length?" warnrecipe":(dis.length?" dislikerecipe":"")}" data-id="${r.id}">
       <button class="fav${r.favorite?" on":""}" data-fav="${r.id}" title="Favorite">${r.favorite?"★":"☆"}</button>
@@ -644,11 +651,48 @@ $("#togAllergen").onchange = e=>{ VIEW.hideAllergen=e.target.checked; renderGrid
 $("#togDiet").onchange = e=>{ VIEW.dietOnly=e.target.checked; renderGrid(); };
 $("#togDislike").onchange = e=>{ VIEW.hideDislike=e.target.checked; renderGrid(); };
 
+/* ================= portions calculator ================= */
+const UNI = {'½':0.5,'⅓':1/3,'⅔':2/3,'¼':0.25,'¾':0.75,'⅕':0.2,'⅖':0.4,'⅗':0.6,'⅘':0.8,'⅙':1/6,'⅐':1/7,'⅛':0.125,'⅜':0.375,'⅝':0.625,'⅞':0.875};
+const UNICHARS = "½⅓⅔¼¾⅕⅖⅗⅘⅙⅐⅛⅜⅝⅞";
+function qtyVal(s){
+  s=(s||"").trim();
+  let m=s.match(/^(\d+)\s+(\d+)\/(\d+)$/); if(m) return +m[1]+(+m[2]/+m[3]);           // "1 1/2"
+  m=s.match(/^(\d+)\s*([½⅓⅔¼¾⅕⅖⅗⅘⅙⅐⅛⅜⅝⅞])$/); if(m) return +m[1]+UNI[m[2]];         // "1½"
+  m=s.match(/^(\d+)\/(\d+)$/); if(m) return +m[1]/+m[2];                               // "1/2"
+  if(UNI[s]!=null) return UNI[s];                                                       // "½"
+  if(/^\d*\.?\d+$/.test(s)) return parseFloat(s);                                       // "2" or "1.5"
+  return null;
+}
+function fmtQty(n){
+  n=Math.round(n*100)/100;
+  if(n<=0) return "0";
+  const whole=Math.floor(n+1e-9), frac=n-whole;
+  const fracs=[[0.5,'½'],[1/3,'⅓'],[2/3,'⅔'],[0.25,'¼'],[0.75,'¾'],[0.2,'⅕'],[0.125,'⅛']];
+  for(const [v,g] of fracs){ if(Math.abs(frac-v)<0.04) return (whole?whole:"")+g; }
+  if(frac<0.04) return String(whole);
+  return String(n).replace(/\.?0+$/,"");
+}
+// Scale the leading quantity (int / decimal / fraction / unicode / "a-b" range) in an ingredient line.
+function scaleIngredient(line, factor){
+  if(!factor || factor===1) return line;
+  const q="(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+\\s*["+UNICHARS+"]|\\d*\\.?\\d+|["+UNICHARS+"])";
+  const re=new RegExp("^(\\s*)("+q+")(\\s*[-–—]\\s*)("+q+")?|^(\\s*)("+q+")");
+  const m=line.match(re);
+  if(!m) return line;
+  const lead=m[1]!==undefined?m[1]:(m[5]||"");
+  const t1 = m[2]!==undefined?m[2]:m[6];
+  const v1=qtyVal(t1); if(v1==null) return line;
+  let out=lead+fmtQty(v1*factor);
+  if(m[4]){ const v2=qtyVal(m[4]); if(v2!=null) out+=(m[3]||"-")+fmtQty(v2*factor); }
+  return out + line.slice(m[0].length);
+}
+
 /* ================= detail ================= */
 function openDetail(id){
   const r=recipeById(id); if(!r) return;
   const conf=recipeConflicts(r);
   const dis=recipeDislikes(r);
+  const dd=displayDiets(r);
   const sheet=$("#detailSheet");
   sheet.innerHTML = `
     <div class="sheethead">
@@ -667,8 +711,15 @@ function openDetail(id){
       <div class="nutbig"><b>${r.fat}g</b><span>Fat</span></div>
       <div class="nutbig"><b>${r.fibre}g</b><span>Fibre</span></div>
     </div>
-    ${r.diet.length?`<div class="tags">${r.diet.map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")}</div>`:""}
-    ${r.ingredients.length?`<div class="sec-h">Ingredients</div><ul class="ing">${r.ingredients.map(i=>`<li>${esc(i)}</li>`).join("")}</ul>`:""}
+    ${dd.length?`<div class="tags">${dd.map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")}</div>`:""}
+    ${r.ingredients.length?`<div class="sec-h">Ingredients</div>
+      <div class="portions">
+        <span class="muted">Makes ${r.servings} — scale to</span>
+        <div class="stepper"><button id="pMinus">−</button><span id="pServ">${r.servings}</span><button id="pPlus">+</button></div>
+        <span class="muted" id="pServLbl">serving${r.servings>1?"s":""}</span>
+      </div>
+      <ul class="ing" id="ingList"></ul>
+      <div class="batch muted" id="batchTotals"></div>`:""}
     ${r.steps.length?`<div class="sec-h">Method</div><ol class="steps">${r.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol>`:""}
     ${r.notes?`<div class="sec-h">Notes</div><div class="muted">${esc(r.notes)}</div>`:""}
     <div class="actions">
@@ -679,6 +730,21 @@ function openDetail(id){
     </div>`;
   $("#detailOverlay").classList.add("open");
   let servings=1;
+  // Portions calculator: scale ingredient quantities + show batch totals for the chosen serving count.
+  let pServ = r.servings;
+  function renderScaled(){
+    if(!r.ingredients.length) return;
+    const factor = pServ / r.servings;
+    $("#pServ").textContent = pServ;
+    $("#pServLbl").textContent = "serving"+(pServ>1?"s":"");
+    $("#ingList").innerHTML = r.ingredients.map(i=>`<li>${esc(scaleIngredient(i, factor))}</li>`).join("");
+    const tc=Math.round(r.carbs*pServ), tk=Math.round(r.cal*pServ), tp=Math.round(r.protein*pServ), ts=Math.round(r.sugar*pServ);
+    $("#batchTotals").innerHTML = `Batch total for ${pServ} serving${pServ>1?"s":""}: <b>${tc}g</b> carbs · <b>${tk}</b> kcal · <b>${ts}g</b> sugar · <b>${tp}g</b> protein`;
+  }
+  renderScaled();
+  const pm=$("#pMinus"), pp=$("#pPlus");
+  if(pm) pm.onclick=()=>{ pServ=Math.max(1,pServ-1); renderScaled(); };
+  if(pp) pp.onclick=()=>{ pServ++; renderScaled(); };
   $("#detailClose").onclick=closeDetail;
   sheet.querySelector(".fav").onclick=()=>toggleFav(r.id);
   $("#detailEdit").onclick=()=>{ closeDetail(); openEditor(r.id); };
