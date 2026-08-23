@@ -367,7 +367,7 @@
     <div class="panel">
       <h2>Blood pressure history</h2>
       <div class="scrollx"><table class="hist" id="bpHist"><tbody></tbody></table></div>
-      <p class="disc">Categories are a rough general guide (based on common adult ranges), not a diagnosis. Follow your clinician's advice.</p>
+      <p class="disc">Categories use UK NICE home-monitoring ranges (Normal under 135/85, High from 135/85, stage 2 from 150/95) and reflect your recent <b>average</b>, not a single reading — a general guide, not a diagnosis. Follow your clinician's advice.</p>
     </div>
   </section>
 
@@ -604,7 +604,6 @@
       <p class="muted" style="margin-top:6px">✚ HealthLog — <a class="link" href="https://gezzie72.github.io/apps/healthlog/" target="_blank" rel="noopener">gezzie72.github.io/apps/healthlog</a></p>
       <p class="muted" style="margin-top:6px">🏋 FitPlan — <a class="link" href="https://gezzie72.github.io/apps/fitplan/" target="_blank" rel="noopener">gezzie72.github.io/apps/fitplan</a></p>
       <p class="muted" style="margin-top:6px">💡 IdeaPad — <a class="link" href="https://gezzie72.github.io/apps/ideapad/" target="_blank" rel="noopener">gezzie72.github.io/apps/ideapad</a></p>
-      <p class="muted" style="margin-top:6px">🔐 Vault — <a class="link" href="https://gezzie72.github.io/apps/vault/" target="_blank" rel="noopener">gezzie72.github.io/apps/vault</a></p>
     </div>
     <p class="muted" id="verLine" style="text-align:center; margin-top:16px"></p>
   </section>
@@ -613,7 +612,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-08-23 · v4 bowel+weight+insights";
+const APP_VERSION = "2026-08-23 · v5 BP UK-NICE avg";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -1014,12 +1013,23 @@ function renderNebidoCal(){
 }
 
 /* ---------- VITALS (blood type + blood pressure) ---------- */
-function bpCat(sys,dia){                 // rough general adult guide, not a diagnosis
-  if(sys>=180||dia>=120) return {label:"Crisis",cls:"high"};
-  if(sys>=140||dia>=90)  return {label:"High (stage 2)",cls:"high"};
-  if(sys>=130||dia>=80)  return {label:"High (stage 1)",cls:"high"};
-  if(sys>=120&&dia<80)   return {label:"Elevated",cls:"low"};
+function bpCat(sys,dia){                 // UK NICE home-monitoring (HBPM) bands — general guide, not a diagnosis
+  if(sys>=180||dia>=120) return {label:"Very high",cls:"high"};
+  if(sys>=150||dia>=95)  return {label:"High (stage 2)",cls:"high"};
+  if(sys>=135||dia>=85)  return {label:"High (stage 1)",cls:"low"};
   return {label:"Normal",cls:"good"};
+}
+// Recent average BP: last 7 days if any, else the most recent up-to-3 readings.
+function avgBP(){
+  const sorted=[...state.bp].sort((a,b)=>a.dt<b.dt?1:-1);   // newest first
+  if(!sorted.length) return null;
+  const now=Date.now();
+  let set=sorted.filter(r=> now-new Date(r.dt).getTime() <= 7*86400000);
+  let window="7-day";
+  if(!set.length){ set=sorted.slice(0,3); window="recent"; }
+  const sys=Math.round(set.reduce((a,r)=>a+r.sys,0)/set.length);
+  const dia=Math.round(set.reduce((a,r)=>a+r.dia,0)/set.length);
+  return {sys,dia,n:set.length,window};
 }
 
 /* --- profile / height / weight / bmi helpers --- */
@@ -1134,13 +1144,14 @@ function renderBowelCal(){
 /* --- Health insights (Today) --- */
 function computeInsights(){
   const out=[]; const age=ageFromDOB(state.dob);
-  const lastBP=[...state.bp].sort((a,b)=>a.dt<b.dt?1:-1)[0];
+  const a=avgBP();
   const bmi=bmiValue();
-  if(lastBP){
-    const c=bpCat(lastBP.sys,lastBP.dia);
-    let msg=`Latest blood pressure <b>${lastBP.sys}/${lastBP.dia}</b> — ${c.label.toLowerCase()}.`;
-    if(c.cls!=="good"){ msg += (age!=null && age>=80) ? ` Over 80, a target below 150/90 is commonly cited.` : ` For most adults a target below 140/90 is commonly cited.`; }
-    out.push({sev:c.cls==="good"?"info":(c.label==="Crisis"?"flag":"watch"), txt:msg});
+  if(a){
+    const c=bpCat(a.sys,a.dia);
+    const lead = a.n>1 ? `${a.window==="7-day"?"7-day average":"Recent average"} blood pressure <b>${a.sys}/${a.dia}</b> (${a.n} readings)` : `Latest blood pressure <b>${a.sys}/${a.dia}</b>`;
+    let msg=`${lead} — ${c.label.toLowerCase()}.`;
+    if(c.cls!=="good"){ msg += (age!=null && age>=80) ? ` For home readings over 80, below about 145/85 is commonly the aim.` : ` For home readings, below about 135/85 is commonly cited.`; }
+    out.push({sev:c.cls==="good"?"info":(c.label==="Very high"?"flag":"watch"), txt:msg});
   }
   if(bmi!=null){
     const bc=bmiCat(bmi);
@@ -1150,7 +1161,7 @@ function computeInsights(){
   }
   // combined view — the factors considered together
   const flags=[];
-  if(lastBP && bpCat(lastBP.sys,lastBP.dia).cls!=="good") flags.push("raised blood pressure");
+  if(a && bpCat(a.sys,a.dia).cls!=="good") flags.push("raised blood pressure");
   if(bmi!=null && bmi>=25) flags.push("a BMI above the healthy range");
   if(flags.length>=2){
     out.push({sev:"flag", txt:`A few things stack up together — ${flags.join(" and ")}${age!=null&&age>=50?", and your age is a factor too":""}. Combined, these can add to cardiovascular risk, so it's worth raising with your GP.`});
@@ -1175,17 +1186,14 @@ function renderVitals(){
   renderWeight();
   $("#btSel").value=state.bloodType||"";
   if(!$("#bpWhen").value) $("#bpWhen").value=nowLocalInput();
-  const rows=[...state.bp];
   const now=Date.now();
-  const wk=rows.filter(r=> now-new Date(r.dt).getTime() <= 7*86400000);
-  const avgS = wk.length ? Math.round(wk.reduce((a,r)=>a+r.sys,0)/wk.length) : null;
-  const avgD = wk.length ? Math.round(wk.reduce((a,r)=>a+r.dia,0)/wk.length) : null;
-  const last=[...state.bp].sort((a,b)=>a.dt<b.dt?1:-1)[0];
-  const lc=last?bpCat(last.sys,last.dia):null;
+  const wk=[...state.bp].filter(r=> now-new Date(r.dt).getTime() <= 7*86400000);
+  const av=avgBP();
+  const lc=av?bpCat(av.sys,av.dia):null;
   $("#bpStats").innerHTML=[
     card("Readings logged", String(state.bp.length), "all time"),
-    card("7-day average", avgS!=null?`${avgS}/${avgD}`:"—", `${wk.length} reading${wk.length===1?"":"s"}`),
-    card("Latest category", lc?`<span class="pill ${lc.cls}" style="font-size:.7em">${lc.label}</span>`:"—", last?`${last.sys}/${last.dia}${last.pulse?" · "+last.pulse+" bpm":""}`:"—")
+    card("7-day average", wk.length?`${Math.round(wk.reduce((a,r)=>a+r.sys,0)/wk.length)}/${Math.round(wk.reduce((a,r)=>a+r.dia,0)/wk.length)}`:"—", `${wk.length} reading${wk.length===1?"":"s"}`),
+    card("Category", lc?`<span class="pill ${lc.cls}" style="font-size:.7em">${lc.label}</span>`:"—", av?`from ${av.n>1?(av.window==="7-day"?"7-day avg":"recent avg")+" "+av.sys+"/"+av.dia:"latest "+av.sys+"/"+av.dia}`:"—")
   ].join("");
   const hist=[...state.bp].sort((a,b)=>a.dt<b.dt?1:-1);
   const tb=$("#bpHist").querySelector("tbody");
