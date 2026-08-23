@@ -64,6 +64,8 @@
   .chips{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px}
   .chip{background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:6px 12px; font-size:13px; color:var(--muted); cursor:pointer}
   .chip.active{color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; font-weight:600}
+  .chipcount{display:inline-block; margin-left:5px; font-size:11px; opacity:.75; font-weight:600}
+  .gridcount{font-size:12px; color:var(--muted); margin:2px 0 10px}
   .togs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
   .tog{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:7px 11px; cursor:pointer}
   .tog input{accent-color:var(--accent)}
@@ -272,6 +274,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
         <label class="tog"><input type="checkbox" id="togDiet"> Match my dietary needs only</label>
         <label class="tog"><input type="checkbox" id="togDislike"> Hide foods I dislike</label>
       </div>
+      <div class="gridcount" id="gridCount"></div>
       <div class="grid" id="recipeGrid"></div>
       <div class="disclaimer"><b>About the sugar figures:</b> the "Sugar" number is the total per serving, most of which here is <b>natural</b> sugar from fruit, dairy or veg — eaten with fibre, protein and fat that slow it down. Open any recipe to see "of which added sugar" (0g across the starter recipes — none contain free/added sugar). Natural sugars still affect blood glucose, so use your meter and portion sizes as your guide.<br><br>Nutrition values are approximate per-serving estimates to help with planning — not a substitute for advice from your GP, diabetes team or dietitian. Always follow their guidance and check labels for your own allergies.</div>
     </div>
@@ -505,7 +508,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v12.1 plan-buttons-fix";
+const APP_VERSION = "2026-08-23 · v12.2 recipe-counts";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -900,9 +903,17 @@ function recipeDislikes(r){ return matchTerms(r, state.profile.dislikes||[]); }
 function recipeLikes(r){ return matchTerms(r, state.profile.likes||[]); }
 function matchesDiet(r){ const d=state.profile.diets||[]; return d.every(x=> x==="Calorie-controlled" ? (isCalCtrl(r)||r.diet.includes(x)) : r.diet.includes(x)); }
 
+function catCount(c){
+  if(c==="All") return state.recipes.length;
+  if(c==="Favorites") return state.recipes.filter(r=>r.favorite).length;
+  return state.recipes.filter(r=>r.category===c).length;
+}
 function renderChips(){
   const cats=["All",...CATEGORIES,"Favorites"];
-  $("#catChips").innerHTML = cats.map(c=>`<button class="chip${c===catFilter?" active":""}" data-cat="${c}">${c==="Favorites"?"★ Favorites":esc(c)}</button>`).join("");
+  $("#catChips").innerHTML = cats.map(c=>{
+    const label = c==="Favorites"?"★ Favorites":esc(c);
+    return `<button class="chip${c===catFilter?" active":""}" data-cat="${c}">${label}<span class="chipcount">${catCount(c)}</span></button>`;
+  }).join("");
   $("#catChips").querySelectorAll(".chip").forEach(b=> b.onclick=()=>{ catFilter=b.dataset.cat; renderChips(); renderGrid(); });
 }
 // The recipes matching the current category, search and toggle filters (unsorted).
@@ -928,11 +939,15 @@ function renderGrid(){
   $("#togAllergen").checked = VIEW.hideAllergen;
   $("#togDiet").checked = VIEW.dietOnly;
   $("#togDislike").checked = VIEW.hideDislike;
+  renderChips();   // keep the per-category counts current
   let list = filteredRecipes();
   list.sort((a,b)=> (a.category===b.category? a.title.localeCompare(b.title) : CATEGORIES.indexOf(a.category)-CATEGORIES.indexOf(b.category)));
   // "My likes first": float recipes containing a liked food to the top (stable within each group).
   if(VIEW.likesFirst) list = list.map((r,i)=>({r,i,lk:recipeLikes(r).length?0:1})).sort((a,b)=> a.lk-b.lk || a.i-b.i).map(x=>x.r);
 
+  const total=state.recipes.length;
+  const gc=$("#gridCount");
+  if(gc) gc.textContent = list.length===total ? `${total} recipe${total===1?"":"s"}` : `Showing ${list.length} of ${total} recipes`;
   const g=$("#recipeGrid");
   if(!list.length){ g.innerHTML=`<div class="empty">No recipes match.<br><span class="muted">Try clearing filters or add your own with ＋ Recipe.</span></div>`; return; }
   g.innerHTML = list.map(r=>{
