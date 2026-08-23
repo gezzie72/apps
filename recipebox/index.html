@@ -161,6 +161,9 @@
   .pd-item{display:flex; align-items:center; gap:8px; padding:5px 0}
   .pd-item .t{flex:1; min-width:0; font-size:13.5px}
   .pd-item .stepper{transform:scale(.9)}
+  .pd-note{width:100%; margin-top:8px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:7px 10px; font-size:12.5px; color:var(--text); outline:none}
+  .pd-note:focus{border-color:var(--accent)}
+  .pd-note::placeholder{color:var(--muted)}
   .pickrow{display:flex; align-items:center; gap:10px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; margin-bottom:6px; cursor:pointer; background:var(--panel2)}
   .pickrow:hover{border-color:var(--accent)}
   .pickrow .t{flex:1; min-width:0}
@@ -207,6 +210,7 @@
     #printArea .pr-day ul{ margin:4px 0 0; padding-left:18px }
     #printArea .pr-day li{ margin:2px 0; font-size:13px }
     #printArea .pr-day .pr-none{ color:#888; font-size:12px }
+    #printArea .pr-day .pr-note{ margin-top:5px; font-size:12px; color:#333; font-style:italic }
     #printArea .pr-shop{ break-before:page; }
     #printArea .pr-shop h2{ font-size:16px; margin:0 0 8px }
     #printArea .pr-shop ul{ list-style:none; margin:0; padding:0; columns:2; column-gap:26px }
@@ -481,7 +485,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v9.1 print-plan";
+const APP_VERSION = "2026-08-23 · v9.2 day-notes";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -802,13 +806,16 @@ function migrate(s){
 // ---- Week meal plan ----
 function mondayOf(d){ const x=new Date(d); const g=(x.getDay()+6)%7; x.setDate(x.getDate()-g); x.setHours(0,0,0,0); return x; }
 function isoOf(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-function emptyWeek(){ return { start: isoOf(mondayOf(new Date())), days:[[],[],[],[],[],[],[]] }; }
+function emptyWeek(){ return { start: isoOf(mondayOf(new Date())), days:[[],[],[],[],[],[],[]], notes:["","","","","","",""] }; }
 function normalizeWeek(w){
   if(!w || typeof w!=="object") return emptyWeek();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(w.start||"")) w.start = isoOf(mondayOf(new Date()));
   if(!Array.isArray(w.days)) w.days=[[],[],[],[],[],[],[]];
   for(let i=0;i<7;i++){ if(!Array.isArray(w.days[i])) w.days[i]=[]; }
   w.days = w.days.slice(0,7);
+  if(!Array.isArray(w.notes)) w.notes=["","","","","","",""];
+  for(let i=0;i<7;i++){ if(typeof w.notes[i]!=="string") w.notes[i]=""; }
+  w.notes = w.notes.slice(0,7);
   return w;
 }
 function weekItems(){ return (state.week.days||[]).flat(); }
@@ -1219,6 +1226,7 @@ function renderPlan(){
         <div class="stepper"><button data-minus>−</button><span>${it.servings}</span><button data-plus>+</button></div>
         <button class="btn danger sm" data-rm>✕</button>
       </div>`; }).join("") : `<div class="pd-empty">No meals planned.</div>`;
+    const note=(state.week.notes&&state.week.notes[i])||"";
     return `<div class="planday${iso===todayI?" istoday":""}">
       <div class="pd-head">
         <span class="dow">${name}</span><span class="dt">${fmtDayShort(dates[i])}</span>
@@ -1226,8 +1234,10 @@ function renderPlan(){
         <button class="pd-add" data-add="${i}">＋ Add</button>
       </div>
       ${rows}
+      <input class="pd-note" data-note="${i}" value="${esc(note)}" placeholder="📝 Notes (e.g. leftovers, eating out)…">
     </div>`;
   }).join("");
+  box.querySelectorAll("[data-note]").forEach(inp=> inp.oninput=()=>{ state.week.notes[+inp.dataset.note]=inp.value; touch(); });
   box.querySelectorAll("[data-add]").forEach(b=> b.onclick=()=> openPicker(+b.dataset.add));
   box.querySelectorAll(".pd-item [data-plus]").forEach(b=> b.onclick=()=>{ const it=b.closest(".pd-item"); chgPlanServ(+it.dataset.day, it.dataset.id, 1); });
   box.querySelectorAll(".pd-item [data-minus]").forEach(b=> b.onclick=()=>{ const it=b.closest(".pd-item"); chgPlanServ(+it.dataset.day, it.dataset.id, -1); });
@@ -1243,7 +1253,7 @@ function addToPlan(day, recipeId){
 $("#weekPrev").onclick=()=>shiftWeek(-7);
 $("#weekNext").onclick=()=>shiftWeek(7);
 $("#weekThis").onclick=()=>{ state.week.start=isoOf(mondayOf(new Date())); touch(); renderPlan(); };
-$("#clearWeek").onclick=()=>{ if(!weekItems().length){ toast("Week is already empty"); return; } if(confirm("Clear all meals planned for this week?")){ state.week.days=[[],[],[],[],[],[],[]]; touch(); renderPlan(); } };
+$("#clearWeek").onclick=()=>{ if(!weekItems().length && !(state.week.notes||[]).some(n=>n)){ toast("Week is already empty"); return; } if(confirm("Clear all meals and notes planned for this week?")){ state.week.days=[[],[],[],[],[],[],[]]; state.week.notes=["","","","","","",""]; touch(); renderPlan(); } };
 $("#buildWeekShop").onclick=()=>{ const n=buildShoppingFromWeek(); if(n===null){ toast("Plan some meals first"); return; } setTab("shopping"); toast(n>0? n+" item"+(n===1?"":"s")+" added":"Shopping list already up to date"); };
 function printWeek(){
   const dates=weekDates();
@@ -1251,7 +1261,9 @@ function printWeek(){
     const items=state.week.days[i]||[];
     const lis = items.length ? items.map(it=>{ const r=recipeById(it.recipeId); return r?`<li>${esc(r.title)}${it.servings>1?` <b>×${it.servings}</b>`:""}</li>`:""; }).join("")
       : `<div class="pr-none">— no meals planned —</div>`;
-    return `<div class="pr-day"><h2>${name}<span class="pr-dt">${esc(fmtDayShort(dates[i]))}</span></h2>${items.length?`<ul>${lis}</ul>`:lis}</div>`;
+    const note=(state.week.notes&&state.week.notes[i])||"";
+    const noteHtml = note ? `<div class="pr-note">📝 ${esc(note)}</div>` : "";
+    return `<div class="pr-day"><h2>${name}<span class="pr-dt">${esc(fmtDayShort(dates[i]))}</span></h2>${items.length?`<ul>${lis}</ul>`:lis}${noteHtml}</div>`;
   }).join("");
   // Aggregated shopping list (deduped by normalized text)
   const seen={}; const lines=[];
