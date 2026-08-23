@@ -387,7 +387,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v4 scale+calctrl";
+const APP_VERSION = "2026-08-23 · v5 dedupe";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -518,7 +518,8 @@ const LS_KEY = "recipebox.data";
 function defaultProfile(){ return { calTarget:2000, carbTarget:130, allergies:[], diets:[], dislikes:[] }; }
 function freshState(){
   const t = now();
-  const recipes = SEED.map((r,i)=> Object.assign({}, r, {id:uid(), favorite:false, seed:true, createdAt:t-i, updatedAt:t-i, order:i}));
+  // Stable IDs for seed recipes so the same starter recipe has one identity across devices (no sync duplicates).
+  const recipes = SEED.map((r,i)=> Object.assign({}, r, {id:"seed-"+i, favorite:false, seed:true, createdAt:t-i, updatedAt:t-i, order:i}));
   return { recipes, deleted:{}, profile:defaultProfile(), today:{date:todayISO(), items:[]}, shopping:{items:[]}, updatedAt:t };
 }
 function normalizeRecipe(r){
@@ -539,9 +540,37 @@ function load(){
   try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const s=JSON.parse(raw); return migrate(s); } }catch(e){}
   return freshState();
 }
+// Signature of a recipe's identity by CONTENT (not id) — used to collapse duplicates that
+// arose when different devices each seeded the starter library under different random ids.
+function recipeSig(r){
+  return (r.title||"").toLowerCase().replace(/\s+/g," ").trim()
+    + "|" + (r.category||"")
+    + "|" + (r.ingredients||[]).join("¦").toLowerCase().replace(/\s+/g," ").trim();
+}
+// Collapse identical-content duplicates, keeping one per signature and tombstoning the rest
+// so the cleanup propagates through sync. Deterministic (all devices keep the same survivor).
+function dedupeRecipes(s){
+  const groups={};
+  (s.recipes||[]).forEach(r=>{ const k=recipeSig(r); (groups[k]=groups[k]||[]).push(r); });
+  let changed=false; const keep=[];
+  Object.keys(groups).forEach(k=>{
+    const list=groups[k];
+    if(list.length===1){ keep.push(list[0]); return; }
+    // Prefer a favourited copy, then a user-edited one, then most-recently updated, then lowest id.
+    list.sort((a,b)=> (b.favorite?1:0)-(a.favorite?1:0)
+      || (b.seed===false?1:0)-(a.seed===false?1:0)
+      || (b.updatedAt||0)-(a.updatedAt||0)
+      || String(a.id).localeCompare(String(b.id)) );
+    keep.push(list[0]);
+    for(let i=1;i<list.length;i++){ s.deleted[list[i].id]=Math.max(s.deleted[list[i].id]||0, now()); changed=true; }
+  });
+  if(changed) s.recipes=keep;
+  return changed;
+}
 function migrate(s){
   s.recipes = (s.recipes||[]).map(normalizeRecipe);
   s.deleted = s.deleted||{};
+  dedupeRecipes(s);
   s.profile = Object.assign(defaultProfile(), s.profile||{});
   if(!Array.isArray(s.profile.dislikes)) s.profile.dislikes=[];
   s.today = s.today||{date:todayISO(), items:[]};
@@ -555,6 +584,7 @@ function migrate(s){
 let state = load();
 function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
 function touch(){ state.updatedAt = now(); persist(); schedulePush(); }
+persist();   // save any on-load migration/de-duplication so the cleanup sticks even offline
 
 /* ================= view state ================= */
 let activeTab="cookbook";
@@ -1084,6 +1114,9 @@ function mergeRemote(remote){
   if(!newShopping || !Array.isArray(newShopping.items)) newShopping={items:[]};
   if(remoteNewer && (JSON.stringify(newProfile)!==JSON.stringify(local.profile) || JSON.stringify(newToday)!==JSON.stringify(local.today) || JSON.stringify(newShopping)!==JSON.stringify(local.shopping))) changed=true;
   state={ recipes:merged.map(normalizeRecipe), deleted, profile:newProfile, today:newToday, shopping:newShopping, updatedAt:Math.max(local.updatedAt||0, remote.updatedAt||0) };
+  // Collapse any identical-content duplicates introduced by cross-device seeding, and push the
+  // resulting tombstones back up so every device converges on a single copy of each recipe.
+  if(dedupeRecipes(state)){ changed=true; state.updatedAt=now(); schedulePush(); }
   persist();
   return changed;
 }
