@@ -303,7 +303,8 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap">
           <b style="font-size:16px">Shopping list</b>
           <span class="muted" id="shopProgress" style="font-size:13px"></span>
-          <button class="btn ghost sm" id="clearChecked" style="margin-left:auto">Clear ticked</button>
+          <button class="btn ghost sm" id="copyShop" style="margin-left:auto">📋 Copy</button>
+          <button class="btn ghost sm" id="clearChecked">Clear ticked</button>
           <button class="btn danger sm" id="clearShop">Clear all</button>
         </div>
         <div class="muted" style="font-size:13px;margin-bottom:10px">Build from Today's plate, then tick items off as you shop — it syncs, so build on one device and shop with another.</div>
@@ -485,7 +486,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v9.2 day-notes";
+const APP_VERSION = "2026-08-23 · v9.3 copy-list";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -1206,6 +1207,21 @@ $("#shopAddBtn").onclick=()=>{ addShopItem($("#shopAdd").value); $("#shopAdd").v
 $("#shopAdd").addEventListener("keydown", e=>{ if(e.key==="Enter"){ addShopItem($("#shopAdd").value); $("#shopAdd").value=""; } });
 $("#clearChecked").onclick=()=>{ if(!state.shopping.items.some(i=>i.checked)){ toast("Nothing ticked"); return; } state.shopping.items=state.shopping.items.filter(i=>!i.checked); touch(); renderShopping(); };
 $("#clearShop").onclick=()=>{ if(!state.shopping.items.length){ toast("Nothing to clear"); return; } if(confirm("Clear the whole shopping list?")){ state.shopping.items=[]; touch(); renderShopping(); } };
+function shoppingText(){ return (state.shopping.items||[]).map(it=> (it.checked?"☑ ":"☐ ")+it.text).join("\n"); }
+function copyText(text, onOk){
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(onOk, ()=>legacyCopy(text,onOk)); }
+  else legacyCopy(text,onOk);
+}
+function legacyCopy(text, onOk){
+  try{ const ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select();
+    const ok=document.execCommand("copy"); document.body.removeChild(ta); if(ok){ onOk(); return; } }catch(e){}
+  toast("Couldn't copy on this device");
+}
+$("#copyShop").onclick=()=>{
+  const items=state.shopping.items||[];
+  if(!items.length){ toast("Nothing to copy"); return; }
+  copyText(shoppingText(), ()=> toast("Copied "+items.length+" item"+(items.length===1?"":"s")));
+};
 
 /* ================= week meal plan ================= */
 const DOW = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
