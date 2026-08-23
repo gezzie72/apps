@@ -192,6 +192,28 @@
   .applist{display:flex; flex-direction:column; gap:8px}
   .applist a{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
   @media (max-width:520px){ .nutgrid{grid-template-columns:repeat(3,1fr)} .targetgrid{grid-template-columns:1fr} .row2,.row3{grid-template-columns:1fr} }
+
+  /* Print: show only the printable plan */
+  #printArea{display:none}
+  @media print{
+    .app, .overlay, .toast{ display:none !important; }
+    #printArea{ display:block !important; color:#000; }
+    html,body{ background:#fff !important; }
+    #printArea h1{ font-size:20px; margin:0 0 2px }
+    #printArea .pr-range{ color:#444; margin:0 0 16px; font-size:13px }
+    #printArea .pr-day{ break-inside:avoid; border:1px solid #bbb; border-radius:8px; padding:8px 12px; margin-bottom:8px }
+    #printArea .pr-day h2{ font-size:14px; margin:0 0 4px; border-bottom:1px solid #ddd; padding-bottom:3px }
+    #printArea .pr-day .pr-dt{ font-weight:normal; color:#555; font-size:12px; margin-left:6px }
+    #printArea .pr-day ul{ margin:4px 0 0; padding-left:18px }
+    #printArea .pr-day li{ margin:2px 0; font-size:13px }
+    #printArea .pr-day .pr-none{ color:#888; font-size:12px }
+    #printArea .pr-shop{ break-before:page; }
+    #printArea .pr-shop h2{ font-size:16px; margin:0 0 8px }
+    #printArea .pr-shop ul{ list-style:none; margin:0; padding:0; columns:2; column-gap:26px }
+    #printArea .pr-shop li{ font-size:13px; margin:0 0 6px; break-inside:avoid }
+    #printArea .pr-shop li::before{ content:"\2610"; margin-right:7px }
+    #printArea .pr-foot{ margin-top:16px; color:#777; font-size:11px }
+  }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -263,7 +285,10 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
           <button class="btn danger sm" id="clearWeek">Clear week</button>
         </div>
         <div class="muted" style="font-size:13px;margin-bottom:10px">Plan meals for the week, then build one shopping list from the lot.</div>
-        <button class="btn primary" id="buildWeekShop" style="width:100%">🛒 Add this week's ingredients to shopping list</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" id="buildWeekShop" style="flex:1;min-width:180px">🛒 Add to shopping list</button>
+          <button class="btn" id="printWeek">🖨 Print plan</button>
+        </div>
       </div>
       <div id="planDays"></div>
     </div>
@@ -448,12 +473,15 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 
 <div class="toast" id="toast"></div>
 
+<!-- Printable week plan (hidden on screen; shown only when printing) -->
+<div id="printArea"></div>
+
 <script>
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v9 week-plan";
+const APP_VERSION = "2026-08-23 · v9.1 print-plan";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -1217,6 +1245,25 @@ $("#weekNext").onclick=()=>shiftWeek(7);
 $("#weekThis").onclick=()=>{ state.week.start=isoOf(mondayOf(new Date())); touch(); renderPlan(); };
 $("#clearWeek").onclick=()=>{ if(!weekItems().length){ toast("Week is already empty"); return; } if(confirm("Clear all meals planned for this week?")){ state.week.days=[[],[],[],[],[],[],[]]; touch(); renderPlan(); } };
 $("#buildWeekShop").onclick=()=>{ const n=buildShoppingFromWeek(); if(n===null){ toast("Plan some meals first"); return; } setTab("shopping"); toast(n>0? n+" item"+(n===1?"":"s")+" added":"Shopping list already up to date"); };
+function printWeek(){
+  const dates=weekDates();
+  const daysHtml = DOW.map((name,i)=>{
+    const items=state.week.days[i]||[];
+    const lis = items.length ? items.map(it=>{ const r=recipeById(it.recipeId); return r?`<li>${esc(r.title)}${it.servings>1?` <b>×${it.servings}</b>`:""}</li>`:""; }).join("")
+      : `<div class="pr-none">— no meals planned —</div>`;
+    return `<div class="pr-day"><h2>${name}<span class="pr-dt">${esc(fmtDayShort(dates[i]))}</span></h2>${items.length?`<ul>${lis}</ul>`:lis}</div>`;
+  }).join("");
+  // Aggregated shopping list (deduped by normalized text)
+  const seen={}; const lines=[];
+  weekItems().forEach(it=>{ const r=recipeById(it.recipeId); if(!r) return; (r.ingredients||[]).forEach(line=>{ const k=shopKey(line); if(!k||seen[k]) return; seen[k]=1; lines.push(line.trim()); }); });
+  const shopHtml = lines.length ? `<div class="pr-shop"><h2>Shopping list</h2><ul>${lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>` : "";
+  $("#printArea").innerHTML =
+    `<h1>Meal plan</h1><div class="pr-range">${esc(fmtDayShort(dates[0]))} – ${esc(fmtDayShort(dates[6]))}</div>`
+    + daysHtml + shopHtml
+    + `<div class="pr-foot">RecipeBox · printed ${esc(new Date().toLocaleDateString())}</div>`;
+  window.print();
+}
+$("#printWeek").onclick=printWeek;
 
 /* Recipe picker for the week plan */
 let pickerDay=0;
