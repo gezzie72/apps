@@ -163,6 +163,9 @@
   .pd-head .dt{font-size:12px; color:var(--muted)}
   .pd-head .today-badge{font-size:10px; color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line)); border-radius:999px; padding:1px 7px}
   .pd-add{margin-left:auto; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:4px 10px; font-size:13px; cursor:pointer; color:var(--accent)}
+  .planactions{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .planactions .btn{width:100%; white-space:normal; text-align:center}
+  @media (max-width:420px){ .planactions{grid-template-columns:1fr} }
   .pd-empty{font-size:12.5px; color:var(--muted); padding:2px 0}
   .pd-item{display:flex; align-items:center; gap:8px; padding:5px 0}
   .pd-item .t{flex:1; min-width:0; font-size:13.5px}
@@ -300,8 +303,8 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
           <button class="btn danger sm" id="clearWeek">Clear week</button>
         </div>
         <div class="muted" style="font-size:13px;margin-bottom:10px">Plan meals for the week, then build one shopping list from the lot.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn primary" id="buildWeekShop" style="flex:1;min-width:180px">🛒 Add to shopping list</button>
+        <div class="planactions">
+          <button class="btn primary" id="buildWeekShop">🛒 Add to shopping list</button>
           <button class="btn" id="printWeek">🖨 Print plan</button>
         </div>
       </div>
@@ -502,7 +505,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v12 dessert-category";
+const APP_VERSION = "2026-08-23 · v12.1 plan-buttons-fix";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
