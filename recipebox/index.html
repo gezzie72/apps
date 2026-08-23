@@ -134,6 +134,16 @@
   .stepper button{background:none; border:none; color:var(--text); font-size:16px; cursor:pointer; width:22px}
   .card-lite{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px}
 
+  /* Shopping */
+  .shopitem{display:flex; align-items:center; gap:11px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:11px 13px; margin-bottom:8px}
+  .shopitem input[type=checkbox]{width:20px; height:20px; accent-color:var(--accent); flex:0 0 auto; cursor:pointer}
+  .shopitem .si-main{flex:1; min-width:0}
+  .shopitem .si-main .t{font-weight:600; word-break:break-word}
+  .shopitem .si-main .src{font-size:11.5px; color:var(--muted)}
+  .shopitem.done{opacity:.55}
+  .shopitem.done .si-main .t{text-decoration:line-through}
+  .shopitem .rm{background:none; border:none; color:var(--danger); font-size:16px; cursor:pointer; padding:2px 6px; flex:0 0 auto}
+
   /* Sync sheet extras */
   .kv{font-size:13px; color:var(--muted); margin:8px 0}
   .kv b{color:var(--text); word-break:break-all}
@@ -168,6 +178,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
   <div class="tabs" id="tabs">
     <button data-tab="cookbook" class="active">Cookbook</button>
     <button data-tab="today">Today</button>
+    <button data-tab="shopping">Shopping</button>
     <button data-tab="setup">Setup</button>
   </div>
 
@@ -200,6 +211,26 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
       <div class="targetgrid" id="targetMeters"></div>
       <div class="miniinfo" id="todayMini"></div>
       <div id="plateList"></div>
+      <button class="btn" id="todayToShopping" style="margin-top:12px;width:100%">🛒 Add today's ingredients to shopping list</button>
+    </div>
+
+    <!-- SHOPPING -->
+    <div class="page" id="tab-shopping" style="display:none">
+      <div class="card-lite">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap">
+          <b style="font-size:16px">Shopping list</b>
+          <span class="muted" id="shopProgress" style="font-size:13px"></span>
+          <button class="btn ghost sm" id="clearChecked" style="margin-left:auto">Clear ticked</button>
+          <button class="btn danger sm" id="clearShop">Clear all</button>
+        </div>
+        <div class="muted" style="font-size:13px;margin-bottom:10px">Build from Today's plate, then tick items off as you shop — it syncs, so build on one device and shop with another.</div>
+        <button class="btn primary" id="buildShop" style="width:100%">⟳ Build from Today's plate</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input class="in" id="shopAdd" placeholder="Add an item…" autocomplete="off">
+        <button class="btn" id="shopAddBtn">Add</button>
+      </div>
+      <div id="shopList"></div>
     </div>
 
     <!-- SETUP -->
@@ -336,7 +367,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v1";
+const APP_VERSION = "2026-08-23 · v2 shopping";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -464,7 +495,7 @@ function defaultProfile(){ return { calTarget:2000, carbTarget:130, allergies:[]
 function freshState(){
   const t = now();
   const recipes = SEED.map((r,i)=> Object.assign({}, r, {id:uid(), favorite:false, seed:true, createdAt:t-i, updatedAt:t-i, order:i}));
-  return { recipes, deleted:{}, profile:defaultProfile(), today:{date:todayISO(), items:[]}, updatedAt:t };
+  return { recipes, deleted:{}, profile:defaultProfile(), today:{date:todayISO(), items:[]}, shopping:{items:[]}, updatedAt:t };
 }
 function normalizeRecipe(r){
   r.title=r.title||"Untitled";
@@ -491,6 +522,8 @@ function migrate(s){
   s.today = s.today||{date:todayISO(), items:[]};
   if(s.today.date!==todayISO()) s.today = {date:todayISO(), items:[]};
   if(!Array.isArray(s.today.items)) s.today.items=[];
+  s.shopping = s.shopping||{items:[]};
+  if(!Array.isArray(s.shopping.items)) s.shopping.items=[];
   s.updatedAt = s.updatedAt||now();
   return s;
 }
@@ -514,8 +547,9 @@ $("#tabs").querySelectorAll("button").forEach(b=> b.onclick=()=> setTab(b.datase
 function setTab(t){
   activeTab=t;
   $("#tabs").querySelectorAll("button").forEach(b=> b.classList.toggle("active", b.dataset.tab===t));
-  ["cookbook","today","setup"].forEach(id=> $("#tab-"+id).style.display = id===t?"":"none");
+  ["cookbook","today","shopping","setup"].forEach(id=> $("#tab-"+id).style.display = id===t?"":"none");
   if(t==="today") renderToday();
+  if(t==="shopping") renderShopping();
   if(t==="setup") renderSetup();
 }
 
@@ -721,6 +755,61 @@ function renderToday(){
 }
 function chgServ(itemId, d){ const it=state.today.items.find(x=>x.id===itemId); if(!it) return; it.servings=Math.max(1,it.servings+d); touch(); renderToday(); }
 $("#clearDay").onclick=()=>{ if(!state.today.items.length){ toast("Nothing to clear"); return; } if(confirm("Clear today's plate?")){ state.today.items=[]; touch(); renderToday(); } };
+$("#todayToShopping").onclick=()=>{ const n=buildShoppingFromToday(); if(n===null){ toast("Add recipes to Today first"); return; } setTab("shopping"); toast(n>0? n+" item"+(n===1?"":"s")+" added":"Shopping list already up to date"); };
+
+/* ================= shopping ================= */
+function shopKey(text){ return text.toLowerCase().replace(/\s+/g," ").trim(); }
+// Merge every ingredient line from the recipes on Today's plate into the list.
+// Idempotent: existing items (by normalized text) gain the recipe as a source but aren't duplicated; ticked state is kept.
+function buildShoppingFromToday(){
+  ensureToday();
+  const items = state.today.items||[];
+  if(!items.length) return null;
+  const byKey = {};
+  state.shopping.items.forEach(it=> byKey[shopKey(it.text)] = it);
+  let added = 0;
+  items.forEach(it=>{
+    const r=recipeById(it.recipeId); if(!r) return;
+    (r.ingredients||[]).forEach(line=>{
+      const key=shopKey(line); if(!key) return;
+      let s=byKey[key];
+      if(!s){ s={id:uid(), text:line.trim(), checked:false, auto:true, from:[]}; state.shopping.items.push(s); byKey[key]=s; added++; }
+      if(!s.from) s.from=[];
+      if(r.title && !s.from.includes(r.title)) s.from.push(r.title);
+    });
+  });
+  touch();
+  if(activeTab==="shopping") renderShopping();
+  return added;
+}
+function addShopItem(text){
+  const t=(text||"").trim(); if(!t) return;
+  const key=shopKey(t);
+  if(state.shopping.items.some(it=> shopKey(it.text)===key)){ toast("Already on the list"); return; }
+  state.shopping.items.push({id:uid(), text:t, checked:false, auto:false, from:[]});
+  touch(); renderShopping();
+}
+function renderShopping(){
+  const items = state.shopping.items||[];
+  const done = items.filter(i=>i.checked).length;
+  $("#shopProgress").textContent = items.length? done+" / "+items.length+" got" : "";
+  const list=$("#shopList");
+  if(!items.length){ list.innerHTML=`<div class="empty">Your shopping list is empty.<br><span class="muted">Tap “Build from Today's plate”, or add items above.</span></div>`; return; }
+  // unticked first (keep insertion order), then ticked
+  const sorted = items.map((it,i)=>({it,i})).sort((a,b)=> (a.it.checked?1:0)-(b.it.checked?1:0) || a.i-b.i).map(x=>x.it);
+  list.innerHTML = sorted.map(it=>`<div class="shopitem${it.checked?" done":""}" data-id="${it.id}">
+      <input type="checkbox" ${it.checked?"checked":""} data-chk="${it.id}">
+      <div class="si-main"><div class="t">${esc(it.text)}</div>${it.from&&it.from.length?`<div class="src">for ${it.from.map(esc).join(", ")}</div>`:""}</div>
+      <button class="rm" data-rm="${it.id}" title="Remove">✕</button>
+    </div>`).join("");
+  list.querySelectorAll("[data-chk]").forEach(c=> c.onchange=()=>{ const it=state.shopping.items.find(x=>x.id===c.dataset.chk); if(it){ it.checked=c.checked; touch(); renderShopping(); } });
+  list.querySelectorAll("[data-rm]").forEach(b=> b.onclick=()=>{ state.shopping.items=state.shopping.items.filter(x=>x.id!==b.dataset.rm); touch(); renderShopping(); });
+}
+$("#buildShop").onclick=()=>{ const n=buildShoppingFromToday(); if(n===null){ toast("Add recipes to Today first"); return; } toast(n>0? n+" item"+(n===1?"":"s")+" added":"Already up to date"); };
+$("#shopAddBtn").onclick=()=>{ addShopItem($("#shopAdd").value); $("#shopAdd").value=""; $("#shopAdd").focus(); };
+$("#shopAdd").addEventListener("keydown", e=>{ if(e.key==="Enter"){ addShopItem($("#shopAdd").value); $("#shopAdd").value=""; } });
+$("#clearChecked").onclick=()=>{ if(!state.shopping.items.some(i=>i.checked)){ toast("Nothing ticked"); return; } state.shopping.items=state.shopping.items.filter(i=>!i.checked); touch(); renderShopping(); };
+$("#clearShop").onclick=()=>{ if(!state.shopping.items.length){ toast("Nothing to clear"); return; } if(confirm("Clear the whole shopping list?")){ state.shopping.items=[]; touch(); renderShopping(); } };
 
 /* ================= setup: profile ================= */
 function renderSetup(){
@@ -870,8 +959,10 @@ function mergeRemote(remote){
   const newProfile = remoteNewer && remote.profile ? Object.assign(defaultProfile(),remote.profile) : local.profile;
   let newToday = remoteNewer && remote.today ? remote.today : local.today;
   if(!newToday || newToday.date!==todayISO()) newToday={date:todayISO(), items:(newToday&&newToday.date===todayISO())?newToday.items:[]};
-  if(remoteNewer && (JSON.stringify(newProfile)!==JSON.stringify(local.profile) || JSON.stringify(newToday)!==JSON.stringify(local.today))) changed=true;
-  state={ recipes:merged.map(normalizeRecipe), deleted, profile:newProfile, today:newToday, updatedAt:Math.max(local.updatedAt||0, remote.updatedAt||0) };
+  let newShopping = remoteNewer && remote.shopping ? remote.shopping : local.shopping;
+  if(!newShopping || !Array.isArray(newShopping.items)) newShopping={items:[]};
+  if(remoteNewer && (JSON.stringify(newProfile)!==JSON.stringify(local.profile) || JSON.stringify(newToday)!==JSON.stringify(local.today) || JSON.stringify(newShopping)!==JSON.stringify(local.shopping))) changed=true;
+  state={ recipes:merged.map(normalizeRecipe), deleted, profile:newProfile, today:newToday, shopping:newShopping, updatedAt:Math.max(local.updatedAt||0, remote.updatedAt||0) };
   persist();
   return changed;
 }
@@ -907,7 +998,7 @@ async function syncPull(force, quiet){
     const remote=JSON.parse(f.truncated&&f.raw_url? await (await fetch(f.raw_url)).text() : f.content);
     const changed=mergeRemote(remote);
     if(force||changed){
-      renderChips(); renderGrid(); if(activeTab==="today") renderToday(); if(activeTab==="setup") renderSetup();
+      renderChips(); renderGrid(); if(activeTab==="today") renderToday(); if(activeTab==="shopping") renderShopping(); if(activeTab==="setup") renderSetup();
       setSyncTime();
       if(changed){ markSync("Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date");
       return changed?"pulled":"uptodate";
