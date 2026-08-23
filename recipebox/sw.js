@@ -1,5 +1,5 @@
 /* RecipeBox service worker - offline app shell, network-first so updates land. */
-const CACHE = "recipebox-v13";
+const CACHE = "recipebox-v14";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
