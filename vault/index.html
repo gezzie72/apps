@@ -964,6 +964,42 @@ async function ghApi(method, path, body){
   return res.json();
 }
 function markSync(msg, err){ const m=$("syncMsg"); if(m){ m.textContent=msg||""; m.style.color=err?"var(--danger)":"var(--muted)"; } if(err) setSyncDot("err"); }
+// Read-only probe: verify a token works + report any Vault gist, without changing anything.
+async function ghProbe(token){
+  const h = { "Authorization":"Bearer "+token, "Accept":"application/vnd.github+json" };
+  let ru;
+  try{ ru = await fetch("https://api.github.com/user", {headers:h}); }
+  catch(e){ throw new Error("Can't reach GitHub (network/offline)."); }
+  if(ru.status===401) throw new Error("Invalid or expired token (401).");
+  if(!ru.ok) throw new Error("GitHub "+ru.status+" checking the token.");
+  const user = (await ru.json()).login;
+  const rg = await fetch("https://api.github.com/gists?per_page=100", {headers:h});
+  if(rg.status===403) throw new Error("Token is valid but missing the 'gist' scope.");
+  if(!rg.ok) throw new Error("GitHub "+rg.status+" listing gists.");
+  const gists = await rg.json();
+  const mine = (gists||[]).filter(g => (g.files && g.files["vault.json"]) || g.description==="Vault sync");
+  return { user, foundGist: mine.length ? mine[0].id : null };
+}
+async function testConnection(){
+  const token = GH.connected ? GH.token : (($("ghToken") && $("ghToken").value.trim()) || "");
+  if(!token){ markSync("Paste a token to test.",true); return; }
+  spin(true); markSync("Testing connection…");
+  try{
+    const r = await ghProbe(token);
+    let msg = `✓ Token OK — signed in as ${r.user}. `;
+    if(GH.connected){
+      msg += (r.foundGist===GH.gist) ? "This device's sync gist is reachable."
+           : r.foundGist ? ("A Vault gist exists ("+r.foundGist+") but differs from this device's.")
+           : "No Vault gist found for this token.";
+    } else {
+      msg += r.foundGist ? "Found an existing Vault sync — tap Connect to use it."
+                         : "No Vault sync yet — Connect will create one.";
+    }
+    markSync(msg); setSyncDot(GH.connected ? "on" : "");
+  }catch(e){ markSync("Test failed: "+e.message, true); }
+  finally{ spin(false); }
+}
+window.testConnection = testConnection;
 function markSyncMismatch(){
   setSyncDot("err");
   const m=$("syncMsg"); if(!m) return;
@@ -1084,6 +1120,7 @@ function renderSyncModal(){
       <label class="toggle" style="margin:14px 0"><input type="checkbox" id="ghAuto" ${GH.auto?"checked":""}> Auto-sync (push on change, pull in background)</label>
       <div class="synrow">
         <button class="btn accent" id="ghSyncNow" style="flex:1">🔄 Sync now</button>
+        <button class="btn" id="ghTest">🔍 Test</button>
         <button class="btn" id="ghCopyGist">Copy ID</button>
         <button class="link danger" id="ghDisconnect">Disconnect</button>
       </div>
@@ -1091,6 +1128,7 @@ function renderSyncModal(){
       <button class="link danger" id="ghReplace" style="padding:8px 0">↺ Replace this device from sync</button>`;
     $("ghAuto").onchange=()=>{ GH.auto=$("ghAuto").checked; if(GH.auto) schedulePush(); };
     $("ghSyncNow").onclick=doSyncNow;
+    $("ghTest").onclick=testConnection;
     $("ghCopyGist").onclick=()=>{ copyText(GH.gist).then(ok=>toast(ok?"Gist ID copied":GH.gist)); };
     $("ghDisconnect").onclick=ghDisconnect;
     $("ghReplace").onclick=openReplaceFromSync;
@@ -1105,9 +1143,13 @@ function renderSyncModal(){
           <button type="button" class="eye" title="Show/hide" onclick="toggleEye(this,'ghToken')">👁</button>
         </div>
       </div>
-      <button class="primary" id="ghConnect">Connect</button>
+      <div class="synrow" style="margin-top:2px">
+        <button class="primary" id="ghConnect" style="flex:1">Connect</button>
+        <button class="btn" id="ghTest">🔍 Test</button>
+      </div>
       <p class="muted" style="margin-top:10px;font-size:12px"><a class="link" style="padding:0" href="https://github.com/settings/tokens/new?scopes=gist&description=Vault%20sync" target="_blank" rel="noopener">Create a token →</a> — use a <b>classic</b> token, tick only <b>gist</b>. (Fine-grained tokens can't access gists.)</p>`;
     $("ghConnect").onclick=ghConnect;
+    $("ghTest").onclick=testConnection;
   }
 }
 window.openSettings = openSettings;
@@ -1301,7 +1343,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
 window.addEventListener("error", e=>{ try{ toast("⚠ Error: " + (e.message || (e.error && e.error.message) || e.type)); }catch{} });
 window.addEventListener("unhandledrejection", e=>{ try{ toast("⚠ Error: " + ((e.reason && (e.reason.message||e.reason)) || "promise rejected")); }catch{} });
 
-const VERSION = "v18 · 2026-08-23 · one-tap fix in mismatch message";
+const VERSION = "v19 · 2026-08-23 · Test connection button";
 ["verLock","verApp"].forEach(id=>{ const el=$(id); if(el) el.textContent = "Build " + VERSION; });
 
 initLock();
