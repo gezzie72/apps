@@ -196,6 +196,7 @@
     </div>
     <button class="primary" id="unlockBtn">Unlock</button>
     <div class="err" id="lockErr"></div>
+    <button type="button" class="link" id="srLink" style="font-size:13px;padding:8px" onclick="openSyncRestore()">📥 New device? Restore from your sync</button>
     <div class="fineprint">Your vault is encrypted with AES-GCM (PBKDF2) and stored only on this device.
       Sync stores only the encrypted blob in your private gist. There is no recovery — if you
       forget the master password, the data cannot be read. Use the <b>same</b> master password on every device.</div>
@@ -374,6 +375,7 @@ function openApp(){
   $("app").classList.remove("hidden");
   render();
   updateSyncDot();
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}  // resist eviction (mobile)
   if(GH.connected) syncPull(false, true).catch(()=>{});   // quiet initial pull
 }
 function lockNow(){
@@ -1095,6 +1097,79 @@ function renderSyncModal(){
 }
 window.openSettings = openSettings;
 
+/* ---- Restore an existing sync onto a NEW device (from the lock screen) ---- */
+let SR_OUTER=null, SR_GIST=null, SR_TOKEN="";
+function srMsg(m, err){ const el=$("srMsg"); if(el){ el.textContent=m||""; el.style.color=err?"var(--danger)":"var(--muted)"; } }
+function openSyncRestore(){
+  SR_OUTER=null; SR_GIST=null; SR_TOKEN="";
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay"><div class="modal" style="max-width:400px">
+    <h2>📥 Restore from sync</h2>
+    <p class="muted" style="font-size:13px;margin:0 0 14px;line-height:1.5">On a new device, paste the same GitHub token you used elsewhere. It finds your encrypted vault; then enter your master password to unlock it here.</p>
+    <div class="field">
+      <div class="pwwrap">
+        <input id="srToken" type="password" placeholder="GitHub token (gist scope)" autocomplete="off" spellcheck="false">
+        <button type="button" class="eye" title="Show/hide" onclick="toggleEye(this,'srToken')">👁</button>
+      </div>
+    </div>
+    <button class="primary" id="srFindBtn">Find my vault</button>
+    <div id="srStep2" class="hidden" style="margin-top:14px">
+      <div class="field">
+        <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Master password</label>
+        <div class="pwwrap">
+          <input id="srPass" type="password" placeholder="Master password" autocomplete="off">
+          <button type="button" class="eye" title="Show/hide" onclick="toggleEye(this,'srPass')">👁</button>
+        </div>
+      </div>
+      <button class="primary" id="srRestoreBtn">Restore &amp; unlock</button>
+    </div>
+    <div id="srMsg" style="font-size:13px;min-height:18px;margin-top:10px;color:var(--muted)"></div>
+    <p class="muted" style="margin-top:12px;font-size:12px"><a class="link" style="padding:0" href="https://github.com/settings/tokens/new?scopes=gist&description=Vault%20sync" target="_blank" rel="noopener">Create a token →</a> — classic token, <b>gist</b> scope only.</p>
+    <div class="modal-actions" style="margin-top:8px"><button class="link" onclick="closeModal()">Cancel</button></div>
+  </div></div>`;
+  bindOverlayClose();
+  $("srFindBtn").onclick = srFind;
+  $("srToken").focus();
+}
+async function srFind(){
+  const t=$("srToken").value.trim();
+  if(!t){ srMsg("Paste your GitHub token first.",true); return; }
+  SR_TOKEN=t; GH.token=t; srMsg("Looking for your vault…");
+  try{
+    const gid=await findGist();
+    if(!gid){ srMsg("No Vault sync found for this token. Check the token, or use 'Create vault' + ⚙ Sync.",true); GH.token=""; return; }
+    const g=await ghApi("GET","/gists/"+gid);
+    const f=g.files && g.files["vault.json"];
+    if(!f || !f.content){ srMsg("Found the gist but it has no vault data yet.",true); GH.token=""; return; }
+    SR_OUTER=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+    SR_GIST=gid;
+    $("srStep2").classList.remove("hidden");
+    $("srRestoreBtn").onclick=srRestore;
+    $("srPass").addEventListener("keydown",e=>{ if(e.key==="Enter") srRestore(); });
+    srMsg("Found your vault. Enter your master password to unlock it here.");
+    $("srPass").focus();
+  }catch(e){ srMsg(e.message,true); GH.token=""; }
+}
+async function srRestore(){
+  const pw=$("srPass").value; if(!pw){ srMsg("Enter your master password.",true); return; }
+  try{
+    const salt=b64.dec(SR_OUTER.salt), iv=b64.dec(SR_OUTER.iv);
+    const key=await deriveKey(pw, salt);
+    const plain=await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, b64.dec(SR_OUTER.data));
+    const payload=JSON.parse(dec.decode(plain));
+    entries = Array.isArray(payload) ? payload : (payload.entries||[]);
+    deleted = (payload && payload.deleted) || {};
+    SALT=salt; CRYPTO_KEY=key; MASTER_PW=pw;
+    sanitizeEntries();
+    GH.token=SR_TOKEN; GH.gist=SR_GIST;      // persist connection
+    await encryptVault();                    // store locally + schedule push
+    setSyncTime();
+    closeModal(); openApp();
+    toast("Vault restored from sync ✓");
+  }catch(e){ srMsg("Wrong master password for this sync.",true); $("srPass").select(); }
+}
+window.openSyncRestore = openSyncRestore;
+
 /* periodic + focus pulls */
 setInterval(()=>{ if(!GH.connected||!GH.auto||!CRYPTO_KEY) return; if(document.hidden) return; syncPull(false,true).catch(()=>{}); }, 45000);
 setInterval(updateLastSync, 30000);
@@ -1160,7 +1235,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
 window.addEventListener("error", e=>{ try{ toast("⚠ Error: " + (e.message || (e.error && e.error.message) || e.type)); }catch{} });
 window.addEventListener("unhandledrejection", e=>{ try{ toast("⚠ Error: " + ((e.reason && (e.reason.message||e.reason)) || "promise rejected")); }catch{} });
 
-const VERSION = "v15 · 2026-08-23 · My apps list";
+const VERSION = "v16 · 2026-08-23 · restore-from-sync on new device";
 ["verLock","verApp"].forEach(id=>{ const el=$(id); if(el) el.textContent = "Build " + VERSION; });
 
 initLock();
