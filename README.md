@@ -1,10 +1,13 @@
 # Apps
 
-Public HTTPS hosting (via GitHub Pages) for two installable web apps, so they can
-be added to a phone's home screen and installed as standalone apps:
+Public HTTPS hosting (via GitHub Pages) for a set of installable web apps, so they
+can be added to a phone's home screen and installed as standalone apps:
 
 - **IdeaPad** — `/ideapad/` — cross-device idea notepad.
 - **FitPlan** — `/fitplan/` — cross-device gym planner.
+- **HealthLog** — `/healthlog/` — personal health tracker (glucose, meds, measurements).
+- **Vault** — `/vault/` — encrypted password manager.
+- **RecipeBox** — `/recipebox/` — diabetic-friendly cookbook with carbs-forward nutrition, allergen/diet filters, and a daily plate tracker.
 
 Each app is a self-contained `index.html` plus a web app manifest, a service
 worker (offline app shell), and icons. The apps store data locally and sync
