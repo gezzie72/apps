@@ -207,6 +207,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
       <div class="chips" id="catChips"></div>
       <div class="togs">
         <label class="tog"><input type="checkbox" id="togLikes"> 💚 Show foods I like first</label>
+        <label class="tog"><input type="checkbox" id="togLowAdded"> Low added sugar only</label>
         <label class="tog"><input type="checkbox" id="togAllergen"> Hide recipes with my allergens</label>
         <label class="tog"><input type="checkbox" id="togDiet"> Match my dietary needs only</label>
         <label class="tog"><input type="checkbox" id="togDislike"> Hide foods I dislike</label>
@@ -407,7 +408,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v7 40recipes+likes+addedsugar";
+const APP_VERSION = "2026-08-23 · v7.1 low-added-sugar filter";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -741,8 +742,11 @@ const VIEW = {
   get hideDislike(){ try{return localStorage.getItem("recipebox.hideDislike")==="1"}catch(e){return false} },
   set hideDislike(v){ try{localStorage.setItem("recipebox.hideDislike",v?"1":"0")}catch(e){} },
   get likesFirst(){ try{return localStorage.getItem("recipebox.likesFirst")==="1"}catch(e){return false} },
-  set likesFirst(v){ try{localStorage.setItem("recipebox.likesFirst",v?"1":"0")}catch(e){} }
+  set likesFirst(v){ try{localStorage.setItem("recipebox.likesFirst",v?"1":"0")}catch(e){} },
+  get lowAdded(){ try{return localStorage.getItem("recipebox.lowAdded")==="1"}catch(e){return false} },
+  set lowAdded(v){ try{localStorage.setItem("recipebox.lowAdded",v?"1":"0")}catch(e){} }
 };
+const LOW_ADDED = 5;   // "low added sugar" = at or below this many grams of added/free sugar per serving
 
 /* ================= tabs ================= */
 $("#tabs").querySelectorAll("button").forEach(b=> b.onclick=()=> setTab(b.dataset.tab));
@@ -779,6 +783,7 @@ function renderChips(){
 }
 function renderGrid(){
   $("#togLikes").checked = VIEW.likesFirst;
+  $("#togLowAdded").checked = VIEW.lowAdded;
   $("#togAllergen").checked = VIEW.hideAllergen;
   $("#togDiet").checked = VIEW.dietOnly;
   $("#togDislike").checked = VIEW.hideDislike;
@@ -792,6 +797,7 @@ function renderGrid(){
   if(VIEW.hideAllergen) list=list.filter(r=> recipeConflicts(r).length===0);
   if(VIEW.dietOnly) list=list.filter(matchesDiet);
   if(VIEW.hideDislike) list=list.filter(r=> recipeDislikes(r).length===0);
+  if(VIEW.lowAdded) list=list.filter(r=> (r.addedSugar||0) <= LOW_ADDED);
   list.sort((a,b)=> (a.category===b.category? a.title.localeCompare(b.title) : CATEGORIES.indexOf(a.category)-CATEGORIES.indexOf(b.category)));
   // "My likes first": float recipes containing a liked food to the top (stable within each group).
   if(VIEW.likesFirst) list = list.map((r,i)=>({r,i,lk:recipeLikes(r).length?0:1})).sort((a,b)=> a.lk-b.lk || a.i-b.i).map(x=>x.r);
@@ -831,6 +837,7 @@ function recipeById(id){ return state.recipes.find(r=>r.id===id); }
 $("#search").oninput = e=>{ searchQ=e.target.value.trim(); renderGrid(); };
 $("#addRecipe").onclick = ()=> openEditor(null);
 $("#togLikes").onchange = e=>{ VIEW.likesFirst=e.target.checked; renderGrid(); };
+$("#togLowAdded").onchange = e=>{ VIEW.lowAdded=e.target.checked; renderGrid(); };
 $("#togAllergen").onchange = e=>{ VIEW.hideAllergen=e.target.checked; renderGrid(); };
 $("#togDiet").onchange = e=>{ VIEW.dietOnly=e.target.checked; renderGrid(); };
 $("#togDislike").onchange = e=>{ VIEW.hideDislike=e.target.checked; renderGrid(); };
