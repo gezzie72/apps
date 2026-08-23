@@ -119,6 +119,12 @@
   .batch b{color:var(--text)}
   .sugarnote{font-size:12.5px; color:var(--muted); background:var(--panel2); border-radius:9px; padding:8px 11px; margin-top:12px}
   .sugarnote b{color:var(--text)}
+  .glbadge{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.2px}
+  .glbadge.gl-low{color:var(--ok); background:color-mix(in srgb,var(--ok) 16%, var(--panel2))}
+  .glbadge.gl-med{color:var(--warn); background:color-mix(in srgb,var(--warn) 16%, var(--panel2))}
+  .glbadge.gl-high{color:var(--danger); background:color-mix(in srgb,var(--danger) 16%, var(--panel2))}
+  .carbcount{font-size:12.5px; color:var(--text); background:var(--panel2); border-radius:9px; padding:9px 11px; margin-top:8px; border:1px solid var(--line)}
+  .carbcount b{color:var(--text)}
   ul.ing{margin:0; padding-left:20px} ul.ing li{margin:3px 0}
   ol.steps{margin:0; padding-left:20px} ol.steps li{margin:6px 0}
   .checkgrid{display:flex; flex-wrap:wrap; gap:7px}
@@ -180,6 +186,9 @@
   .shopitem.done{opacity:.55}
   .shopitem.done .si-main .t{text-decoration:line-through}
   .shopitem .rm{background:none; border:none; color:var(--danger); font-size:16px; cursor:pointer; padding:2px 6px; flex:0 0 auto}
+  .aisle-h{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--accent); margin:14px 0 7px; padding-bottom:4px; border-bottom:1px solid var(--line)}
+  .aisle-h:first-child{margin-top:2px}
+  .aisle-h .muted{font-weight:600}
 
   /* Sync sheet extras */
   .kv{font-size:13px; color:var(--muted); margin:8px 0}
@@ -312,10 +321,11 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
         <div class="muted" style="font-size:13px;margin-bottom:10px">Build from Today's plate, then tick items off as you shop — it syncs, so build on one device and shop with another.</div>
         <button class="btn primary" id="buildShop" style="width:100%">⟳ Build from Today's plate</button>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
         <input class="in" id="shopAdd" placeholder="Add an item…" autocomplete="off">
         <button class="btn" id="shopAddBtn">Add</button>
       </div>
+      <label class="tog" style="margin-bottom:14px"><input type="checkbox" id="togAisle"> Group by aisle</label>
       <div id="shopList"></div>
     </div>
 
@@ -488,7 +498,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v9.5 whatsapp";
+const APP_VERSION = "2026-08-23 · v10 carbcount+GL+aisles";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -503,6 +513,11 @@ const CAL_CTRL   = 350;   // "Calorie-controlled" = at or below this many kcal p
 function isCalCtrl(r){ return r.cal>0 && r.cal<=CAL_CTRL; }
 // Diet tags to show = the recipe's own tags, plus a computed "Calorie-controlled" when it qualifies.
 function displayDiets(r){ const d=(r.diet||[]).slice(); if(isCalCtrl(r) && !d.includes("Calorie-controlled")) d.push("Calorie-controlled"); return d; }
+// Rough glycaemic-load estimate from NET carbs (carbs minus fibre) per serving — a guide, not a lab GI.
+function netCarbs(r){ return Math.max(0, Math.round((r.carbs||0) - (r.fibre||0))); }
+function glEstimate(r){ const n=netCarbs(r); if(n<=10) return {level:"low",label:"Low GL",cls:"gl-low"}; if(n<=22) return {level:"med",label:"Med GL",cls:"gl-med"}; return {level:"high",label:"High GL",cls:"gl-high"}; }
+// UK carb counting: 1 carb portion (CP) ≈ 10g carbohydrate.
+function carbPortions(g){ return Math.round((g/10)*10)/10; }
 
 /* ================= seed cookbook ================= */
 function R(title,category,servings,n,ing,steps,allergens,diet,notes,addedSugar){
@@ -841,7 +856,9 @@ const VIEW = {
   get likesFirst(){ try{return localStorage.getItem("recipebox.likesFirst")==="1"}catch(e){return false} },
   set likesFirst(v){ try{localStorage.setItem("recipebox.likesFirst",v?"1":"0")}catch(e){} },
   get lowAdded(){ try{return localStorage.getItem("recipebox.lowAdded")==="1"}catch(e){return false} },
-  set lowAdded(v){ try{localStorage.setItem("recipebox.lowAdded",v?"1":"0")}catch(e){} }
+  set lowAdded(v){ try{localStorage.setItem("recipebox.lowAdded",v?"1":"0")}catch(e){} },
+  get groupAisle(){ try{return localStorage.getItem("recipebox.groupAisle")==="1"}catch(e){return false} },
+  set groupAisle(v){ try{localStorage.setItem("recipebox.groupAisle",v?"1":"0")}catch(e){} }
 };
 const LOW_ADDED = 5;   // "low added sugar" = at or below this many grams of added/free sugar per serving
 
@@ -910,9 +927,10 @@ function renderGrid(){
       + r.allergens.slice(0,3).map(a=>`<span class="tag al">${esc(a)}</span>`).join("");
     const sugarNote = r.addedSugar>0 ? `<span class="tag added">${r.addedSugar}g added sugar</span>`
       : (r.sugar>=8 ? `<span class="tag natural">no added sugar</span>` : "");
+    const gl=glEstimate(r);
     return `<div class="card${conf.length?" warnrecipe":(dis.length?" dislikerecipe":(lk.length?" likerecipe":""))}" data-id="${r.id}">
       <button class="fav${r.favorite?" on":""}" data-fav="${r.id}" title="Favorite">${r.favorite?"★":"☆"}</button>
-      <div><span class="pill cat">${esc(r.category)}</span></div>
+      <div><span class="pill cat">${esc(r.category)}</span> <span class="glbadge ${gl.cls}" title="Estimated glycaemic load from net carbs">${gl.label}</span></div>
       <h3>${esc(r.title)}</h3>
       <div class="nutrow">
         <div class="nut carb"><b>${r.carbs}g</b><span>Carbs</span></div>
@@ -1003,6 +1021,11 @@ function openDetail(id){
       <div class="nutbig"><b>${r.fibre}g</b><span>Fibre</span></div>
     </div>
     <div class="sugarnote">Sugars: <b>${r.sugar}g</b> total${r.addedSugar>0?` · <b>${r.addedSugar}g</b> added (free) sugar` : ` · <b>0g</b> added — all natural (from fruit, dairy or veg)`}</div>
+    <div class="carbcount">
+      <div>🩸 Est. glycaemic load: <b>${glEstimate(r).label}</b> <span class="muted">(net carbs ${netCarbs(r)}g = ${r.carbs}g carbs − ${r.fibre}g fibre)</span></div>
+      <div style="margin-top:5px">🧮 Carb counting: <b>${r.carbs}g</b> carbs = <b>${carbPortions(r.carbs)}</b> carb portion${carbPortions(r.carbs)===1?"":"s"} per serving <span class="muted">(1 CP ≈ 10g)</span></div>
+      <div class="muted" style="margin-top:6px;font-size:11.5px">Estimates from net carbs &amp; fibre — a rough guide, not a lab GI. For insulin dosing, use your own carb ratio and your diabetes team's advice.</div>
+    </div>
     ${dd.length?`<div class="tags">${dd.map(d=>`<span class="tag diet">${esc(d)}</span>`).join("")}</div>`:""}
     ${r.ingredients.length?`<div class="sec-h">Ingredients</div>
       <div class="portions">
@@ -1031,7 +1054,7 @@ function openDetail(id){
     $("#pServLbl").textContent = "serving"+(pServ>1?"s":"");
     $("#ingList").innerHTML = r.ingredients.map(i=>`<li>${esc(scaleIngredient(i, factor))}</li>`).join("");
     const tc=Math.round(r.carbs*pServ), tk=Math.round(r.cal*pServ), tp=Math.round(r.protein*pServ), ts=Math.round(r.sugar*pServ);
-    $("#batchTotals").innerHTML = `Batch total for ${pServ} serving${pServ>1?"s":""}: <b>${tc}g</b> carbs · <b>${tk}</b> kcal · <b>${ts}g</b> sugar · <b>${tp}g</b> protein`;
+    $("#batchTotals").innerHTML = `Batch total for ${pServ} serving${pServ>1?"s":""}: <b>${tc}g</b> carbs (${carbPortions(tc)} carb portions) · <b>${tk}</b> kcal · <b>${ts}g</b> sugar · <b>${tp}g</b> protein`;
   }
   renderScaled();
   const pm=$("#pMinus"), pp=$("#pPlus");
@@ -1157,6 +1180,20 @@ $("#todayToShopping").onclick=()=>{ const n=buildShoppingFromToday(); if(n===nul
 
 /* ================= shopping ================= */
 function shopKey(text){ return text.toLowerCase().replace(/\s+/g," ").trim(); }
+// Aisle grouping for the shopping list — keyword match on the item text, checked in order.
+const AISLES = [
+  {name:"Bakery", icon:"🍞", kw:["bread","tortilla","wrap","rye","pitta","pita","roll","bagel","bun"]},
+  {name:"Meat & fish", icon:"🥩", kw:["chicken","turkey","beef","pork","mince","meatball","bacon","ham","sausage","steak","loin","salmon","cod","mackerel","tuna","fish","prawn","haddock"]},
+  {name:"Dairy & eggs", icon:"🧀", kw:["egg","cheese","mozzarella","yogurt","yoghurt","butter","cream cheese","cottage","milk"]},
+  {name:"Frozen", icon:"🧊", kw:["frozen","edamame"]},
+  {name:"Store cupboard", icon:"🥫", kw:["tin","tinned","passata","chopped tomato","olive oil"," oil","soy sauce","sesame","stock","vinegar","coconut","curry paste","cornflour","baking powder","vanilla","cinnamon","turmeric","paprika","cumin","spice","oats","oat flour","chia","lentil","chickpea","kidney","hummus","peanut butter","almond","walnut","nut","seed","honey","flour","rice","pasta","noodle","salt","pepper"]},
+  {name:"Produce", icon:"🥦", kw:["spinach","tomato","pepper","onion","garlic","courgette","cucumber","avocado","lemon","lime","berr","strawberr","raspberr","blueberr","apple","pear","banana","orange","grapefruit","kiwi","grape","broccoli","cauliflower","carrot","celery","kale","mushroom","aubergine","cabbage","ginger","herb","basil","mint","chilli","rocket","green","bean","lettuce","leaves","leaf","salad","fruit","veg"]}
+];
+function aisleOf(text){
+  const t=(text||"").toLowerCase();
+  for(const a of AISLES){ if(a.kw.some(k=> t.includes(k))) return a; }
+  return {name:"Other", icon:"🛒", kw:[]};
+}
 // Merge every ingredient line from the recipes on Today's plate into the list.
 // Idempotent: existing items (by normalized text) gain the recipe as a source but aren't duplicated; ticked state is kept.
 // Merge the ingredients of a set of {recipeId,servings} entries into the shopping list (deduped).
@@ -1188,22 +1225,38 @@ function addShopItem(text){
   state.shopping.items.push({id:uid(), text:t, checked:false, auto:false, from:[]});
   touch(); renderShopping();
 }
+function shopItemHtml(it){
+  return `<div class="shopitem${it.checked?" done":""}" data-id="${it.id}">
+      <input type="checkbox" ${it.checked?"checked":""} data-chk="${it.id}">
+      <div class="si-main"><div class="t">${esc(it.text)}</div>${it.from&&it.from.length?`<div class="src">for ${it.from.map(esc).join(", ")}</div>`:""}</div>
+      <button class="rm" data-rm="${it.id}" title="Remove">✕</button>
+    </div>`;
+}
 function renderShopping(){
   const items = state.shopping.items||[];
   const done = items.filter(i=>i.checked).length;
   $("#shopProgress").textContent = items.length? done+" / "+items.length+" got" : "";
+  const tg=$("#togAisle"); if(tg) tg.checked=VIEW.groupAisle;
   const list=$("#shopList");
   if(!items.length){ list.innerHTML=`<div class="empty">Your shopping list is empty.<br><span class="muted">Tap “Build from Today's plate”, or add items above.</span></div>`; return; }
   // unticked first (keep insertion order), then ticked
   const sorted = items.map((it,i)=>({it,i})).sort((a,b)=> (a.it.checked?1:0)-(b.it.checked?1:0) || a.i-b.i).map(x=>x.it);
-  list.innerHTML = sorted.map(it=>`<div class="shopitem${it.checked?" done":""}" data-id="${it.id}">
-      <input type="checkbox" ${it.checked?"checked":""} data-chk="${it.id}">
-      <div class="si-main"><div class="t">${esc(it.text)}</div>${it.from&&it.from.length?`<div class="src">for ${it.from.map(esc).join(", ")}</div>`:""}</div>
-      <button class="rm" data-rm="${it.id}" title="Remove">✕</button>
-    </div>`).join("");
+  if(VIEW.groupAisle){
+    const order = AISLES.map(a=>a.name).concat("Other");
+    const groups={};
+    sorted.forEach(it=>{ const a=aisleOf(it.text); (groups[a.name]=groups[a.name]||{icon:a.icon,items:[]}).items.push(it); });
+    list.innerHTML = order.filter(n=>groups[n]).map(n=>{
+      const g=groups[n];
+      return `<div class="aisle-h">${g.icon} ${esc(n)} <span class="muted">(${g.items.length})</span></div>`
+        + g.items.map(shopItemHtml).join("");
+    }).join("");
+  } else {
+    list.innerHTML = sorted.map(shopItemHtml).join("");
+  }
   list.querySelectorAll("[data-chk]").forEach(c=> c.onchange=()=>{ const it=state.shopping.items.find(x=>x.id===c.dataset.chk); if(it){ it.checked=c.checked; touch(); renderShopping(); } });
   list.querySelectorAll("[data-rm]").forEach(b=> b.onclick=()=>{ state.shopping.items=state.shopping.items.filter(x=>x.id!==b.dataset.rm); touch(); renderShopping(); });
 }
+$("#togAisle").onchange=e=>{ VIEW.groupAisle=e.target.checked; renderShopping(); };
 $("#buildShop").onclick=()=>{ const n=buildShoppingFromToday(); if(n===null){ toast("Add recipes to Today first"); return; } toast(n>0? n+" item"+(n===1?"":"s")+" added":"Already up to date"); };
 $("#shopAddBtn").onclick=()=>{ addShopItem($("#shopAdd").value); $("#shopAdd").value=""; $("#shopAdd").focus(); };
 $("#shopAdd").addEventListener("keydown", e=>{ if(e.key==="Enter"){ addShopItem($("#shopAdd").value); $("#shopAdd").value=""; } });
