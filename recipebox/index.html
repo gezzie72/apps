@@ -101,6 +101,16 @@
   .dchip button{background:none; border:none; color:var(--muted); cursor:pointer; font-size:15px; line-height:1; padding:0 2px}
   .dchip button:hover{color:var(--danger)}
   .empty{text-align:center; color:var(--muted); padding:50px 20px}
+  /* Multi-select */
+  #recipeGrid.selmode .card{padding-left:44px}
+  #recipeGrid.selmode .selmark{display:flex}
+  .selmark{position:absolute; top:13px; left:12px; width:22px; height:22px; border-radius:50%; border:2px solid var(--line); background:var(--panel2); display:none; align-items:center; justify-content:center; font-size:13px; color:#fff; z-index:2}
+  .card.selected{border-color:var(--accent)!important}
+  .card.selected .selmark{background:var(--accent); border-color:var(--accent)}
+  .selectbar{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); width:min(680px,94vw); background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:0 8px 28px rgba(0,0,0,.4); padding:10px 12px; display:none; align-items:center; gap:8px; flex-wrap:wrap; z-index:55}
+  .selectbar.open{display:flex}
+  .selectbar #selCount{font-weight:700; font-size:14px; margin-right:auto}
+  .selectbar select{min-width:120px; flex:0 0 auto; padding:7px 10px}
 
   /* Overlays */
   .overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:flex-start; justify-content:center; padding:24px 14px; overflow-y:auto; z-index:40}
@@ -263,6 +273,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
       <div class="cbtools">
         <input class="in search" id="search" placeholder="Search recipes, ingredients…" autocomplete="off">
         <button class="btn" id="surpriseBtn" title="Pick a random recipe">🎲 Surprise me</button>
+        <button class="btn" id="selectBtn" title="Select several recipes">☑ Select</button>
         <button class="btn primary" id="addRecipe">＋ Recipe</button>
       </div>
       <div class="chips" id="catChips"></div>
@@ -489,6 +500,15 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
   </div>
 </div>
 
+<!-- SELECT-MODE action bar (Cookbook multi-select) -->
+<div class="selectbar" id="selectBar">
+  <span id="selCount">0 selected</span>
+  <select class="in" id="selDay"></select>
+  <button class="btn sm" id="selPlan">📅 Add to plan</button>
+  <button class="btn sm primary" id="selShop">🛒 Shopping list</button>
+  <button class="btn sm ghost" id="selCancel">Cancel</button>
+</div>
+
 <!-- RECIPE PICKER (for the week plan) -->
 <div class="overlay" id="pickerOverlay">
   <div class="sheet">
@@ -508,7 +528,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-23 · v12.2 recipe-counts";
+const APP_VERSION = "2026-08-24 · v13 multi-select";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -959,7 +979,8 @@ function renderGrid(){
     const sugarNote = r.addedSugar>0 ? `<span class="tag added">${r.addedSugar}g added sugar</span>`
       : (r.sugar>=8 ? `<span class="tag natural">no added sugar</span>` : "");
     const gl=glEstimate(r);
-    return `<div class="card${conf.length?" warnrecipe":(dis.length?" dislikerecipe":(lk.length?" likerecipe":""))}" data-id="${r.id}">
+    return `<div class="card${conf.length?" warnrecipe":(dis.length?" dislikerecipe":(lk.length?" likerecipe":""))}${selectMode&&selected.has(r.id)?" selected":""}" data-id="${r.id}">
+      <div class="selmark">${selected.has(r.id)?"✓":""}</div>
       <button class="fav${r.favorite?" on":""}" data-fav="${r.id}" title="Favorite">${r.favorite?"★":"☆"}</button>
       <div><span class="pill cat">${esc(r.category)}</span> <span class="glbadge ${gl.cls}" title="Estimated glycaemic load from net carbs">${gl.label}</span></div>
       <h3>${esc(r.title)}</h3>
@@ -975,11 +996,49 @@ function renderGrid(){
       <div class="tags">${tags}${sugarNote}</div>
     </div>`;
   }).join("");
-  g.querySelectorAll(".card").forEach(c=> c.onclick=e=>{ if(e.target.closest(".fav")) return; openDetail(c.dataset.id); });
+  g.classList.toggle("selmode", selectMode);
+  g.querySelectorAll(".card").forEach(c=> c.onclick=e=>{ if(e.target.closest(".fav")) return; if(selectMode){ toggleSelect(c.dataset.id); return; } openDetail(c.dataset.id); });
   g.querySelectorAll(".fav").forEach(b=> b.onclick=e=>{ e.stopPropagation(); toggleFav(b.dataset.fav); });
 }
 function toggleFav(id){ const r=recipeById(id); if(!r) return; r.favorite=!r.favorite; r.updatedAt=now(); touch(); renderGrid(); if($("#detailOverlay").classList.contains("open")) openDetail(id); }
 function recipeById(id){ return state.recipes.find(r=>r.id===id); }
+
+/* ---------- Multi-select: pick recipes, then add to plan / shopping ---------- */
+let selectMode=false; const selected=new Set();
+function buildDayOptions(){
+  const dates=weekDates();
+  let html='<option value="today">Today</option>';
+  DOW.forEach((n,i)=> html+=`<option value="${i}">${n.slice(0,3)} ${esc(fmtDayShort(dates[i]))}</option>`);
+  $("#selDay").innerHTML=html;
+}
+function renderSelectBar(){
+  const bar=$("#selectBar");
+  if(selectMode && selected.size){ $("#selCount").textContent=selected.size+" selected"; bar.classList.add("open"); }
+  else bar.classList.remove("open");
+}
+function toggleSelect(id){
+  if(selected.has(id)) selected.delete(id); else selected.add(id);
+  const c=$("#recipeGrid").querySelector('.card[data-id="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"]');
+  if(c){ c.classList.toggle("selected", selected.has(id)); const m=c.querySelector(".selmark"); if(m) m.textContent=selected.has(id)?"✓":""; }
+  renderSelectBar();
+}
+function enterSelectMode(){ selectMode=true; selected.clear(); buildDayOptions(); const b=$("#selectBtn"); b.classList.add("primary"); b.textContent="Done"; renderGrid(); renderSelectBar(); }
+function exitSelectMode(){ selectMode=false; selected.clear(); const b=$("#selectBtn"); b.classList.remove("primary"); b.textContent="☑ Select"; $("#selectBar").classList.remove("open"); renderGrid(); }
+$("#selectBtn").onclick=()=> selectMode? exitSelectMode() : enterSelectMode();
+$("#selCancel").onclick=exitSelectMode;
+$("#selShop").onclick=()=>{
+  if(!selected.size){ toast("Tap recipes to select first"); return; }
+  const items=[...selected].map(id=>({recipeId:id, servings:1}));
+  const n=buildShoppingFromItems(items);
+  exitSelectMode(); setTab("shopping");
+  toast(n>0? n+" item"+(n===1?"":"s")+" added" : "Shopping list already up to date");
+};
+$("#selPlan").onclick=()=>{
+  if(!selected.size){ toast("Tap recipes to select first"); return; }
+  const ids=[...selected], day=$("#selDay").value;
+  if(day==="today"){ ids.forEach(id=>addToToday(id,1)); exitSelectMode(); setTab("today"); toast(ids.length+" added to Today"); }
+  else { const d=+day; ids.forEach(id=>addToPlan(d,id)); exitSelectMode(); setTab("plan"); toast(ids.length+" added to "+DOW[d]); }
+};
 
 $("#search").oninput = e=>{ searchQ=e.target.value.trim(); renderGrid(); };
 $("#addRecipe").onclick = ()=> openEditor(null);
