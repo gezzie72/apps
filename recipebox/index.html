@@ -528,7 +528,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-24 · v13 multi-select";
+const APP_VERSION = "2026-08-25 · v14 shopping-quantities";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -1297,22 +1297,66 @@ function aisleOf(text){
   for(const a of AISLES){ if(a.kw.some(k=> t.includes(k))) return a; }
   return {name:"Other", icon:"🛒", kw:[]};
 }
-// Merge every ingredient line from the recipes on Today's plate into the list.
-// Idempotent: existing items (by normalized text) gain the recipe as a source but aren't duplicated; ticked state is kept.
-// Merge the ingredients of a set of {recipeId,servings} entries into the shopping list (deduped).
+/* ---- Ingredient parsing so quantities can scale by servings & consolidate ---- */
+const SHOP_UNITS = {tbsp:"tbsp",tbsps:"tbsp",tablespoon:"tbsp",tablespoons:"tbsp",tsp:"tsp",tsps:"tsp",teaspoon:"tsp",teaspoons:"tsp",cup:"cup",cups:"cup",g:"g",kg:"kg",oz:"oz",ml:"ml",l:"l",clove:"clove",cloves:"clove",slice:"slice",slices:"slice",can:"can",cans:"can",tin:"can",tins:"can",packet:"packet",packets:"packet",stalk:"stalk",stalks:"stalk",sprig:"sprig",sprigs:"sprig",head:"head",heads:"head",fillet:"fillet",fillets:"fillet",scoop:"scoop",scoops:"scoop",bunch:"bunch"};
+const NAME_ADJ = /^(large|small|medium|fresh|ripe|lean|boneless|extra-lean|plain|unsweetened|low-fat|light|ground|dried|cooked|canned|whole|mixed|chopped|sliced|diced|frozen|peeled|firm|raw)\s+/;
+function cleanIngName(s){ return s.replace(/,.*$/,"").trim(); }   // drop trailing ", beaten" etc.
+function nameKey(name){
+  let n=(name||"").toLowerCase().trim();
+  n=n.replace(NAME_ADJ,"").replace(NAME_ADJ,"");                  // strip up to two leading adjectives
+  if(/oes$/.test(n)) n=n.slice(0,-2); else if(/ies$/.test(n)) n=n.slice(0,-3)+"y"; else if(!/ss$/.test(n) && /s$/.test(n) && n.length>3) n=n.slice(0,-1);
+  return n.trim();
+}
+function parseIngredient(line){
+  const raw=(line||"").trim();
+  const q="(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+\\s*["+UNICHARS+"]|\\d*\\.?\\d+|["+UNICHARS+"])";
+  const m=raw.match(new RegExp("^\\s*("+q+")(?:\\s*[-–—]\\s*"+q+")?\\s*"));
+  if(!m) return {qty:null, unit:"", name:cleanIngName(raw)};
+  const qty=qtyVal(m[1].trim());
+  let rest=raw.slice(m[0].length).trim();
+  let unit="";
+  const first=(rest.split(/\s+/)[0]||"").toLowerCase().replace(/[.,]/g,"");
+  if(SHOP_UNITS[first]){ unit=SHOP_UNITS[first]; rest=rest.slice((rest.split(/\s+/)[0]||"").length).trim(); }
+  return {qty:(qty==null?null:qty), unit, name:cleanIngName(rest)||cleanIngName(raw)};
+}
+// Display text for a consolidated auto item.
+const PLURAL_UNITS={cup:1,clove:1,slice:1,can:1,packet:1,stalk:1,sprig:1,head:1,fillet:1,scoop:1,bunch:1};
+function shopText(s){
+  if(s.qty==null || !s.name) return s.name || s.text || "";
+  if(s.unit){ const qv=Math.round(s.qty*100)/100; let u=s.unit; if(PLURAL_UNITS[u] && qv>1) u+="s"; return fmtQty(qv) + " " + u + " " + s.name; }
+  const near=Math.abs(s.qty-Math.round(s.qty))<0.02;
+  const q=near?Math.round(s.qty):Math.ceil(s.qty-1e-9);          // countable → whole, rounded up
+  return (q>0? q+" ":"") + s.name;
+}
+function ensureParsed(it){   // upgrade old-format auto items so they can consolidate
+  if(it.auto && it.nkey==null){ const p=parseIngredient(it.text||""); it.qty=p.qty; it.unit=p.unit; it.name=p.name; it.nkey=nameKey(p.name); }
+  return it;
+}
+// Build the shopping list from {recipeId,servings} entries: scale each recipe's ingredients by
+// (servings ÷ recipe yield) and consolidate matching items (same name+unit), summing quantities.
 function buildShoppingFromItems(items){
   if(!items || !items.length) return null;
-  const byKey = {};
-  state.shopping.items.forEach(it=> byKey[shopKey(it.text)] = it);
-  let added = 0;
-  items.forEach(it=>{
-    const r=recipeById(it.recipeId); if(!r) return;
+  const byKey={};
+  state.shopping.items.forEach(it=>{
+    if(it.auto){ ensureParsed(it); byKey[it.nkey+"|"+(it.unit||"")]=it; }
+    else byKey["m|"+shopKey(it.text)]=it;
+  });
+  let added=0;
+  items.forEach(pi=>{
+    const r=recipeById(pi.recipeId); if(!r) return;
+    const factor = (r.servings>0 ? (pi.servings||1)/r.servings : 1);
     (r.ingredients||[]).forEach(line=>{
-      const key=shopKey(line); if(!key) return;
+      const p=parseIngredient(line); if(!p.name) return;
+      const nkey=nameKey(p.name); const key=nkey+"|"+(p.unit||"");
+      const sq = (p.qty!=null ? p.qty*factor : null);
       let s=byKey[key];
-      if(!s){ s={id:uid(), text:line.trim(), checked:false, auto:true, from:[]}; state.shopping.items.push(s); byKey[key]=s; added++; }
-      if(!s.from) s.from=[];
-      if(r.title && !s.from.includes(r.title)) s.from.push(r.title);
+      if(!s){
+        s={id:uid(), checked:false, auto:true, from:[], qty:sq, unit:p.unit, name:p.name, nkey};
+        s.text=shopText(s); state.shopping.items.push(s); byKey[key]=s; added++;
+      } else {
+        if(sq!=null){ s.qty=(s.qty!=null? s.qty+sq : sq); s.text=shopText(s); }
+      }
+      if(r.title && s.from && !s.from.includes(r.title)) s.from.push(r.title);
     });
   });
   touch();
