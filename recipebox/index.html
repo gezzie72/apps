@@ -528,7 +528,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-25 · v14 shopping-quantities";
+const APP_VERSION = "2026-08-25 · v14.1 servings-multiplier";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -1300,7 +1300,14 @@ function aisleOf(text){
 /* ---- Ingredient parsing so quantities can scale by servings & consolidate ---- */
 const SHOP_UNITS = {tbsp:"tbsp",tbsps:"tbsp",tablespoon:"tbsp",tablespoons:"tbsp",tsp:"tsp",tsps:"tsp",teaspoon:"tsp",teaspoons:"tsp",cup:"cup",cups:"cup",g:"g",kg:"kg",oz:"oz",ml:"ml",l:"l",clove:"clove",cloves:"clove",slice:"slice",slices:"slice",can:"can",cans:"can",tin:"can",tins:"can",packet:"packet",packets:"packet",stalk:"stalk",stalks:"stalk",sprig:"sprig",sprigs:"sprig",head:"head",heads:"head",fillet:"fillet",fillets:"fillet",scoop:"scoop",scoops:"scoop",bunch:"bunch"};
 const NAME_ADJ = /^(large|small|medium|fresh|ripe|lean|boneless|extra-lean|plain|unsweetened|low-fat|light|ground|dried|cooked|canned|whole|mixed|chopped|sliced|diced|frozen|peeled|firm|raw)\s+/;
-function cleanIngName(s){ return s.replace(/,.*$/,"").trim(); }   // drop trailing ", beaten" etc.
+const DESCRIPTORS=new Set(["beaten","chopped","diced","crumbled","sliced","minced","halved","softened","melted","grilled","spiralised","spiralized","shredded","rinsed","drained","cubed","cooked","mashed","peeled","toasted","poached","grated","finely diced","thinly sliced","finely chopped","to taste"]);
+// Drop only a trailing prep word (", chopped"), not a real list (", pepper & onion").
+function cleanIngName(s){
+  s=(s||"").trim();
+  const i=s.lastIndexOf(",");
+  if(i>0 && DESCRIPTORS.has(s.slice(i+1).trim().toLowerCase())) return s.slice(0,i).trim();
+  return s;
+}
 function nameKey(name){
   let n=(name||"").toLowerCase().trim();
   n=n.replace(NAME_ADJ,"").replace(NAME_ADJ,"");                  // strip up to two leading adjectives
@@ -1321,9 +1328,10 @@ function parseIngredient(line){
 }
 // Display text for a consolidated auto item.
 const PLURAL_UNITS={cup:1,clove:1,slice:1,can:1,packet:1,stalk:1,sprig:1,head:1,fillet:1,scoop:1,bunch:1};
+const NOSPACE_UNITS={g:1,kg:1,ml:1,l:1,oz:1};
 function shopText(s){
   if(s.qty==null || !s.name) return s.name || s.text || "";
-  if(s.unit){ const qv=Math.round(s.qty*100)/100; let u=s.unit; if(PLURAL_UNITS[u] && qv>1) u+="s"; return fmtQty(qv) + " " + u + " " + s.name; }
+  if(s.unit){ const qv=Math.round(s.qty*100)/100; let u=s.unit; if(PLURAL_UNITS[u] && qv>1) u+="s"; return fmtQty(qv) + (NOSPACE_UNITS[s.unit]?"":" ") + u + " " + s.name; }
   const near=Math.abs(s.qty-Math.round(s.qty))<0.02;
   const q=near?Math.round(s.qty):Math.ceil(s.qty-1e-9);          // countable → whole, rounded up
   return (q>0? q+" ":"") + s.name;
@@ -1344,7 +1352,8 @@ function buildShoppingFromItems(items){
   let added=0;
   items.forEach(pi=>{
     const r=recipeById(pi.recipeId); if(!r) return;
-    const factor = (r.servings>0 ? (pi.servings||1)/r.servings : 1);
+    // Servings acts as a straight multiplier: 2 servings = double the recipe's ingredients.
+    const factor = (pi.servings||1);
     (r.ingredients||[]).forEach(line=>{
       const p=parseIngredient(line); if(!p.name) return;
       const nkey=nameKey(p.name); const key=nkey+"|"+(p.unit||"");
