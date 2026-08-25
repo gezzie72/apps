@@ -493,13 +493,17 @@
 
     <div class="panel">
       <h2>Blood test reminder</h2>
-      <div class="row" style="align-items:center; flex-wrap:wrap">
-        <label class="row" style="gap:6px; margin:0"><input type="checkbox" id="btrOn"> Remind me to book a blood test</label>
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap">
+        <label class="row" style="gap:6px; margin:0 8px 7px 0"><input type="checkbox" id="btrOn"> Remind me to book a blood test</label>
         <label class="fld">Every (weeks)
           <input type="number" id="btrWeeks" step="1" min="1" style="width:90px">
         </label>
+        <label class="fld">Count from
+          <input type="date" id="btrFrom">
+        </label>
       </div>
       <div id="btrInfo" class="muted" style="margin-top:10px"></div>
+      <p class="disc" style="margin-top:10px">📱 This is an <b>in-app</b> reminder: it shows on the <b>Today</b> tab (and flags the Appointments tab) when you next open HealthLog around the due date. It can't send a notification to your phone on its own, so check in now and then.</p>
     </div>
 
     <div class="panel">
@@ -614,7 +618,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-08-23 · v5 BP UK-NICE avg";
+const APP_VERSION = "2026-08-23 · v6 bt-reminder-from-date";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -649,7 +653,7 @@ function defaultState(){
     bloodType:"",               // "" | "A+" | "O-" | ...
     bp:[],                      // {id, dt:"YYYY-MM-DDTHH:MM", sys, dia, pulse, note}
     appts:[],                   // {id, type, who, date:"YYYY-MM-DD", time, loc, notes, results}
-    bloodTestReminder:{ enabled:false, weeks:12 },
+    bloodTestReminder:{ enabled:false, weeks:12, fromDate:"" },
     dob:"",                     // "YYYY-MM-DD"
     heightCm:null,              // number (canonical cm)
     heightUnit:"cm",            // "cm" | "ftin" (display only)
@@ -667,9 +671,10 @@ function normalize(s){
   if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
   ["glucose","meds","measurements","bp","appts","weights","bowel"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   if(typeof s.bloodType!=="string") s.bloodType="";
-  if(!s.bloodTestReminder || typeof s.bloodTestReminder!=="object") s.bloodTestReminder={enabled:false,weeks:12};
+  if(!s.bloodTestReminder || typeof s.bloodTestReminder!=="object") s.bloodTestReminder={enabled:false,weeks:12,fromDate:""};
   s.bloodTestReminder.enabled=!!s.bloodTestReminder.enabled;
   s.bloodTestReminder.weeks=Math.max(1,Math.round(Number(s.bloodTestReminder.weeks)||12));
+  if(typeof s.bloodTestReminder.fromDate!=="string") s.bloodTestReminder.fromDate="";
   if(typeof s.dob!=="string") s.dob="";
   s.heightCm = (s.heightCm==null||isNaN(Number(s.heightCm))) ? null : Number(s.heightCm);
   if(s.heightUnit!=="ftin") s.heightUnit="cm";
@@ -734,17 +739,25 @@ function computeDue(){
   const btr=state.bloodTestReminder;
   if(btr && btr.enabled && !hasFutureBloodTest()){
     const weeks=Number(btr.weeks)||12;
-    const last=lastBloodTestISO();
-    if(last){
-      const dueD=addDays(last, weeks*7);
+    const anchor=btAnchor();
+    if(anchor){
+      const dueD=addDays(anchor, weeks*7);
       const diff=daysBetween(t,dueD);
-      if(diff<0) items.push({sev:"over", kind:"blood", txt:`Blood test overdue to book — last test ${fmtDateShort(last)} (recommended every ${weeks} wk)`});
+      if(diff<0) items.push({sev:"over", kind:"blood", txt:`Blood test overdue to book — was due ${fmtDateShort(dueD)} (${weeks} wk after ${fmtDateShort(anchor)})`});
       else if(diff<=14) items.push({sev:"due", kind:"blood", txt:`Time to book your next blood test (due ${fmtDateShort(dueD)})`});
     } else {
-      items.push({sev:"due", kind:"blood", txt:`No blood test on record yet — book your first one`});
+      items.push({sev:"due", kind:"blood", txt:`Blood test reminder on — set a "count from" date, or log a past blood test`});
     }
   }
   return items;
+}
+// Reminder anchor = the most recent of your chosen "count from" date and your
+// last logged (past) blood test — so logging a real test rolls it forward.
+function btAnchor(){
+  const from=(state.bloodTestReminder&&state.bloodTestReminder.fromDate)||"";
+  const last=lastBloodTestISO()||"";
+  const a=(from>last)?from:last;
+  return a||null;
 }
 function hasFutureBloodTest(){ const t=todayISO(); return state.appts.some(a=>a.type==="Blood test" && a.date>=t); }
 function lastBloodTestISO(){ const t=todayISO(); const l=state.appts.filter(a=>a.type==="Blood test" && a.date && a.date<t).map(a=>a.date).sort(); return l.length?l[l.length-1]:null; }
@@ -1215,6 +1228,7 @@ let editResultsId=null;
 function renderApptsUI(){
   $("#btrOn").checked=state.bloodTestReminder.enabled;
   $("#btrWeeks").value=state.bloodTestReminder.weeks;
+  $("#btrFrom").value=state.bloodTestReminder.fromDate||"";
   renderBtrInfo();
   renderApptDue();
   renderApptCal();
@@ -1224,11 +1238,13 @@ function renderBtrInfo(){
   const el=$("#btrInfo"); const btr=state.bloodTestReminder;
   if(!btr.enabled){ el.textContent="Off — turn on to get a nudge on the Today tab when a blood test is due to be booked."; return; }
   if(hasFutureBloodTest()){ el.textContent="A blood test is already booked — you'll be reminded again once it's in the past."; return; }
-  const last=lastBloodTestISO();
-  if(!last){ el.textContent="On — no past blood test on record yet, so you'll see a nudge to book your first one."; return; }
-  const dueD=addDays(last, (Number(btr.weeks)||12)*7);
+  const anchor=btAnchor();
+  if(!anchor){ el.textContent="On — set a \"count from\" date above (or log a past blood test) and it'll count the weeks from there."; return; }
+  const dueD=addDays(anchor, (Number(btr.weeks)||12)*7);
   const diff=daysBetween(todayISO(),dueD);
-  el.textContent=`Last blood test ${fmtDate(last)} · next due ${fmtDate(dueD)} (${diff<0?(-diff)+" days ago":"in "+diff+" days"}).`;
+  const last=lastBloodTestISO();
+  const src = (last && anchor===last) ? `last blood test ${fmtDate(anchor)}` : `${fmtDate(anchor)}`;
+  el.textContent=`Counting ${btr.weeks} weeks from ${src} · next due ${fmtDate(dueD)} (${diff<0?(-diff)+" days ago":diff===0?"today":"in "+diff+" days"}).`;
 }
 function renderApptDue(){
   const area=$("#apDueArea"); area.innerHTML="";
@@ -1429,8 +1445,14 @@ $("#apCancel").onclick=cancelApptForm;
 $("#apPrev").onclick=()=>{ apView.setMonth(apView.getMonth()-1); renderApptCal(); };
 $("#apNextM").onclick=()=>{ apView.setMonth(apView.getMonth()+1); renderApptCal(); };
 $("#apToday").onclick=()=>{ apView=new Date(); renderApptCal(); };
-$("#btrOn").onchange=()=>{ state.bloodTestReminder.enabled=$("#btrOn").checked; save(); renderApptsUI(); };
+$("#btrOn").onchange=()=>{
+  const on=$("#btrOn").checked; state.bloodTestReminder.enabled=on;
+  // On first enable, seed "count from" so there's always an anchor: last blood test, else today.
+  if(on && !state.bloodTestReminder.fromDate && !lastBloodTestISO()) state.bloodTestReminder.fromDate=todayISO();
+  save(); renderApptsUI();
+};
 $("#btrWeeks").onchange=()=>{ state.bloodTestReminder.weeks=Math.max(1,Math.round(Number($("#btrWeeks").value)||12)); save(); renderApptsUI(); };
+$("#btrFrom").onchange=()=>{ state.bloodTestReminder.fromDate=$("#btrFrom").value||""; save(); renderApptsUI(); };
 
 /* bowel */
 $("#bwAdd").onclick=()=>{
