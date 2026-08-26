@@ -87,8 +87,17 @@
   .strip .h{color:var(--muted); font-size:11px}
   .strip .v{font-weight:800; font-size:16px}
   .confidential{color:var(--danger); font-weight:700; font-size:11px; letter-spacing:.5px}
-  .sig{margin-top:18px; display:grid; gap:14px}
-  .sig .line{border-top:1px solid var(--line); padding-top:4px; color:var(--muted); font-size:12px; max-width:320px}
+  .sig{margin-top:28px; display:grid; gap:38px}
+  .sig .line{border-top:1px solid var(--line); padding-top:6px; color:var(--muted); font-size:12px; max-width:340px}
+  /* keep the printable report within A4 portrait so nothing overflows */
+  .report{max-width:820px; margin:0 auto}
+  .report .tablewrap{overflow-x:visible}
+  .report table{table-layout:fixed; width:100%}
+  .report th, .report td{overflow-wrap:anywhere; word-break:break-word; vertical-align:top}
+  .report th:nth-child(1), .report td:nth-child(1){width:72px}   /* Date */
+  .report th:nth-child(2), .report td:nth-child(2){width:70px}   /* Ref */
+  .report th:nth-child(4), .report td:nth-child(4){width:22%}    /* Dept / subject */
+  .report th:nth-child(5), .report td:nth-child(5){width:92px}   /* Warning */
   .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000c; color:#fff;
     padding:10px 16px; border-radius:10px; font-size:13px; z-index:50; opacity:0; transition:opacity .2s; pointer-events:none}
   .toast.show{opacity:1}
@@ -100,12 +109,19 @@
   .card .items{margin-top:2px}
   .card .addf{margin-top:12px; padding-top:12px; border-top:1px solid var(--line)}
   .filters .field{flex:0 0 auto}
+  @page{ size:A4 portrait; margin:14mm; }
   @media print{
     header,nav,.no-print{display:none !important}
     body{background:#fff; color:#000}
-    .card{border:none; margin:0}
+    .card{border:none; margin:0; padding:0}
     section{display:none !important}
     #report.active{display:block !important}
+    .report{max-width:none; margin:0; color:#000}
+    .report .tablewrap{overflow:visible}
+    .report table{table-layout:fixed; width:100%; font-size:11px}
+    .report th, .report td{padding:5px 6px}
+    .report tr, .report .sig, .report .strip{page-break-inside:avoid}
+    .strip>div{border:1px solid #ccc}
   }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -306,7 +322,7 @@
 
 <script>
 /* ================= Office Report — single-file PWA ================= */
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.5";
 const KEY = "officereport.state";
 const GISTFILE = "officereport.json";
 const $ = s => document.querySelector(s);
