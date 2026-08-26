@@ -22,6 +22,26 @@
       --green:#1a7f37; --greenbg:#dafbe1; --amberbg:#fff1e5; --redbg:#ffebe9;
     }
   }
+  /* forced Light (overrides a dark system setting) */
+  :root[data-theme=light]{
+    --bg:#f4f5f8; --panel:#ffffff; --panel2:#f0f2f6; --line:#dfe3ea;
+    --txt:#1b1f27; --muted:#5a6473; --accent:#1a7f37; --accent2:#0969da;
+    --danger:#cf222e; --amber:#bc4c00;
+    --headerA:#1f3864; --headerB:#2e5496;
+    --green:#1a7f37; --greenbg:#dafbe1; --amberbg:#fff1e5; --redbg:#ffebe9;
+  }
+  /* text-size presets (per-device) */
+  :root{ --tzoom:1 }
+  :root[data-text=small]{ --tzoom:.9 }
+  :root[data-text=large]{ --tzoom:1.12 }
+  :root[data-text=xlarge]{ --tzoom:1.25 }
+  body{ zoom:var(--tzoom,1) }
+  /* segmented controls in Setup */
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; flex-wrap:wrap}
+  .seg button{background:var(--panel2); color:var(--txt); border:none; border-right:1px solid var(--line);
+    padding:8px 12px; font-size:13px; cursor:pointer}
+  .seg button:last-child{border-right:none}
+  .seg button.active{background:var(--accent2); color:#fff; font-weight:700}
   *{box-sizing:border-box}
   html,body{margin:0}
   body{background:var(--bg); color:var(--txt);
@@ -120,11 +140,19 @@
     .report td::before{content:attr(data-label) ": "; font-weight:700; color:var(--muted)}
     .report td.empty::before{content:none}
     .report td .rnote{margin-top:2px; font-size:13px !important}
+    /* incidents log -> stacked labelled cards */
+    #incLog table, #incLog tbody, #incLog tr, #incLog td{display:block; width:auto !important}
+    #incLog thead{display:none}
+    #incLog tr{border:1px solid var(--line); border-radius:10px; padding:8px 12px; margin-bottom:10px}
+    #incLog td{border:none !important; padding:3px 0 !important; white-space:normal !important; text-align:left !important}
+    #incLog td::before{content:attr(data-label) ": "; font-weight:700; color:var(--muted)}
+    #incLog td.acts-cell::before{content:none}
+    #incLog td.acts-cell{margin-top:8px}
   }
   @page{ size:A4 portrait; margin:14mm; }
   @media print{
     header,nav,.no-print{display:none !important}
-    body{background:#fff; color:#000}
+    body{background:#fff; color:#000; zoom:1}
     .card{border:none; margin:0; padding:0}
     section{display:none !important}
     #report.active{display:block !important}
@@ -140,6 +168,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<script>try{var t=localStorage.getItem("officereport.theme");if(t&&t!=="system")document.documentElement.dataset.theme=t;var s=localStorage.getItem("officereport.textsize");if(s&&s!=="medium")document.documentElement.dataset.text=s;}catch(e){}</script>
 </head>
 <body>
 <header>
@@ -318,6 +347,27 @@
       <p id="syncMsg" class="muted" style="font-size:12.5px; margin-top:10px"></p>
     </div>
     <div class="card">
+      <h3>Appearance</h3>
+      <div class="row" style="align-items:center; gap:10px 20px">
+        <div class="field" style="flex:0 0 auto"><span>Theme</span>
+          <div class="seg" id="themeSeg">
+            <button type="button" data-theme="system">System</button>
+            <button type="button" data-theme="light">Light</button>
+            <button type="button" data-theme="dark">Dark</button>
+          </div>
+        </div>
+        <div class="field" style="flex:0 0 auto"><span>Text size</span>
+          <div class="seg" id="textSeg">
+            <button type="button" data-text="small">Small</button>
+            <button type="button" data-text="medium">Medium</button>
+            <button type="button" data-text="large">Large</button>
+            <button type="button" data-text="xlarge">Extra-large</button>
+          </div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:12px; margin-top:8px">Saved on this device only (not synced). Doesn't affect printed reports.</p>
+    </div>
+    <div class="card">
       <h3>This device</h3>
       <div class="row" style="justify-content:flex-start">
         <button class="ghost" id="exportJson">Export backup (JSON)</button>
@@ -334,7 +384,7 @@
 
 <script>
 /* ================= Office Report — single-file PWA ================= */
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.7";
 const KEY = "officereport.state";
 const GISTFILE = "officereport.json";
 const $ = s => document.querySelector(s);
@@ -433,7 +483,7 @@ function showSection(id){
   if(id==="summary") renderSummary();
   if(id==="report") initReport();
   if(id==="data") renderData();
-  if(id==="setup") renderSync();
+  if(id==="setup"){ renderSync(); renderAppearance(); }
   window.scrollTo(0,0);
 }
 function buildNav(){
@@ -526,11 +576,11 @@ function renderLog(){
     <tbody>${list.map(r=>{
       const note=[r.notes,r.investigation].filter(Boolean).join(" — ");
       return `<tr>
-        <td>${esc(fmtDate(r.date))}</td><td>${esc(r.ref)}</td>
-        <td>${esc(r.type)}${note?`<div class="muted" style="font-size:11px;margin-top:2px">${esc(note.length>90?note.slice(0,90)+"…":note)}</div>`:""}</td>
-        <td>${esc(r.department)}</td><td>${esc(r.subject)}</td><td>${esc(r.raisedBy)}</td>
-        <td class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td>
-        <td class="num" style="white-space:nowrap"><button class="ghost mini" data-edit="${r.id}">Edit</button> <button class="danger mini" data-del="${r.id}">Del</button></td>
+        <td data-label="Date">${esc(fmtDate(r.date))}</td><td data-label="Ref">${esc(r.ref)}</td>
+        <td data-label="Incident">${esc(r.type)}${note?`<div class="muted" style="font-size:11px;margin-top:2px">${esc(note.length>90?note.slice(0,90)+"…":note)}</div>`:""}</td>
+        <td data-label="Department">${esc(r.department)}</td><td data-label="Employee / Manager">${esc(r.subject)}</td><td data-label="Raised by">${esc(r.raisedBy)}</td>
+        <td data-label="Warning" class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td>
+        <td class="acts-cell num" style="white-space:nowrap"><button class="ghost mini" data-edit="${r.id}">Edit</button> <button class="danger mini" data-del="${r.id}">Del</button></td>
       </tr>`;
     }).join("")}</tbody></table>`;
   log.querySelectorAll("[data-del]").forEach(b=> b.onclick=()=>{ if(confirm("Delete this incident record?")){ delIncident(+b.dataset.del); } });
@@ -785,6 +835,28 @@ function exportCsv(){
   document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
+/* ================= Appearance (per-device) ================= */
+const PREF = {
+  get theme(){ try{return localStorage.getItem("officereport.theme")||"system"}catch(e){return "system"} },
+  set theme(v){ try{localStorage.setItem("officereport.theme",v)}catch(e){} },
+  get text(){ try{return localStorage.getItem("officereport.textsize")||"medium"}catch(e){return "medium"} },
+  set text(v){ try{localStorage.setItem("officereport.textsize",v)}catch(e){} }
+};
+function applyTheme(){
+  const t=PREF.theme;
+  if(t==="system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=t;
+  const dark = t==="dark" || (t==="system" && matchMedia("(prefers-color-scheme:dark)").matches);
+  const m=document.querySelector('meta[name=theme-color]'); if(m) m.content = dark?"#0e1116":"#1f3864";
+}
+function applyText(){
+  const s=PREF.text;
+  if(s==="medium") delete document.documentElement.dataset.text; else document.documentElement.dataset.text=s;
+}
+function renderAppearance(){
+  document.querySelectorAll("#themeSeg button").forEach(b=> b.classList.toggle("active", b.dataset.theme===PREF.theme));
+  document.querySelectorAll("#textSeg button").forEach(b=> b.classList.toggle("active", b.dataset.text===PREF.text));
+}
+
 /* ================= GitHub Gist sync ================= */
 const GH = {
   get token(){ try{return localStorage.getItem("officereport.gh.token")||""}catch(e){return ""} },
@@ -950,6 +1022,11 @@ function bind(){
   $("#importJson").onchange=(e)=>{ const file=e.target.files[0]; if(!file) return;
     const rd=new FileReader(); rd.onload=()=>{ try{ const obj=JSON.parse(rd.result); state=normalise(obj); touch(); refreshAll(); toast("Backup imported"); }catch(err){ alert("Invalid backup file."); } }; rd.readAsText(file); };
   $("#resetData").onclick=()=>{ if(confirm("Reset this device to example data? This replaces the current log.")){ state=defaultState(); touch(); refreshAll(); toast("Reset to example data"); } };
+
+  // appearance
+  document.querySelectorAll("#themeSeg button").forEach(b=> b.onclick=()=>{ PREF.theme=b.dataset.theme; applyTheme(); renderAppearance(); });
+  document.querySelectorAll("#textSeg button").forEach(b=> b.onclick=()=>{ PREF.text=b.dataset.text; applyText(); renderAppearance(); });
+  applyTheme(); applyText(); renderAppearance();
 
   showSection("dashboard");
   renderSync();
