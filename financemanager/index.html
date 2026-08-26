@@ -80,6 +80,11 @@
   table.bd tr.net td{color:var(--accent)}
   table.bd td.neg{color:var(--danger)}
   .num{font-variant-numeric:tabular-nums}
+  .swatch{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:8px; vertical-align:middle; flex:0 0 auto}
+  .donut-wrap{display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap; margin:6px 0 14px}
+  .donut-center .val{font-size:22px; font-weight:800; fill:var(--text)}
+  .donut-center .cap{font-size:10px; fill:var(--muted); text-transform:uppercase; letter-spacing:.5px}
+  .donut seg, .donut circle{transition:stroke-dasharray .4s ease}
 
   /* Big stat */
   .stat{display:flex; flex-direction:column; gap:2px}
@@ -189,6 +194,7 @@
 
       <div class="card">
         <h2>Where the money goes</h2>
+        <div class="donut-wrap" id="sDonut"></div>
         <table class="bd" id="sBreak"><tbody></tbody></table>
       </div>
 
@@ -385,7 +391,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "2026-08-27 · v5";
+const APP_VERSION = "2026-08-27 · v6 chart";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -841,6 +847,29 @@ function refreshDebtCard(el,d){
   if(p){ p.className="hint "+line.cls; p.innerHTML=line.txt; }
 }
 
+/* ============ Spending donut chart ============ */
+const PALETTE = ["#2fbf71","#0ea5a4","#6ea8fe","#8b5cf6","#f2b21e","#ff6b6b","#54d18c","#e879f9","#38bdf8","#fb923c","#a3e635","#f472b6"];
+function spendingDonut(cats, total){
+  const size=170, r=64, sw=24, cx=size/2, cy=size/2, C=2*Math.PI*r;
+  let off=0, segs="";
+  cats.forEach(c=>{
+    const frac = total>0 ? c.v/total : 0;
+    let len = frac*C;
+    if(len>0 && len<1.2) len=1.2;                 // keep tiny slices visible
+    segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c.color}" stroke-width="${sw}"`+
+            ` stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"`+
+            ` transform="rotate(-90 ${cx} ${cy})"><title>${escapeHtml(c.name)} — ${money(c.v)}</title></circle>`;
+    off += frac*C;
+  });
+  return `<svg class="donut" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Spending by category">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--panel2)" stroke-width="${sw}"/>
+    ${segs}
+    <g class="donut-center" text-anchor="middle">
+      <text x="${cx}" y="${cy-2}" class="val">${money0(total)}</text>
+      <text x="${cx}" y="${cy+14}" class="cap">a month</text>
+    </g></svg>`;
+}
+
 /* ============ RENDER: SUMMARY ============ */
 function renderSummary(){
   const c = incomeCalc();
@@ -860,10 +889,12 @@ function renderSummary(){
     : "Over budget by "+money(-save)+" a month.";
 
   const tb = $("#sBreak tbody"); tb.innerHTML="";
-  const cats = state.categories.map(c2=>({name:c2.name, v:catSubtotal(c2, summaryMode)})).filter(x=>x.v!==0).sort((a,b)=>b.v-a.v);
+  const cats = state.categories.map(c2=>({name:c2.name, v:catSubtotal(c2, summaryMode)})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  cats.forEach((x,i)=> x.color = PALETTE[i % PALETTE.length]);
+  $("#sDonut").innerHTML = cats.length ? spendingDonut(cats, out) : '<span class="muted">Add some spending on the Budget tab to see the chart.</span>';
   cats.forEach(x=>{
     const share = out>0 ? (x.v/out*100) : 0;
-    tb.insertAdjacentHTML("beforeend", `<tr><td>${escapeHtml(x.name)}</td><td class="num">${money(x.v)}</td><td class="num muted" style="width:60px">${share.toFixed(0)}%</td></tr>`);
+    tb.insertAdjacentHTML("beforeend", `<tr><td><span class="swatch" style="background:${x.color}"></span>${escapeHtml(x.name)}</td><td class="num">${money(x.v)}</td><td class="num muted" style="width:60px">${share.toFixed(0)}%</td></tr>`);
   });
   tb.insertAdjacentHTML("beforeend", `<tr class="total"><td>Total outgoings</td><td class="num">${money(out)}</td><td></td></tr>`);
 
