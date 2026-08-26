@@ -1,5 +1,5 @@
 /* Office Report service worker - offline app shell, network-first so updates land. */
-const CACHE = "officereport-v7";
+const CACHE = "officereport-v8";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
