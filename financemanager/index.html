@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Finance Manager</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e7e9ee; --muted:#98a0ae; --accent:#2fbf71; --accent2:#0ea5a4;
+    --danger:#ff6b6b; --ok:#54d18c; --warn:#ffb454; --radius:14px;
+    --tscale:1;
+  }
+  @media (prefers-color-scheme:light){
+    :root:not([data-theme]){ --bg:#f3f6f4; --panel:#ffffff; --panel2:#eef2f0; --line:#dde5e1;
+      --text:#16201a; --muted:#5a6b62; --accent:#159a5b; --accent2:#0a8f8e; }
+  }
+  :root[data-theme="light"]{ --bg:#f3f6f4; --panel:#ffffff; --panel2:#eef2f0; --line:#dde5e1;
+    --text:#16201a; --muted:#5a6b62; --accent:#159a5b; --accent2:#0a8f8e; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%; overflow-x:hidden;
+  }
+  button,input,select,textarea{font:inherit; color:inherit}
+  .wrap{max-width:900px; margin:0 auto; min-height:100vh; min-height:100dvh; display:flex; flex-direction:column}
+
+  /* Top bar */
+  .brand{display:flex; align-items:center; gap:10px; padding:14px 16px 10px}
+  .dot{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px}
+  .brand h1{font-size:18px; margin:0; letter-spacing:.2px}
+  .synctop{margin-left:auto; display:flex; align-items:center; gap:8px}
+  .synclbl{font-size:11px; color:var(--muted); cursor:pointer}
+  .synclbl.flash{color:var(--ok); font-weight:600}
+  .gear{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:7px 10px; cursor:pointer}
+  .gear:hover{border-color:var(--accent)}
+
+  /* Tabs */
+  .tabs{display:flex; gap:6px; padding:2px 12px 10px; position:sticky; top:0; background:var(--bg); z-index:5}
+  .tabs button{flex:1; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 6px; font-size:13px; color:var(--muted); cursor:pointer; white-space:nowrap}
+  .tabs button.active{color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; font-weight:600}
+
+  main{flex:1; padding:4px 14px 40px}
+  .panel{display:none} .panel.active{display:block}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin:0 0 14px}
+  .card h2{margin:0 0 3px; font-size:calc(16px * var(--tscale))}
+  .card h2 .sub{font-weight:400; color:var(--muted); font-size:13px}
+  .muted{color:var(--muted); font-size:13px}
+  .hint{color:var(--muted); font-size:12px; margin:2px 0 0}
+
+  label.f{display:block; margin:10px 0 0}
+  label.f span{display:block; font-size:12px; color:var(--muted); margin-bottom:4px}
+  .in{width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px 12px; outline:none}
+  .in:focus{border-color:var(--accent)}
+  select.in{appearance:none}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+  .inputwrap{position:relative}
+  .inputwrap .pfx{position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none}
+  .inputwrap.cur .in{padding-left:24px}
+
+  .btn{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none; color:#fff; font-weight:600}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:5px 9px; font-size:12px}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px}
+
+  /* Breakdown table */
+  table.bd{width:100%; border-collapse:collapse; margin-top:6px; font-size:calc(14px * var(--tscale))}
+  table.bd th,table.bd td{text-align:right; padding:7px 6px; border-bottom:1px solid var(--line)}
+  table.bd th:first-child,table.bd td:first-child{text-align:left}
+  table.bd thead th{color:var(--muted); font-weight:600; font-size:12px}
+  table.bd tr.total td{font-weight:700; border-top:2px solid var(--line); border-bottom:none}
+  table.bd tr.net td{color:var(--accent)}
+  table.bd td.neg{color:var(--danger)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* Big stat */
+  .stat{display:flex; flex-direction:column; gap:2px}
+  .stat .big{font-size:calc(30px * var(--tscale)); font-weight:800; font-variant-numeric:tabular-nums}
+  .stat .lbl{font-size:12px; color:var(--muted)}
+  .stats3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+  .stats3 .card{margin:0; padding:14px}
+  .pos{color:var(--accent)} .negc{color:var(--danger)}
+
+  .bar{height:12px; border-radius:8px; background:var(--panel2); overflow:hidden; margin-top:8px; border:1px solid var(--line)}
+  .bar>i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .bar.over>i{background:linear-gradient(90deg,var(--warn),var(--danger))}
+
+  /* Budget rows */
+  .cat{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); margin:0 0 12px; overflow:hidden}
+  .cathead{display:flex; align-items:center; gap:8px; padding:12px 14px; background:var(--panel2)}
+  .cathead .cname{flex:1; min-width:0; background:transparent; border:none; outline:none; font-size:calc(15px * var(--tscale)); font-weight:700}
+  .cathead .csub{font-size:12px; color:var(--muted); white-space:nowrap}
+  .items{padding:6px 10px 10px}
+  .item{display:grid; grid-template-columns:1fr 92px 92px 30px; gap:8px; align-items:center; padding:4px 0}
+  .item .iname{background:transparent; border:none; border-bottom:1px solid transparent; outline:none; padding:6px 2px; min-width:0}
+  .item .iname:focus{border-bottom-color:var(--accent)}
+  .item .amt{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 8px; text-align:right; outline:none; width:100%; font-variant-numeric:tabular-nums}
+  .item .amt:focus{border-color:var(--accent)}
+  .item .del{background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:16px; border-radius:6px}
+  .item .del:hover{color:var(--danger)}
+  .itemhead{display:grid; grid-template-columns:1fr 92px 92px 30px; gap:8px; padding:2px 0; font-size:11px; color:var(--muted)}
+  .itemhead span:not(:first-child){text-align:right}
+  .catfoot{display:flex; align-items:center; gap:10px; padding:8px 14px 12px}
+  .catfoot .sub{margin-left:auto; font-weight:700; font-variant-numeric:tabular-nums}
+
+  .link{color:var(--accent); text-decoration:none}
+  .kv{font-size:13px; margin-top:6px; overflow-wrap:anywhere}
+  .kv b{color:var(--text)}
+  hr.sep{border:none; border-top:1px solid var(--line); margin:16px 0}
+
+  /* Modal */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; padding:16px; z-index:50; overflow-y:auto}
+  .overlay.open{display:flex}
+  .modal{background:var(--panel); border:1px solid var(--line); border-radius:16px; width:min(560px,100%); max-height:92vh; max-height:92dvh; overflow-y:auto; padding:20px}
+  .modal h2{margin:0 0 4px; font-size:18px}
+  .close{margin-left:auto; background:transparent; border:none; color:var(--muted); font-size:24px; cursor:pointer; line-height:1}
+  .spin{width:14px;height:14px;border:2px solid var(--muted); border-top-color:transparent; border-radius:50%; display:none; animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #syncMsg{overflow-wrap:anywhere}
+  .seg{display:flex; gap:6px; flex-wrap:wrap}
+  .seg button{background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:8px 12px; cursor:pointer}
+  .seg button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; color:#fff; font-weight:600}
+  #toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel2); border:1px solid var(--line); padding:10px 16px; border-radius:10px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:60; display:flex; align-items:center; gap:14px; max-width:calc(100vw - 32px)}
+  #toast.show{opacity:1}
+  .toast-btn{background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; padding:0}
+  .disc{font-size:11px; color:var(--muted); margin-top:10px; line-height:1.5}
+
+  @media (max-width:560px){
+    .grid3{grid-template-columns:1fr 1fr}
+    .stats3{grid-template-columns:1fr}
+    .item{grid-template-columns:1fr 78px 78px 26px}
+    .itemhead{grid-template-columns:1fr 78px 78px 26px}
+    body{font-size:16px}
+    .tabs button{font-size:14px}
+    .overlay{padding:0; align-items:stretch}
+    .modal{width:100%; min-height:100vh; min-height:100dvh; border-radius:0; border:none; padding:18px 16px calc(24px + env(safe-area-inset-bottom))}
+    .in,select.in{font-size:16px}
+  }
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <span class="dot">£</span>
+    <h1>Finance Manager</h1>
+    <div class="synctop">
+      <span class="spin" id="topSpin"></span>
+      <span class="synclbl" id="syncLastTop" title="Tap to sync now">Not synced</span>
+      <button class="gear" id="openSync" title="Settings & sync">⚙</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button data-tab="summary" class="active">Summary</button>
+    <button data-tab="income">Income</button>
+    <button data-tab="budget">Budget</button>
+  </div>
+
+  <main>
+    <!-- SUMMARY -->
+    <section class="panel active" id="p-summary">
+      <div class="stats3">
+        <div class="card stat"><span class="lbl">Monthly income (net)</span><span class="big pos" id="sIncome">£0</span></div>
+        <div class="card stat"><span class="lbl">Monthly outgoings</span><span class="big" id="sOut">£0</span></div>
+        <div class="card stat"><span class="lbl">Left to save</span><span class="big" id="sSave">£0</span></div>
+      </div>
+
+      <div class="card">
+        <h2>This month <span class="sub" id="sMode">· actual spending</span></h2>
+        <div class="row" style="margin-top:6px">
+          <div class="seg" id="mrToggle">
+            <button data-m="actual" class="primary">Actual</button>
+            <button data-m="projected">Projected</button>
+          </div>
+          <span class="muted" id="sPct" style="margin-left:auto"></span>
+        </div>
+        <div class="bar" id="sBar"><i style="width:0%"></i></div>
+        <div class="hint" id="sBarLbl"></div>
+      </div>
+
+      <div class="card">
+        <h2>Where the money goes</h2>
+        <table class="bd" id="sBreak"><tbody></tbody></table>
+      </div>
+
+      <div class="card">
+        <h2>Income breakdown <span class="sub">· take-home after tax &amp; NI</span></h2>
+        <table class="bd" id="sIncBreak"><tbody></tbody></table>
+        <p class="hint" id="sIncNote"></p>
+      </div>
+    </section>
+
+    <!-- INCOME -->
+    <section class="panel" id="p-income">
+      <div class="card">
+        <h2>Your pay</h2>
+        <p class="hint">Enter your pay as you're paid it — the take-home below is worked out with real UK Income Tax and National Insurance bands.</p>
+        <div class="grid2">
+          <label class="f"><span>Hourly rate</span><div class="inputwrap cur"><span class="pfx">£</span><input class="in num" id="i-hourly" type="number" step="0.01" inputmode="decimal"></div></label>
+          <label class="f"><span>Hours per week</span><input class="in num" id="i-hours" type="number" step="0.5" inputmode="decimal"></label>
+        </div>
+        <div class="grid2">
+          <label class="f"><span>Overtime rate (per hour)</span><div class="inputwrap cur"><span class="pfx">£</span><input class="in num" id="i-otrate" type="number" step="0.01" inputmode="decimal"></div></label>
+          <label class="f"><span>Overtime hours per week (avg)</span><input class="in num" id="i-othours" type="number" step="0.5" inputmode="decimal"></label>
+        </div>
+        <div class="grid2">
+          <label class="f"><span>Paid weeks per year</span><input class="in num" id="i-weeks" type="number" step="1" inputmode="numeric"></label>
+          <label class="f"><span>&nbsp;</span><button class="btn ghost sm" id="otFill" title="Set overtime rate to 1.5× your hourly">↺ Overtime = time-and-a-half</button></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Tax settings <span class="sub" id="taxYear"></span></h2>
+        <label class="f"><span>Tax region</span>
+          <select class="in" id="i-region">
+            <option value="ruk">England / Wales / N. Ireland</option>
+            <option value="scotland">Scotland</option>
+          </select>
+        </label>
+        <div class="grid2">
+          <label class="f"><span>Workplace pension (salary sacrifice)</span><div class="inputwrap"><input class="in num" id="i-pension" type="number" step="0.5" inputmode="decimal" style="padding-right:26px"><span class="pfx" style="left:auto;right:11px">%</span></div></label>
+          <label class="f"><span>Student loan plan</span>
+            <select class="in" id="i-student">
+              <option value="none">None</option>
+              <option value="plan1">Plan 1</option>
+              <option value="plan2">Plan 2</option>
+              <option value="plan4">Plan 4 (Scotland)</option>
+              <option value="plan5">Plan 5</option>
+              <option value="pg">Postgraduate</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint">Salary-sacrifice pension comes out before tax &amp; NI. Leave these at 0 / None if they don't apply.</p>
+      </div>
+
+      <div class="card">
+        <h2>Take-home pay</h2>
+        <table class="bd" id="i-break">
+          <thead><tr><th></th><th>Per year</th><th>Per month</th><th>Per week</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="disc" id="i-disc"></p>
+      </div>
+
+      <div class="card">
+        <h2>Other income <span class="sub">· net (after tax) monthly amounts</span></h2>
+        <p class="hint">Anything on top of your wage — benefits, a side income, rent received. Enter what actually lands in your account each month.</p>
+        <div id="extraList"></div>
+        <div class="row"><button class="btn sm" id="addExtra">＋ Add income</button><span class="catfoot" style="padding:0;margin-left:auto"><span class="sub" id="extraTotal">£0.00</span></span></div>
+      </div>
+    </section>
+
+    <!-- BUDGET -->
+    <section class="panel" id="p-budget">
+      <div class="card" style="padding:12px 16px">
+        <div class="row" style="margin:0">
+          <div>
+            <div class="muted">Total monthly outgoings</div>
+            <div class="stat"><span class="big" id="bTotal">£0</span></div>
+          </div>
+          <div class="seg" id="bMode" style="margin-left:auto">
+            <button data-m="actual" class="primary">Actual</button>
+            <button data-m="projected">Projected</button>
+          </div>
+        </div>
+      </div>
+      <div id="cats"></div>
+      <div class="row"><button class="btn" id="addCat">＋ Add category</button></div>
+    </section>
+  </main>
+</div>
+
+<!-- Settings + sync modal -->
+<div class="overlay" id="syncOverlay">
+  <div class="modal">
+    <div style="display:flex;align-items:center"><h2>Settings</h2><button class="close" id="closeSync">×</button></div>
+
+    <h2 style="font-size:15px;margin-top:14px">Sync across devices</h2>
+    <p class="muted">Keep phone and desktop in step via a <b>private</b> GitHub gist. Create a token with only the <b>gist</b> scope and paste it on each device — it finds your shared budget automatically. The token is stored only in this browser.</p>
+    <div id="syncDisconnected">
+      <div class="row">
+        <input type="password" id="ghToken" class="in" placeholder="GitHub token (gist scope)" autocomplete="off" spellcheck="false" style="flex:1 1 180px">
+        <button class="btn" id="ghShowToken">Show</button>
+      </div>
+      <div class="row">
+        <input type="text" id="ghGist" class="in" placeholder="Gist ID (optional — auto-detected)" autocomplete="off" spellcheck="false" style="flex:1 1 180px">
+        <button class="btn primary" id="ghConnect">Connect <span class="spin" id="connSpin"></span></button>
+      </div>
+      <p class="muted" style="margin-top:8px"><a class="link" href="https://github.com/settings/tokens/new?scopes=gist&description=Finance%20Manager%20sync" target="_blank" rel="noopener">Create a token →</a> — use a <b>classic</b> token, tick only <b>gist</b>. (Fine-grained tokens can't access gists.)</p>
+    </div>
+    <div id="syncConnected" style="display:none">
+      <div class="kv">Connected as <b id="syncUser">…</b></div>
+      <div class="kv">Gist ID: <b id="syncGistId"></b>
+        <button class="btn sm" id="ghCopyGist" style="margin-left:6px">Copy</button>
+        <a class="link" id="syncGistLink" href="#" target="_blank" rel="noopener" style="margin-left:6px">Open ↗</a></div>
+      <div class="kv">Last synced: <b id="syncLast">never</b></div>
+      <div class="row">
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="ghAuto"> Auto-sync</label>
+        <button class="btn" id="ghSyncNow">Sync now <span class="spin" id="syncSpin"></span></button>
+        <button class="btn ghost" id="ghDisconnect" style="margin-left:auto">Disconnect</button>
+      </div>
+    </div>
+
+    <hr class="sep">
+    <h2 style="font-size:15px">Appearance</h2>
+    <p class="muted">Choose light or dark, or follow your device.</p>
+    <div class="seg" id="themeCtl"><button data-t="system">System</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div>
+
+    <hr class="sep">
+    <h2 style="font-size:15px">Text size</h2>
+    <p class="muted">Adjust the text size on this device.</p>
+    <div class="seg" id="textSize"><button data-s="0.9">Small</button><button data-s="1">Medium</button><button data-s="1.15">Large</button><button data-s="1.3">Extra large</button></div>
+
+    <hr class="sep">
+    <h2 style="font-size:15px">Backup &amp; export</h2>
+    <p class="muted">Download a copy of everything, or restore from a JSON backup.</p>
+    <div class="row">
+      <button class="btn" id="exportJson">⤓ Export JSON</button>
+      <button class="btn" id="importBtn">⤒ Import JSON</button>
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      <button class="btn ghost" id="resetBtn" style="margin-left:auto">Reset to sample</button>
+    </div>
+
+    <hr class="sep">
+    <h2 style="font-size:15px">My apps</h2>
+    <p class="muted">Open on any device, then browser menu → <b>Install</b> / <b>Add to Home screen</b>.</p>
+    <div class="kv">£ Finance Manager — <a class="link" href="https://gezzie72.github.io/apps/financemanager/" target="_blank" rel="noopener">gezzie72.github.io/apps/financemanager</a></div>
+    <div class="kv">💡 IdeaPad — <a class="link" href="https://gezzie72.github.io/apps/ideapad/" target="_blank" rel="noopener">gezzie72.github.io/apps/ideapad</a></div>
+    <div class="kv">🏋 FitPlan — <a class="link" href="https://gezzie72.github.io/apps/fitplan/" target="_blank" rel="noopener">gezzie72.github.io/apps/fitplan</a></div>
+    <div class="kv">✚ HealthLog — <a class="link" href="https://gezzie72.github.io/apps/healthlog/" target="_blank" rel="noopener">gezzie72.github.io/apps/healthlog</a></div>
+    <div class="kv">🔐 Vault — <a class="link" href="https://gezzie72.github.io/apps/vault/" target="_blank" rel="noopener">gezzie72.github.io/apps/vault</a></div>
+    <div class="kv">🥗 RecipeBox — <a class="link" href="https://gezzie72.github.io/apps/recipebox/" target="_blank" rel="noopener">gezzie72.github.io/apps/recipebox</a></div>
+
+    <hr class="sep">
+    <div id="syncMsg" class="muted"></div>
+    <p class="disc" id="verLine"></p>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const APP_VERSION = "2026-08-26 · v1";
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
+function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const now = () => Date.now();
+try{ const _t=localStorage.getItem("finance.theme"); if(_t && _t!=="system") document.documentElement.setAttribute("data-theme", _t); }catch(e){}
+
+/* ============ UK TAX ENGINE (2025/26) ============
+   Editable constants — update here when HMRC publishes a new year. */
+const TAX = {
+  year: "2025/26",
+  personalAllowance: 12570,
+  paTaperStart: 100000,          // PA cut £1 for every £2 over this
+  niPT: 12570,                   // NI primary threshold (annualised)
+  niUEL: 50270,                  // NI upper earnings limit
+  niMain: 0.08, niUpper: 0.02,   // employee Class 1 rates
+  // Bands expressed as cumulative TAXABLE income (i.e. gross minus personal allowance).
+  ruk: [ {upTo:37700, rate:0.20}, {upTo:112570, rate:0.40}, {upTo:Infinity, rate:0.45} ],
+  scotland: [ {upTo:2827, rate:0.19}, {upTo:14921, rate:0.20}, {upTo:31092, rate:0.21},
+              {upTo:62430, rate:0.42}, {upTo:112570, rate:0.45}, {upTo:Infinity, rate:0.48} ]
+};
+const STUDENT = {
+  plan1:{threshold:26065, rate:0.09}, plan2:{threshold:28470, rate:0.09},
+  plan4:{threshold:32745, rate:0.09}, plan5:{threshold:25000, rate:0.09},
+  pg:{threshold:21000, rate:0.06}
+};
+function computeTax(annualGross, opt){
+  opt = opt||{};
+  const pensionPct = Math.max(0, Math.min(100, +opt.pensionPct||0));
+  const pension = annualGross * pensionPct/100;      // salary sacrifice: off the top
+  const g = annualGross - pension;                   // pay subject to tax, NI, student loan
+  let pa = TAX.personalAllowance;
+  if(g > TAX.paTaperStart) pa = Math.max(0, pa - (g - TAX.paTaperStart)/2);
+  const taxable = Math.max(0, g - pa);
+  const bands = opt.region==="scotland" ? TAX.scotland : TAX.ruk;
+  let tax=0, prev=0;
+  for(const b of bands){ const up=Math.min(taxable, b.upTo); if(up>prev){ tax += (up-prev)*b.rate; prev=up; } if(prev>=taxable) break; }
+  const ni = TAX.niMain*Math.max(0, Math.min(g, TAX.niUEL)-TAX.niPT) + TAX.niUpper*Math.max(0, g-TAX.niUEL);
+  let sl=0; const p=STUDENT[opt.studentPlan]; if(p) sl = Math.max(0, Math.floor(g - p.threshold)) * p.rate;
+  const net = annualGross - pension - tax - ni - sl;
+  return { gross:annualGross, pension, pa, taxable, tax, ni, sl, net };
+}
+
+/* ============ STATE ============ */
+const LS_KEY = "finance.data";
+let state = load();
+let currentTab = "summary";
+let budgetMode = "actual";     // actual | projected
+let summaryMode = "actual";
+
+function sampleState(){
+  const cat = (name, items) => ({ id:uid(), name, items: items.map(([n,a,p])=>({id:uid(), name:n, actual:a, projected:(p==null?a:p)})) });
+  return {
+    income: { hourly:16.41, hours:39, weeks:52, otRate:24.62, otHours:0, region:"ruk", pension:0, student:"none",
+      extra:[ {id:uid(), name:"Extra income", monthly:0} ] },
+    categories: [
+      cat("Transportation", [["Vehicle Repayment",266.73],["RAC Warranty",41.62],["Insurance",39.05],["Car Tax",0],["Fuel",90],["Car Maintenance",36.67],["Storage container",140]]),
+      cat("Subscriptions", [["Experian",14.99],["Spotify",12.99],["ITVX",0]]),
+      cat("Food", [["Groceries",120],["Dining out",36],["Costa",17]]),
+      cat("Entertainment", [["Paramount+",6.99],["Apple TV",9.99],["Lottery",64],["GMB",15.18],["Amazon Prime",7.92],["Ramblers Assoc.",3.75],["Netflix",5.99],["Giff Gaff",35],["Gym",26.99],["HBO Max",5.99],["Google One",1.59],["UK Hidden Gems",3.99],["Komoot",5.00],["Dashlane",2.93],["Savings",140],["Smarty",20]]),
+      cat("Loans & credit", [["Fraser",48.32],["Savings to Halifax",200],["Fraser 2",27.87],["MBNA Credit card",350],["Argos",57.31],["Very",46.94]])
+    ],
+    updatedAt: now()
+  };
+}
+function migrate(s){
+  if(!s || typeof s!=="object") return sampleState();
+  if(!s.income) s.income = sampleState().income;
+  const inc = s.income;
+  ["hourly","hours","weeks","otRate","otHours","pension"].forEach(k=> inc[k] = +inc[k]||0);
+  if(!inc.region) inc.region="ruk";
+  if(!inc.student) inc.student="none";
+  if(!Array.isArray(inc.extra)) inc.extra=[];
+  inc.extra.forEach(e=>{ e.id=e.id||uid(); e.monthly=+e.monthly||0; e.name=e.name||""; });
+  if(!Array.isArray(s.categories)) s.categories=[];
+  s.categories.forEach(c=>{ c.id=c.id||uid(); c.name=c.name||"Category"; if(!Array.isArray(c.items)) c.items=[];
+    c.items.forEach(it=>{ it.id=it.id||uid(); it.name=it.name||""; it.actual=+it.actual||0; if(it.projected==null) it.projected=it.actual; it.projected=+it.projected||0; }); });
+  if(!s.updatedAt) s.updatedAt=now();
+  return s;
+}
+function load(){ try{ const raw=localStorage.getItem(LS_KEY); if(raw) return migrate(JSON.parse(raw)); }catch(e){} return sampleState(); }
+function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function touch(){ state.updatedAt = now(); persist(); }
+
+/* ============ CALCULATIONS ============ */
+function money(n){ let v = Math.round((+n||0)*100)/100; const neg=v<0; v=Math.abs(v); return (neg?"-£":"£")+v.toLocaleString("en-GB",{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function money0(n){ const neg=(+n||0)<0; return (neg?"-£":"£")+Math.round(Math.abs(+n||0)).toLocaleString("en-GB"); }
+function incomeCalc(){
+  const i = state.income;
+  const baseAnnual = (+i.hourly||0) * (+i.hours||0) * (+i.weeks||0);
+  const otAnnual   = (+i.otRate||0) * (+i.otHours||0) * (+i.weeks||0);
+  const gross = baseAnnual + otAnnual;
+  const t = computeTax(gross, {region:i.region, pensionPct:i.pension, studentPlan:i.student});
+  const extraMonthly = (i.extra||[]).reduce((a,e)=>a+(+e.monthly||0),0);
+  return { baseAnnual, otAnnual, ...t, extraMonthly,
+    netMonthly: t.net/12, wageMonthly: t.net/12,
+    totalMonthlyIncome: t.net/12 + extraMonthly };
+}
+function catSubtotal(c, mode){ return (c.items||[]).reduce((a,it)=> a + (+ (mode==="projected"?it.projected:it.actual) ||0), 0); }
+function outgoings(mode){ return state.categories.reduce((a,c)=> a + catSubtotal(c, mode), 0); }
+
+/* ============ RENDER: INCOME ============ */
+function renderIncome(){
+  const i = state.income;
+  const set=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value = v; };
+  set("#i-hourly", i.hourly); set("#i-hours", i.hours); set("#i-otrate", i.otRate);
+  set("#i-othours", i.otHours); set("#i-weeks", i.weeks); set("#i-pension", i.pension);
+  const r=$("#i-region"); if(r) r.value=i.region;
+  const s=$("#i-student"); if(s) s.value=i.student;
+  $("#taxYear").textContent = "· UK "+TAX.year;
+
+  const c = incomeCalc();
+  const rows = [
+    ["Gross pay", c.gross, c.gross/12, c.gross/52, ""],
+  ];
+  if(c.pension>0) rows.push(["Pension (salary sacrifice)", -c.pension, -c.pension/12, -c.pension/52, "neg"]);
+  rows.push(["Income Tax", -c.tax, -c.tax/12, -c.tax/52, "neg"]);
+  rows.push(["National Insurance", -c.ni, -c.ni/12, -c.ni/52, "neg"]);
+  if(c.sl>0) rows.push(["Student loan", -c.sl, -c.sl/12, -c.sl/52, "neg"]);
+  const tb = $("#i-break tbody"); tb.innerHTML="";
+  rows.forEach(([lbl,y,m,w,cls])=>{
+    tb.insertAdjacentHTML("beforeend", `<tr><td>${lbl}</td><td class="num ${cls}">${money(y)}</td><td class="num ${cls}">${money(m)}</td><td class="num ${cls}">${money(w)}</td></tr>`);
+  });
+  tb.insertAdjacentHTML("beforeend", `<tr class="total net"><td>Take-home pay</td><td class="num">${money(c.net)}</td><td class="num">${money(c.net/12)}</td><td class="num">${money(c.net/52)}</td></tr>`);
+  if(c.otAnnual>0){
+    tb.insertAdjacentHTML("beforeend", `<tr><td class="muted" style="font-size:12px">of which base wage / overtime (gross)</td><td class="num muted" style="font-size:12px">${money(c.baseAnnual)} / ${money(c.otAnnual)}</td><td></td><td></td></tr>`);
+  }
+  const eff = c.gross>0 ? ((c.gross-c.net)/c.gross*100) : 0;
+  $("#i-disc").innerHTML = `Effective deductions: <b>${eff.toFixed(1)}%</b> of gross. `+
+    `Estimated using UK ${TAX.year} bands (${i.region==="scotland"?"Scottish":"England/Wales/NI"} Income Tax, UK-wide NI) on an annual basis. `+
+    `A real payslip can differ slightly — your tax code, pension scheme type, and NI being worked out per pay-period all nudge the figure. Not tax advice.`;
+  renderExtra();
+}
+function renderExtra(){
+  const list = $("#extraList"); list.innerHTML="";
+  (state.income.extra||[]).forEach(e=>{
+    const row=document.createElement("div"); row.className="item"; row.style.gridTemplateColumns="1fr 110px 30px";
+    row.innerHTML = `<input class="iname" value="${escapeAttr(e.name)}" placeholder="Name (e.g. Benefits)">
+      <input class="amt num" type="number" step="0.01" inputmode="decimal" value="${e.monthly||""}" placeholder="0.00">
+      <button class="del" title="Remove">×</button>`;
+    const [nameEl, amtEl, delEl] = row.children;
+    nameEl.oninput = ()=>{ e.name=nameEl.value; touchLite(); };
+    amtEl.oninput = ()=>{ e.monthly=+amtEl.value||0; touchLite(); updateExtraTotal(); refreshSummaryLite(); };
+    delEl.onclick = ()=>{ state.income.extra = state.income.extra.filter(x=>x!==e); touch(); renderExtra(); refreshSummaryLite(); schedulePush(); };
+    list.appendChild(row);
+  });
+  updateExtraTotal();
+}
+function updateExtraTotal(){ $("#extraTotal").textContent = money((state.income.extra||[]).reduce((a,e)=>a+(+e.monthly||0),0)); }
+
+/* ============ RENDER: BUDGET ============ */
+function renderBudget(){
+  const wrap = $("#cats"); wrap.innerHTML="";
+  state.categories.forEach(c=> wrap.appendChild(catEl(c)));
+  $("#bTotal").textContent = money(outgoings(budgetMode));
+  $$("#bMode button").forEach(b=> b.classList.toggle("primary", b.dataset.m===budgetMode));
+}
+function catEl(c){
+  const el = document.createElement("div"); el.className="cat";
+  const sub = catSubtotal(c, budgetMode);
+  el.innerHTML = `
+    <div class="cathead">
+      <input class="cname" value="${escapeAttr(c.name)}">
+      <span class="csub">${(c.items||[]).length} items</span>
+      <button class="del btn ghost sm" title="Delete category">🗑</button>
+    </div>
+    <div class="items">
+      <div class="itemhead"><span>Item</span><span>Projected</span><span>Actual</span><span></span></div>
+    </div>
+    <div class="catfoot"><button class="btn sm additem">＋ Add item</button><span class="sub">${money(sub)}</span></div>`;
+  const cname = el.querySelector(".cname");
+  cname.oninput = ()=>{ c.name=cname.value; touchLite(); };
+  el.querySelector(".cathead .del").onclick = ()=>{
+    const snap = JSON.parse(JSON.stringify(c)); const idx = state.categories.indexOf(c);
+    state.categories = state.categories.filter(x=>x!==c); touch(); renderBudget(); refreshSummaryLite(); schedulePush();
+    toastAction("Category deleted","Undo",()=>{ state.categories.splice(idx,0,snap); touch(); renderBudget(); refreshSummaryLite(); schedulePush(); });
+  };
+  const itemsBox = el.querySelector(".items");
+  (c.items||[]).forEach(it=> itemsBox.appendChild(itemEl(c, it)));
+  el.querySelector(".additem").onclick = ()=>{
+    const it={id:uid(), name:"", actual:0, projected:0}; c.items.push(it); touch();
+    itemsBox.appendChild(itemEl(c, it)); recalcCat(el, c); refreshSummaryLite(); schedulePush();
+    const rows = itemsBox.querySelectorAll(".item"); rows[rows.length-1].querySelector(".iname").focus();
+  };
+  return el;
+}
+function itemEl(c, it){
+  const row = document.createElement("div"); row.className="item";
+  row.innerHTML = `<input class="iname" value="${escapeAttr(it.name)}" placeholder="Item name">
+    <input class="amt num" type="number" step="0.01" inputmode="decimal" value="${it.projected||""}" placeholder="0.00">
+    <input class="amt num" type="number" step="0.01" inputmode="decimal" value="${it.actual||""}" placeholder="0.00">
+    <button class="del" title="Remove">×</button>`;
+  const [nameEl, projEl, actEl, delEl] = row.children;
+  nameEl.oninput = ()=>{ it.name=nameEl.value; touchLite(); };
+  projEl.oninput = ()=>{ it.projected=+projEl.value||0; touchLite(); recalcCat(row.closest(".cat"), c); refreshSummaryLite(); };
+  actEl.oninput  = ()=>{ it.actual=+actEl.value||0; touchLite(); recalcCat(row.closest(".cat"), c); refreshSummaryLite(); };
+  delEl.onclick = ()=>{ c.items=c.items.filter(x=>x!==it); touch(); const cat=row.closest(".cat"); row.remove(); recalcCat(cat, c); refreshSummaryLite(); schedulePush(); };
+  return row;
+}
+function recalcCat(catElm, c){
+  if(!catElm) return;
+  catElm.querySelector(".catfoot .sub").textContent = money(catSubtotal(c, budgetMode));
+  catElm.querySelector(".csub").textContent = (c.items||[]).length + " items";
+  $("#bTotal").textContent = money(outgoings(budgetMode));
+}
+
+/* ============ RENDER: SUMMARY ============ */
+function renderSummary(){
+  const c = incomeCalc();
+  const out = outgoings(summaryMode);
+  const income = c.totalMonthlyIncome;
+  const save = income - out;
+  $("#sIncome").textContent = money0(income);
+  $("#sOut").textContent = money0(out);
+  const saveEl = $("#sSave"); saveEl.textContent = (save<0?"-":"")+money0(Math.abs(save));
+  saveEl.className = "big " + (save<0?"negc":"pos");
+  $("#sMode").textContent = "· "+(summaryMode==="projected"?"projected budget":"actual spending");
+  $$("#mrToggle button").forEach(b=> b.classList.toggle("primary", b.dataset.m===summaryMode));
+
+  const pct = income>0 ? out/income*100 : 0;
+  const bar = $("#sBar"); bar.classList.toggle("over", pct>100);
+  bar.querySelector("i").style.width = Math.min(100,pct).toFixed(1)+"%";
+  $("#sPct").textContent = income>0 ? pct.toFixed(0)+"% of income spent" : "";
+  $("#sBarLbl").textContent = save>=0
+    ? money(save)+" left over each month ("+(income>0?(save/income*100).toFixed(0):0)+"% of income)."
+    : "Over budget by "+money(-save)+" a month.";
+
+  const tb = $("#sBreak tbody"); tb.innerHTML="";
+  const cats = state.categories.map(c2=>({name:c2.name, v:catSubtotal(c2, summaryMode)})).filter(x=>x.v!==0).sort((a,b)=>b.v-a.v);
+  cats.forEach(x=>{
+    const share = out>0 ? (x.v/out*100) : 0;
+    tb.insertAdjacentHTML("beforeend", `<tr><td>${escapeHtml(x.name)}</td><td class="num">${money(x.v)}</td><td class="num muted" style="width:60px">${share.toFixed(0)}%</td></tr>`);
+  });
+  tb.insertAdjacentHTML("beforeend", `<tr class="total"><td>Total outgoings</td><td class="num">${money(out)}</td><td></td></tr>`);
+
+  const ib = $("#sIncBreak tbody"); ib.innerHTML="";
+  const irow=(l,v,cls)=> ib.insertAdjacentHTML("beforeend", `<tr class="${cls||''}"><td>${l}</td><td class="num">${money(v)}</td></tr>`);
+  irow("Wage take-home (monthly)", c.wageMonthly);
+  if(c.extraMonthly>0) irow("Other income", c.extraMonthly);
+  irow("Total monthly income", income, "total net");
+  $("#sIncNote").innerHTML = `From ${money0(c.gross)}/yr gross → ${money0(c.net)}/yr take-home after £${Math.round(c.tax+c.ni+c.sl+c.pension).toLocaleString("en-GB")} tax, NI${c.sl>0?", student loan":""}${c.pension>0?" & pension":""}. See the Income tab for the full breakdown.`;
+}
+function refreshSummaryLite(){ if(currentTab==="summary") renderSummary(); }
+
+/* ============ helpers ============ */
+function escapeHtml(s){ return (s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+let liteTimer=null;
+function touchLite(){ state.updatedAt=now(); clearTimeout(liteTimer); liteTimer=setTimeout(()=>{ persist(); schedulePush(); }, 700); }
+
+/* ============ TABS ============ */
+function setTab(t){
+  currentTab=t;
+  $$("#tabs button").forEach(b=> b.classList.toggle("active", b.dataset.tab===t));
+  $$(".panel").forEach(p=> p.classList.toggle("active", p.id==="p-"+t));
+  if(t==="summary") renderSummary();
+  if(t==="income") renderIncome();
+  if(t==="budget") renderBudget();
+}
+$$("#tabs button").forEach(b=> b.onclick = ()=> setTab(b.dataset.tab));
+
+/* Income inputs */
+function bindIncome(id, key, isSelect){
+  const el=$(id); if(!el) return;
+  const ev = isSelect?"change":"input";
+  el.addEventListener(ev, ()=>{ state.income[key] = isSelect?el.value:(+el.value||0); touchLite(); renderIncome(); refreshSummaryLite(); });
+}
+bindIncome("#i-hourly","hourly"); bindIncome("#i-hours","hours"); bindIncome("#i-otrate","otRate");
+bindIncome("#i-othours","otHours"); bindIncome("#i-weeks","weeks"); bindIncome("#i-pension","pension");
+bindIncome("#i-region","region",true); bindIncome("#i-student","student",true);
+$("#otFill").onclick = ()=>{ state.income.otRate = Math.round(state.income.hourly*1.5*100)/100; touch(); renderIncome(); refreshSummaryLite(); schedulePush(); };
+$("#addExtra").onclick = ()=>{ state.income.extra.push({id:uid(), name:"", monthly:0}); touch(); renderExtra(); schedulePush(); const rows=$("#extraList").querySelectorAll(".iname"); rows[rows.length-1].focus(); };
+$("#addCat").onclick = ()=>{ state.categories.push({id:uid(), name:"New category", items:[]}); touch(); renderBudget(); schedulePush(); };
+$$("#bMode button").forEach(b=> b.onclick = ()=>{ budgetMode=b.dataset.m; renderBudget(); });
+$$("#mrToggle button").forEach(b=> b.onclick = ()=>{ summaryMode=b.dataset.m; renderSummary(); });
+
+/* ============ Export / import / reset ============ */
+function download(fn, text){ const b=new Blob([text],{type:"application/json"}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=fn; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(u); a.remove();},400); }
+$("#exportJson").onclick = ()=>{ download("finance-backup-"+new Date().toISOString().slice(0,10)+".json", JSON.stringify(state,null,2)); toast("Exported"); };
+$("#importBtn").onclick = ()=> $("#importFile").click();
+$("#importFile").onchange = e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=migrate(JSON.parse(r.result)); state=d; touch(); setTab(currentTab); toast("Imported"); schedulePush(); }catch(err){ toast("Import failed: "+err.message); } }; r.readAsText(f); e.target.value=""; };
+$("#resetBtn").onclick = ()=>{ if(confirm("Replace everything with the sample budget? Your current figures on this device will be lost (unless synced).")){ state=sampleState(); touch(); setTab(currentTab); toast("Reset to sample"); schedulePush(); } };
+
+/* ============ Theme / text size ============ */
+const THEME_KEY="finance.theme";
+let theme = (()=>{ try{ return localStorage.getItem(THEME_KEY)||"system"; }catch(e){ return "system"; } })();
+function applyTheme(v){ const root=document.documentElement; if(v==="system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme",v);
+  const light = v==="light" || (v==="system" && matchMedia && matchMedia("(prefers-color-scheme:light)").matches);
+  const mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content", light?"#f3f6f4":"#0f1115"); }
+function renderTheme(){ $$("#themeCtl button").forEach(b=> b.classList.toggle("primary", b.dataset.t===theme)); }
+function setTheme(v){ theme=v; try{ localStorage.setItem(THEME_KEY,v); }catch(e){} applyTheme(v); renderTheme(); }
+$$("#themeCtl button").forEach(b=> b.onclick=()=>setTheme(b.dataset.t));
+if(matchMedia) matchMedia("(prefers-color-scheme:light)").addEventListener("change", ()=>{ if(theme==="system") applyTheme("system"); });
+
+const TSCALE_KEY="finance.textScale";
+let textScale = (()=>{ try{ return localStorage.getItem(TSCALE_KEY)||"1"; }catch(e){ return "1"; } })();
+function applyScale(v){ document.documentElement.style.setProperty("--tscale", v); }
+function renderTextSize(){ $$("#textSize button").forEach(b=> b.classList.toggle("primary", b.dataset.s===textScale)); }
+function setScale(v){ textScale=v; try{ localStorage.setItem(TSCALE_KEY,v); }catch(e){} applyScale(v); renderTextSize(); }
+$$("#textSize button").forEach(b=> b.onclick=()=>setScale(b.dataset.s));
+
+/* ============ GitHub Gist sync (top-level last-write-wins) ============ */
+const GH = {
+  get token(){ try{return localStorage.getItem("finance.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("finance.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("finance.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("finance.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("finance.gh.token",v):localStorage.removeItem("finance.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("finance.gh.gist",v):localStorage.removeItem("finance.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("finance.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("finance.gh.user",v):localStorage.removeItem("finance.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+const GIST_FILE="finance.json";
+async function ghApi(method, path, body){
+  let res;
+  try{ res = await fetch("https://api.github.com"+path, { method, headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" }, body: body?JSON.stringify(body):undefined }); }
+  catch(e){ throw new Error("Can't reach GitHub — if you opened this as a file, serve it over http instead."); }
+  if(!res.ok){ let d=""; try{ d=(await res.json()).message||""; }catch(e){}
+    if(res.status===403||res.status===429) pauseSync(retryAfterSecs(res));
+    if(res.status===401) throw new Error("Invalid or expired token (401). Create a new classic token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited."+(d?" "+d:""));
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(d?" — "+d:"")); }
+  return res.json();
+}
+function markSync(m,err){ const el=$("#syncMsg"); if(el){ el.textContent=m||""; el.style.color=err?"var(--danger)":"var(--muted)"; } }
+function setSyncTime(){ try{ localStorage.setItem("finance.gh.lastSync", String(now())); }catch(e){} updateLastSync(); }
+function updateLastSync(){
+  let t=0; try{ t=Number(localStorage.getItem("finance.gh.lastSync"))||0; }catch(e){}
+  const rel = !t?"never":(()=>{ const s=Math.round((now()-t)/1000); return s<10?"just now":s<60?s+"s ago":s<3600?Math.round(s/60)+" min ago":s<86400?Math.round(s/3600)+"h ago":new Date(t).toLocaleString(); })();
+  const el=$("#syncLast"); if(el) el.textContent=rel;
+  const top=$("#syncLastTop"); if(top && !top.classList.contains("flash") && top.textContent!=="Sync error — tap" && !syncPaused()){ top.style.color=""; top.textContent = GH.connected?"Synced "+rel:"Not synced"; }
+}
+function bgSyncError(){ if(syncPaused()) return; const el=$("#syncLastTop"); if(el){ el.classList.remove("flash"); el.style.color="var(--danger)"; el.textContent="Sync error — tap"; } }
+function spin(on){ ["syncSpin","connSpin","topSpin"].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=on?"inline-block":"none"; }); }
+let flashTimer=null;
+function flashSynced(){ const el=$("#syncLastTop"); if(!el) return; el.classList.add("flash"); el.textContent="Updated ✓"; clearTimeout(flashTimer); flashTimer=setTimeout(()=>{ el.classList.remove("flash"); updateLastSync(); },2500); }
+setInterval(updateLastSync, 30000);
+let syncPausedUntil=0, pendingPush=false;
+function syncPaused(){ return now()<syncPausedUntil; }
+function retryAfterSecs(res){ const ra=res.headers.get("Retry-After"); if(ra){ const n=parseInt(ra,10); if(n>0) return Math.min(3600,Math.max(30,n)); } const r=res.headers.get("X-RateLimit-Reset"); if(r){ const ms=parseInt(r,10)*1000-Date.now(); if(ms>0) return Math.min(3600,Math.ceil(ms/1000)); } return 90; }
+function pauseSync(secs){ syncPausedUntil=now()+secs*1000; const el=$("#syncLastTop"); if(el){ el.classList.remove("flash"); el.style.color="var(--danger)"; el.textContent="Rate-limited — paused "+secs+"s"; } }
+let pushTimer=null;
+function schedulePush(){ if(!GH.connected||!GH.auto) return; if(syncPaused()){ pendingPush=true; return; } clearTimeout(pushTimer); pushTimer=setTimeout(()=>{ syncPush().then(()=>pendingPush=false).catch(e=>{ pendingPush=true; spin(false); if(!syncPaused()) markSync("Push failed: "+e.message,true); }); }, 1500); }
+async function syncPush(){ if(!GH.connected) return; persist(); spin(true); markSync("Saving…"); try{ await ghApi("PATCH","/gists/"+GH.gist,{files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); setSyncTime(); markSync("Synced"); } finally{ spin(false); } }
+function syncPushBeacon(){ if(!GH.connected) return; try{ fetch("https://api.github.com/gists/"+GH.gist,{ method:"PATCH", keepalive:true, headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" }, body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}}) }).then(()=>{ try{localStorage.setItem("finance.gh.lastSync",String(now()))}catch(e){} }).catch(()=>{}); }catch(e){} }
+// Whole-document last-write-wins: newer updatedAt wins. Simple + safe for a single budget.
+function mergeRemote(remote){
+  if(!remote || typeof remote!=="object") return false;
+  const rt=+remote.updatedAt||0, lt=+state.updatedAt||0;
+  if(rt > lt){ state = migrate(remote); persist(); return true; }
+  return false;
+}
+let gistEtag=null, pulling=false;
+async function gistGet(){
+  const headers={ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json" };
+  if(gistEtag) headers["If-None-Match"]=gistEtag;
+  let res; try{ res=await fetch("https://api.github.com/gists/"+GH.gist,{headers,cache:"no-store"}); }catch(e){ throw new Error("Can't reach GitHub (offline?)."); }
+  if(res.status===304) return {notModified:true};
+  if(!res.ok){ let d=""; try{ d=(await res.json()).message||""; }catch(e){} if(res.status===403||res.status===429) pauseSync(retryAfterSecs(res)); if(res.status===401) throw new Error("Invalid or expired token (401)."); if(res.status===404) throw new Error("Gist not found (404)."); throw new Error("GitHub "+res.status+(d?" — "+d:"")); }
+  gistEtag=res.headers.get("ETag")||gistEtag;
+  return { data: await res.json() };
+}
+async function syncPull(force, quiet){
+  if(!GH.connected) return;
+  if(pulling && quiet) return; pulling=true;
+  if(!quiet){ spin(true); markSync("Checking…"); }
+  try{
+    const r=await gistGet();
+    if(r.notModified){ setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+    const f=r.data.files && r.data.files[GIST_FILE];
+    if(!f || !f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+    const remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+    const changed=mergeRemote(remote);
+    setSyncTime();
+    if(force||changed){ setTab(currentTab); if(changed){ markSync("Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date"); return changed?"pulled":"uptodate"; }
+    if(!quiet) markSync("Up to date"); return "uptodate";
+  } finally{ pulling=false; if(!quiet) spin(false); }
+}
+async function findGist(){ const list=await ghApi("GET","/gists?per_page=100"); const mine=(list||[]).filter(g=>(g.files&&g.files[GIST_FILE])||g.description==="Finance Manager sync"); if(!mine.length) return null; mine.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)); return mine[0].id; }
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$("#syncUser"); if(el) el.textContent=u.login; }catch(e){} }
+function renderSync(){
+  $("#syncDisconnected").style.display = GH.connected?"none":"";
+  $("#syncConnected").style.display = GH.connected?"":"none";
+  if(GH.connected){ $("#syncGistId").textContent=GH.gist; $("#syncGistLink").href="https://gist.github.com/"+GH.gist; $("#syncUser").textContent=GH.user||"…"; if(!GH.user) fetchUser(); $("#ghAuto").checked=GH.auto; }
+  updateLastSync();
+}
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); updateLastSync(); toast("Synced"); }catch(e){ markSync("Sync failed: "+e.message,true); toast("Sync failed"); spin(false); } }
+function autoPull(){ if(!GH.connected||!GH.auto) return; if(document.hidden) return; if(syncPaused()) return; syncPull(false,true).then(r=>{ if(r) updateLastSync(); if(pendingPush) schedulePush(); }).catch(bgSyncError); }
+setInterval(autoPull, 30000);
+let lastFg=0; function foregroundPull(){ const t=now(); if(t-lastFg<8000) return; lastFg=t; autoPull(); }
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden){ if(GH.connected&&GH.auto) syncPushBeacon(); } else foregroundPull(); });
+window.addEventListener("focus", foregroundPull);
+window.addEventListener("pageshow", foregroundPull);
+window.addEventListener("pagehide", ()=>{ if(GH.connected&&GH.auto) syncPushBeacon(); });
+
+$("#openSync").onclick = ()=>{ renderSync(); $("#syncOverlay").classList.add("open"); };
+$("#closeSync").onclick = ()=> $("#syncOverlay").classList.remove("open");
+$("#syncOverlay").onclick = e=>{ if(e.target===$("#syncOverlay")) $("#syncOverlay").classList.remove("open"); };
+$("#syncLastTop").onclick = ()=>{ if(GH.connected) doSyncNow(); else { renderSync(); $("#syncOverlay").classList.add("open"); } };
+$("#ghConnect").onclick = async ()=>{
+  const t=$("#ghToken").value.trim(); let gid=$("#ghGist").value.trim();
+  if(!t){ markSync("Paste your GitHub token first.",true); return; }
+  GH.token=t; spin(true); markSync("Connecting…");
+  try{
+    if(!gid) gid=await findGist();
+    if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true); if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your budget."); } else markSync("Connected — using your existing sync."); }
+    else { const g=await ghApi("POST","/gists",{description:"Finance Manager sync", public:false, files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
+    $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
+  }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
+  finally{ spin(false); }
+};
+$("#ghSyncNow").onclick = doSyncNow;
+$("#ghAuto").onchange = ()=>{ GH.auto=$("#ghAuto").checked; if(GH.auto) schedulePush(); };
+$("#ghCopyGist").onclick = ()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>toast("Gist ID copied"),()=>toast(GH.gist)); };
+$("#ghShowToken").onclick = ()=>{ const i=$("#ghToken"); const show=i.type==="password"; i.type=show?"text":"password"; $("#ghShowToken").textContent=show?"Hide":"Show"; };
+$("#ghDisconnect").onclick = ()=>{ if(confirm("Disconnect sync on this device? Your data stays here; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+
+/* ============ Init ============ */
+applyTheme(theme); renderTheme(); applyScale(textScale); renderTextSize();
+$("#verLine").textContent = "Finance Manager " + APP_VERSION;
+setTab("summary");
+renderSync();
+if(GH.connected && GH.auto) syncPull(false).catch(e=>{ spin(false); markSync("Pull failed: "+e.message,true); });
+</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+</body>
+</html>

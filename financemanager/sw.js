@@ -1,5 +1,5 @@
-/* FitPlan service worker - offline app shell, network-first so updates land. */
-const CACHE = "fitplan-v14";
+/* Finance Manager service worker - offline app shell, network-first so updates land. */
+const CACHE = "financemanager-v1";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
@@ -10,7 +10,7 @@ self.addEventListener("activate", e=>{
 });
 self.addEventListener("fetch", e=>{
   const url = new URL(e.request.url);
-  if(url.origin !== location.origin) return;        // never touch GitHub sync / cross-origin
+  if(url.origin !== location.origin) return;
   if(e.request.method !== "GET") return;
   e.respondWith(
     fetch(e.request).then(res=>{
