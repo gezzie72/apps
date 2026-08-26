@@ -39,8 +39,9 @@
   .gear:hover{border-color:var(--accent)}
 
   /* Tabs */
-  .tabs{display:flex; gap:6px; padding:2px 12px 10px; position:sticky; top:0; background:var(--bg); z-index:5}
-  .tabs button{flex:1; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 6px; font-size:13px; color:var(--muted); cursor:pointer; white-space:nowrap}
+  .tabs{display:flex; gap:6px; padding:2px 12px 10px; position:sticky; top:0; background:var(--bg); z-index:5; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:1 0 auto; min-width:68px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 10px; font-size:13px; color:var(--muted); cursor:pointer; white-space:nowrap}
   .tabs button.active{color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; font-weight:600}
 
   main{flex:1; padding:4px 14px 40px}
@@ -165,6 +166,7 @@
     <button data-tab="income">Income</button>
     <button data-tab="budget">Budget</button>
     <button data-tab="goals">Goals</button>
+    <button data-tab="debts">Debts</button>
   </div>
 
   <main>
@@ -203,6 +205,12 @@
       <div class="card" id="sGoalsCard" style="display:none">
         <h2>Savings goals</h2>
         <table class="bd" id="sGoals"><tbody></tbody></table>
+      </div>
+
+      <div class="card" id="sDebtsCard" style="display:none">
+        <h2>Debts</h2>
+        <table class="bd" id="sDebts"><tbody></tbody></table>
+        <p class="hint" id="sDebtsNote"></p>
       </div>
     </section>
 
@@ -300,6 +308,20 @@
       <div class="row"><button class="btn" id="addGoal">＋ Add goal</button></div>
       <p class="disc">A goal's monthly amount is what you <i>plan</i> to put aside — it doesn't move money on its own. Update "Saved so far" as you go.</p>
     </section>
+
+    <!-- DEBTS -->
+    <section class="panel" id="p-debts">
+      <div class="card" style="padding:14px 16px">
+        <div class="row" style="margin:0; align-items:flex-end">
+          <div class="stat"><span class="lbl">Total you owe</span><span class="big negc" id="dTotal">£0</span></div>
+          <div style="margin-left:auto; text-align:right"><div class="muted" id="dPayLbl">£0/mo in payments</div><div class="muted" id="dFreeLbl"></div></div>
+        </div>
+        <p class="hint" id="dTipLine"></p>
+      </div>
+      <div id="debts"></div>
+      <div class="row"><button class="btn" id="addDebt">＋ Add debt</button></div>
+      <p class="disc">Payoff times assume you keep paying the same amount each month and add nothing new to the balance. Interest is estimated from the APR — a real statement can differ with fees or a promo 0% period.</p>
+    </section>
   </main>
 </div>
 
@@ -375,7 +397,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "2026-08-26 · v3 goals";
+const APP_VERSION = "2026-08-27 · v4 debts";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -471,6 +493,7 @@ function sampleState(){
       cat("Loans & credit", [["Fraser",48.32],["Savings to Halifax",200],["Fraser 2",27.87],["MBNA Credit card",350],["Argos",57.31],["Very",46.94]])
     ],
     goals: [ {id:uid(), name:"Emergency fund", target:2000, saved:250, monthly:200, targetDate:""} ],
+    debts: [ {id:uid(), name:"Credit card", balance:1500, apr:22.9, payment:150} ],
     updatedAt: now()
   };
 }
@@ -489,6 +512,8 @@ function migrate(s){
     c.items.forEach(it=>{ it.id=it.id||uid(); it.name=it.name||""; it.actual=+it.actual||0; if(it.projected==null) it.projected=it.actual; it.projected=+it.projected||0; }); });
   if(!Array.isArray(s.goals)) s.goals=[];
   s.goals.forEach(g=>{ g.id=g.id||uid(); g.name=g.name||""; g.target=+g.target||0; g.saved=+g.saved||0; g.monthly=+g.monthly||0; if(typeof g.targetDate!=="string") g.targetDate=""; });
+  if(!Array.isArray(s.debts)) s.debts=[];
+  s.debts.forEach(d=>{ d.id=d.id||uid(); d.name=d.name||""; d.balance=+d.balance||0; d.apr=+d.apr||0; d.payment=+d.payment||0; });
   if(!s.updatedAt) s.updatedAt=now();
   return s;
 }
@@ -743,6 +768,94 @@ function refreshGoalCard(el,g){
   if(p){ p.className="hint "+proj.cls; p.innerHTML=proj.txt; }
 }
 
+/* ============ RENDER: DEBTS ============ */
+function addMonthsDate(n){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+n); return d; }
+// Amortise a balance at a monthly rate against a fixed payment. Interest accrues on
+// the balance before each payment; the final payment is whatever clears it.
+function debtPayoff(balance, apr, payment){
+  const bal=+balance||0, r=(+apr||0)/100/12, pay=+payment||0;
+  if(bal<=0) return {cleared:true};
+  const monthlyInterest=bal*r;
+  if(pay<=0) return {none:true};
+  if(r>0 && pay<=monthlyInterest+1e-9) return {never:true, monthlyInterest};
+  let b=bal, months=0, interest=0;
+  while(b>0 && months<1200){ const i=b*r; interest+=i; b=b+i-pay; months++; if(b<0) b=0; }
+  return {months, interest, total:bal+interest, payoffDate:addMonthsDate(months)};
+}
+function debtLine(d){
+  const p=debtPayoff(d.balance, d.apr, d.payment);
+  if(p.cleared) return {txt:"Nothing owed here — clear it out or delete it.", cls:"pos"};
+  if(p.none) return {txt:"Add a monthly payment to see when it's paid off.", cls:"muted"};
+  if(p.never) return {txt:`⚠ At this payment you're barely covering the ${money(p.monthlyInterest)}/mo interest — the balance will hardly move. Increase the payment.`, cls:"negc"};
+  const yrs=Math.floor(p.months/12), ms=p.months%12;
+  const dur = yrs? `${yrs}y ${ms}m` : `${p.months} month${p.months>1?"s":""}`;
+  return {txt:`Paid off in <b>${dur}</b> (about ${fmtMonthYear(p.payoffDate)}) · <b>${money(p.interest)}</b> interest along the way.`, cls:"muted", payoff:p};
+}
+function renderDebts(){
+  const wrap=$("#debts"); wrap.innerHTML="";
+  if(!(state.debts||[]).length){
+    wrap.innerHTML=`<div class="card muted" style="text-align:center">No debts tracked. Add a card, loan or catalogue balance to see how fast you can clear it.</div>`;
+  } else state.debts.forEach(d=> wrap.appendChild(debtEl(d)));
+  renderDebtsOverview();
+}
+function renderDebtsOverview(){
+  const ds=state.debts||[];
+  const total=ds.reduce((a,d)=>a+(+d.balance||0),0);
+  const pay=ds.reduce((a,d)=>a+(+d.payment||0),0);
+  $("#dTotal").textContent=money0(total);
+  $("#dPayLbl").textContent=money(pay)+"/mo in payments";
+  // Debt-free date = latest individual payoff (paying all at once); flag any that never clear.
+  let maxMonths=0, anyNever=false;
+  ds.forEach(d=>{ const p=debtPayoff(d.balance,d.apr,d.payment); if(p.never) anyNever=true; else if(p.months) maxMonths=Math.max(maxMonths,p.months); });
+  $("#dFreeLbl").textContent = total<=0 ? "debt-free 🎉" : anyNever ? "some debts aren't reducing" : maxMonths ? "debt-free by "+fmtMonthYear(addMonthsDate(maxMonths)) : "";
+  // Avalanche tip: name the highest-APR debt with a balance.
+  const withBal=ds.filter(d=>(+d.balance||0)>0 && (+d.apr||0)>0);
+  if(withBal.length>1){ const hi=withBal.slice().sort((a,b)=>b.apr-a.apr)[0];
+    $("#dTipLine").innerHTML=`💡 Tip: put any spare money on <b>${escapeHtml(hi.name||"your highest-rate debt")}</b> first (${hi.apr}% APR) — it's costing you the most interest.`; }
+  else $("#dTipLine").textContent="";
+}
+function debtEl(d){
+  const el=document.createElement("div"); el.className="cat"; el.style.padding="0";
+  const line=debtLine(d);
+  el.innerHTML=`
+    <div class="cathead">
+      <input class="cname" value="${escapeAttr(d.name)}" placeholder="Debt name">
+      <span class="csub num">${money(+d.balance||0)}</span>
+      <button class="del btn ghost sm" title="Delete debt">🗑</button>
+    </div>
+    <div style="padding:12px 14px 14px">
+      <div class="grid3">
+        <label class="f" style="margin:0"><span>Balance (£)</span><input class="in num" data-k="balance" type="number" step="1" inputmode="decimal" value="${d.balance||""}"></label>
+        <label class="f" style="margin:0"><span>APR (%)</span><input class="in num" data-k="apr" type="number" step="0.1" inputmode="decimal" value="${d.apr||""}"></label>
+        <label class="f" style="margin:0"><span>Monthly payment (£)</span><input class="in num" data-k="payment" type="number" step="1" inputmode="decimal" value="${d.payment||""}"></label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm payx" data-a="25">+£25/mo</button>
+        <button class="btn sm payx" data-a="50">+£50/mo</button>
+      </div>
+      <p class="hint ${line.cls}" style="margin-top:10px">${line.txt}</p>
+    </div>`;
+  const nameEl=el.querySelector(".cname");
+  nameEl.oninput=()=>{ d.name=nameEl.value; touchLite(); renderDebtsOverview(); };
+  el.querySelector(".cathead .del").onclick=()=>{
+    const snap=JSON.parse(JSON.stringify(d)); const idx=state.debts.indexOf(d);
+    state.debts=state.debts.filter(x=>x!==d); touch(); renderDebts(); refreshSummaryLite(); schedulePush();
+    toastAction("Debt deleted","Undo",()=>{ state.debts.splice(idx,0,snap); touch(); renderDebts(); refreshSummaryLite(); schedulePush(); });
+  };
+  el.querySelectorAll("input[data-k]").forEach(inp=>{
+    inp.oninput=()=>{ d[inp.dataset.k]=+inp.value||0; touchLite(); refreshDebtCard(el,d); renderDebtsOverview(); refreshSummaryLite(); };
+  });
+  el.querySelectorAll(".payx").forEach(b=>{
+    b.onclick=()=>{ d.payment=(+d.payment||0)+(+b.dataset.a); touch(); renderDebts(); refreshSummaryLite(); schedulePush(); };
+  });
+  return el;
+}
+function refreshDebtCard(el,d){
+  el.querySelector(".csub").textContent=money(+d.balance||0);
+  const line=debtLine(d); const p=el.querySelector("p.hint");
+  if(p){ p.className="hint "+line.cls; p.innerHTML=line.txt; }
+}
+
 /* ============ RENDER: SUMMARY ============ */
 function renderSummary(){
   const c = incomeCalc();
@@ -788,6 +901,19 @@ function renderSummary(){
     const ts=goals.reduce((a,g)=>a+(+g.saved||0),0), tt=goals.reduce((a,g)=>a+(+g.target||0),0);
     gb.insertAdjacentHTML("beforeend", `<tr class="total"><td>Total</td><td class="num">${money(ts)} / ${money(tt)}</td><td></td></tr>`);
   }
+
+  const debts=(state.debts||[]).filter(d=>(+d.balance||0)>0);
+  $("#sDebtsCard").style.display = debts.length ? "" : "none";
+  if(debts.length){
+    const db=$("#sDebts tbody"); db.innerHTML="";
+    debts.forEach(d=>{ const p=debtPayoff(d.balance,d.apr,d.payment);
+      const when = p.never?'<span class="negc">stalled</span>' : p.none?'<span class="muted">—</span>' : p.months?fmtMonthYear(p.payoffDate):"";
+      db.insertAdjacentHTML("beforeend", `<tr><td>${escapeHtml(d.name||"Debt")}</td><td class="num neg">${money(+d.balance||0)}</td><td class="num muted" style="width:80px">${when}</td></tr>`); });
+    const td=debts.reduce((a,d)=>a+(+d.balance||0),0);
+    db.insertAdjacentHTML("beforeend", `<tr class="total"><td>Total owed</td><td class="num neg">${money(td)}</td><td></td></tr>`);
+    let maxM=0, never=false; debts.forEach(d=>{ const p=debtPayoff(d.balance,d.apr,d.payment); if(p.never) never=true; else if(p.months) maxM=Math.max(maxM,p.months); });
+    $("#sDebtsNote").textContent = never ? "Some debts aren't reducing at their current payment — see the Debts tab." : maxM ? "Keeping today's payments, you're debt-free by "+fmtMonthYear(addMonthsDate(maxM))+"." : "";
+  }
 }
 function refreshSummaryLite(){ if(currentTab==="summary") renderSummary(); }
 
@@ -801,11 +927,13 @@ function touchLite(){ state.updatedAt=now(); clearTimeout(liteTimer); liteTimer=
 function setTab(t){
   currentTab=t;
   $$("#tabs button").forEach(b=> b.classList.toggle("active", b.dataset.tab===t));
+  const act=$("#tabs button.active"); if(act && act.scrollIntoView) act.scrollIntoView({block:"nearest", inline:"center"});
   $$(".panel").forEach(p=> p.classList.toggle("active", p.id==="p-"+t));
   if(t==="summary") renderSummary();
   if(t==="income") renderIncome();
   if(t==="budget") renderBudget();
   if(t==="goals") renderGoals();
+  if(t==="debts") renderDebts();
 }
 $$("#tabs button").forEach(b=> b.onclick = ()=> setTab(b.dataset.tab));
 
@@ -823,6 +951,7 @@ $("#otFill").onclick = ()=>{ state.income.otRate = Math.round(state.income.hourl
 $("#addExtra").onclick = ()=>{ state.income.extra.push({id:uid(), name:"", monthly:0}); touch(); renderExtra(); schedulePush(); const rows=$("#extraList").querySelectorAll(".iname"); rows[rows.length-1].focus(); };
 $("#addCat").onclick = ()=>{ state.categories.push({id:uid(), name:"New category", items:[]}); touch(); renderBudget(); schedulePush(); };
 $("#addGoal").onclick = ()=>{ state.goals.push({id:uid(), name:"", target:0, saved:0, monthly:0, targetDate:""}); touch(); renderGoals(); schedulePush(); const cards=$("#goals").querySelectorAll(".cname"); if(cards.length) cards[cards.length-1].focus(); };
+$("#addDebt").onclick = ()=>{ state.debts.push({id:uid(), name:"", balance:0, apr:0, payment:0}); touch(); renderDebts(); schedulePush(); const cards=$("#debts").querySelectorAll(".cname"); if(cards.length) cards[cards.length-1].focus(); };
 $$("#bMode button").forEach(b=> b.onclick = ()=>{ budgetMode=b.dataset.m; renderBudget(); });
 $$("#mrToggle button").forEach(b=> b.onclick = ()=>{ summaryMode=b.dataset.m; renderSummary(); });
 
