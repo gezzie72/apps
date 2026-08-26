@@ -225,7 +225,8 @@
   <!-- DATA -->
   <section id="data">
     <p class="lead">Reference lists that drive the dropdowns — add, rename or remove. Renaming updates past
-      records; removing only hides the name from future dropdowns.</p>
+      records; removing only hides the name from future dropdowns. Each <b>Management</b> entry can hold an
+      email address (its address book) — used to send reports to that manager.</p>
     <div class="grid" id="lists" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))"></div>
   </section>
 
@@ -300,7 +301,7 @@
 
 <script>
 /* ================= Office Report — single-file PWA ================= */
-const APP_VERSION = "1.2";
+const APP_VERSION = "1.3";
 const KEY = "officereport.state";
 const GISTFILE = "officereport.json";
 const $ = s => document.querySelector(s);
@@ -715,8 +716,15 @@ function listRow(key,name){
   const nm=document.createElement("span"); nm.className="nm"; nm.textContent=name;
   const ren=document.createElement("button"); ren.className="ghost mini"; ren.textContent="Rename";
   const rem=document.createElement("button"); rem.className="danger mini"; rem.textContent="Remove";
-  row.append(nm,ren,rem);
-  rem.onclick=()=>{ if(confirm(`Remove "${name}" from ${key}?`)){ state.lists[key]=state.lists[key].filter(x=>x!==name); touch(); renderData(); } };
+  row.append(nm);
+  if(key==="management"){                 // address book: email used when sending reports
+    const em=document.createElement("input"); em.type="email"; em.placeholder="email address";
+    em.value=state.emails[name]||""; em.style.cssText="flex:1 1 150px;min-width:120px";
+    em.addEventListener("change",()=>{ const v=em.value.trim(); if(v) state.emails[name]=v; else delete state.emails[name]; touch(); });
+    row.append(em);
+  }
+  row.append(ren,rem);
+  rem.onclick=()=>{ if(confirm(`Remove "${name}" from ${key}?`)){ state.lists[key]=state.lists[key].filter(x=>x!==name); if(key==="management") delete state.emails[name]; touch(); renderData(); } };
   ren.onclick=()=>{
     nm.innerHTML=""; const inp=document.createElement("input"); inp.value=name; inp.style.width="100%"; nm.append(inp); inp.focus(); inp.select();
     const save=()=>{ const nv=inp.value.trim(); if(!nv||nv===name){ renderData(); return; }
