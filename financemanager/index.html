@@ -221,7 +221,9 @@
 
       <div class="card">
         <h2>Tax settings <span class="sub" id="taxYear"></span></h2>
-        <label class="f"><span>Tax region</span>
+        <label class="f"><span>Tax code (from your payslip — optional)</span><input class="in" id="i-code" placeholder="e.g. 1257L" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
+        <p class="hint" id="codeNote" style="margin-top:5px"></p>
+        <label class="f"><span>Tax region <span class="muted" id="regionAuto"></span></span>
           <select class="in" id="i-region">
             <option value="ruk">England / Wales / N. Ireland</option>
             <option value="scotland">Scotland</option>
@@ -352,7 +354,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "2026-08-26 · v1";
+const APP_VERSION = "2026-08-26 · v2 tax-code";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -378,21 +380,54 @@ const STUDENT = {
   plan4:{threshold:32745, rate:0.09}, plan5:{threshold:25000, rate:0.09},
   pg:{threshold:21000, rate:0.06}
 };
+// Interpret an HMRC tax code. Returns how it affects the allowance/rate, plus a
+// region hint (S = Scotland, C = Cymru/Wales) and a human-readable note.
+function parseTaxCode(raw){
+  let s = (raw||"").toUpperCase().replace(/\s+/g,"");
+  if(!s) return { mode:"standard", note:"" };
+  s = s.replace(/(W1|M1|X)$/,"");                 // emergency suffix — ignore for an annual estimate
+  let region=null, prefix="";
+  if(s[0]==="S"){ region="scotland"; prefix="Scottish taxpayer"; s=s.slice(1); }
+  else if(s[0]==="C"){ region="wales"; prefix="Welsh taxpayer"; s=s.slice(1); }
+  const tag = t => prefix ? prefix+" · "+t : t;
+  if(s==="BR") return { mode:"flat", rate:0.20, region, note:tag("all pay taxed at 20%, no allowance") };
+  if(s==="D0") return { mode:"flat", rate:0.40, region, note:tag("all pay taxed at 40%, no allowance") };
+  if(s==="D1") return { mode:"flat", rate:0.45, region, note:tag("all pay taxed at 45%, no allowance") };
+  if(s==="NT") return { mode:"notax", region, note:tag("no tax on this income") };
+  if(s==="0T") return { mode:"allowance", allowance:0, region, note:tag("no tax-free allowance") };
+  let m = s.match(/^K(\d+)$/);
+  if(m){ const add=(parseInt(m[1],10))*10+9; return { mode:"kcode", kAdd:add, region, note:tag("K code — £"+add.toLocaleString("en-GB")+" added to taxable pay") }; }
+  m = s.match(/^(\d+)([LMNTY])$/);
+  if(m){ const a=parseInt(m[1],10)*10; return { mode:"allowance", allowance:a, region, note:tag("£"+a.toLocaleString("en-GB")+" tax-free allowance") }; }
+  return { mode:"invalid", region, note:"Not a recognised code — using the region setting above instead." };
+}
 function computeTax(annualGross, opt){
   opt = opt||{};
   const pensionPct = Math.max(0, Math.min(100, +opt.pensionPct||0));
   const pension = annualGross * pensionPct/100;      // salary sacrifice: off the top
   const g = annualGross - pension;                   // pay subject to tax, NI, student loan
-  let pa = TAX.personalAllowance;
-  if(g > TAX.paTaperStart) pa = Math.max(0, pa - (g - TAX.paTaperStart)/2);
-  const taxable = Math.max(0, g - pa);
-  const bands = opt.region==="scotland" ? TAX.scotland : TAX.ruk;
-  let tax=0, prev=0;
-  for(const b of bands){ const up=Math.min(taxable, b.upTo); if(up>prev){ tax += (up-prev)*b.rate; prev=up; } if(prev>=taxable) break; }
+  const code = opt.code || {mode:"standard"};
+  // Region: a code prefix (S/C) wins; Wales uses the same bands as rUK.
+  const region = (code.region==="scotland" || (!code.region && opt.region==="scotland")) ? "scotland" : "ruk";
+  const bands = region==="scotland" ? TAX.scotland : TAX.ruk;
+  let pa=0, taxable=0, tax=0;
+  if(code.mode==="notax"){
+    // tax stays 0
+  } else if(code.mode==="flat"){
+    taxable = g; tax = g * code.rate;
+  } else {
+    if(code.mode==="allowance"){ pa = code.allowance; }
+    else if(code.mode==="kcode"){ pa = 0; }
+    else { pa = TAX.personalAllowance; if(g > TAX.paTaperStart) pa = Math.max(0, pa - (g - TAX.paTaperStart)/2); }
+    taxable = code.mode==="kcode" ? g + code.kAdd : Math.max(0, g - pa);
+    let prev=0;
+    for(const b of bands){ const up=Math.min(taxable, b.upTo); if(up>prev){ tax += (up-prev)*b.rate; prev=up; } if(prev>=taxable) break; }
+    if(code.mode==="kcode") tax = Math.min(tax, g*0.5);   // HMRC caps K-code tax at 50% of pay
+  }
   const ni = TAX.niMain*Math.max(0, Math.min(g, TAX.niUEL)-TAX.niPT) + TAX.niUpper*Math.max(0, g-TAX.niUEL);
   let sl=0; const p=STUDENT[opt.studentPlan]; if(p) sl = Math.max(0, Math.floor(g - p.threshold)) * p.rate;
   const net = annualGross - pension - tax - ni - sl;
-  return { gross:annualGross, pension, pa, taxable, tax, ni, sl, net };
+  return { gross:annualGross, pension, pa, taxable, tax, ni, sl, net, region };
 }
 
 /* ============ STATE ============ */
@@ -405,7 +440,7 @@ let summaryMode = "actual";
 function sampleState(){
   const cat = (name, items) => ({ id:uid(), name, items: items.map(([n,a,p])=>({id:uid(), name:n, actual:a, projected:(p==null?a:p)})) });
   return {
-    income: { hourly:16.41, hours:39, weeks:52, otRate:24.62, otHours:0, region:"ruk", pension:0, student:"none",
+    income: { hourly:16.41, hours:39, weeks:52, otRate:24.62, otHours:0, region:"ruk", code:"", pension:0, student:"none",
       extra:[ {id:uid(), name:"Extra income", monthly:0} ] },
     categories: [
       cat("Transportation", [["Vehicle Repayment",266.73],["RAC Warranty",41.62],["Insurance",39.05],["Car Tax",0],["Fuel",90],["Car Maintenance",36.67],["Storage container",140]]),
@@ -423,6 +458,7 @@ function migrate(s){
   const inc = s.income;
   ["hourly","hours","weeks","otRate","otHours","pension"].forEach(k=> inc[k] = +inc[k]||0);
   if(!inc.region) inc.region="ruk";
+  if(typeof inc.code!=="string") inc.code="";
   if(!inc.student) inc.student="none";
   if(!Array.isArray(inc.extra)) inc.extra=[];
   inc.extra.forEach(e=>{ e.id=e.id||uid(); e.monthly=+e.monthly||0; e.name=e.name||""; });
@@ -444,7 +480,7 @@ function incomeCalc(){
   const baseAnnual = (+i.hourly||0) * (+i.hours||0) * (+i.weeks||0);
   const otAnnual   = (+i.otRate||0) * (+i.otHours||0) * (+i.weeks||0);
   const gross = baseAnnual + otAnnual;
-  const t = computeTax(gross, {region:i.region, pensionPct:i.pension, studentPlan:i.student});
+  const t = computeTax(gross, {region:i.region, pensionPct:i.pension, studentPlan:i.student, code:parseTaxCode(i.code)});
   const extraMonthly = (i.extra||[]).reduce((a,e)=>a+(+e.monthly||0),0);
   return { baseAnnual, otAnnual, ...t, extraMonthly,
     netMonthly: t.net/12, wageMonthly: t.net/12,
@@ -458,10 +494,18 @@ function renderIncome(){
   const i = state.income;
   const set=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value = v; };
   set("#i-hourly", i.hourly); set("#i-hours", i.hours); set("#i-otrate", i.otRate);
-  set("#i-othours", i.otHours); set("#i-weeks", i.weeks); set("#i-pension", i.pension);
+  set("#i-othours", i.otHours); set("#i-weeks", i.weeks); set("#i-pension", i.pension); set("#i-code", i.code||"");
   const r=$("#i-region"); if(r) r.value=i.region;
   const s=$("#i-student"); if(s) s.value=i.student;
   $("#taxYear").textContent = "· UK "+TAX.year;
+  // Live interpretation of the tax code + region override.
+  const pc = parseTaxCode(i.code);
+  const noteEl = $("#codeNote");
+  if(noteEl){ noteEl.textContent = (i.code||"").trim() ? ("↳ "+pc.note) : "Leave blank to use the standard 1257L allowance (£12,570) with the region below.";
+    noteEl.style.color = pc.mode==="invalid" ? "var(--danger)" : "var(--muted)"; }
+  const forced = pc.region==="scotland" ? "scotland" : pc.region==="wales" ? "ruk" : null;
+  if(r){ r.disabled = !!forced; r.style.opacity = forced?0.6:1; }
+  $("#regionAuto").textContent = forced ? "· set by your tax code" : "";
 
   const c = incomeCalc();
   const rows = [
@@ -480,9 +524,11 @@ function renderIncome(){
     tb.insertAdjacentHTML("beforeend", `<tr><td class="muted" style="font-size:12px">of which base wage / overtime (gross)</td><td class="num muted" style="font-size:12px">${money(c.baseAnnual)} / ${money(c.otAnnual)}</td><td></td><td></td></tr>`);
   }
   const eff = c.gross>0 ? ((c.gross-c.net)/c.gross*100) : 0;
+  const regionLbl = c.region==="scotland" ? "Scottish" : (parseTaxCode(i.code).region==="wales" ? "Welsh" : "England/Wales/NI");
   $("#i-disc").innerHTML = `Effective deductions: <b>${eff.toFixed(1)}%</b> of gross. `+
-    `Estimated using UK ${TAX.year} bands (${i.region==="scotland"?"Scottish":"England/Wales/NI"} Income Tax, UK-wide NI) on an annual basis. `+
-    `A real payslip can differ slightly — your tax code, pension scheme type, and NI being worked out per pay-period all nudge the figure. Not tax advice.`;
+    `Estimated using UK ${TAX.year} bands (${regionLbl} Income Tax, UK-wide NI) on an annual basis`+
+    `${(i.code||"").trim()?", allowance from tax code "+escapeHtml(i.code.trim().toUpperCase()):""}. `+
+    `A real payslip can differ slightly — pension scheme type and NI being worked out per pay-period nudge the figure. Not tax advice.`;
   renderExtra();
 }
 function renderExtra(){
@@ -622,6 +668,7 @@ function bindIncome(id, key, isSelect){
 bindIncome("#i-hourly","hourly"); bindIncome("#i-hours","hours"); bindIncome("#i-otrate","otRate");
 bindIncome("#i-othours","otHours"); bindIncome("#i-weeks","weeks"); bindIncome("#i-pension","pension");
 bindIncome("#i-region","region",true); bindIncome("#i-student","student",true);
+$("#i-code").addEventListener("input", ()=>{ state.income.code = $("#i-code").value; touchLite(); renderIncome(); refreshSummaryLite(); });
 $("#otFill").onclick = ()=>{ state.income.otRate = Math.round(state.income.hourly*1.5*100)/100; touch(); renderIncome(); refreshSummaryLite(); schedulePush(); };
 $("#addExtra").onclick = ()=>{ state.income.extra.push({id:uid(), name:"", monthly:0}); touch(); renderExtra(); schedulePush(); const rows=$("#extraList").querySelectorAll(".iname"); rows[rows.length-1].focus(); };
 $("#addCat").onclick = ()=>{ state.categories.push({id:uid(), name:"New category", items:[]}); touch(); renderBudget(); schedulePush(); };
