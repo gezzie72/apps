@@ -211,9 +211,11 @@
             <option value="department">Department</option>
             <option value="manager">Management (accountable)</option>
           </select></label>
-        <label class="field" style="flex:1 1 220px"><span id="rPickLabel">Employee</span><select id="rName"></select></label>
+        <label class="field" style="flex:1 1 200px"><span id="rPickLabel">Employee</span><select id="rName"></select></label>
+        <label class="field" style="flex:1 1 170px"><span>Send to (management)</span><select id="rTo"></select></label>
+        <label class="field" style="flex:1 1 200px"><span>Recipient email</span><input type="email" id="rToEmail" placeholder="manager@company.com" autocomplete="off"></label>
         <div class="spacer"></div>
-        <button class="ghost" id="rEmail">✉ Email</button>
+        <button class="ghost" id="rEmail">✉ Email report</button>
         <button class="btn" id="rPrint">🖨 Print / Save as PDF</button>
       </div>
     </div>
@@ -298,7 +300,7 @@
 
 <script>
 /* ================= Office Report — single-file PWA ================= */
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2";
 const KEY = "officereport.state";
 const GISTFILE = "officereport.json";
 const $ = s => document.querySelector(s);
@@ -322,13 +324,14 @@ function defaultState(){
     ["2026-03-06","DA-1004","Unauthorised Absence","Sales","Casey Quinn","employee","J. Bennett (HR Manager)","Disciplinary","","Two days of unauthorised absence; formal meeting held."],
     ["2026-03-12","DA-1005","Conduct","Administration","Dana Ellis","employee","J. Bennett (HR Manager)","Awareness","","Informal note regarding tone in a team email."]
   ];
+  const emails = {};
   let seq = 1;
   const incidents = ex.map(r => ({
     id: seq++, date:r[0], ref:r[1], type:r[2], department:r[3], subject:r[4],
     subjectKind:r[5], raisedBy:r[6], warning:r[7], notes:r[8], investigation:r[9],
     createdAt: new Date().toISOString()
   }));
-  return { updatedAt: Date.now(), seq, lists, incidents };
+  return { updatedAt: Date.now(), seq, lists, emails, incidents };
 }
 
 let state = load();
@@ -340,6 +343,7 @@ function load(){
 function normalise(s){
   s.lists = s.lists || {};
   ["employees","departments","management","types"].forEach(k=> s.lists[k] = s.lists[k]||[]);
+  s.emails = s.emails || {};   // manager name -> email address (for sending reports)
   s.incidents = s.incidents || [];
   s.seq = s.seq || (s.incidents.reduce((m,i)=>Math.max(m,i.id||0),0)+1);
   s.updatedAt = s.updatedAt || 0;
@@ -623,7 +627,15 @@ function initReport(){
   const src = kind==="department"?state.lists.departments : kind==="manager"?state.lists.management : state.lists.employees;
   $("#rPickLabel").textContent = kind==="department"?"Department":kind==="manager"?"Manager":"Employee";
   fillSelect($("#rName"), src, {placeholder:"— select —"});
+  const keepTo = $("#rTo").value;
+  fillSelect($("#rTo"), state.lists.management, {placeholder:"— choose manager —"});
+  $("#rTo").value = keepTo;
+  syncRecipientEmail();
   renderReport();
+}
+function syncRecipientEmail(){
+  const name = $("#rTo").value;
+  if(name) $("#rToEmail").value = state.emails[name] || "";
 }
 function renderReport(){
   const kind=$("#rKind").value, name=$("#rName").value;
@@ -711,6 +723,7 @@ function listRow(key,name){
       if(state.lists[key].includes(nv)){ alert("That name already exists."); return; }
       state.lists[key]=state.lists[key].map(x=>x===name?nv:x).sort((a,b)=>a.localeCompare(b));
       (LIST_FIELDS[key]||[]).forEach(f=> state.incidents.forEach(i=>{ if(i[f]===name) i[f]=nv; }));
+      if(key==="management" && state.emails[name]!=null){ state.emails[nv]=state.emails[name]; delete state.emails[name]; }
       touch(); renderData();
     };
     ren.textContent="Save"; ren.onclick=save; rem.textContent="Cancel"; rem.onclick=()=>renderData();
@@ -854,10 +867,17 @@ function bind(){
   $("#rKind").addEventListener("change",initReport);
   $("#rName").addEventListener("change",renderReport);
   $("#rPrint").onclick=()=>window.print();
+  // recipient: pick a manager -> fill their saved email; edit email -> remember it
+  $("#rTo").addEventListener("change", syncRecipientEmail);
+  $("#rToEmail").addEventListener("change", ()=>{
+    const name=$("#rTo").value, addr=$("#rToEmail").value.trim();
+    if(name && addr!==(state.emails[name]||"")){ state.emails[name]=addr; touch(); }
+  });
   $("#rEmail").onclick=()=>{
     const r=reportPlainText();
     if(!r){ toast("Select a name first."); return; }
-    location.href = `mailto:?subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(r.body)}`;
+    const to=$("#rToEmail").value.trim();
+    location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(r.body)}`;
   };
 
   // setup buttons
