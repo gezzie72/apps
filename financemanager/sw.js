@@ -1,5 +1,5 @@
 /* Finance Manager service worker - offline app shell, network-first so updates land. */
-const CACHE = "financemanager-v2";
+const CACHE = "financemanager-v3";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

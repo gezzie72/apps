@@ -164,6 +164,7 @@
     <button data-tab="summary" class="active">Summary</button>
     <button data-tab="income">Income</button>
     <button data-tab="budget">Budget</button>
+    <button data-tab="goals">Goals</button>
   </div>
 
   <main>
@@ -197,6 +198,11 @@
         <h2>Income breakdown <span class="sub">· take-home after tax &amp; NI</span></h2>
         <table class="bd" id="sIncBreak"><tbody></tbody></table>
         <p class="hint" id="sIncNote"></p>
+      </div>
+
+      <div class="card" id="sGoalsCard" style="display:none">
+        <h2>Savings goals</h2>
+        <table class="bd" id="sGoals"><tbody></tbody></table>
       </div>
     </section>
 
@@ -279,6 +285,21 @@
       <div id="cats"></div>
       <div class="row"><button class="btn" id="addCat">＋ Add category</button></div>
     </section>
+
+    <!-- GOALS -->
+    <section class="panel" id="p-goals">
+      <div class="card" style="padding:14px 16px">
+        <div class="row" style="margin:0; align-items:flex-end">
+          <div class="stat"><span class="lbl">Total saved toward goals</span><span class="big pos" id="gSaved">£0</span></div>
+          <div style="margin-left:auto; text-align:right"><div class="muted" id="gTargetLbl">of £0 target</div><div class="muted" id="gPctLbl"></div></div>
+        </div>
+        <div class="bar" id="gBar"><i style="width:0%"></i></div>
+        <p class="hint" id="gBudgetLine"></p>
+      </div>
+      <div id="goals"></div>
+      <div class="row"><button class="btn" id="addGoal">＋ Add goal</button></div>
+      <p class="disc">A goal's monthly amount is what you <i>plan</i> to put aside — it doesn't move money on its own. Update "Saved so far" as you go.</p>
+    </section>
   </main>
 </div>
 
@@ -354,7 +375,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "2026-08-26 · v2 tax-code";
+const APP_VERSION = "2026-08-26 · v3 goals";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -449,6 +470,7 @@ function sampleState(){
       cat("Entertainment", [["Paramount+",6.99],["Apple TV",9.99],["Lottery",64],["GMB",15.18],["Amazon Prime",7.92],["Ramblers Assoc.",3.75],["Netflix",5.99],["Giff Gaff",35],["Gym",26.99],["HBO Max",5.99],["Google One",1.59],["UK Hidden Gems",3.99],["Komoot",5.00],["Dashlane",2.93],["Savings",140],["Smarty",20]]),
       cat("Loans & credit", [["Fraser",48.32],["Savings to Halifax",200],["Fraser 2",27.87],["MBNA Credit card",350],["Argos",57.31],["Very",46.94]])
     ],
+    goals: [ {id:uid(), name:"Emergency fund", target:2000, saved:250, monthly:200, targetDate:""} ],
     updatedAt: now()
   };
 }
@@ -465,6 +487,8 @@ function migrate(s){
   if(!Array.isArray(s.categories)) s.categories=[];
   s.categories.forEach(c=>{ c.id=c.id||uid(); c.name=c.name||"Category"; if(!Array.isArray(c.items)) c.items=[];
     c.items.forEach(it=>{ it.id=it.id||uid(); it.name=it.name||""; it.actual=+it.actual||0; if(it.projected==null) it.projected=it.actual; it.projected=+it.projected||0; }); });
+  if(!Array.isArray(s.goals)) s.goals=[];
+  s.goals.forEach(g=>{ g.id=g.id||uid(); g.name=g.name||""; g.target=+g.target||0; g.saved=+g.saved||0; g.monthly=+g.monthly||0; if(typeof g.targetDate!=="string") g.targetDate=""; });
   if(!s.updatedAt) s.updatedAt=now();
   return s;
 }
@@ -604,6 +628,121 @@ function recalcCat(catElm, c){
   $("#bTotal").textContent = money(outgoings(budgetMode));
 }
 
+/* ============ RENDER: GOALS ============ */
+function monthsUntil(dateStr){
+  if(!dateStr) return null;
+  const d=new Date(dateStr+"T00:00:00"); if(isNaN(d)) return null;
+  const t=new Date();
+  let m=(d.getFullYear()-t.getFullYear())*12 + (d.getMonth()-t.getMonth());
+  if(d.getDate() > t.getDate()) m+=1;               // partial month still counts
+  return m;
+}
+function fmtMonthYear(d){ return d.toLocaleDateString("en-GB",{month:"short", year:"numeric"}); }
+function goalProjection(g){
+  const remaining = Math.max(0, (+g.target||0) - (+g.saved||0));
+  if((+g.target||0) <= 0) return {txt:"Set a target amount to start tracking.", cls:"muted"};
+  if(remaining <= 0) return {txt:"🎉 Goal reached — nice one!", cls:"pos"};
+  let parts=[];
+  const monthly=+g.monthly||0;
+  if(monthly > 0){
+    const m=Math.ceil(remaining/monthly);
+    const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+m);
+    parts.push(`At ${money(monthly)}/mo → <b>${m} month${m>1?"s":""}</b> to go (about ${fmtMonthYear(d)}).`);
+  }
+  const mu=monthsUntil(g.targetDate);
+  if(mu!=null){
+    if(mu<=0) parts.push(`Target date has passed — ${money(remaining)} still to go.`);
+    else { const req=remaining/mu; const ok=monthly>=req;
+      parts.push(`To hit ${new Date(g.targetDate+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}, save <b>${money(req)}/mo</b>${monthly>0?(ok?" — on track ✓":" — a bit short"):""}.`); }
+  }
+  if(!parts.length) parts.push(`${money(remaining)} to go — add a monthly amount or target date to see a timeline.`);
+  return {txt:parts.join(" "), cls:"muted"};
+}
+function renderGoals(){
+  const wrap=$("#goals"); wrap.innerHTML="";
+  if(!(state.goals||[]).length){
+    wrap.innerHTML = `<div class="card muted" style="text-align:center">No goals yet. Add one — a holiday, an emergency fund, a new car deposit…</div>`;
+  } else {
+    state.goals.forEach(g=> wrap.appendChild(goalEl(g)));
+  }
+  renderGoalsOverview();
+}
+function renderGoalsOverview(){
+  const gs=state.goals||[];
+  const saved=gs.reduce((a,g)=>a+(+g.saved||0),0);
+  const target=gs.reduce((a,g)=>a+(+g.target||0),0);
+  const monthly=gs.reduce((a,g)=>a+(+g.monthly||0),0);
+  const pct=target>0?Math.min(100,saved/target*100):0;
+  $("#gSaved").textContent=money0(saved);
+  $("#gTargetLbl").textContent="of "+money0(target)+" target";
+  $("#gPctLbl").textContent=target>0?pct.toFixed(0)+"% there":"";
+  $("#gBar").querySelector("i").style.width=pct.toFixed(1)+"%";
+  const c=incomeCalc();
+  const leftover=c.totalMonthlyIncome - outgoings("actual");
+  if(monthly>0){
+    const over = monthly>leftover;
+    $("#gBudgetLine").innerHTML = `You're planning <b>${money(monthly)}/mo</b> toward goals. Your budget currently leaves <b>${money(leftover)}/mo</b>`+
+      (over?` — that's <span class="negc">${money(monthly-leftover)} more than you have spare</span>.`:` spare, so you're covered.`);
+  } else $("#gBudgetLine").textContent = "";
+}
+function goalEl(g){
+  const el=document.createElement("div"); el.className="cat"; el.style.padding="0";
+  const remaining=Math.max(0,(+g.target||0)-(+g.saved||0));
+  const pct=(+g.target||0)>0?Math.min(100,(+g.saved||0)/g.target*100):0;
+  const proj=goalProjection(g);
+  el.innerHTML=`
+    <div class="cathead">
+      <input class="cname" value="${escapeAttr(g.name)}" placeholder="Goal name">
+      <span class="csub">${pct.toFixed(0)}%</span>
+      <button class="del btn ghost sm" title="Delete goal">🗑</button>
+    </div>
+    <div style="padding:12px 14px 14px">
+      <div class="bar ${remaining<=0?'':''}" style="margin-top:0"><i style="width:${pct.toFixed(1)}%"></i></div>
+      <div class="row" style="margin-top:8px; justify-content:space-between">
+        <span class="muted"><b style="color:var(--accent)">${money(+g.saved||0)}</b> saved</span>
+        <span class="muted">${remaining>0?money(remaining)+" to go":"complete"}</span>
+      </div>
+      <div class="grid3" style="margin-top:12px">
+        <label class="f" style="margin:0"><span>Target (£)</span><input class="in num" data-k="target" type="number" step="1" inputmode="decimal" value="${g.target||""}"></label>
+        <label class="f" style="margin:0"><span>Saved so far (£)</span><input class="in num" data-k="saved" type="number" step="1" inputmode="decimal" value="${g.saved||""}"></label>
+        <label class="f" style="margin:0"><span>Per month (£)</span><input class="in num" data-k="monthly" type="number" step="1" inputmode="decimal" value="${g.monthly||""}"></label>
+      </div>
+      <div class="row" style="margin-top:10px; align-items:center; gap:8px">
+        <label class="f" style="margin:0; flex:1 1 150px"><span>Target date (optional)</span><input class="in" data-k="targetDate" type="date" value="${g.targetDate||""}"></label>
+        <div style="display:flex; gap:6px; align-self:flex-end; flex-wrap:wrap">
+          <button class="btn sm addm" data-a="50">+£50</button>
+          <button class="btn sm addm" data-a="100">+£100</button>
+        </div>
+      </div>
+      <p class="hint ${proj.cls}" style="margin-top:10px">${proj.txt}</p>
+    </div>`;
+  const nameEl=el.querySelector(".cname");
+  nameEl.oninput=()=>{ g.name=nameEl.value; touchLite(); };
+  el.querySelector(".cathead .del").onclick=()=>{
+    const snap=JSON.parse(JSON.stringify(g)); const idx=state.goals.indexOf(g);
+    state.goals=state.goals.filter(x=>x!==g); touch(); renderGoals(); refreshSummaryLite(); schedulePush();
+    toastAction("Goal deleted","Undo",()=>{ state.goals.splice(idx,0,snap); touch(); renderGoals(); refreshSummaryLite(); schedulePush(); });
+  };
+  el.querySelectorAll("input[data-k]").forEach(inp=>{
+    inp.oninput=()=>{ const k=inp.dataset.k; g[k]= k==="targetDate"?inp.value:(+inp.value||0); touchLite(); refreshGoalCard(el,g); renderGoalsOverview(); refreshSummaryLite(); };
+  });
+  el.querySelectorAll(".addm").forEach(b=>{
+    b.onclick=()=>{ g.saved=(+g.saved||0)+(+b.dataset.a); touch(); renderGoals(); refreshSummaryLite(); schedulePush(); };
+  });
+  return el;
+}
+function refreshGoalCard(el,g){
+  const remaining=Math.max(0,(+g.target||0)-(+g.saved||0));
+  const pct=(+g.target||0)>0?Math.min(100,(+g.saved||0)/g.target*100):0;
+  el.querySelector(".csub").textContent=pct.toFixed(0)+"%";
+  el.querySelector(".bar>i").style.width=pct.toFixed(1)+"%";
+  const spans=el.querySelectorAll(".row .muted");
+  if(spans[0]) spans[0].innerHTML=`<b style="color:var(--accent)">${money(+g.saved||0)}</b> saved`;
+  if(spans[1]) spans[1].textContent=remaining>0?money(remaining)+" to go":"complete";
+  const proj=goalProjection(g); const p=el.querySelector("p.hint");
+  if(p){ p.className="hint "+proj.cls; p.innerHTML=proj.txt; }
+}
+
 /* ============ RENDER: SUMMARY ============ */
 function renderSummary(){
   const c = incomeCalc();
@@ -639,6 +778,16 @@ function renderSummary(){
   if(c.extraMonthly>0) irow("Other income", c.extraMonthly);
   irow("Total monthly income", income, "total net");
   $("#sIncNote").innerHTML = `From ${money0(c.gross)}/yr gross → ${money0(c.net)}/yr take-home after £${Math.round(c.tax+c.ni+c.sl+c.pension).toLocaleString("en-GB")} tax, NI${c.sl>0?", student loan":""}${c.pension>0?" & pension":""}. See the Income tab for the full breakdown.`;
+
+  const goals=(state.goals||[]).filter(g=>(+g.target||0)>0 || (+g.saved||0)>0);
+  $("#sGoalsCard").style.display = goals.length ? "" : "none";
+  if(goals.length){
+    const gb=$("#sGoals tbody"); gb.innerHTML="";
+    goals.forEach(g=>{ const pct=(+g.target||0)>0?Math.min(100,(+g.saved||0)/g.target*100):0;
+      gb.insertAdjacentHTML("beforeend", `<tr><td>${escapeHtml(g.name||"Goal")}</td><td class="num">${money(+g.saved||0)} / ${money(+g.target||0)}</td><td class="num muted" style="width:56px">${pct.toFixed(0)}%</td></tr>`); });
+    const ts=goals.reduce((a,g)=>a+(+g.saved||0),0), tt=goals.reduce((a,g)=>a+(+g.target||0),0);
+    gb.insertAdjacentHTML("beforeend", `<tr class="total"><td>Total</td><td class="num">${money(ts)} / ${money(tt)}</td><td></td></tr>`);
+  }
 }
 function refreshSummaryLite(){ if(currentTab==="summary") renderSummary(); }
 
@@ -656,6 +805,7 @@ function setTab(t){
   if(t==="summary") renderSummary();
   if(t==="income") renderIncome();
   if(t==="budget") renderBudget();
+  if(t==="goals") renderGoals();
 }
 $$("#tabs button").forEach(b=> b.onclick = ()=> setTab(b.dataset.tab));
 
@@ -672,6 +822,7 @@ $("#i-code").addEventListener("input", ()=>{ state.income.code = $("#i-code").va
 $("#otFill").onclick = ()=>{ state.income.otRate = Math.round(state.income.hourly*1.5*100)/100; touch(); renderIncome(); refreshSummaryLite(); schedulePush(); };
 $("#addExtra").onclick = ()=>{ state.income.extra.push({id:uid(), name:"", monthly:0}); touch(); renderExtra(); schedulePush(); const rows=$("#extraList").querySelectorAll(".iname"); rows[rows.length-1].focus(); };
 $("#addCat").onclick = ()=>{ state.categories.push({id:uid(), name:"New category", items:[]}); touch(); renderBudget(); schedulePush(); };
+$("#addGoal").onclick = ()=>{ state.goals.push({id:uid(), name:"", target:0, saved:0, monthly:0, targetDate:""}); touch(); renderGoals(); schedulePush(); const cards=$("#goals").querySelectorAll(".cname"); if(cards.length) cards[cards.length-1].focus(); };
 $$("#bMode button").forEach(b=> b.onclick = ()=>{ budgetMode=b.dataset.m; renderBudget(); });
 $$("#mrToggle button").forEach(b=> b.onclick = ()=>{ summaryMode=b.dataset.m; renderSummary(); });
 
