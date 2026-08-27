@@ -98,12 +98,29 @@
   .cell.sel{background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent}
   .cell.sel .cnum{color:#fff} .cell.sel .cdot{background:#fff}
   .cell.past{opacity:.55}
+  .cell.big{border-color:var(--warn)}
+  .cell.big .cnum{color:var(--warn); font-weight:800}
+  .cell.big .cdot{background:var(--warn); width:7px; height:7px}
+  .cell.sel.big{background:linear-gradient(135deg,var(--warn),#f59e0b); border-color:transparent}
+  .cell.sel.big .cnum{color:#fff} .cell.sel.big .cdot{background:#fff}
   .calday{margin-top:14px}
   .calday .drow{display:flex; align-items:center; gap:10px; padding:8px 2px; border-bottom:1px solid var(--line)}
-  .calday .dbadge{flex:0 0 auto; width:34px; height:34px; border-radius:9px; background:var(--panel2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-weight:700; font-variant-numeric:tabular-nums}
+  .dbadge{flex:0 0 auto; width:34px; height:34px; border-radius:9px; background:var(--panel2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-weight:700; font-variant-numeric:tabular-nums}
+  .dbadge.big{border-color:var(--warn); color:var(--warn)}
   .calday .dname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .calday .dcat{font-size:11px; color:var(--muted)}
   .calday .damt{font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .bigtag{font-size:10px; color:var(--warn); border:1px solid var(--warn); border-radius:20px; padding:1px 7px; font-weight:600; white-space:nowrap}
+  /* Grouped "bills by day" agenda */
+  .dgroup{border:1px solid var(--line); border-radius:10px; margin-bottom:8px; overflow:hidden}
+  .dgroup.big{border-color:var(--warn)}
+  .dghead{display:flex; align-items:center; gap:9px; padding:8px 10px; background:var(--panel2)}
+  .dghead .dgord{font-weight:700}
+  .dghead .dgtot{margin-left:auto; font-weight:700; font-variant-numeric:tabular-nums}
+  .dgitem{display:flex; align-items:center; gap:10px; padding:7px 10px; border-top:1px solid var(--line)}
+  .dgitem .n{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .dgitem .n small{color:var(--muted)}
+  .dgitem .a{font-variant-numeric:tabular-nums; white-space:nowrap}
 
   /* Big stat */
   .stat{display:flex; flex-direction:column; gap:2px}
@@ -357,6 +374,7 @@
           <div><div class="muted" id="calMonth">This month</div><div class="stat"><span class="big" id="calTotal">£0</span></div></div>
           <div class="muted" style="text-align:right" id="calSplit"></div>
         </div>
+        <div class="hint" id="calBig" style="margin-top:8px"></div>
       </div>
       <div class="card">
         <div class="cal" id="calGrid"></div>
@@ -444,7 +462,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "v1.3";
+const APP_VERSION = "v1.4";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -533,11 +551,11 @@ function sampleState(){
     income: { hourly:16.41, hours:39, weeks:52, otRate:24.62, otHours:0, region:"ruk", code:"", pension:0, student:"none",
       extra:[ {id:uid(), name:"Extra income", monthly:0} ] },
     categories: [
-      cat("Transportation", [["Vehicle Repayment",266.73,,2],["RAC Warranty",41.62,,28],["Insurance",39.05,,5],["Car Tax",0],["Fuel",90],["Car Maintenance",36.67,false],["Storage container",140,,1]]),
+      cat("Transportation", [["Vehicle Repayment",266.73,,24],["RAC Warranty",41.62,,28],["Insurance",39.05,,5],["Car Tax",0],["Fuel",90],["Car Maintenance",36.67,false],["Storage container",140,,1]]),
       cat("Subscriptions", [["Experian",14.99,,12],["Spotify",12.99,,8],["ITVX",0]]),
       cat("Food", [["Groceries",120],["Dining out",36],["Costa",17]]),
       cat("Entertainment", [["Paramount+",6.99,,6],["Apple TV",9.99,,10],["Lottery",64],["GMB",15.18,,15],["Amazon Prime",7.92,,18],["Ramblers Assoc.",3.75,,22],["Netflix",5.99,,3],["Giff Gaff",35,,20],["Gym",26.99,,1],["HBO Max",5.99,,14],["Google One",1.59,,9],["UK Hidden Gems",3.99,,25],["Komoot",5.00,,11],["Dashlane",2.93,,7],["Savings",140,,28],["Smarty",20,,4]]),
-      cat("Loans & credit", [["Fraser",48.32,,15],["Savings to Halifax",200,,1],["Fraser 2",27.87,,20],["MBNA Credit card",350,,3],["Argos",57.31,,12],["Very",46.94,,18]])
+      cat("Loans & credit", [["Fraser",48.32,,15],["Savings to Halifax",200,,24],["Fraser 2",27.87,,20],["MBNA Credit card",350,,13],["Argos",57.31,,12],["Very",46.94,,18]])
     ],
     goals: [ {id:uid(), name:"Emergency fund", target:2000, saved:250, monthly:200, targetDate:""} ],
     debts: [ {id:uid(), name:"Credit card", balance:1500, apr:22.9, payment:150} ],
@@ -938,11 +956,19 @@ function renderCalendar(){
   const eff=d=> Math.min(d, daysInMonth);            // 31st lands on the last day of a short month
   const dayItems={};
   Object.keys(map).forEach(d=>{ const ed=eff(+d); (dayItems[ed]=dayItems[ed]||[]).push(...map[d]); });
-  let total=0, gone=0, toCome=0;
-  Object.keys(dayItems).forEach(d=>{ const sum=dayItems[d].reduce((a,x)=>a+x.amt,0); total+=sum; if(+d<todayD) gone+=sum; else toCome+=sum; });
+  const dayTotal={};
+  let total=0, gone=0, toCome=0, maxDay=0;
+  Object.keys(dayItems).forEach(d=>{ const sum=dayItems[d].reduce((a,x)=>a+x.amt,0); dayTotal[d]=sum; total+=sum; maxDay=Math.max(maxDay,sum); if(+d<todayD) gone+=sum; else toCome+=sum; });
+  // A "big payout" day: total is close to the month's biggest (and not trivial). Adapts to your data.
+  const bigThreshold = Math.max(50, maxDay*0.6);
+  const isBig = d=> (dayTotal[d]||0) >= bigThreshold && (dayTotal[d]||0) > 0;
+  const bigDays = Object.keys(dayTotal).map(Number).filter(isBig).sort((a,b)=>a-b);
   $("#calMonth").textContent = today.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
   $("#calTotal").textContent = money0(total);
   $("#calSplit").innerHTML = total>0 ? `${money(gone)} gone this month<br>${money(toCome)} still to come` : "No dated bills yet";
+  $("#calBig").innerHTML = bigDays.length
+    ? `🔶 <b>Big payout day${bigDays.length>1?"s":""}:</b> `+bigDays.map(d=>`${ord(d)} (${money(dayTotal[d])})`).join(" · ")
+    : "";
   const grid=$("#calGrid"); grid.innerHTML="";
   ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=> grid.insertAdjacentHTML("beforeend", `<div class="dow">${d}</div>`));
   const startDow=(new Date(y,m,1).getDay()+6)%7;      // Monday-first
@@ -950,18 +976,27 @@ function renderCalendar(){
   const sel = calSelDay || todayD;
   for(let d=1; d<=daysInMonth; d++){
     const has = dayItems[d] && dayItems[d].length;
-    const cls=["cell"]; if(has) cls.push("has"); if(d===todayD) cls.push("today"); if(d===sel && has) cls.push("sel"); if(d<todayD) cls.push("past");
+    const cls=["cell"]; if(has) cls.push("has"); if(isBig(d)) cls.push("big"); if(d===todayD) cls.push("today"); if(d===sel && has) cls.push("sel"); if(d<todayD) cls.push("past");
     grid.insertAdjacentHTML("beforeend", `<div class="${cls.join(" ")}" data-d="${d}"><span class="cnum">${d}</span>${has?'<span class="cdot"></span>':''}</div>`);
   }
   grid.querySelectorAll(".cell.has").forEach(el=> el.onclick=()=>{ calSelDay=+el.dataset.d; renderCalendar(); });
   const box=$("#calDay"), items=dayItems[sel]||[];
   box.innerHTML = items.length
-    ? `<div class="row" style="margin:12px 0 2px"><b>${ord(sel)} — ${money(items.reduce((a,x)=>a+x.amt,0))}</b></div>`+items.map(x=>dayRow(sel,x)).join("")
+    ? `<div class="row" style="margin:12px 0 2px; align-items:center; gap:8px"><b>${ord(sel)} — ${money(dayTotal[sel])}</b>${isBig(sel)?'<span class="bigtag">Big payout</span>':''}</div>`+items.map(x=>dayRow(sel,x)).join("")
     : `<div class="muted" style="margin-top:12px">Nothing due on the ${ord(sel)}. Tap a highlighted day to see its bills.</div>`;
+  // Tidy agenda: one card per day, with a header (day, ordinal, subtotal) and its items listed underneath.
   const ag=$("#calAgenda"); ag.innerHTML="";
   const days=Object.keys(dayItems).map(Number).sort((a,b)=>a-b);
-  if(!days.length) ag.innerHTML='<div class="muted">No bills have a due day yet — add one (1–31) next to items on the Budget tab.</div>';
-  else days.forEach(d=> dayItems[d].forEach(x=> ag.insertAdjacentHTML("beforeend", dayRow(d,x))));
+  if(!days.length){ ag.innerHTML='<div class="muted">No bills have a due day yet — add one (1–31) next to items on the Budget tab.</div>'; return; }
+  days.forEach(d=>{
+    const big=isBig(d);
+    const itemsHtml = dayItems[d].map(x=>`<div class="dgitem"><span class="n">${escapeHtml(x.name)} <small>${escapeHtml(x.cat)}</small></span><span class="a">${money(x.amt)}</span></div>`).join("");
+    ag.insertAdjacentHTML("beforeend",
+      `<div class="dgroup${big?" big":""}">
+        <div class="dghead"><span class="dbadge${big?" big":""}">${d}</span><span class="dgord">${ord(d)}</span>${big?'<span class="bigtag">Big payout</span>':''}<span class="dgtot">${money(dayTotal[d])}</span></div>
+        ${itemsHtml}
+      </div>`);
+  });
 }
 
 /* ============ Spending donut chart ============ */
