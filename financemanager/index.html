@@ -184,8 +184,15 @@
   @media (max-width:560px){
     .grid3{grid-template-columns:1fr 1fr}
     .stats3{grid-template-columns:1fr}
-    .item{grid-template-columns:38px 1fr 70px 36px 22px}
-    .itemhead{grid-template-columns:38px 1fr 70px 36px 22px}
+    /* Budget items stack on narrow screens: name on its own line, controls below. */
+    #cats .item{grid-template-columns:42px 1fr 40px 26px; grid-template-areas:"nm nm nm nm" "dy am rc dl"; gap:7px 7px; padding:9px 0}
+    #cats .item .iname{grid-area:nm; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 10px}
+    #cats .item .iname:focus{border-color:var(--accent)}
+    #cats .item .day{grid-area:dy}
+    #cats .item .amt{grid-area:am}
+    #cats .item .rec{grid-area:rc}
+    #cats .item .del{grid-area:dl; justify-self:center}
+    #cats .itemhead{display:none}
     body{font-size:16px}
     .tabs button{font-size:14px}
     .overlay{padding:0; align-items:stretch}
@@ -462,7 +469,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "v1.4";
+const APP_VERSION = "v1.5";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
