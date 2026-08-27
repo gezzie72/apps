@@ -85,6 +85,25 @@
   .donut-center .val{font-size:22px; font-weight:800; fill:var(--text)}
   .donut-center .cap{font-size:10px; fill:var(--muted); text-transform:uppercase; letter-spacing:.5px}
   .donut seg, .donut circle{transition:stroke-dasharray .4s ease}
+  /* Calendar */
+  .cal{display:grid; grid-template-columns:repeat(7,1fr); gap:5px}
+  .cal .dow{font-size:11px; color:var(--muted); text-align:center; padding:2px 0; font-weight:600}
+  .cell{border:1px solid var(--line); border-radius:9px; background:var(--panel2); min-height:44px; padding:4px 2px 3px; display:flex; flex-direction:column; align-items:center; gap:2px; position:relative}
+  .cell.blank{border:none; background:transparent}
+  .cell .cnum{font-size:12px; font-variant-numeric:tabular-nums}
+  .cell.has{cursor:pointer}
+  .cell.has .cdot{width:6px; height:6px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cell.today{border-color:var(--accent)}
+  .cell.today .cnum{color:var(--accent); font-weight:800}
+  .cell.sel{background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent}
+  .cell.sel .cnum{color:#fff} .cell.sel .cdot{background:#fff}
+  .cell.past{opacity:.55}
+  .calday{margin-top:14px}
+  .calday .drow{display:flex; align-items:center; gap:10px; padding:8px 2px; border-bottom:1px solid var(--line)}
+  .calday .dbadge{flex:0 0 auto; width:34px; height:34px; border-radius:9px; background:var(--panel2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-weight:700; font-variant-numeric:tabular-nums}
+  .calday .dname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .calday .dcat{font-size:11px; color:var(--muted)}
+  .calday .damt{font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
 
   /* Big stat */
   .stat{display:flex; flex-direction:column; gap:2px}
@@ -104,7 +123,10 @@
   .cathead .cname{flex:1; min-width:0; background:transparent; border:none; outline:none; font-size:calc(15px * var(--tscale)); font-weight:700}
   .cathead .csub{font-size:12px; color:var(--muted); white-space:nowrap}
   .items{padding:6px 10px 10px}
-  .item{display:grid; grid-template-columns:1fr 92px 42px 28px; gap:8px; align-items:center; padding:4px 0}
+  .item{display:grid; grid-template-columns:42px 1fr 84px 40px 26px; gap:8px; align-items:center; padding:4px 0}
+  .item .day{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 0; text-align:center; outline:none; width:100%; font-variant-numeric:tabular-nums; -moz-appearance:textfield}
+  .item .day::-webkit-outer-spin-button,.item .day::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+  .item .day:focus{border-color:var(--accent)}
   .item .iname{background:transparent; border:none; border-bottom:1px solid transparent; outline:none; padding:6px 2px; min-width:0}
   .item .iname:focus{border-bottom-color:var(--accent)}
   .item .amt{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 8px; text-align:right; outline:none; width:100%; font-variant-numeric:tabular-nums}
@@ -113,7 +135,9 @@
   .item .rec.oneoff{color:var(--warn); border-color:var(--warn)}
   .item .del{background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:16px; border-radius:6px}
   .item .del:hover{color:var(--danger)}
-  .itemhead{display:grid; grid-template-columns:1fr 92px 42px 28px; gap:8px; padding:2px 0; font-size:11px; color:var(--muted)}
+  .itemhead{display:grid; grid-template-columns:42px 1fr 84px 40px 26px; gap:8px; padding:2px 0; font-size:11px; color:var(--muted)}
+  .itemhead span{text-align:left}
+  .itemhead span:nth-child(1){text-align:center}
   .itemhead span:not(:first-child){text-align:right}
   .catfoot{display:flex; align-items:center; gap:10px; padding:8px 14px 12px}
   .catfoot .sub{margin-left:auto; font-weight:700; font-variant-numeric:tabular-nums}
@@ -143,8 +167,8 @@
   @media (max-width:560px){
     .grid3{grid-template-columns:1fr 1fr}
     .stats3{grid-template-columns:1fr}
-    .item{grid-template-columns:1fr 80px 40px 24px}
-    .itemhead{grid-template-columns:1fr 80px 40px 24px}
+    .item{grid-template-columns:38px 1fr 70px 36px 22px}
+    .itemhead{grid-template-columns:38px 1fr 70px 36px 22px}
     body{font-size:16px}
     .tabs button{font-size:14px}
     .overlay{padding:0; align-items:stretch}
@@ -174,6 +198,7 @@
     <button data-tab="budget">Budget</button>
     <button data-tab="goals">Goals</button>
     <button data-tab="debts">Debts</button>
+    <button data-tab="calendar">Calendar</button>
   </div>
 
   <main>
@@ -324,6 +349,25 @@
       <div class="row"><button class="btn" id="addDebt">＋ Add debt</button></div>
       <p class="disc">Payoff times assume you keep paying the same amount each month and add nothing new to the balance. Interest is estimated from the APR — a real statement can differ with fees or a promo 0% period.</p>
     </section>
+
+    <!-- CALENDAR -->
+    <section class="panel" id="p-calendar">
+      <div class="card" style="padding:14px 16px">
+        <div class="row" style="margin:0; justify-content:space-between; align-items:flex-end">
+          <div><div class="muted" id="calMonth">This month</div><div class="stat"><span class="big" id="calTotal">£0</span></div></div>
+          <div class="muted" style="text-align:right" id="calSplit"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="cal" id="calGrid"></div>
+        <div class="calday" id="calDay"></div>
+      </div>
+      <div class="card">
+        <h2>All bills by day</h2>
+        <div id="calAgenda"></div>
+      </div>
+      <p class="disc">Set a due day (1–31) on any budget item — it shows here. Bills repeat on the same day each month; months without that day (e.g. the 31st in a short month) fall on the last day.</p>
+    </section>
   </main>
 </div>
 
@@ -400,7 +444,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "v1.2";
+const APP_VERSION = "v1.3";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -484,16 +528,16 @@ let budgetMode = "actual";     // actual | projected
 let summaryMode = "actual";
 
 function sampleState(){
-  const cat = (name, items) => ({ id:uid(), name, items: items.map(([n,a,rec])=>({id:uid(), name:n, actual:a, projected:a, recurring:rec!==false})) });
+  const cat = (name, items) => ({ id:uid(), name, items: items.map(([n,a,rec,day])=>({id:uid(), name:n, actual:a, projected:a, recurring:rec!==false, day:+day||0})) });
   return {
     income: { hourly:16.41, hours:39, weeks:52, otRate:24.62, otHours:0, region:"ruk", code:"", pension:0, student:"none",
       extra:[ {id:uid(), name:"Extra income", monthly:0} ] },
     categories: [
-      cat("Transportation", [["Vehicle Repayment",266.73],["RAC Warranty",41.62],["Insurance",39.05],["Car Tax",0],["Fuel",90],["Car Maintenance",36.67,false],["Storage container",140]]),
-      cat("Subscriptions", [["Experian",14.99],["Spotify",12.99],["ITVX",0]]),
+      cat("Transportation", [["Vehicle Repayment",266.73,,2],["RAC Warranty",41.62,,28],["Insurance",39.05,,5],["Car Tax",0],["Fuel",90],["Car Maintenance",36.67,false],["Storage container",140,,1]]),
+      cat("Subscriptions", [["Experian",14.99,,12],["Spotify",12.99,,8],["ITVX",0]]),
       cat("Food", [["Groceries",120],["Dining out",36],["Costa",17]]),
-      cat("Entertainment", [["Paramount+",6.99],["Apple TV",9.99],["Lottery",64],["GMB",15.18],["Amazon Prime",7.92],["Ramblers Assoc.",3.75],["Netflix",5.99],["Giff Gaff",35],["Gym",26.99],["HBO Max",5.99],["Google One",1.59],["UK Hidden Gems",3.99],["Komoot",5.00],["Dashlane",2.93],["Savings",140],["Smarty",20]]),
-      cat("Loans & credit", [["Fraser",48.32],["Savings to Halifax",200],["Fraser 2",27.87],["MBNA Credit card",350],["Argos",57.31],["Very",46.94]])
+      cat("Entertainment", [["Paramount+",6.99,,6],["Apple TV",9.99,,10],["Lottery",64],["GMB",15.18,,15],["Amazon Prime",7.92,,18],["Ramblers Assoc.",3.75,,22],["Netflix",5.99,,3],["Giff Gaff",35,,20],["Gym",26.99,,1],["HBO Max",5.99,,14],["Google One",1.59,,9],["UK Hidden Gems",3.99,,25],["Komoot",5.00,,11],["Dashlane",2.93,,7],["Savings",140,,28],["Smarty",20,,4]]),
+      cat("Loans & credit", [["Fraser",48.32,,15],["Savings to Halifax",200,,1],["Fraser 2",27.87,,20],["MBNA Credit card",350,,3],["Argos",57.31,,12],["Very",46.94,,18]])
     ],
     goals: [ {id:uid(), name:"Emergency fund", target:2000, saved:250, monthly:200, targetDate:""} ],
     debts: [ {id:uid(), name:"Credit card", balance:1500, apr:22.9, payment:150} ],
@@ -512,7 +556,7 @@ function migrate(s){
   inc.extra.forEach(e=>{ e.id=e.id||uid(); e.monthly=+e.monthly||0; e.name=e.name||""; });
   if(!Array.isArray(s.categories)) s.categories=[];
   s.categories.forEach(c=>{ c.id=c.id||uid(); c.name=c.name||"Category"; if(!Array.isArray(c.items)) c.items=[];
-    c.items.forEach(it=>{ it.id=it.id||uid(); it.name=it.name||""; it.actual=+it.actual||0; if(it.projected==null) it.projected=it.actual; it.projected=+it.projected||0; if(it.recurring===undefined) it.recurring=true; }); });
+    c.items.forEach(it=>{ it.id=it.id||uid(); it.name=it.name||""; it.actual=+it.actual||0; if(it.projected==null) it.projected=it.actual; it.projected=+it.projected||0; if(it.recurring===undefined) it.recurring=true; it.day=Math.max(0,Math.min(31,Math.floor(+it.day||0))); }); });
   if(!Array.isArray(s.goals)) s.goals=[];
   s.goals.forEach(g=>{ g.id=g.id||uid(); g.name=g.name||""; g.target=+g.target||0; g.saved=+g.saved||0; g.monthly=+g.monthly||0; if(typeof g.targetDate!=="string") g.targetDate=""; });
   if(!Array.isArray(s.debts)) s.debts=[];
@@ -630,7 +674,7 @@ function catEl(c){
       <button class="del btn ghost sm" title="Delete category">🗑</button>
     </div>
     <div class="items">
-      <div class="itemhead"><span>Item</span><span>Amount</span><span></span><span></span></div>
+      <div class="itemhead"><span>Day</span><span>Item</span><span>Amount</span><span></span><span></span></div>
     </div>
     <div class="catfoot"><button class="btn sm additem">＋ Add item</button><span class="sub">${money(catSubtotalFiltered(c))}</span></div>`;
   const cname = el.querySelector(".cname");
@@ -643,7 +687,7 @@ function catEl(c){
   const itemsBox = el.querySelector(".items");
   items.forEach(it=> itemsBox.appendChild(itemEl(c, it)));
   el.querySelector(".additem").onclick = ()=>{
-    const it={id:uid(), name:"", actual:0, projected:0, recurring: budgetFilter!=="oneoff"}; c.items.push(it); touch();
+    const it={id:uid(), name:"", actual:0, projected:0, recurring: budgetFilter!=="oneoff", day:0}; c.items.push(it); touch();
     itemsBox.appendChild(itemEl(c, it)); recalcCat(el, c); refreshSummaryLite(); schedulePush();
     const rows = itemsBox.querySelectorAll(".item"); rows[rows.length-1].querySelector(".iname").focus();
   };
@@ -652,11 +696,13 @@ function catEl(c){
 function itemEl(c, it){
   const row = document.createElement("div"); row.className="item";
   const rec = it.recurring!==false;
-  row.innerHTML = `<input class="iname" value="${escapeAttr(it.name)}" placeholder="Item name">
+  row.innerHTML = `<input class="day num" type="number" min="1" max="31" inputmode="numeric" value="${it.day||""}" placeholder="–" title="Due day of the month (1–31)">
+    <input class="iname" value="${escapeAttr(it.name)}" placeholder="Item name">
     <input class="amt num" type="number" step="0.01" inputmode="decimal" value="${it.actual||""}" placeholder="0.00">
     <button class="rec${rec?"":" oneoff"}" title="${rec?"Recurring every month — tap to mark one-off":"One-off (not every month) — tap to mark recurring"}">${rec?"↻":"1×"}</button>
     <button class="del" title="Remove">×</button>`;
-  const [nameEl, actEl, recEl, delEl] = row.children;
+  const [dayEl, nameEl, actEl, recEl, delEl] = row.children;
+  dayEl.oninput = ()=>{ let d=Math.floor(+dayEl.value||0); if(d<0)d=0; if(d>31)d=31; it.day=d; touchLite(); };
   nameEl.oninput = ()=>{ it.name=nameEl.value; touchLite(); };
   actEl.oninput  = ()=>{ it.actual=+actEl.value||0; touchLite(); recalcCat(row.closest(".cat"), c); refreshSummaryLite(); };
   recEl.onclick = ()=>{ it.recurring = !(it.recurring!==false); touch(); renderBudget(); refreshSummaryLite(); schedulePush(); };
@@ -875,6 +921,49 @@ function refreshDebtCard(el,d){
   if(p){ p.className="hint "+line.cls; p.innerHTML=line.txt; }
 }
 
+/* ============ RENDER: CALENDAR ============ */
+let calSelDay = 0;   // 0 = default to today
+function ord(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+function billsByDay(){
+  const map={};
+  state.categories.forEach(c=> (c.items||[]).forEach(it=>{ const d=+it.day||0;
+    if(d>=1 && d<=31) (map[d]=map[d]||[]).push({name:it.name||"(unnamed)", cat:c.name, amt:+it.actual||0}); }));
+  return map;
+}
+function dayRow(d, x){ return `<div class="drow"><div class="dbadge">${d}</div><div class="dname">${escapeHtml(x.name)}<div class="dcat">${escapeHtml(x.cat)}</div></div><div class="damt">${money(x.amt)}</div></div>`; }
+function renderCalendar(){
+  const today=new Date(), y=today.getFullYear(), m=today.getMonth(), todayD=today.getDate();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const map=billsByDay();
+  const eff=d=> Math.min(d, daysInMonth);            // 31st lands on the last day of a short month
+  const dayItems={};
+  Object.keys(map).forEach(d=>{ const ed=eff(+d); (dayItems[ed]=dayItems[ed]||[]).push(...map[d]); });
+  let total=0, gone=0, toCome=0;
+  Object.keys(dayItems).forEach(d=>{ const sum=dayItems[d].reduce((a,x)=>a+x.amt,0); total+=sum; if(+d<todayD) gone+=sum; else toCome+=sum; });
+  $("#calMonth").textContent = today.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+  $("#calTotal").textContent = money0(total);
+  $("#calSplit").innerHTML = total>0 ? `${money(gone)} gone this month<br>${money(toCome)} still to come` : "No dated bills yet";
+  const grid=$("#calGrid"); grid.innerHTML="";
+  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=> grid.insertAdjacentHTML("beforeend", `<div class="dow">${d}</div>`));
+  const startDow=(new Date(y,m,1).getDay()+6)%7;      // Monday-first
+  for(let i=0;i<startDow;i++) grid.insertAdjacentHTML("beforeend", `<div class="cell blank"></div>`);
+  const sel = calSelDay || todayD;
+  for(let d=1; d<=daysInMonth; d++){
+    const has = dayItems[d] && dayItems[d].length;
+    const cls=["cell"]; if(has) cls.push("has"); if(d===todayD) cls.push("today"); if(d===sel && has) cls.push("sel"); if(d<todayD) cls.push("past");
+    grid.insertAdjacentHTML("beforeend", `<div class="${cls.join(" ")}" data-d="${d}"><span class="cnum">${d}</span>${has?'<span class="cdot"></span>':''}</div>`);
+  }
+  grid.querySelectorAll(".cell.has").forEach(el=> el.onclick=()=>{ calSelDay=+el.dataset.d; renderCalendar(); });
+  const box=$("#calDay"), items=dayItems[sel]||[];
+  box.innerHTML = items.length
+    ? `<div class="row" style="margin:12px 0 2px"><b>${ord(sel)} — ${money(items.reduce((a,x)=>a+x.amt,0))}</b></div>`+items.map(x=>dayRow(sel,x)).join("")
+    : `<div class="muted" style="margin-top:12px">Nothing due on the ${ord(sel)}. Tap a highlighted day to see its bills.</div>`;
+  const ag=$("#calAgenda"); ag.innerHTML="";
+  const days=Object.keys(dayItems).map(Number).sort((a,b)=>a-b);
+  if(!days.length) ag.innerHTML='<div class="muted">No bills have a due day yet — add one (1–31) next to items on the Budget tab.</div>';
+  else days.forEach(d=> dayItems[d].forEach(x=> ag.insertAdjacentHTML("beforeend", dayRow(d,x))));
+}
+
 /* ============ Spending donut chart ============ */
 const PALETTE = ["#2fbf71","#0ea5a4","#6ea8fe","#8b5cf6","#f2b21e","#ff6b6b","#54d18c","#e879f9","#38bdf8","#fb923c","#a3e635","#f472b6"];
 function spendingDonut(cats, total){
@@ -979,6 +1068,7 @@ function setTab(t){
   if(t==="budget") renderBudget();
   if(t==="goals") renderGoals();
   if(t==="debts") renderDebts();
+  if(t==="calendar") renderCalendar();
 }
 $$("#tabs button").forEach(b=> b.onclick = ()=> setTab(b.dataset.tab));
 
