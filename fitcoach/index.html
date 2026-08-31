@@ -102,12 +102,18 @@
   .bodywrap{text-align:center; min-width:0}
   .bodywrap svg{width:100%; height:auto; max-height:340px}
   .bodywrap .lbl{font-size:calc(11px*var(--tscale)); color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-top:2px}
-  .m{fill:var(--body); stroke:var(--bodyline); stroke-width:1; transition:fill .15s}
-  .m.prim{fill:var(--prim)}
-  .m.sec{fill:var(--sec)}
+  .m{fill:url(#flesh); stroke:#7f8794; stroke-width:1.1; stroke-linejoin:round; transition:fill .15s}
+  .m.prim{fill:url(#hot); stroke:#b8481a}
+  .m.sec{fill:url(#warm); stroke:#c98a52}
   .m.clk{cursor:pointer}
-  .m.clk:hover{fill:var(--accent2)}
-  .silh{fill:var(--body); opacity:.32}
+  .m.clk:hover{fill:url(#warm)}
+  .anat-bg{fill:#eef1f5}
+  .anat-under{fill:#c1c8d1}
+  .anat-joint{fill:url(#flesh); stroke:#7f8794; stroke-width:1.1}
+  .anat-head{fill:url(#headg); stroke:#7f8794; stroke-width:1}
+  .anat-line{stroke:#727a87; stroke-width:1.1; fill:none; stroke-linecap:round; opacity:.72}
+  .anat-sheen{fill:rgba(255,255,255,.30)}
+  .anat-dot{fill:#5a6472}
 
   .mtags{display:flex; flex-wrap:wrap; gap:7px; margin-top:10px}
   .mtag{font-size:calc(12px*var(--tscale)); padding:5px 10px; border-radius:999px; font-weight:600; border:1px solid var(--line)}
@@ -188,6 +194,12 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="flesh" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#e4e8ed"/><stop offset="1" stop-color="#aab2bd"/></linearGradient>
+  <linearGradient id="hot" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#f8a970"/><stop offset="1" stop-color="#db5a22"/></linearGradient>
+  <linearGradient id="warm" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#ffe0c2"/><stop offset="1" stop-color="#f0b483"/></linearGradient>
+  <radialGradient id="headg" cx="0.42" cy="0.38" r="0.75"><stop offset="0" stop-color="#e4e8ed"/><stop offset="1" stop-color="#a9b1bc"/></radialGradient>
+</defs></svg>
 <header>
   <div class="hrow">
     <div class="brand"><span class="fit">MY</span><b>FIT</b>COACH</div>
@@ -327,7 +339,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-08-31 · v1.2 lifelike figures";
+const APP_VERSION="2026-08-31 · v1.3 anatomy muscle-maps";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -341,60 +353,102 @@ const MU={
 
 /* ============================ body SVG builder ============================ */
 /* Polygons defined on the right half (x>=120) of a 240x520 canvas; side:'R' auto-mirrored, 'C' centre. */
-function poly(pts){ return pts.map(p=>p.join(",")).join(" "); }
-function mirror(pts){ return pts.map(p=>[240-p[0],p[1]]); }
-
-const FRONT=[
-  {m:"traps", pts:[[120,92],[151,103],[151,117],[120,113]]},
-  {m:"delts", pts:[[151,107],[174,120],[177,151],[155,151],[150,124]]},
-  {m:"chest", pts:[[120,120],[152,127],[156,150],[132,171],[120,169]]},
-  {m:"biceps", pts:[[155,153],[175,155],[171,199],[155,197]]},
-  {m:"forearms", pts:[[155,201],[171,201],[168,260],[151,258]]},
-  {m:"obliques", pts:[[135,181],[151,177],[149,242],[133,247]]},
-  {m:"quads", pts:[[123,264],[155,270],[149,362],[128,370]]},
-  {m:"adductors", pts:[[120,270],[133,272],[129,352],[120,346]]},
-  {m:"calves", pts:[[127,394],[145,394],[139,472],[129,472]]},
-  {m:"abs", side:"C", pts:[[106,178],[134,178],[132,252],[108,252]]},
+/* ---- anatomical muscle-chart bodies (front + back), spline-smoothed ---- */
+const mir=pts=>pts.map(p=>[300-p[0],p[1]]);
+function smooth(pts,closed=true,k=1){
+  const n=pts.length; if(n<3) return "M"+pts.map(p=>p.join(",")).join(" L");
+  const g=i=>pts[((i%n)+n)%n];
+  const G=i=>closed?g(i):pts[Math.max(0,Math.min(n-1,i))];
+  let d=`M${G(0)[0].toFixed(1)},${G(0)[1].toFixed(1)}`;
+  const end=closed?n:n-1;
+  for(let i=0;i<end;i++){
+    const p0=G(i-1),p1=G(i),p2=G(i+1),p3=G(i+2);
+    d+=`C${(p1[0]+(p2[0]-p0[0])/6*k).toFixed(1)},${(p1[1]+(p2[1]-p0[1])/6*k).toFixed(1)} `
+     + `${(p2[0]-(p3[0]-p1[0])/6*k).toFixed(1)},${(p2[1]-(p3[1]-p1[1])/6*k).toFixed(1)} `
+     + `${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return d+(closed?"Z":"");
+}
+// shared body masses (fill gaps behind muscles) + knees
+const A_UNDER=[
+  [[150,98],[168,102],[180,116],[200,138],[196,168],[188,212],[180,252],[190,286],[176,308],[150,310]],       // torso
+  [[196,140],[208,152],[205,200],[199,250],[197,300],[190,338],[178,342],[181,300],[183,250],[185,202],[187,168]], // arm
+  [[150,308],[188,308],[193,352],[183,412],[168,440],[154,438],[152,394],[150,330]],                          // thigh
+  [[154,440],[179,454],[179,512],[168,550],[186,598],[150,602],[152,550],[152,472]],                          // shin+foot
 ];
-const BACK=[
-  {m:"traps", pts:[[120,92],[152,103],[158,151],[120,150]]},
-  {m:"delts delts_rear", pts:[[152,107],[175,120],[177,151],[155,151],[150,124]]},
-  {m:"lats", pts:[[150,154],[169,175],[161,223],[133,209],[131,178]]},
-  {m:"triceps", pts:[[155,153],[175,155],[171,199],[155,197]]},
-  {m:"forearms", pts:[[155,201],[171,201],[168,260],[151,258]]},
-  {m:"glutes", pts:[[120,247],[152,251],[152,289],[120,293]]},
-  {m:"abductors", pts:[[152,253],[167,264],[159,302],[150,292]]},
-  {m:"hamstrings", pts:[[123,296],[152,293],[146,376],[127,380]]},
-  {m:"calves", pts:[[126,396],[147,393],[149,442],[139,474],[128,472],[125,432]]},
-  {m:"upperback", side:"C", pts:[[104,153],[136,153],[134,190],[106,190]]},
-  {m:"lowerback", side:"C", pts:[[108,193],[132,193],[130,244],[110,244]]},
-];
-
-/* stylised silhouette outline (shared) */
-const SILH=poly([
-  [120,18],[133,22],[139,34],[137,48],[131,58],
-  [150,66],[171,80],[178,120],[177,155],[171,201],[168,262],[158,264],[157,205],[153,175],
-  [156,210],[156,262],[167,300],[152,300],[150,270],
-  [155,300],[150,362],[147,394],[149,442],[139,486],[141,500],[126,500],[128,486],
-  [125,442],[124,394],[122,362],[120,300]
-]);
-
+const A_KNEE=[[157,433],[174,435],[177,447],[169,453],[158,451]];
+const A_FRONT={
+  mus:[
+    {m:"traps", pts:[[150,102],[163,105],[176,118],[179,132],[165,129],[150,125]]},
+    {m:"delts", pts:[[172,125],[187,126],[201,137],[206,153],[199,165],[186,166],[177,153],[172,139]]},
+    {m:"chest", pts:[[150,119],[167,123],[181,132],[187,147],[184,161],[171,174],[156,178],[150,177]]},
+    {m:"biceps",pts:[[180,167],[193,170],[199,186],[197,214],[188,224],[181,221],[180,194]]},
+    {m:"triceps",pts:[[197,173],[205,180],[205,214],[198,222],[197,196]]},
+    {m:"forearms",pts:[[181,226],[199,231],[203,250],[196,280],[188,301],[180,300],[180,268],[179,244]]},
+    {m:"forearms",pts:[[181,303],[195,305],[197,321],[191,338],[181,340],[177,322]]},
+    {m:"obliques",pts:[[167,182],[181,196],[180,236],[171,252],[164,249],[165,208]]},
+    {m:"abs", side:"C", pts:[[133,178],[150,175],[167,178],[169,210],[166,247],[150,259],[134,247],[131,210]]},
+    {m:"quads", pts:[[150,309],[172,307],[188,320],[192,348],[187,394],[177,424],[166,437],[157,433],[153,400],[155,352],[150,323]]},
+    {m:"quads", pts:[[156,404],[169,414],[167,433],[157,435],[152,418]]},
+    {m:"adductors",pts:[[150,311],[164,313],[162,360],[156,392],[150,388]]},
+    {m:"calves",pts:[[156,448],[176,455],[181,480],[174,512],[165,542],[158,555],[152,553],[153,500],[152,462]]},
+    {m:"calves",pts:[[150,446],[156,449],[154,522],[150,522]]},
+  ],
+  sep:[
+    {pts:[[150,104],[168,116]]},{pts:[[150,116],[150,177]],side:"C"},{pts:[[150,196],[150,258]],side:"C"},
+    {pts:[[137,200],[163,200]],side:"C"},{pts:[[138,221],[162,221]],side:"C"},{pts:[[140,241],[160,241]],side:"C"},
+    {pts:[[169,141],[181,151]]},{pts:[[171,174],[184,160]]},{pts:[[184,220],[185,170]]},
+    {pts:[[162,320],[173,392]]},{pts:[[178,338],[185,402]]},{pts:[[160,472],[178,476]]},
+  ],
+  sheen:[[186,147],[168,150],[189,194],[170,360],[167,486]],
+  dots:[[134,167],[166,167],[150,236]], face:true,
+};
+const A_BACK={
+  mus:[
+    {m:"traps", pts:[[150,101],[164,106],[177,128],[176,150],[164,170],[150,166]]},
+    {m:"delts delts_rear", pts:[[172,125],[187,126],[201,137],[206,153],[199,165],[186,166],[177,153],[172,139]]},
+    {m:"triceps",pts:[[180,167],[198,171],[203,188],[200,216],[190,224],[181,221],[180,194]]},
+    {m:"forearms",pts:[[181,226],[199,231],[203,250],[196,280],[188,301],[180,300],[180,268],[179,244]]},
+    {m:"forearms",pts:[[181,303],[195,305],[197,321],[191,338],[181,340],[177,322]]},
+    {m:"lats", pts:[[168,150],[186,165],[184,202],[170,224],[159,205],[162,172]]},
+    {m:"upperback", side:"C", pts:[[136,150],[150,150],[150,196],[137,194]]},
+    {m:"lowerback", side:"C", pts:[[139,200],[150,200],[150,250],[141,248]]},
+    {m:"glutes", pts:[[150,285],[176,287],[185,309],[180,330],[158,334],[150,320]]},
+    {m:"hamstrings",pts:[[150,334],[177,331],[182,378],[172,420],[160,434],[152,430],[151,380]]},
+    {m:"calves",pts:[[156,448],[176,455],[181,480],[174,512],[165,542],[158,555],[152,553],[153,500],[152,462]]},
+  ],
+  sep:[
+    {pts:[[150,116],[150,250]],side:"C"},{pts:[[150,140],[168,150]]},{pts:[[162,172],[172,222]]},
+    {pts:[[150,308],[176,300]]},{pts:[[160,342],[170,416]]},{pts:[[160,472],[178,476]]},
+  ],
+  sheen:[[188,148],[162,132],[172,190],[166,308],[166,382],[167,486]],
+  dots:[], face:false,
+};
+function grp(list,render){ let o=""; list.forEach(x=>{ o+=render(x.pts,x); if(x.side!=="C") o+=render(mir(x.pts),x); }); return o; }
 function buildBody(kind,{clickable}={}){
-  const set = kind==="front"?FRONT:BACK;
-  let out=`<svg viewBox="0 0 240 520" xmlns="http://www.w3.org/2000/svg">`;
-  // silhouette base (both halves) for a clean body outline
-  out+=`<polygon class="silh" points="${SILH}"/><polygon class="silh" points="${poly(mirror([
-    [120,18],[133,22],[139,34],[137,48],[131,58],[150,66],[171,80],[178,120],[177,155],[171,201],[168,262],[158,264],[157,205],[153,175],[156,210],[156,262],[167,300],[152,300],[150,270],[155,300],[150,362],[147,394],[149,442],[139,486],[141,500],[126,500],[128,486],[125,442],[124,394],[122,362],[120,300]
-  ]))}"/>`;
-  // head
-  out+=`<circle class="silh" cx="120" cy="38" r="21"/>`;
+  const A = kind==="front"?A_FRONT:A_BACK;
   const cls = clickable?"m clk":"m";
-  set.forEach(s=>{
-    out+=`<polygon class="${cls}" data-m="${s.m}" points="${poly(s.pts)}"/>`;
-    if(s.side!=="C") out+=`<polygon class="${cls}" data-m="${s.m}" points="${poly(mirror(s.pts))}"/>`;
-  });
-  out+=`</svg>`;
-  return out;
+  let s=`<svg viewBox="0 0 300 640" xmlns="http://www.w3.org/2000/svg">`;
+  s+=`<rect class="anat-bg" x="0" y="0" width="300" height="640" rx="16"/>`;
+  // underlay masses
+  s+=`<g class="anat-under">`+A_UNDER.map(p=>`<path d="${smooth(p)}"/>`+`<path d="${smooth(mir(p))}"/>`).join("")+`</g>`;
+  // neck + head
+  s+=`<path class="anat-under" d="${smooth([[150,86],[139,90],[137,100],[141,108],[150,110],[159,108],[163,100],[161,90]])}"/>`;
+  s+=`<ellipse class="anat-head" cx="150" cy="58" rx="24" ry="30"/>`;
+  if(!A.face) s+=`<path class="anat-line" d="${smooth([[130,50],[150,44],[170,50]],false)}"/>`; // hairline (back)
+  // knees (not a highlightable muscle)
+  s+=`<path class="anat-joint" d="${smooth(A_KNEE)}"/><path class="anat-joint" d="${smooth(mir(A_KNEE))}"/>`;
+  // muscles
+  s+=`<g>`+grp(A.mus,(pts,x)=>`<path class="${cls}" data-m="${x.m}" d="${smooth(pts)}"/>`)+`</g>`;
+  // separation lines
+  s+=`<g class="anat-line">`+grp(A.sep,pts=>`<path d="${smooth(pts,false)}"/>`)+`</g>`;
+  // sheen + dots + face
+  s+=`<g class="anat-sheen">`+A.sheen.concat(mir(A.sheen)).map(p=>`<ellipse cx="${p[0]}" cy="${p[1]}" rx="6" ry="10"/>`).join("")
+     +(A.face?`<ellipse cx="150" cy="205" rx="7" ry="20"/>`:"")+`</g>`;
+  if(A.dots.length) s+=`<g class="anat-dot">`+A.dots.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${p[1]>220?2:2.3}"/>`).join("")+`</g>`;
+  if(A.face) s+=`<g class="anat-line"><path d="M141,52 q4,-3 8,0"/><path d="M151,52 q4,-3 8,0"/><path d="M150,57 l0,7"/><path d="M144,73 q6,4 12,0"/></g>`;
+  s+=`</svg>`;
+  return s;
 }
 function paintBody(container, primary, secondary){
   const svg=container.querySelector("svg"); if(!svg) return;
@@ -426,33 +480,38 @@ function ghostSeg(a,b){
   return `<g fill="var(--accent)" opacity=".26"><path d="${_cap(a,b,4.5,3.4)}"/>${_c(a,4.5)}${_c(b,3.6)}</g>`;
 }
 function figure(J){
+  // Athletic male build: broad shoulders/chest tapering to a narrow waist (V-taper), lean limbs.
   const r=J.head[2];
   const face = (J.ha[0]-J.neck[0])!==0 ? Math.sign(J.ha[0]-J.neck[0]) : (Math.sign(J.kn[0]-J.hip[0])||1);
-  const chest=[ J.neck[0]+(J.hip[0]-J.neck[0])*0.32 + face*r*0.14, J.neck[1]+(J.hip[1]-J.neck[1])*0.30 ];
-  const glute=[ J.hip[0]-face*r*0.35, J.hip[1] ];
-  const footC=[ J.an[0]+face*r*0.5, J.an[1]+r*0.22 ];
+  const lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
+  const waist=lerp(J.neck,J.hip,0.60);      // narrowest point of the trunk
+  const pec  =[ J.neck[0]+(J.hip[0]-J.neck[0])*0.18 + face*r*0.34, J.neck[1]+(J.hip[1]-J.neck[1])*0.18 ];
+  const bicep=lerp(J.sh,J.el,0.5);
+  const thighM=lerp(J.hip,J.kn,0.5);
+  const calf =lerp(J.kn,J.an,0.34);
+  const footC=[ J.an[0]+face*r*0.5, J.an[1]+r*0.20 ];
   let body="";
-  // torso: shoulder girdle -> pelvis, with a chest swell and glute
-  body+=`<path d="${_cap(J.neck,J.hip, r*0.82, r*0.98)}"/>`;
-  body+=_c(J.neck, r*0.82)+_c(J.hip, r*1.02)+_c(glute, r*0.7)+_e(chest, r*0.78, r*0.66);
-  // leg (thigh swell -> knee -> calf swell -> ankle) + foot
-  body+=`<path d="${_cap(J.hip,J.kn, r*0.82, r*0.5)}"/>`+_c(_mid(J.hip,J.kn), r*0.6)+_c(J.kn, r*0.5);
-  body+=`<path d="${_cap(J.kn,J.an, r*0.56, r*0.3)}"/>`+_e(_mid(J.kn,J.an), r*0.5, r*0.42)+_c(J.an, r*0.32);
-  body+=_e(footC, r*0.62, r*0.28);
-  // arm (deltoid -> elbow -> wrist) + hand
-  body+=`<path d="${_cap(J.sh,J.el, r*0.6, r*0.42)}"/>`+_c(J.sh, r*0.66)+_c(_mid(J.sh,J.el), r*0.48)+_c(J.el, r*0.4);
-  body+=`<path d="${_cap(J.el,J.ha, r*0.42, r*0.3)}"/>`+_c(J.ha, r*0.36);
-  // neck + head (with a subtle nose/jaw profile in the facing direction)
-  body+=`<path d="${_cap([J.head[0]+face*r*0.05, J.head[1]+r*0.6], J.neck, r*0.36, r*0.52)}"/>`;
-  body+=_e([J.head[0], J.head[1]], r*0.98, r*1.06);
-  body+=_c([J.head[0]+face*r*0.9, J.head[1]+r*0.08], r*0.2);            // nose bump
+  // torso: broad shoulders -> narrow waist -> hips (two tapered segments = V-taper)
+  body+=`<path d="${_cap(J.neck, waist, r*0.86, r*0.46)}"/>`;   // shoulders down to waist
+  body+=`<path d="${_cap(waist, J.hip, r*0.46, r*0.58)}"/>`;    // waist out to hips
+  body+=_c(J.hip, r*0.56);                                      // modest pelvis
+  body+=_e(pec, r*0.40, r*0.32);                                // chest / pec (high & forward)
+  // arm: broad deltoid -> lean upper arm with slight bicep -> forearm -> hand
+  body+=_c(J.sh, r*0.62);                                       // deltoid cap (broad shoulder)
+  body+=`<path d="${_cap(J.sh,J.el, r*0.50, r*0.32)}"/>`+_c(bicep, r*0.40)+_c(J.el, r*0.30);
+  body+=`<path d="${_cap(J.el,J.ha, r*0.32, r*0.24)}"/>`+_c(J.ha, r*0.30);
+  // leg: muscular thigh -> knee -> calf bulge -> ankle -> foot
+  body+=`<path d="${_cap(J.hip,J.kn, r*0.66, r*0.40)}"/>`+_c(thighM, r*0.50)+_c(J.kn, r*0.40);
+  body+=`<path d="${_cap(J.kn,J.an, r*0.48, r*0.26)}"/>`+_e(calf, r*0.40, r*0.34)+_c(J.an, r*0.27);
+  body+=_e(footC, r*0.58, r*0.23);
+  // neck + head with a squarer jaw + nose profile
+  body+=`<path d="${_cap([J.head[0]+face*r*0.05, J.head[1]+r*0.5], J.neck, r*0.34, r*0.46)}"/>`;
+  body+=_e([J.head[0], J.head[1]], r*0.90, r*1.0);
+  body+=`<path d="${_cap([J.head[0], J.head[1]+r*0.2],[J.head[0]+face*r*0.62, J.head[1]+r*0.62], r*0.5, r*0.2)}"/>`; // jaw
+  body+=_c([J.head[0]+face*r*0.82, J.head[1]+r*0.06], r*0.16);  // nose
   let s=`<g fill="var(--accent)">${body}</g>`;
-  // soft muscle sheen (subtle, theme-safe)
-  s+=`<g fill="rgba(255,255,255,.10)">`
-     + _e(chest, r*0.42, r*0.34)
-     + _c([J.sh[0]+ (_mid(J.sh,J.el)[0]-J.sh[0])*0.4, J.sh[1]+(_mid(J.sh,J.el)[1]-J.sh[1])*0.4], r*0.24)
-     + _c(_mid(J.hip,J.kn), r*0.3)
-     + `</g>`;
+  // muscle-highlight marks (pec, bicep, thigh)
+  s+=`<g fill="#f2884e">`+_e(pec, r*0.22, r*0.18)+_c(bicep, r*0.22)+_c(thighM, r*0.24)+`</g>`;
   return s;
 }
 function arrow(path){
