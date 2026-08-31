@@ -340,7 +340,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-01 · v1.6 unified orange highlight";
+const APP_VERSION="2026-09-01 · v1.7 +7 exercises (36 total)";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -480,7 +480,7 @@ function seg(a,b,w){ return `<path fill="var(--accent)" d="${_cap(a,b,w/2,w/2)}"
 function ghostSeg(a,b){
   return `<g fill="var(--accent)" opacity=".26"><path d="${_cap(a,b,4.5,3.4)}"/>${_c(a,4.5)}${_c(b,3.6)}</g>`;
 }
-function figure(J){
+function figure(J, opts={}){
   // Athletic male build: broad shoulders/chest tapering to a narrow waist (V-taper), lean limbs.
   const r=J.head[2];
   const face = (J.ha[0]-J.neck[0])!==0 ? Math.sign(J.ha[0]-J.neck[0]) : (Math.sign(J.kn[0]-J.hip[0])||1);
@@ -512,9 +512,13 @@ function figure(J){
   body+=_c([J.head[0]+face*r*0.82, J.head[1]+r*0.06], r*0.16);  // nose
   // far-side arm + leg, offset behind and darker, so the figure reads as a whole person (not one-limbed)
   const dxo=-face*r*0.32, off=p=>[p[0]+dxo,p[1]];
-  let far=`<path d="${_cap(off(J.hip),off(J.kn), r*0.6, r*0.38)}"/>`+_c(off(thighM), r*0.46)+_c(off(J.kn), r*0.38)
-    +`<path d="${_cap(off(J.kn),off(J.an), r*0.46, r*0.25)}"/>`+_e(off(calf), r*0.38, r*0.32)+_c(off(J.an), r*0.26)
-    +_e([footC[0]+dxo, footC[1]], r*0.56, r*0.22)
+  // far leg: explicit back leg (split stance, e.g. lunge) if given, else a parallel offset of the near leg
+  const bl=opts.backLeg;
+  const fHip=bl?(bl.hip||J.hip):off(J.hip), fKn=bl?bl.kn:off(J.kn), fAn=bl?bl.an:off(J.an);
+  const fThighM=lerp(fHip,fKn,0.5), fCalf=lerp(fKn,fAn,0.34), fFoot=[fAn[0]+face*(bl?0.4:0.5)*r+(bl?0:0), fAn[1]+r*0.2];
+  let far=`<path d="${_cap(fHip,fKn, r*0.6, r*0.38)}"/>`+_c(fThighM, r*0.46)+_c(fKn, r*0.38)
+    +`<path d="${_cap(fKn,fAn, r*0.46, r*0.25)}"/>`+_e(fCalf, r*0.38, r*0.32)+_c(fAn, r*0.26)
+    +_e(fFoot, r*0.56, r*0.22)
     +_c(off(J.sh), r*0.5)+`<path d="${_cap(off(J.sh),off(J.el), r*0.44, r*0.3)}"/>`+_c(off(bicep), r*0.36)+_c(off(J.el), r*0.28)
     +`<path d="${_cap(off(J.el),off(J.ha), r*0.3, r*0.22)}"/>`+_c(off(J.ha), r*0.27);
   let s=`<g fill="var(--accent2)">${far}</g><g fill="var(--accent)">${body}</g>`;
@@ -672,6 +676,31 @@ const POSE={
   stair:()=>frame(ground()+`<path d="M60,180 h30 v-16 h30 v-16 h30 v-16 h30" fill="none" stroke="var(--bodyline)" stroke-width="2.5"/><rect x="176" y="70" width="8" height="80" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +figure({head:[112,74,14],neck:[114,90],hip:[118,132],sh:[116,94],el:[130,108],ha:[144,112],kn:[102,150],an:[92,164]})
     +ghostSeg([118,132],[140,150])+arrow("M140,150 q6,-14 2,-26")),
+  shrug:()=>frame(ground()
+    +ghostSeg([120,74],[120,86])
+    +figure({head:[120,46,15],neck:[120,66],hip:[120,128],sh:[120,74],el:[117,104],ha:[114,138],kn:[122,158],an:[124,186]})
+    +`<rect x="104" y="134" width="20" height="8" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +arrow("M150,92 q5,-14 0,-24")),
+  benchpress:()=>frame(ground()+`<rect x="66" y="150" width="116" height="10" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="88" y="160" width="8" height="26" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="152" y="160" width="8" height="26" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([116,138],[100,120])
+    +figure({head:[90,140,14],neck:[106,142],hip:[150,145],sh:[110,140],el:[116,118],ha:[120,94],kn:[168,158],an:[176,186]})
+    +`<rect x="111" y="90" width="18" height="8" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +arrow("M136,110 q5,-16 0,-30")),
+  pushup:()=>frame(ground()
+    +ghostSeg([118,150],[118,166])
+    +figure({head:[64,126,14],neck:[80,132],hip:[138,152],sh:[84,134],el:[90,158],ha:[94,178],kn:[170,168],an:[196,182]})
+    +arrow("M120,150 q4,-16 2,-30")),
+  plank:()=>frame(ground()
+    +figure({head:[62,128,14],neck:[78,134],hip:[138,152],sh:[82,136],el:[98,160],ha:[118,168],kn:[170,166],an:[196,180]})
+    +`<line x1="66" y1="148" x2="196" y2="176" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 4" opacity=".85"/>`),
+  gobletsquat:()=>frame(ground()
+    +ghostSeg([120,110],[120,94])
+    +figure({head:[116,56,15],neck:[118,76],hip:[126,132],sh:[118,84],el:[128,102],ha:[130,118],kn:[150,150],an:[122,186]})
+    +`<rect x="120" y="110" width="18" height="16" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +arrow("M150,150 q10,-16 6,-34")),
+  lunge:()=>frame(ground()
+    +figure({head:[116,52,15],neck:[116,72],hip:[120,128],sh:[116,80],el:[112,108],ha:[110,134],kn:[148,152],an:[148,186]},{backLeg:{kn:[96,158],an:[74,186]}})
+    +arrow("M150,150 q6,14 0,28")),
 };
 
 /* ============================ machine data ============================ */
@@ -693,6 +722,18 @@ const MACHINES=[
     ["chest"],["delts","biceps"],
     ["Set both pulleys high, grab a handle in each hand.","Step forward, soft bend in elbows, chest up.","Draw the handles down and together in front of you.","Return slowly, keeping tension on the chest."],
     ["Lean slightly forward from the hips.","Cross the hands over at the bottom for extra squeeze.","mistake:Bending the elbows to pull — keep them fixed."]),
+  M("decline-chest-press","Decline Chest Press","Chest","Selectorised / plate","press",
+    ["chest"],["triceps","delts"],
+    ["Set an angled/decline seat, handles level with the lower chest.","Back flat against the pad, grip the handles.","Press forward and slightly down until the arms are nearly straight.","Lower under control to the bottom of the chest."],
+    ["Emphasises the lower chest more than a flat press.","Keep the shoulder blades pulled back and down.","mistake:Flaring the elbows straight out to 90°."]),
+  M("dumbbell-bench-press","Dumbbell Bench Press","Chest","Free weight (bench)","benchpress",
+    ["chest"],["triceps","delts"],
+    ["Lie flat, feet planted, a dumbbell in each hand at chest level.","Wrists stacked over elbows, slight arch in the back.","Press the dumbbells up until the arms are nearly straight.","Lower under control until you feel a stretch across the chest."],
+    ["Dumbbells give a bigger range and even out left/right strength.","Keep the elbows at about 45°, not flared to 90°.","mistake:Clashing the dumbbells together at the top.","mistake:Dropping them fast — control the lowering."]),
+  M("push-up","Push-Up","Chest","Bodyweight","pushup",
+    ["chest"],["triceps","delts","abs"],
+    ["Hands slightly wider than shoulders, body in a straight line.","Brace the core and glutes, don't let the hips sag.","Lower until the chest is just above the floor.","Push back up to straight arms."],
+    ["Keep elbows tracking back at ~45°, not flared wide.","Drop to your knees to scale it down if needed.","mistake:Letting the hips sag or pike up.","mistake:Only doing half reps — get the chest low."]),
   M("lat-pulldown","Lat Pulldown","Back","Cable (seated)","pulldown",
     ["lats"],["biceps","upperback","forearms"],
     ["Set the thigh pad, grip the bar wider than shoulders.","Sit tall, chest up, slight lean back.","Pull the bar to your upper chest, elbows driving down.","Control the bar back up until arms are straight."],
@@ -721,6 +762,10 @@ const MACHINES=[
     ["delts_rear"],["upperback","traps"],
     ["Face the pad, chest against it, grab the handles.","Slight bend in the elbows, fixed.","Sweep the arms out and back, squeezing shoulder blades.","Return slowly to the front."],
     ["Great for posture and the often-neglected rear delts.","Think about pulling with the back of the shoulder.","mistake:Bending the elbows to turn it into a row."]),
+  M("shrugs","Shrugs","Shoulders","Free weight / machine","shrug",
+    ["traps"],["forearms"],
+    ["Hold a dumbbell in each hand (or the machine handles) at your sides.","Stand tall, arms straight, shoulders relaxed down.","Shrug the shoulders straight up towards your ears.","Pause at the top, then lower under control."],
+    ["Move straight up and down — don't roll the shoulders.","Squeeze the traps hard at the top.","mistake:Bending the elbows to help lift the weight."]),
   M("bicep-curl","Bicep Curl","Arms","Selectorised / cable","curl",
     ["biceps"],["forearms"],
     ["Upper arms on the pad (or elbows pinned at sides).","Grip the handles, palms up.","Curl up towards the shoulders, squeezing the biceps.","Lower slowly until arms are straight."],
@@ -765,6 +810,14 @@ const MACHINES=[
     ["quads","glutes"],["hamstrings","adductors"],
     ["Shoulders under the pads, feet shoulder-width on the platform.","Release the safeties, brace your core.","Lower until the knees reach about 90°.","Drive up through the whole foot to standing."],
     ["Keep the back flat on the pad throughout.","Knees track over the toes.","mistake:Letting the heels lift or knees cave inward."]),
+  M("goblet-squat","Goblet Squat","Legs","Free weight (dumbbell/kettlebell)","gobletsquat",
+    ["quads","glutes"],["hamstrings","adductors","abs"],
+    ["Hold one dumbbell/kettlebell vertically against your chest.","Feet a little wider than shoulders, toes slightly out.","Sit down between your hips until the thighs are about parallel.","Drive up through the whole foot to standing."],
+    ["The weight at your chest keeps you upright and braced.","Push the knees out in line with the toes.","mistake:Letting the heels lift or the chest drop forward.","mistake:Rounding the lower back at the bottom."]),
+  M("walking-lunge","Walking Lunge","Legs","Free weight / bodyweight","lunge",
+    ["quads","glutes"],["hamstrings","calves","adductors"],
+    ["Stand tall, a dumbbell in each hand (or bodyweight).","Step forward into a lunge, torso upright.","Lower until the back knee is just above the floor.","Drive through the front heel to stand, then step through with the other leg."],
+    ["Keep the front knee over the ankle, not way past the toes.","Take a long enough step so both knees reach ~90°.","mistake:Letting the front knee cave inward.","mistake:Leaning the torso far forward."]),
   M("ab-crunch","Ab Crunch","Core","Selectorised (seated)","crunch",
     ["abs"],["obliques"],
     ["Sit with the chest pad against you, grip the handles.","Set a weight you can control.","Crunch forward by curling the ribcage towards the hips.","Return slowly, keeping tension on the abs."],
@@ -773,6 +826,10 @@ const MACHINES=[
     ["obliques"],["abs"],
     ["Sit with the torso locked against the pads.","Set a light, controlled weight.","Rotate the trunk to one side against resistance.","Return under control and repeat the other side."],
     ["Move slowly — the obliques respond to control, not speed.","Keep the movement in the trunk, hips facing forward.","mistake:Wrenching around with heavy weight (risks the spine)."]),
+  M("plank","Plank","Core","Bodyweight","plank",
+    ["abs"],["obliques","lowerback"],
+    ["Forearms on the floor, elbows under the shoulders.","Legs straight back, body in one straight line from head to heels.","Brace the core and squeeze the glutes.","Hold, breathing steadily — build up your time gradually."],
+    ["Keep a straight line — don't let the hips sag or pike up.","Look at the floor to keep the neck neutral.","mistake:Holding your breath.","mistake:Dropping the hips so the lower back arches."]),
   M("treadmill","Treadmill","Cardio","Cardio","treadmill",
     ["quads","hamstrings","calves"],["glutes"],
     ["Start walking before increasing to your pace.","Stand tall, eyes forward, relaxed shoulders.","Add incline to raise intensity without high speed.","Cool down with a slower walk before stopping."],
