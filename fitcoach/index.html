@@ -339,7 +339,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-08-31 · v1.3 anatomy muscle-maps";
+const APP_VERSION="2026-08-31 · v1.4 muscle-matched marks";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -510,10 +510,38 @@ function figure(J){
   body+=`<path d="${_cap([J.head[0], J.head[1]+r*0.2],[J.head[0]+face*r*0.62, J.head[1]+r*0.62], r*0.5, r*0.2)}"/>`; // jaw
   body+=_c([J.head[0]+face*r*0.82, J.head[1]+r*0.06], r*0.16);  // nose
   let s=`<g fill="var(--accent)">${body}</g>`;
-  // muscle-highlight marks (pec, bicep, thigh)
-  s+=`<g fill="#f2884e">`+_e(pec, r*0.22, r*0.18)+_c(bicep, r*0.22)+_c(thighM, r*0.24)+`</g>`;
+  // worked-muscle marks — placed on the body parts this machine trains (matches the anatomy chart)
+  if(_figMus && _figMus.length){
+    const seen=new Set(); let dots="";
+    _figMus.forEach(id=>{ const p=muscleDot(J,id,face); const key=Math.round(p[0]/7)+","+Math.round(p[1]/7);
+      if(seen.has(key)) return; seen.add(key);
+      dots+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${(r*0.26).toFixed(1)}"/>`; });
+    s+=`<g fill="#f2884e" stroke="#c85a20" stroke-width="0.8">`+dots+`</g>`;
+  }
   return s;
 }
+// approximate location of a muscle group on the posed side-figure (pose-agnostic — uses the joints)
+function muscleDot(J, id, face){
+  const L=(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t], r=J.head[2];
+  switch(id){
+    case "chest": { const p=L(J.neck,J.hip,0.28); return [p[0]+face*r*0.28, p[1]]; }
+    case "delts": case "delts_rear": return J.sh;
+    case "traps": return L([J.head[0],J.head[1]],J.neck,0.65);
+    case "biceps": case "triceps": return L(J.sh,J.el,0.5);
+    case "forearms": return L(J.el,J.ha,0.5);
+    case "abs": return L(J.neck,J.hip,0.55);
+    case "obliques": { const p=L(J.neck,J.hip,0.6); return [p[0]+face*r*0.22,p[1]]; }
+    case "lats": case "upperback": return L(J.neck,J.hip,0.34);
+    case "lowerback": return L(J.neck,J.hip,0.82);
+    case "glutes": case "abductors": return J.hip;
+    case "quads": case "hamstrings": case "adductors": return L(J.hip,J.kn,0.5);
+    case "calves": return L(J.kn,J.an,0.5);
+    default: return L(J.neck,J.hip,0.5);
+  }
+}
+// render a machine's technique figure with its worked-muscle marks
+let _figMus=null;
+function illo(m){ if(!m||!POSE[m.pose]) return ""; _figMus=(m.primary||[]); const svg=POSE[m.pose](); _figMus=null; return svg; }
 function arrow(path){
   return `<defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto"><path d="M0,0 L6,3.2 L0,6.4 Z" fill="var(--warn)"/></marker></defs>
   <path d="${path}" fill="none" stroke="var(--warn)" stroke-width="2.6" stroke-linecap="round" marker-end="url(#ah)"/>`;
@@ -809,7 +837,7 @@ function matchMachine(m){
     if(!hay.includes(q)) return false; }
   return true;
 }
-function cardThumb(m){ return `<div class="thumb">${POSE[m.pose]?POSE[m.pose]():""}${state.favorites[m.id]?'<span class="fav">★</span>':""}</div>`; }
+function cardThumb(m){ return `<div class="thumb">${illo(m)}${state.favorites[m.id]?'<span class="fav">★</span>':""}</div>`; }
 function renderGrid(){
   const g=$("#grid"); const list=MACHINES.filter(matchMachine);
   g.innerHTML=list.map(m=>`<div class="card" data-id="${m.id}">${cardThumb(m)}<div class="body"><div class="cat">${m.cat}</div><div class="nm">${m.name}</div><div class="eq">${m.eq}</div></div></div>`).join("");
@@ -831,7 +859,7 @@ function openDetail(id){
   $("#detFav").textContent=state.favorites[id]?"★":"☆";
   const inSession=state.session.includes(id);
   $("#detBody").innerHTML=`
-    <div class="illo">${POSE[m.pose]?POSE[m.pose]():""}<div class="cap">Technique — arrow shows the working direction</div></div>
+    <div class="illo">${illo(m)}<div class="cap">Technique — orange marks show the worked muscles</div></div>
     <div class="panel">
       <div style="font-weight:800;font-size:calc(15px*var(--tscale));text-align:center;margin-bottom:2px">Muscles worked</div>
       <div class="bodies">
@@ -908,7 +936,7 @@ function renderSession(){
     }
     return `<div class="sitem ${on?'on':''}" data-id="${id}">
       <div class="sithead">
-        <div class="th">${POSE[m.pose]?POSE[m.pose]():""}</div>
+        <div class="th">${illo(m)}</div>
         <div class="meta"><div class="nm">${m.name}</div><div class="mm">${mm}</div></div>
         ${logHTML}
         <button class="x" data-act="rm">✕</button>
