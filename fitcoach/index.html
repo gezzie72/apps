@@ -339,7 +339,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-08-31 · v1.4 muscle-matched marks";
+const APP_VERSION="2026-09-01 · v1.5 two-legged figures + row fix";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -509,7 +509,14 @@ function figure(J){
   body+=_e([J.head[0], J.head[1]], r*0.90, r*1.0);
   body+=`<path d="${_cap([J.head[0], J.head[1]+r*0.2],[J.head[0]+face*r*0.62, J.head[1]+r*0.62], r*0.5, r*0.2)}"/>`; // jaw
   body+=_c([J.head[0]+face*r*0.82, J.head[1]+r*0.06], r*0.16);  // nose
-  let s=`<g fill="var(--accent)">${body}</g>`;
+  // far-side arm + leg, offset behind and darker, so the figure reads as a whole person (not one-limbed)
+  const dxo=-face*r*0.32, off=p=>[p[0]+dxo,p[1]];
+  let far=`<path d="${_cap(off(J.hip),off(J.kn), r*0.6, r*0.38)}"/>`+_c(off(thighM), r*0.46)+_c(off(J.kn), r*0.38)
+    +`<path d="${_cap(off(J.kn),off(J.an), r*0.46, r*0.25)}"/>`+_e(off(calf), r*0.38, r*0.32)+_c(off(J.an), r*0.26)
+    +_e([footC[0]+dxo, footC[1]], r*0.56, r*0.22)
+    +_c(off(J.sh), r*0.5)+`<path d="${_cap(off(J.sh),off(J.el), r*0.44, r*0.3)}"/>`+_c(off(bicep), r*0.36)+_c(off(J.el), r*0.28)
+    +`<path d="${_cap(off(J.el),off(J.ha), r*0.3, r*0.22)}"/>`+_c(off(J.ha), r*0.27);
+  let s=`<g fill="var(--accent2)">${far}</g><g fill="var(--accent)">${body}</g>`;
   // worked-muscle marks — placed on the body parts this machine trains (matches the anatomy chart)
   if(_figMus && _figMus.length){
     const seen=new Set(); let dots="";
@@ -579,7 +586,7 @@ const POSE={
   row:()=>frame(ground()+bench(150,150,60,14)+`<rect x="30" y="120" width="10" height="40" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="40" y1="130" x2="112" y2="130" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
     +ghostSeg([120,128],[70,130])
     +figure({head:[126,104,14],neck:[122,120],hip:[126,152],sh:[120,124],el:[104,128],ha:[86,130],kn:[156,158],an:[156,182]})
-    +arrow("M86,138 q-16,4 -28,0")),
+    +arrow("M90,142 q20,5 34,-4")),
   pullup:()=>frame(`<rect x="60" y="18" width="120" height="8" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +ghostSeg([120,70],[120,110])
     +figure({head:[120,66,14],neck:[120,82],hip:[120,124],sh:[120,86],el:[118,58],ha:[112,30],kn:[128,158],an:[122,182]})
