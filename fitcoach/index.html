@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c1016">
+<title>FitCoach</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitCoach">
+<style>
+  :root{
+    --bg:#0c1016; --panel:#141a23; --panel2:#1b2330; --line:#28313f;
+    --text:#e9edf3; --muted:#95a0b2; --accent:#33c6e8; --accent2:#1f9fbe;
+    --prim:#33c6e8; --sec:#1c6b7e; --body:#39485c; --bodyline:#4d6076;
+    --danger:#ff6b6b; --ok:#57d38c; --warn:#f2b21e;
+    --chip:#212b3a; --radius:16px; --tscale:1;
+    --headerA:#12b3d6; --headerB:#0e7fa0;
+  }
+  @media (prefers-color-scheme:light){
+    :root:not([data-theme]){
+      --bg:#eef2f6; --panel:#ffffff; --panel2:#f2f6fa; --line:#dbe3ec;
+      --text:#141b25; --muted:#5a6675; --accent:#0d8fb0; --accent2:#0a7791;
+      --prim:#0d9dc2; --sec:#8fd4e4; --body:#c6d2df; --bodyline:#9fb0c2;
+      --chip:#e7edf3;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef2f6; --panel:#ffffff; --panel2:#f2f6fa; --line:#dbe3ec;
+    --text:#141b25; --muted:#5a6675; --accent:#0d8fb0; --accent2:#0a7791;
+    --prim:#0d9dc2; --sec:#8fd4e4; --body:#c6d2df; --bodyline:#9fb0c2;
+    --chip:#e7edf3;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:calc(15px*var(--tscale)); line-height:1.45; padding-bottom:80px; -webkit-text-size-adjust:100%}
+  a{color:var(--accent)}
+  .wrap{max-width:900px; margin:0 auto; padding:0 14px}
+  header{position:sticky; top:0; z-index:20; background:linear-gradient(120deg,var(--headerA),var(--headerB)); color:#fff; box-shadow:0 2px 14px rgba(0,0,0,.25)}
+  .hrow{max-width:900px; margin:0 auto; padding:calc(env(safe-area-inset-top) + 10px) 14px 10px; display:flex; align-items:center; gap:10px}
+  .brand{font-weight:800; font-size:calc(21px*var(--tscale)); letter-spacing:.3px; display:flex; align-items:center; gap:8px}
+  .brand .fit{opacity:.85}
+  .brand b{color:#eafaff}
+  .htools{margin-left:auto; display:flex; align-items:center; gap:8px}
+  .syncbtn{background:rgba(255,255,255,.16); color:#fff; border:0; padding:7px 11px; border-radius:999px; font-size:calc(13px*var(--tscale)); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px}
+  .syncbtn:active{transform:scale(.97)}
+  #topSpin{width:13px;height:13px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;display:none;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .synclabel{font-size:calc(11px*var(--tscale)); opacity:.9}
+  .synclabel.flash{color:#d6ffe9; font-weight:700; opacity:1}
+
+  /* bottom nav */
+  nav.tabs{position:fixed; bottom:0; left:0; right:0; z-index:30; background:var(--panel); border-top:1px solid var(--line); display:flex; padding:6px 6px calc(env(safe-area-inset-bottom) + 6px)}
+  nav.tabs button{flex:1; background:none; border:0; color:var(--muted); font-size:calc(11px*var(--tscale)); display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; cursor:pointer; font-weight:600}
+  nav.tabs button svg{width:23px;height:23px}
+  nav.tabs button.active{color:var(--accent)}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin:14px 0}
+  h2.sec{font-size:calc(13px*var(--tscale)); text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:16px 4px 8px}
+  .muted{color:var(--muted)}
+  .row{display:flex; gap:10px; align-items:center}
+
+  /* search + filters */
+  .search{width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:12px 14px; font-size:calc(15px*var(--tscale)); margin-top:14px}
+  .search:focus{outline:2px solid var(--accent); outline-offset:0}
+  .chips{display:flex; gap:8px; overflow-x:auto; padding:12px 2px 4px; -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto; background:var(--chip); border:1px solid var(--line); color:var(--text); padding:8px 13px; border-radius:999px; font-size:calc(13px*var(--tscale)); cursor:pointer; font-weight:600; white-space:nowrap}
+  .chip.on{background:var(--accent); border-color:var(--accent); color:#062028}
+
+  /* library grid */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin-top:6px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; cursor:pointer; transition:transform .08s, border-color .12s; display:flex; flex-direction:column}
+  .card:active{transform:scale(.98)}
+  .card:hover{border-color:var(--accent2)}
+  .card .thumb{background:radial-gradient(120% 120% at 50% 0%, var(--panel2), var(--panel)); position:relative; aspect-ratio:1.4/1; display:flex; align-items:center; justify-content:center}
+  .card .thumb svg{width:100%; height:100%}
+  .card .body{padding:10px 11px 12px}
+  .card .cat{font-size:calc(10.5px*var(--tscale)); text-transform:uppercase; letter-spacing:.6px; color:var(--accent); font-weight:700}
+  .card .nm{font-weight:700; font-size:calc(14px*var(--tscale)); margin-top:2px; line-height:1.25}
+  .card .eq{font-size:calc(11.5px*var(--tscale)); color:var(--muted); margin-top:3px}
+  .card .fav{position:absolute; top:7px; right:8px; font-size:16px; color:#fff; opacity:.8}
+  .empty{text-align:center; color:var(--muted); padding:40px 10px}
+
+  /* detail overlay */
+  .overlay{position:fixed; inset:0; z-index:60; background:var(--bg); overflow-y:auto; display:none; -webkit-overflow-scrolling:touch}
+  .overlay.open{display:block}
+  .ohead{position:sticky; top:0; background:var(--panel); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; padding:calc(env(safe-area-inset-top) + 10px) 14px 10px; z-index:5}
+  .iconbtn{background:var(--chip); border:1px solid var(--line); color:var(--text); width:38px; height:38px; border-radius:11px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:0 0 auto}
+  .ohead .ttl{font-weight:800; font-size:calc(17px*var(--tscale)); line-height:1.2}
+  .ohead .sub{font-size:calc(12px*var(--tscale)); color:var(--muted)}
+  .ocontent{max-width:900px; margin:0 auto; padding:14px}
+
+  .illo{background:radial-gradient(130% 100% at 50% 0%, var(--panel2), var(--panel)); border:1px solid var(--line); border-radius:16px; padding:8px}
+  .illo svg{width:100%; height:auto; display:block}
+  .illo .cap{text-align:center; color:var(--muted); font-size:calc(11.5px*var(--tscale)); padding:2px 0 6px}
+
+  .bodies{display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:start}
+  .bodywrap{text-align:center; min-width:0}
+  .bodywrap svg{width:100%; height:auto; max-height:340px}
+  .bodywrap .lbl{font-size:calc(11px*var(--tscale)); color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-top:2px}
+  .m{fill:var(--body); stroke:var(--bodyline); stroke-width:1; transition:fill .15s}
+  .m.prim{fill:var(--prim)}
+  .m.sec{fill:var(--sec)}
+  .m.clk{cursor:pointer}
+  .m.clk:hover{fill:var(--accent2)}
+  .silh{fill:var(--body); opacity:.32}
+
+  .mtags{display:flex; flex-wrap:wrap; gap:7px; margin-top:10px}
+  .mtag{font-size:calc(12px*var(--tscale)); padding:5px 10px; border-radius:999px; font-weight:600; border:1px solid var(--line)}
+  .mtag.p{background:color-mix(in srgb, var(--prim) 22%, transparent); border-color:var(--prim); color:var(--text)}
+  .mtag.s{background:color-mix(in srgb, var(--sec) 26%, transparent); border-color:var(--sec); color:var(--text)}
+  .mtag .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle}
+
+  ol.steps{margin:8px 0 0; padding-left:0; list-style:none; counter-reset:s}
+  ol.steps li{counter-increment:s; position:relative; padding:8px 0 8px 34px; border-bottom:1px solid var(--line)}
+  ol.steps li:last-child{border-bottom:0}
+  ol.steps li::before{content:counter(s); position:absolute; left:0; top:7px; width:24px; height:24px; background:var(--accent); color:#062028; border-radius:8px; font-weight:800; font-size:calc(12px*var(--tscale)); display:flex; align-items:center; justify-content:center}
+  ul.tips{margin:6px 0 0; padding-left:20px}
+  ul.tips li{margin:4px 0}
+  ul.tips li.mistake{list-style:none; margin-left:-20px; padding-left:22px; position:relative}
+  ul.tips li.mistake::before{content:"⚠"; position:absolute; left:2px; color:var(--warn)}
+
+  .btn{background:var(--accent); color:#062028; border:0; border-radius:12px; padding:12px 16px; font-weight:800; font-size:calc(15px*var(--tscale)); cursor:pointer; width:100%}
+  .btn:active{transform:scale(.99)}
+  .btn.ghost{background:var(--chip); color:var(--text); border:1px solid var(--line)}
+  .btn.sm{width:auto; padding:9px 14px; font-size:calc(13px*var(--tscale))}
+  .btnrow{display:flex; gap:10px; margin-top:12px}
+
+  /* session list */
+  .slist{margin-top:12px}
+  .sitem{display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:10px 12px; margin-bottom:10px}
+  .sitem .th{width:64px; height:46px; flex:0 0 auto; background:var(--panel2); border-radius:9px; overflow:hidden; display:flex; align-items:center; justify-content:center}
+  .sitem .th svg{width:100%; height:100%}
+  .sitem .meta{flex:1; min-width:0}
+  .sitem .meta .nm{font-weight:700; font-size:calc(14px*var(--tscale)); line-height:1.2}
+  .sitem .meta .mm{font-size:calc(11.5px*var(--tscale)); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .sitem .done{width:30px;height:30px;border-radius:9px;border:2px solid var(--line);background:var(--panel2);cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:800;color:transparent}
+  .sitem.on .done{background:var(--ok);border-color:var(--ok);color:#043018}
+  .sitem .x{background:none;border:0;color:var(--muted);font-size:19px;cursor:pointer;flex:0 0 auto;padding:2px 4px}
+
+  /* setup */
+  .fld{display:block; margin:10px 0}
+  .fld span{display:block; font-size:calc(12.5px*var(--tscale)); color:var(--muted); margin-bottom:5px}
+  .fld input{width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:11px 12px; font-size:calc(15px*var(--tscale))}
+  .seg{display:inline-flex; background:var(--panel2); border:1px solid var(--line); border-radius:11px; overflow:hidden}
+  .seg button{background:none;border:0;color:var(--muted);padding:9px 13px;font-size:calc(13px*var(--tscale));cursor:pointer;font-weight:600}
+  .seg button.on{background:var(--accent);color:#062028}
+  .link{color:var(--accent); cursor:pointer; text-decoration:underline; background:none;border:0;padding:0;font-size:inherit}
+  .toggle{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 0}
+  .switch{position:relative; width:48px; height:28px; flex:0 0 auto}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute; inset:0; background:var(--line); border-radius:999px; transition:.15s; cursor:pointer}
+  .slider::before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+  .switch input:checked + .slider{background:var(--accent)}
+  .switch input:checked + .slider::before{transform:translateX(20px)}
+  #syncMsg{font-size:calc(12.5px*var(--tscale)); margin-top:8px; min-height:18px}
+  .kv{display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:calc(13px*var(--tscale))}
+  .kv:last-child{border-bottom:0}
+  .kv .k{color:var(--muted)}
+
+  .toast{position:fixed; left:50%; bottom:92px; transform:translateX(-50%); background:#000d; color:#fff; padding:11px 18px; border-radius:12px; font-size:calc(13.5px*var(--tscale)); z-index:200; opacity:0; transition:opacity .2s; pointer-events:none; max-width:88%}
+  .toast.show{opacity:1}
+  .ver{text-align:center; color:var(--muted); font-size:calc(11px*var(--tscale)); padding:18px 0 6px}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div class="brand"><span class="fit">MY</span><b>FIT</b>COACH</div>
+    <div class="htools">
+      <div style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.1">
+        <button class="syncbtn" id="syncTop"><span id="topSpin"></span><span>Sync</span></button>
+        <span class="synclabel" id="syncLastTop">Not synced</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- LIBRARY -->
+  <section id="tab-library">
+    <input class="search" id="search" placeholder="Search machines, muscles…" autocomplete="off">
+    <div class="chips" id="catChips"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty hidden" id="gridEmpty">No machines match your filters.</div>
+  </section>
+
+  <!-- MUSCLES -->
+  <section id="tab-muscles" class="hidden">
+    <div class="panel">
+      <div style="font-weight:800;font-size:calc(16px*var(--tscale))">Muscle explorer</div>
+      <div class="muted" style="font-size:calc(12.5px*var(--tscale));margin-top:3px">Tap a muscle to see every machine that trains it.</div>
+      <div class="bodies" style="margin-top:12px">
+        <div class="bodywrap"><div id="explFront"></div><div class="lbl">Front</div></div>
+        <div class="bodywrap"><div id="explBack"></div><div class="lbl">Back</div></div>
+      </div>
+      <div id="explSelName" style="text-align:center;font-weight:800;font-size:calc(16px*var(--tscale));margin-top:6px"></div>
+    </div>
+    <div class="grid" id="explGrid"></div>
+    <div class="empty" id="explHint">Select a muscle above.</div>
+  </section>
+
+  <!-- SESSION -->
+  <section id="tab-session" class="hidden">
+    <div class="panel">
+      <div class="row">
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:calc(16px*var(--tscale))">Today's session</div>
+          <div class="muted" id="sessSummary" style="font-size:calc(12.5px*var(--tscale));margin-top:3px"></div>
+        </div>
+        <button class="btn ghost sm" id="sessReset">Reset</button>
+      </div>
+      <div class="slist" id="sessList"></div>
+      <div class="empty" id="sessEmpty">Add machines from the Library (＋ Session) to build a workout.<br>The combined muscle map shows below once you do.</div>
+    </div>
+    <div class="panel hidden" id="sessMapPanel">
+      <div style="font-weight:800;font-size:calc(15px*var(--tscale));text-align:center;margin-bottom:6px">Muscles worked this session</div>
+      <div class="bodies">
+        <div class="bodywrap"><div id="sessFront"></div><div class="lbl">Front</div></div>
+        <div class="bodywrap"><div id="sessBack"></div><div class="lbl">Back</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section id="tab-setup" class="hidden">
+    <h2 class="sec">Cross-device sync</h2>
+    <div class="panel">
+      <div id="syncDisconnected">
+        <div class="muted" style="font-size:calc(13px*var(--tscale))">Keep your favourites & session in sync across devices via a <b>private</b> GitHub gist. Paste a classic token with only the <b>gist</b> scope. Your token stays in this browser.</div>
+        <label class="fld"><span>GitHub token (gist scope)</span>
+          <input id="ghToken" type="password" placeholder="ghp_…" autocomplete="off"></label>
+        <label class="fld"><span>Gist ID (optional — auto-found if blank)</span>
+          <input id="ghGist" placeholder="leave blank to auto-detect" autocomplete="off"></label>
+        <button class="btn" id="ghConnect">Connect</button>
+        <p class="muted" style="font-size:calc(12px*var(--tscale));margin-top:8px"><button class="link" id="ghTokLink">Create a token →</button> use a <b>classic</b> token, tick only <b>gist</b>. (Fine-grained tokens can't access gists.)</p>
+      </div>
+      <div id="syncConnected" style="display:none">
+        <div class="kv"><span class="k">Connected as</span><span id="syncUser">…</span></div>
+        <div class="kv"><span class="k">Gist ID</span><span><span id="syncGistId" style="font-family:monospace"></span> <button class="link" id="ghCopyGist">copy</button></span></div>
+        <div class="kv"><span class="k">Last sync</span><span id="syncLast">never</span></div>
+        <div class="toggle"><span>Auto-sync</span><label class="switch"><input type="checkbox" id="ghAuto"><span class="slider"></span></label></div>
+        <div class="btnrow">
+          <button class="btn sm" id="ghSyncNow">Sync now</button>
+          <button class="btn ghost sm" id="ghDisconnect">Disconnect</button>
+        </div>
+      </div>
+      <div id="syncMsg" class="muted"></div>
+    </div>
+
+    <h2 class="sec">Appearance</h2>
+    <div class="panel">
+      <div class="toggle"><span>Theme</span>
+        <div class="seg" id="segTheme">
+          <button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
+        </div>
+      </div>
+      <div class="toggle"><span>Text size</span>
+        <div class="seg" id="segText">
+          <button data-v="0.9">S</button><button data-v="1">M</button><button data-v="1.12">L</button><button data-v="1.25">XL</button>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="sec">About</h2>
+    <div class="panel">
+      <div class="muted" style="font-size:calc(13px*var(--tscale))">A PureGym-focused technique coach: illustrated movements and the muscle groups each machine trains. Not medical advice — train within your ability and ask staff if unsure about a machine.</div>
+    </div>
+    <div class="ver" id="verLine"></div>
+  </section>
+</main>
+
+<!-- DETAIL OVERLAY -->
+<div class="overlay" id="detail">
+  <div class="ohead">
+    <button class="iconbtn" id="detClose">‹</button>
+    <div style="flex:1;min-width:0"><div class="ttl" id="detTitle"></div><div class="sub" id="detSub"></div></div>
+    <button class="iconbtn" id="detFav" title="Favourite">☆</button>
+  </div>
+  <div class="ocontent" id="detBody"></div>
+</div>
+
+<nav class="tabs" id="nav">
+  <button data-tab="library" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Library</button>
+  <button data-tab="muscles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.4"/><path d="M12 7.5v6M7 10l5 1 5-1M8.5 20l3.5-6 3.5 6"/></svg>Muscles</button>
+  <button data-tab="session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3v10H4zM17 7h3v10h-3zM7 12h10M2 9v6M22 9v6"/></svg>Session</button>
+  <button data-tab="setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>Setup</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================ helpers ============================ */
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const now=()=>Date.now();
+const APP_VERSION="2026-08-31 · v1.0";
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
+
+/* ============================ muscle catalog ============================ */
+const MU={
+  traps:"Trapezius", delts:"Deltoids", delts_rear:"Rear delts", chest:"Chest (pecs)",
+  biceps:"Biceps", triceps:"Triceps", forearms:"Forearms", abs:"Abs (rectus)",
+  obliques:"Obliques", lats:"Lats", upperback:"Upper back", lowerback:"Lower back",
+  glutes:"Glutes", quads:"Quads", hamstrings:"Hamstrings", calves:"Calves",
+  adductors:"Inner thigh", abductors:"Outer hip / abductors"
+};
+
+/* ============================ body SVG builder ============================ */
+/* Polygons defined on the right half (x>=120) of a 240x520 canvas; side:'R' auto-mirrored, 'C' centre. */
+function poly(pts){ return pts.map(p=>p.join(",")).join(" "); }
+function mirror(pts){ return pts.map(p=>[240-p[0],p[1]]); }
+
+const FRONT=[
+  {m:"traps", pts:[[120,92],[151,103],[151,117],[120,113]]},
+  {m:"delts", pts:[[151,107],[174,120],[177,151],[155,151],[150,124]]},
+  {m:"chest", pts:[[120,120],[152,127],[156,150],[132,171],[120,169]]},
+  {m:"biceps", pts:[[155,153],[175,155],[171,199],[155,197]]},
+  {m:"forearms", pts:[[155,201],[171,201],[168,260],[151,258]]},
+  {m:"obliques", pts:[[135,181],[151,177],[149,242],[133,247]]},
+  {m:"quads", pts:[[123,264],[155,270],[149,362],[128,370]]},
+  {m:"adductors", pts:[[120,270],[133,272],[129,352],[120,346]]},
+  {m:"calves", pts:[[127,394],[145,394],[139,472],[129,472]]},
+  {m:"abs", side:"C", pts:[[106,178],[134,178],[132,252],[108,252]]},
+];
+const BACK=[
+  {m:"traps", pts:[[120,92],[152,103],[158,151],[120,150]]},
+  {m:"delts delts_rear", pts:[[152,107],[175,120],[177,151],[155,151],[150,124]]},
+  {m:"lats", pts:[[150,154],[169,175],[161,223],[133,209],[131,178]]},
+  {m:"triceps", pts:[[155,153],[175,155],[171,199],[155,197]]},
+  {m:"forearms", pts:[[155,201],[171,201],[168,260],[151,258]]},
+  {m:"glutes", pts:[[120,247],[152,251],[152,289],[120,293]]},
+  {m:"abductors", pts:[[152,253],[167,264],[159,302],[150,292]]},
+  {m:"hamstrings", pts:[[123,296],[152,293],[146,376],[127,380]]},
+  {m:"calves", pts:[[126,396],[147,393],[149,442],[139,474],[128,472],[125,432]]},
+  {m:"upperback", side:"C", pts:[[104,153],[136,153],[134,190],[106,190]]},
+  {m:"lowerback", side:"C", pts:[[108,193],[132,193],[130,244],[110,244]]},
+];
+
+/* stylised silhouette outline (shared) */
+const SILH=poly([
+  [120,18],[133,22],[139,34],[137,48],[131,58],
+  [150,66],[171,80],[178,120],[177,155],[171,201],[168,262],[158,264],[157,205],[153,175],
+  [156,210],[156,262],[167,300],[152,300],[150,270],
+  [155,300],[150,362],[147,394],[149,442],[139,486],[141,500],[126,500],[128,486],
+  [125,442],[124,394],[122,362],[120,300]
+]);
+
+function buildBody(kind,{clickable}={}){
+  const set = kind==="front"?FRONT:BACK;
+  let out=`<svg viewBox="0 0 240 520" xmlns="http://www.w3.org/2000/svg">`;
+  // silhouette base (both halves) for a clean body outline
+  out+=`<polygon class="silh" points="${SILH}"/><polygon class="silh" points="${poly(mirror([
+    [120,18],[133,22],[139,34],[137,48],[131,58],[150,66],[171,80],[178,120],[177,155],[171,201],[168,262],[158,264],[157,205],[153,175],[156,210],[156,262],[167,300],[152,300],[150,270],[155,300],[150,362],[147,394],[149,442],[139,486],[141,500],[126,500],[128,486],[125,442],[124,394],[122,362],[120,300]
+  ]))}"/>`;
+  // head
+  out+=`<circle class="silh" cx="120" cy="38" r="21"/>`;
+  const cls = clickable?"m clk":"m";
+  set.forEach(s=>{
+    out+=`<polygon class="${cls}" data-m="${s.m}" points="${poly(s.pts)}"/>`;
+    if(s.side!=="C") out+=`<polygon class="${cls}" data-m="${s.m}" points="${poly(mirror(s.pts))}"/>`;
+  });
+  out+=`</svg>`;
+  return out;
+}
+function paintBody(container, primary, secondary){
+  const svg=container.querySelector("svg"); if(!svg) return;
+  svg.querySelectorAll(".m").forEach(el=>{
+    el.classList.remove("prim","sec");
+    const ids=(el.getAttribute("data-m")||"").split(" ");
+    if(ids.some(i=>primary.includes(i))) el.classList.add("prim");
+    else if(ids.some(i=>secondary.includes(i))) el.classList.add("sec");
+  });
+}
+
+/* ============================ technique illustration engine ============================ */
+/* A side-profile mannequin drawn from joints, plus equipment + a motion arrow and a dashed ghost of the moving segment. */
+function seg(a,b,w){ return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="var(--accent)" stroke-width="${w}" stroke-linecap="round"/>`; }
+function ghostSeg(a,b){ return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 5" opacity=".4"/>`; }
+function figure(J){
+  // J: head[x,y,r], neck, hip, sh, el, ha, kn, an  (single limb pair, side profile)
+  let s="";
+  s+=seg(J.neck,J.hip,13);                 // torso
+  s+=seg(J.hip,J.kn,10)+seg(J.kn,J.an,8);  // leg
+  s+=seg(J.sh,J.el,8)+seg(J.el,J.ha,7);    // arm
+  s+=`<circle cx="${J.head[0]}" cy="${J.head[1]}" r="${J.head[2]}" fill="var(--accent)"/>`;
+  return s;
+}
+function arrow(path){
+  return `<defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto"><path d="M0,0 L6,3.2 L0,6.4 Z" fill="var(--warn)"/></marker></defs>
+  <path d="${path}" fill="none" stroke="var(--warn)" stroke-width="2.6" stroke-linecap="round" marker-end="url(#ah)"/>`;
+}
+function bench(x,y,w,h){ return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="var(--panel2)" stroke="var(--bodyline)" stroke-width="1.5"/>`; }
+function frame(inner){ return `<svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`; }
+function ground(){ return `<line x1="10" y1="188" x2="230" y2="188" stroke="var(--bodyline)" stroke-width="2"/>`; }
+
+// Each pose returns full inner SVG. Kept compact & consistent.
+const POSE={
+  press:()=>frame(ground()+bench(70,120,14,58)+`<rect x="60" y="150" width="120" height="10" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,120],[150,120])
+    +figure({head:[104,96,14],neck:[112,110],hip:[104,150],sh:[116,116],el:[142,116],ha:[176,120],kn:[150,150],an:[150,178]})
+    +arrow("M150,132 q22,-8 36,-10")),
+  pressUp:()=>frame(ground()+bench(66,118,50,60)+ghostSeg([120,110],[132,150])
+    +figure({head:[100,104,14],neck:[110,118],hip:[104,158],sh:[116,124],el:[128,104],ha:[128,74],kn:[150,158],an:[150,182]})
+    +arrow("M132,96 q4,-16 0,-34")),
+  fly:()=>frame(ground()+bench(74,120,14,58)+`<circle cx="120" cy="118" r="30" fill="none" stroke="var(--bodyline)" stroke-width="1.5" stroke-dasharray="3 4"/>`
+    +ghostSeg([120,118],[92,110])
+    +figure({head:[120,92,14],neck:[120,108],hip:[120,150],sh:[120,116],el:[146,120],ha:[160,132],kn:[146,150],an:[146,178]})
+    +arrow("M158,132 q14,-8 8,-24")),
+  reversefly:()=>frame(ground()+bench(74,120,14,58)
+    +ghostSeg([120,116],[146,120])
+    +figure({head:[120,92,14],neck:[120,108],hip:[120,150],sh:[120,116],el:[94,120],ha:[78,132],kn:[94,150],an:[94,178]})
+    +arrow("M80,134 q-14,-8 -8,-24")),
+  crossover:()=>frame(ground()+`<rect x="20" y="30" width="7" height="150" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="213" y="30" width="7" height="150" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +`<line x1="27" y1="44" x2="150" y2="120" stroke="var(--bodyline)" stroke-dasharray="3 4"/><line x1="213" y1="44" x2="150" y2="120" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
+    +ghostSeg([120,116],[150,120])
+    +figure({head:[120,92,14],neck:[120,108],hip:[120,152],sh:[120,116],el:[140,132],ha:[150,150],kn:[140,152],an:[140,180]})
+    +arrow("M150,150 q14,-6 20,-20")),
+  pulldown:()=>frame(ground()+bench(90,150,60,14)+`<rect x="60" y="20" width="120" height="8" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="120" y1="28" x2="120" y2="60" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
+    +ghostSeg([120,110],[120,66])
+    +figure({head:[120,100,14],neck:[120,116],hip:[120,152],sh:[120,120],el:[120,96],ha:[120,74],kn:[150,158],an:[150,182]})
+    +arrow("M136,80 q6,20 0,40")),
+  row:()=>frame(ground()+bench(150,150,60,14)+`<rect x="30" y="120" width="10" height="40" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="40" y1="130" x2="112" y2="130" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
+    +ghostSeg([120,128],[70,130])
+    +figure({head:[126,104,14],neck:[122,120],hip:[126,152],sh:[120,124],el:[104,128],ha:[86,130],kn:[156,158],an:[156,182]})
+    +arrow("M86,138 q-16,4 -28,0")),
+  pullup:()=>frame(`<rect x="60" y="18" width="120" height="8" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,70],[120,110])
+    +figure({head:[120,66,14],neck:[120,82],hip:[120,124],sh:[120,86],el:[118,58],ha:[112,30],kn:[128,158],an:[122,182]})
+    +arrow("M150,120 q8,-24 0,-48")),
+  dip:()=>frame(`<rect x="70" y="80" width="8" height="100" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="162" y="80" width="8" height="100" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="70" y="80" width="100" height="7" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,120],[120,150])
+    +figure({head:[120,72,14],neck:[120,88],hip:[120,128],sh:[120,92],el:[100,110],ha:[78,86],kn:[128,158],an:[120,180]})
+    +arrow("M150,116 q10,18 0,36")),
+  backext:()=>frame(ground()+`<rect x="120" y="120" width="60" height="12" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="150" y="150" width="18" height="30" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([150,124],[110,150])
+    +figure({head:[70,110,14],neck:[86,116],hip:[150,124],sh:[86,120],el:[80,138],ha:[78,150],kn:[150,150],an:[150,180]})
+    +arrow("M96,140 q-8,-16 -8,-30")),
+  shoulderpress:()=>frame(ground()+bench(90,120,60,58)
+    +ghostSeg([120,110],[100,120])
+    +figure({head:[120,102,14],neck:[120,116],hip:[120,150],sh:[118,122],el:[100,110],ha:[100,78],kn:[150,150],an:[150,178]})
+    +arrow("M136,96 q6,-16 0,-30")),
+  lateralraise:()=>frame(ground()
+    +ghostSeg([120,120],[120,150])
+    +figure({head:[120,92,14],neck:[120,108],hip:[120,158],sh:[120,116],el:[150,116],ha:[176,116],kn:[132,158],an:[126,184]})
+    +arrow("M168,132 q6,-12 0,-14")),
+  curl:()=>frame(ground()+bench(90,148,60,30)
+    +ghostSeg([120,150],[142,150])
+    +figure({head:[120,92,14],neck:[120,108],hip:[120,150],sh:[120,116],el:[126,138],ha:[118,110],kn:[150,150],an:[150,178]})
+    +arrow("M138,132 q-12,-8 -18,-20")),
+  pushdown:()=>frame(ground()+`<rect x="150" y="20" width="8" height="60" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="154" y1="80" x2="140" y2="120" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
+    +ghostSeg([140,116],[140,84])
+    +figure({head:[118,92,14],neck:[120,108],hip:[120,152],sh:[122,116],el:[136,120],ha:[140,150],kn:[150,158],an:[150,182]})
+    +arrow("M154,122 q6,18 0,32")),
+  legpress:()=>frame(ground()+`<rect x="150" y="70" width="60" height="80" rx="6" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="150" y1="110" x2="112" y2="110" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
+    +bench(30,150,90,14)
+    +ghostSeg([90,140],[120,110])
+    +figure({head:[54,120,14],neck:[68,126],hip:[92,144],sh:[70,128],el:[86,132],ha:[100,130],kn:[124,116],an:[150,110]})
+    +arrow("M132,96 q18,4 28,10")),
+  legext:()=>frame(ground()+bench(60,120,60,14)+`<rect x="60" y="120" width="12" height="50" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,130],[150,168])
+    +figure({head:[74,100,14],neck:[80,116],hip:[96,128],sh:[86,120],el:[98,132],ha:[110,132],kn:[120,130],an:[156,128]})
+    +arrow("M156,152 q8,-14 4,-28")),
+  legcurl:()=>frame(ground()+bench(60,124,80,14)+`<rect x="140" y="150" width="10" height="26" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,132],[152,164])
+    +figure({head:[74,116,13],neck:[86,122],hip:[120,132],sh:[90,124],el:[100,128],ha:[112,130],kn:[150,132],an:[150,168]})
+    +arrow("M158,160 q8,-8 4,-24")),
+  hipab:()=>frame(ground()+bench(88,132,64,44)
+    +ghostSeg([120,150],[104,178])
+    +figure({head:[120,96,14],neck:[120,112],hip:[120,150],sh:[120,118],el:[132,140],ha:[142,150],kn:[142,166],an:[152,184]})
+    +arrow("M150,176 q14,2 22,-2")),
+  hipad:()=>frame(ground()+bench(88,132,64,44)
+    +ghostSeg([120,150],[152,182])
+    +figure({head:[120,96,14],neck:[120,112],hip:[120,150],sh:[120,118],el:[108,140],ha:[98,150],kn:[134,168],an:[128,184]})
+    +arrow("M150,182 q-14,2 -22,-2")),
+  calf:()=>frame(ground()+bench(80,120,80,14)+`<rect x="150" y="176" width="30" height="8" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([150,150],[150,168])
+    +figure({head:[100,100,14],neck:[104,116],hip:[120,132],sh:[104,120],el:[118,132],ha:[130,130],kn:[150,140],an:[150,158]})
+    +arrow("M172,168 q6,-10 0,-18")),
+  hacksquat:()=>frame(ground()+`<rect x="150" y="40" width="14" height="130" fill="var(--panel2)" stroke="var(--bodyline)" transform="rotate(12 157 105)"/>`
+    +ghostSeg([120,116],[120,150])
+    +figure({head:[112,84,14],neck:[116,100],hip:[120,140],sh:[116,104],el:[128,120],ha:[138,132],kn:[138,150],an:[120,178]})
+    +arrow("M150,150 q10,-16 6,-34")),
+  crunch:()=>frame(ground()+bench(70,120,64,58)+`<rect x="70" y="112" width="54" height="8" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,116],[120,96])
+    +figure({head:[104,116,14],neck:[112,124],hip:[124,150],sh:[116,126],el:[112,110],ha:[112,98],kn:[152,150],an:[152,178]})
+    +arrow("M96,120 q-6,16 8,26")),
+  twist:()=>frame(ground()+`<ellipse cx="120" cy="150" rx="46" ry="12" fill="none" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`+bench(96,150,48,28)
+    +figure({head:[120,92,14],neck:[120,108],hip:[120,150],sh:[120,118],el:[146,124],ha:[164,130],kn:[150,150],an:[150,178]})
+    +`<path d="M92,138 a34,14 0 0 1 60,-6" fill="none" stroke="var(--warn)" stroke-width="2.6" marker-end="url(#ah)"/><defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto"><path d="M0,0 L6,3.2 L0,6.4 Z" fill="var(--warn)"/></marker></defs>`),
+  treadmill:()=>frame(ground()+`<rect x="40" y="176" width="160" height="10" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="176" y="90" width="8" height="90" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="150" y="90" width="34" height="24" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +figure({head:[104,70,14],neck:[108,86],hip:[112,130],sh:[110,90],el:[96,108],ha:[108,120],kn:[132,150],an:[150,176]})
+    +ghostSeg([112,130],[92,158])+arrow("M150,150 q16,2 26,0")),
+  bike:()=>frame(ground()+`<circle cx="150" cy="160" r="24" fill="none" stroke="var(--bodyline)" stroke-width="2"/><rect x="70" y="120" width="8" height="60" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="78" y1="124" x2="120" y2="130" stroke="var(--bodyline)"/>`
+    +figure({head:[100,86,14],neck:[104,102],hip:[118,132],sh:[104,106],el:[92,120],ha:[80,128],kn:[140,150],an:[150,160]})
+    +ghostSeg([140,150],[150,178])+`<path d="M132,176 a20,20 0 1 1 30,-14" fill="none" stroke="var(--warn)" stroke-width="2.6" marker-end="url(#ah)"/><defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto"><path d="M0,0 L6,3.2 L0,6.4 Z" fill="var(--warn)"/></marker></defs>`),
+  rowerg:()=>frame(ground()+`<line x1="20" y1="180" x2="210" y2="180" stroke="var(--bodyline)" stroke-width="3"/><rect x="20" y="140" width="14" height="30" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,140],[70,132])
+    +figure({head:[132,110,14],neck:[126,124],hip:[150,150],sh:[122,126],el:[100,130],ha:[80,132],kn:[120,150],an:[86,158]})
+    +arrow("M84,140 q-18,2 -30,-2")),
+  elliptical:()=>frame(ground()+`<circle cx="150" cy="160" r="22" fill="none" stroke="var(--bodyline)" stroke-width="2"/><rect x="60" y="60" width="8" height="120" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="180" y="60" width="8" height="120" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +figure({head:[120,80,14],neck:[120,96],hip:[120,140],sh:[120,100],el:[104,118],ha:[88,110],kn:[146,162],an:[164,178]})
+    +ghostSeg([120,140],[98,168])+arrow("M164,176 q10,-2 14,-10")),
+  stair:()=>frame(ground()+`<path d="M60,180 h30 v-16 h30 v-16 h30 v-16 h30" fill="none" stroke="var(--bodyline)" stroke-width="2.5"/><rect x="176" y="70" width="8" height="80" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +figure({head:[112,74,14],neck:[114,90],hip:[118,132],sh:[116,94],el:[130,108],ha:[144,112],kn:[102,150],an:[92,164]})
+    +ghostSeg([118,132],[140,150])+arrow("M140,150 q6,-14 2,-26")),
+};
+
+/* ============================ machine data ============================ */
+const M=(id,name,cat,eq,pose,primary,secondary,steps,tips)=>({id,name,cat,eq,pose,primary,secondary,steps,tips});
+const MACHINES=[
+  M("chest-press","Chest Press","Chest","Selectorised (seated)","press",
+    ["chest","delts"],["triceps"],
+    ["Set the seat so the handles line up with mid-chest.","Grip the handles, brace your back into the pad.","Press forward until arms are almost straight (don't lock out).","Control the weight back until you feel a stretch across the chest."],
+    ["Keep shoulder blades pulled back and down.","Elbows track at roughly 45°, not flared to 90°.","mistake:Bouncing the weight or letting it slam the stack.","mistake:Shrugging the shoulders up towards your ears."]),
+  M("incline-press","Incline Chest Press","Chest","Selectorised / plate","pressUp",
+    ["chest","delts"],["triceps"],
+    ["Choose an incline seat or angled handles.","Handles at upper-chest / collarbone height.","Press up and slightly forward.","Lower under control to the top of the chest."],
+    ["Targets the upper chest more than a flat press.","Keep wrists stacked over elbows.","mistake:Arching the lower back off the seat."]),
+  M("pec-deck","Pec Deck (Fly)","Chest","Selectorised (seated)","fly",
+    ["chest"],["delts"],
+    ["Sit tall, forearms or hands on the pads.","Slight bend in the elbows, keep it fixed.","Bring the pads together in front of your chest.","Open slowly until you feel a chest stretch."],
+    ["Think 'hugging a barrel' — squeeze the pecs.","Keep the movement at the elbows/upper arm, not the hands.","mistake:Using too much weight and turning it into a press."]),
+  M("cable-crossover","Cable Crossover","Chest","Cable (dual)","crossover",
+    ["chest"],["delts","biceps"],
+    ["Set both pulleys high, grab a handle in each hand.","Step forward, soft bend in elbows, chest up.","Draw the handles down and together in front of you.","Return slowly, keeping tension on the chest."],
+    ["Lean slightly forward from the hips.","Cross the hands over at the bottom for extra squeeze.","mistake:Bending the elbows to pull — keep them fixed."]),
+  M("lat-pulldown","Lat Pulldown","Back","Cable (seated)","pulldown",
+    ["lats"],["biceps","upperback","forearms"],
+    ["Set the thigh pad, grip the bar wider than shoulders.","Sit tall, chest up, slight lean back.","Pull the bar to your upper chest, elbows driving down.","Control the bar back up until arms are straight."],
+    ["Lead with the elbows, not the hands.","Squeeze the shoulder blades down and back.","mistake:Yanking the bar behind the neck.","mistake:Using body swing to heave the weight."]),
+  M("seated-row","Seated Row","Back","Selectorised / cable","row",
+    ["upperback","lats"],["biceps","forearms"],
+    ["Chest against the pad (or feet braced), grab the handles.","Sit tall with a neutral spine.","Pull the handles to your stomach, squeezing the shoulder blades.","Extend the arms back under control."],
+    ["Keep the torso still — the arms and back do the work.","Pause and squeeze at the end of each pull.","mistake:Rounding the back or rocking for momentum."]),
+  M("assisted-pullup","Assisted Pull-Up","Back","Assisted (knee pad)","pullup",
+    ["lats"],["biceps","upperback","forearms"],
+    ["Set the assistance weight (more weight = more help).","Kneel or stand on the pad, grip the top bars.","Pull your chest towards the bar, elbows down.","Lower under control to a full hang."],
+    ["Start with more assistance and reduce over time.","Avoid a dead-stop swing at the bottom.","mistake:Only doing half reps — get the chin over the bar."]),
+  M("back-extension","Back Extension","Back","45° hyperextension","backext",
+    ["lowerback","glutes"],["hamstrings"],
+    ["Set the pad just below the hip bones.","Cross arms on chest, body in a straight line.","Hinge down at the hips.","Raise back up until your body is straight — don't over-arch."],
+    ["Move at the hips, keep the spine neutral.","Squeeze the glutes at the top.","mistake:Hyper-arching / cranking up past straight."]),
+  M("shoulder-press","Shoulder Press","Shoulders","Selectorised (seated)","shoulderpress",
+    ["delts"],["triceps","traps"],
+    ["Seat height so handles start near shoulder height.","Back flat against the pad, grip the handles.","Press overhead until arms are nearly straight.","Lower under control to shoulder level."],
+    ["Keep the core braced, ribs down.","Don't fully lock and slam at the top.","mistake:Arching the back to push heavy weight."]),
+  M("lateral-raise","Lateral Raise","Shoulders","Selectorised / cable","lateralraise",
+    ["delts"],["traps"],
+    ["Set pads against the outer upper arms (or hold cables/handles).","Sit or stand tall, slight elbow bend.","Raise the arms out to the sides to shoulder height.","Lower slowly under control."],
+    ["Lead with the elbows, pinkies slightly up.","Stop at shoulder height — no higher.","mistake:Swinging or shrugging to lift the weight."]),
+  M("reverse-pec-deck","Reverse Pec Deck","Shoulders","Selectorised (seated)","reversefly",
+    ["delts_rear"],["upperback","traps"],
+    ["Face the pad, chest against it, grab the handles.","Slight bend in the elbows, fixed.","Sweep the arms out and back, squeezing shoulder blades.","Return slowly to the front."],
+    ["Great for posture and the often-neglected rear delts.","Think about pulling with the back of the shoulder.","mistake:Bending the elbows to turn it into a row."]),
+  M("bicep-curl","Bicep Curl","Arms","Selectorised / cable","curl",
+    ["biceps"],["forearms"],
+    ["Upper arms on the pad (or elbows pinned at sides).","Grip the handles, palms up.","Curl up towards the shoulders, squeezing the biceps.","Lower slowly until arms are straight."],
+    ["Keep the upper arms still — only the forearms move.","Full range: all the way down, all the way up.","mistake:Swinging the torso to lift heavier."]),
+  M("tricep-pushdown","Tricep Pushdown","Arms","Cable","pushdown",
+    ["triceps"],["forearms"],
+    ["Attach a bar/rope to the high pulley.","Elbows tucked at your sides, grip the attachment.","Push down until the arms are straight.","Return under control to about 90° at the elbow."],
+    ["Only the forearms move — pin the elbows.","Squeeze the triceps hard at the bottom.","mistake:Leaning over the bar and pressing with bodyweight."]),
+  M("assisted-dip","Assisted Dip","Arms","Assisted (knee pad)","dip",
+    ["triceps","chest"],["delts"],
+    ["Set the assistance weight, grip the parallel bars.","Kneel/stand on the pad, arms straight, chest up.","Lower until elbows reach about 90°.","Press back up to straight arms."],
+    ["Stay fairly upright to bias the triceps.","Keep elbows tracking back, not flaring wide.","mistake:Dropping too deep and straining the shoulders."]),
+  M("leg-press","Leg Press","Legs","Plate-loaded (45°)","legpress",
+    ["quads","glutes"],["hamstrings","adductors"],
+    ["Feet shoulder-width, mid-platform; back flat on the pad.","Release the safety catches.","Lower until knees reach about 90°.","Press through the whole foot back to nearly straight (don't lock)."],
+    ["Knees track in line with the toes.","Keep the lower back pressed into the seat.","mistake:Locking the knees hard at the top.","mistake:Letting the hips curl off the seat at the bottom."]),
+  M("leg-extension","Leg Extension","Legs","Selectorised (seated)","legext",
+    ["quads"],[],
+    ["Set the pad on top of the lower shins/ankles.","Back against the seat, hold the handles.","Straighten the legs until they're fully extended.","Lower slowly under control."],
+    ["Pause and squeeze the quads at the top.","Control the negative — don't drop the weight.","mistake:Using momentum to kick the weight up."]),
+  M("leg-curl","Seated Leg Curl","Legs","Selectorised (seated)","legcurl",
+    ["hamstrings"],["calves","glutes"],
+    ["Pad rests on the back of the lower legs; thigh pad locked.","Grip the handles, back into the seat.","Curl the heels down and under towards you.","Return slowly to straight legs."],
+    ["Squeeze the hamstrings at the bottom of the curl.","Keep the hips down on the seat.","mistake:Jerking or bouncing at the ends of the range."]),
+  M("hip-abduction","Hip Abduction (Out)","Legs","Selectorised (seated)","hipab",
+    ["abductors","glutes"],[],
+    ["Sit with the pads against the outside of the knees.","Sit tall, hold the handles.","Push the knees apart against the pads.","Return slowly to the start."],
+    ["Targets the glute medius / outer hip.","A slight forward lean hits the glutes more.","mistake:Slamming the pads open and letting them snap back."]),
+  M("hip-adduction","Hip Adduction (In)","Legs","Selectorised (seated)","hipad",
+    ["adductors"],[],
+    ["Sit with the pads against the inside of the knees.","Legs start apart, sit tall.","Squeeze the knees together against the pads.","Open slowly under control to a comfortable stretch."],
+    ["Trains the inner thigh (groin) muscles.","Don't force the open position past a gentle stretch.","mistake:Using a huge weight and only moving a few cm."]),
+  M("calf-raise","Seated Calf Raise","Legs","Selectorised / plate","calf",
+    ["calves"],[],
+    ["Balls of the feet on the platform, pads over the knees/thighs.","Let the heels drop for a full stretch.","Push up onto the toes as high as possible.","Lower slowly back to the stretch."],
+    ["Full range: deep stretch at the bottom, high squeeze at the top.","Pause briefly at the top of each rep.","mistake:Short, bouncy half reps."]),
+  M("hack-squat","Hack Squat","Legs","Plate-loaded (sled)","hacksquat",
+    ["quads","glutes"],["hamstrings","adductors"],
+    ["Shoulders under the pads, feet shoulder-width on the platform.","Release the safeties, brace your core.","Lower until the knees reach about 90°.","Drive up through the whole foot to standing."],
+    ["Keep the back flat on the pad throughout.","Knees track over the toes.","mistake:Letting the heels lift or knees cave inward."]),
+  M("ab-crunch","Ab Crunch","Core","Selectorised (seated)","crunch",
+    ["abs"],["obliques"],
+    ["Sit with the chest pad against you, grip the handles.","Set a weight you can control.","Crunch forward by curling the ribcage towards the hips.","Return slowly, keeping tension on the abs."],
+    ["Curl the spine — don't just hinge at the hips.","Exhale as you crunch down.","mistake:Pulling with the arms instead of the abs."]),
+  M("rotary-torso","Rotary Torso","Core","Selectorised (seated)","twist",
+    ["obliques"],["abs"],
+    ["Sit with the torso locked against the pads.","Set a light, controlled weight.","Rotate the trunk to one side against resistance.","Return under control and repeat the other side."],
+    ["Move slowly — the obliques respond to control, not speed.","Keep the movement in the trunk, hips facing forward.","mistake:Wrenching around with heavy weight (risks the spine)."]),
+  M("treadmill","Treadmill","Cardio","Cardio","treadmill",
+    ["quads","hamstrings","calves"],["glutes"],
+    ["Start walking before increasing to your pace.","Stand tall, eyes forward, relaxed shoulders.","Add incline to raise intensity without high speed.","Cool down with a slower walk before stopping."],
+    ["Don't hold the rails while running — it wrecks your form.","Land mid-foot under your body, not way out front.","mistake:Cranking the speed higher than you can control."]),
+  M("exercise-bike","Exercise Bike","Cardio","Cardio (upright)","bike",
+    ["quads","glutes"],["hamstrings","calves"],
+    ["Set the saddle so the knee is slightly bent at the bottom.","Start easy to warm up.","Keep a smooth, even pedal stroke.","Adjust resistance for steady-state or intervals."],
+    ["Knee should have a slight bend at the lowest point.","Keep the core engaged, don't slump on the bars.","mistake:Saddle too low — it crushes the knees."]),
+  M("rowing-machine","Rowing Machine","Cardio","Cardio (erg)","rowerg",
+    ["lats","upperback","quads"],["hamstrings","biceps","glutes"],
+    ["Strap the feet, grip the handle, shins vertical.","Drive: push with the legs first.","Then lean back slightly and pull the handle to the ribs.","Recover: arms out, hinge forward, then bend the knees."],
+    ["Sequence is legs → back → arms, then reverse.","It's ~60% legs — don't row with just the arms.","mistake:Bending the knees before the arms come forward."]),
+  M("cross-trainer","Cross Trainer","Cardio","Cardio (elliptical)","elliptical",
+    ["quads","glutes","hamstrings"],["chest","upperback","calves"],
+    ["Stand tall, feet flat on the pedals.","Push and pull the handles as you stride.","Keep a smooth, continuous motion.","Add resistance/incline to raise intensity."],
+    ["Drive through the whole foot, heels down.","Push and pull the handles for a full-body effort.","mistake:Leaning your weight onto the handles."]),
+  M("stair-climber","Stair Climber","Cardio","Cardio (stepper)","stair",
+    ["glutes","quads","calves"],["hamstrings"],
+    ["Step on and start at a manageable pace.","Stand tall, only lightly touch the rails for balance.","Take full steps, letting each foot press down.","Keep a steady rhythm."],
+    ["Stand upright — don't hunch over the console.","Full steps beat quick shallow shuffles.","mistake:Leaning heavily on the rails (kills the effort)."]),
+];
+const byId=id=>MACHINES.find(m=>m.id===id);
+const CATS=["All","Chest","Back","Shoulders","Arms","Legs","Core","Cardio"];
+
+/* ============================ state / persistence ============================ */
+const LS="fitcoach.state";
+function freshState(){ return {favorites:{}, session:[], sessionDone:{}, updatedAt:now()}; }
+let state=load();
+function load(){ try{ const s=JSON.parse(localStorage.getItem(LS)); if(s&&typeof s==="object") return Object.assign(freshState(),s);}catch(e){} return freshState(); }
+function persist(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
+function touch(){ state.updatedAt=now(); persist(); schedulePush(); }
+
+/* settings (per-device) */
+let theme=localStorage.getItem("fitcoach.theme")||"system";
+let textScale=localStorage.getItem("fitcoach.text")||"1";
+function applyTheme(t){ theme=t; if(t==="system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme",t); localStorage.setItem("fitcoach.theme",t);
+  const dark = t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme:dark)").matches);
+  document.querySelector('meta[name=theme-color]').setAttribute("content", dark?"#0c1016":"#0d8fb0"); }
+function applyScale(s){ textScale=s; document.documentElement.style.setProperty("--tscale",s); localStorage.setItem("fitcoach.text",s); }
+
+/* ============================ library rendering ============================ */
+let catFilter="All", searchQ="";
+function renderChips(){
+  const c=$("#catChips"); c.innerHTML="";
+  CATS.forEach(cat=>{ const b=document.createElement("button"); b.className="chip"+(cat===catFilter?" on":""); b.textContent=cat; b.onclick=()=>{catFilter=cat; renderChips(); renderGrid();}; c.appendChild(b); });
+}
+function matchMachine(m){
+  if(catFilter!=="All" && m.cat!==catFilter) return false;
+  if(searchQ){ const q=searchQ.toLowerCase();
+    const hay=(m.name+" "+m.cat+" "+m.eq+" "+m.primary.concat(m.secondary).map(x=>MU[x]||x).join(" ")).toLowerCase();
+    if(!hay.includes(q)) return false; }
+  return true;
+}
+function cardThumb(m){ return `<div class="thumb">${POSE[m.pose]?POSE[m.pose]():""}${state.favorites[m.id]?'<span class="fav">★</span>':""}</div>`; }
+function renderGrid(){
+  const g=$("#grid"); const list=MACHINES.filter(matchMachine);
+  g.innerHTML=list.map(m=>`<div class="card" data-id="${m.id}">${cardThumb(m)}<div class="body"><div class="cat">${m.cat}</div><div class="nm">${m.name}</div><div class="eq">${m.eq}</div></div></div>`).join("");
+  g.querySelectorAll(".card").forEach(c=>c.onclick=()=>openDetail(c.dataset.id));
+  $("#gridEmpty").classList.toggle("hidden", list.length>0);
+}
+
+/* ============================ detail ============================ */
+let detailId=null;
+function muscleTags(m){
+  const p=m.primary.map(id=>`<span class="mtag p"><span class="dot" style="background:var(--prim)"></span>${MU[id]||id}</span>`).join("");
+  const s=m.secondary.map(id=>`<span class="mtag s"><span class="dot" style="background:var(--sec)"></span>${MU[id]||id}</span>`).join("");
+  return `<div class="mtags">${p}${s}</div>`;
+}
+function openDetail(id){
+  const m=byId(id); if(!m) return; detailId=id;
+  $("#detTitle").textContent=m.name;
+  $("#detSub").textContent=m.cat+" · "+m.eq;
+  $("#detFav").textContent=state.favorites[id]?"★":"☆";
+  const inSession=state.session.includes(id);
+  $("#detBody").innerHTML=`
+    <div class="illo">${POSE[m.pose]?POSE[m.pose]():""}<div class="cap">Technique — arrow shows the working direction</div></div>
+    <div class="panel">
+      <div style="font-weight:800;font-size:calc(15px*var(--tscale));text-align:center;margin-bottom:2px">Muscles worked</div>
+      <div class="bodies">
+        <div class="bodywrap"><div id="detFront"></div><div class="lbl">Front</div></div>
+        <div class="bodywrap"><div id="detBack"></div><div class="lbl">Back</div></div>
+      </div>
+      ${muscleTags(m)}
+    </div>
+    <div class="btnrow">
+      <button class="btn ${inSession?'ghost':''}" id="detSess">${inSession?'✓ In session':'＋ Add to session'}</button>
+    </div>
+    <h2 class="sec">How to do it</h2>
+    <div class="panel"><ol class="steps">${m.steps.map(s=>`<li>${s}</li>`).join("")}</ol></div>
+    <h2 class="sec">Tips &amp; common mistakes</h2>
+    <div class="panel"><ul class="tips">${m.tips.map(t=>t.startsWith("mistake:")?`<li class="mistake">${t.slice(8)}</li>`:`<li>${t}</li>`).join("")}</ul></div>
+  `;
+  $("#detFront").innerHTML=buildBody("front"); $("#detBack").innerHTML=buildBody("back");
+  paintBody($("#detFront"), m.primary, m.secondary); paintBody($("#detBack"), m.primary, m.secondary);
+  $("#detSess").onclick=()=>{ toggleSession(id); openDetail(id); renderGrid(); };
+  $("#detail").classList.add("open"); document.body.style.overflow="hidden";
+}
+function closeDetail(){ $("#detail").classList.remove("open"); document.body.style.overflow=""; detailId=null; }
+$("#detClose").onclick=closeDetail;
+$("#detFav").onclick=()=>{ if(!detailId) return; toggleFav(detailId); $("#detFav").textContent=state.favorites[detailId]?"★":"☆"; renderGrid(); };
+function toggleFav(id){ if(state.favorites[id]) delete state.favorites[id]; else state.favorites[id]=now(); touch(); }
+
+/* ============================ session ============================ */
+function toggleSession(id){ const i=state.session.indexOf(id); if(i>=0){ state.session.splice(i,1); delete state.sessionDone[id]; } else state.session.push(id); touch(); renderSession(); }
+function renderSession(){
+  const list=$("#sessList"), ids=state.session.filter(byId);
+  $("#sessEmpty").classList.toggle("hidden", ids.length>0);
+  $("#sessMapPanel").classList.toggle("hidden", ids.length===0);
+  const doneN=ids.filter(id=>state.sessionDone[id]).length;
+  $("#sessSummary").textContent=ids.length?`${ids.length} exercise${ids.length>1?"s":""} · ${doneN}/${ids.length} done`:"Nothing added yet";
+  list.innerHTML=ids.map(id=>{ const m=byId(id); const on=state.sessionDone[id];
+    const mm=m.primary.concat(m.secondary).slice(0,3).map(x=>MU[x]||x).join(", ");
+    return `<div class="sitem ${on?'on':''}" data-id="${id}">
+      <div class="th">${POSE[m.pose]?POSE[m.pose]():""}</div>
+      <div class="meta"><div class="nm">${m.name}</div><div class="mm">${mm}</div></div>
+      <button class="done" data-act="done">✓</button>
+      <button class="x" data-act="rm">✕</button>
+    </div>`; }).join("");
+  list.querySelectorAll(".sitem").forEach(el=>{
+    const id=el.dataset.id;
+    el.querySelector('[data-act=done]').onclick=()=>{ if(state.sessionDone[id]) delete state.sessionDone[id]; else state.sessionDone[id]=now(); touch(); renderSession(); };
+    el.querySelector('[data-act=rm]').onclick=()=>{ toggleSession(id); };
+    el.querySelector(".meta").onclick=()=>openDetail(id);
+    el.querySelector(".th").onclick=()=>openDetail(id);
+  });
+  // combined muscle map
+  if(ids.length){
+    const prim=new Set(), sec=new Set();
+    ids.forEach(id=>{ const m=byId(id); m.primary.forEach(x=>prim.add(x)); });
+    ids.forEach(id=>{ const m=byId(id); m.secondary.forEach(x=>{ if(!prim.has(x)) sec.add(x); }); });
+    $("#sessFront").innerHTML=buildBody("front"); $("#sessBack").innerHTML=buildBody("back");
+    paintBody($("#sessFront"),[...prim],[...sec]); paintBody($("#sessBack"),[...prim],[...sec]);
+  }
+}
+$("#sessReset").onclick=()=>{ if(!state.session.length) return; if(confirm("Clear today's session?")){ state.session=[]; state.sessionDone={}; touch(); renderSession(); } };
+
+/* ============================ muscle explorer ============================ */
+let explSel=null;
+function renderExplorer(){
+  $("#explFront").innerHTML=buildBody("front",{clickable:true});
+  $("#explBack").innerHTML=buildBody("back",{clickable:true});
+  [...document.querySelectorAll("#explFront .m, #explBack .m")].forEach(el=>{
+    el.onclick=()=>{ const ids=(el.getAttribute("data-m")||"").split(" "); explSel=ids[0]; paintExplorer(); };
+  });
+  paintExplorer();
+}
+function paintExplorer(){
+  const prim=explSel?[explSel]:[];
+  // include the paired id (delts/delts_rear) visually
+  const extra = explSel==="delts"?["delts_rear"]:explSel==="delts_rear"?["delts"]:[];
+  paintBody($("#explFront"),prim.concat(extra),[]); paintBody($("#explBack"),prim.concat(extra),[]);
+  $("#explSelName").textContent=explSel?(MU[explSel]||explSel):"";
+  const grid=$("#explGrid"), hint=$("#explHint");
+  if(!explSel){ grid.innerHTML=""; hint.classList.remove("hidden"); hint.textContent="Select a muscle above."; return; }
+  const targets=new Set([explSel].concat(extra));
+  const list=MACHINES.filter(m=>m.primary.concat(m.secondary).some(x=>targets.has(x)));
+  // primary first
+  list.sort((a,b)=>{ const ap=a.primary.some(x=>targets.has(x))?0:1, bp=b.primary.some(x=>targets.has(x))?0:1; return ap-bp; });
+  if(!list.length){ grid.innerHTML=""; hint.classList.remove("hidden"); hint.textContent="No machines listed for this muscle yet."; return; }
+  hint.classList.add("hidden");
+  grid.innerHTML=list.map(m=>{ const isP=m.primary.some(x=>targets.has(x));
+    return `<div class="card" data-id="${m.id}">${cardThumb(m)}<div class="body"><div class="cat">${isP?"Primary":"Secondary"}</div><div class="nm">${m.name}</div><div class="eq">${m.cat}</div></div></div>`; }).join("");
+  grid.querySelectorAll(".card").forEach(c=>c.onclick=()=>openDetail(c.dataset.id));
+}
+
+/* ============================ tabs ============================ */
+let activeTab="library";
+function setTab(t){
+  activeTab=t;
+  ["library","muscles","session","setup"].forEach(x=>$("#tab-"+x).classList.toggle("hidden",x!==t));
+  $$("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));
+  if(t==="session") renderSession();
+  if(t==="muscles") renderExplorer();
+  if(t==="setup") renderSetup();
+  window.scrollTo(0,0);
+}
+$$("#nav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+/* ============================ setup rendering ============================ */
+function renderSetup(){
+  $$("#segTheme button").forEach(b=>b.classList.toggle("on",b.dataset.v===theme));
+  $$("#segText button").forEach(b=>b.classList.toggle("on",b.dataset.v===textScale));
+  $("#verLine").textContent="MyFitCoach · "+APP_VERSION;
+  renderSync();
+}
+$$("#segTheme button").forEach(b=>b.onclick=()=>{ applyTheme(b.dataset.v); renderSetup(); });
+$$("#segText button").forEach(b=>b.onclick=()=>{ applyScale(b.dataset.v); renderSetup(); });
+$("#ghTokLink").onclick=()=>window.open("https://github.com/settings/tokens/new?scopes=gist&description=FitCoach%20sync","_blank","noopener");
+
+/* ============================ GitHub gist sync ============================ */
+const GH={
+  get token(){ try{return localStorage.getItem("fitcoach.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("fitcoach.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("fitcoach.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("fitcoach.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("fitcoach.gh.token",v):localStorage.removeItem("fitcoach.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("fitcoach.gh.gist",v):localStorage.removeItem("fitcoach.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("fitcoach.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("fitcoach.gh.user",v):localStorage.removeItem("fitcoach.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+const GIST_FILE="fitcoach.json";
+async function ghApi(method,path,body){
+  let res;
+  try{ res=await fetch("https://api.github.com"+path,{method,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined}); }
+  catch(e){ throw new Error("Can't reach GitHub — if you opened the file directly, serve it over http instead."); }
+  if(!res.ok){
+    let detail=""; try{ detail=(await res.json()).message||""; }catch(e){}
+    if(res.status===403||res.status===429) pauseSync(retryAfterSecs(res));
+    if(res.status===401) throw new Error("Invalid or expired token (401). Create a new classic token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited."+(detail?" "+detail:""));
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(detail?" — "+detail:""));
+  }
+  return res.json();
+}
+function markSync(msg,err){ const m=$("#syncMsg"); if(m){ m.textContent=msg||""; m.style.color=err?"var(--danger)":"var(--muted)"; } }
+function setSyncTime(){ try{localStorage.setItem("fitcoach.gh.lastSync",String(now()))}catch(e){} updateLastSync(); }
+function updateLastSync(){
+  let t=0; try{ t=Number(localStorage.getItem("fitcoach.gh.lastSync"))||0; }catch(e){}
+  const rel=!t?"never":(()=>{ const s=Math.round((now()-t)/1000); return s<10?"just now":s<60?s+"s ago":s<3600?Math.round(s/60)+" min ago":s<86400?Math.round(s/3600)+"h ago":new Date(t).toLocaleString(); })();
+  const el=$("#syncLast"); if(el) el.textContent=rel;
+  const el2=$("#syncLastTop"); if(el2 && !el2.classList.contains("flash") && el2.textContent!=="Sync error — tap" && !syncPaused()){ el2.style.color=""; el2.textContent=GH.connected?"Synced "+rel:"Not synced"; }
+}
+function spin(on){ const el=$("#topSpin"); if(el) el.style.display=on?"inline-block":"none"; }
+let flashTimer=null;
+function flashSynced(){ const el=$("#syncLastTop"); if(!el) return; el.classList.add("flash"); el.textContent="Updated ✓"; clearTimeout(flashTimer); flashTimer=setTimeout(()=>{ el.classList.remove("flash"); updateLastSync(); },2500); }
+setInterval(updateLastSync,30000);
+let syncPausedUntil=0, pendingPush=false;
+function syncPaused(){ return now()<syncPausedUntil; }
+function retryAfterSecs(res){ const ra=res.headers.get("Retry-After"); if(ra){ const n=parseInt(ra,10); if(n>0) return Math.min(3600,Math.max(30,n)); } const reset=res.headers.get("X-RateLimit-Reset"); if(reset){ const ms=parseInt(reset,10)*1000-Date.now(); if(ms>0) return Math.min(3600,Math.ceil(ms/1000)); } return 90; }
+function pauseSync(secs){ syncPausedUntil=now()+secs*1000; const el=$("#syncLastTop"); if(el){ el.classList.remove("flash"); el.style.color="var(--danger)"; el.textContent="Rate-limited — paused "+secs+"s"; } }
+let pushTimer=null;
+function schedulePush(){ if(!GH.connected||!GH.auto) return; if(syncPaused()){ pendingPush=true; return; } clearTimeout(pushTimer); pushTimer=setTimeout(()=>{ syncPush().then(()=>{pendingPush=false}).catch(e=>{ pendingPush=true; spin(false); if(!syncPaused()) markSync("Push failed: "+e.message,true); }); },1500); }
+async function syncPush(){ if(!GH.connected) return; spin(true); markSync("Saving…"); try{ await ghApi("PATCH","/gists/"+GH.gist,{files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); setSyncTime(); markSync("Synced"); } finally{ spin(false); } }
+function syncPushBeacon(){ if(!GH.connected) return; try{ fetch("https://api.github.com/gists/"+GH.gist,{method:"PATCH",keepalive:true,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}})}).then(()=>{ try{localStorage.setItem("fitcoach.gh.lastSync",String(now()))}catch(e){} }).catch(()=>{}); }catch(e){} }
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden && GH.connected && GH.auto && pendingPush) syncPushBeacon(); });
+
+function mergeRemote(remote){
+  const local=state;
+  const rNew=(remote.updatedAt||0) > (local.updatedAt||0);
+  if(!rNew) return false;
+  const before=JSON.stringify({f:local.favorites,s:local.session,d:local.sessionDone});
+  state={ favorites:remote.favorites||{}, session:Array.isArray(remote.session)?remote.session.filter(byId):[], sessionDone:remote.sessionDone||{}, updatedAt:Math.max(local.updatedAt||0,remote.updatedAt||0) };
+  persist();
+  return before!==JSON.stringify({f:state.favorites,s:state.session,d:state.sessionDone});
+}
+let gistEtag=null, pulling=false;
+async function gistGet(){
+  const headers={"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json"};
+  if(gistEtag) headers["If-None-Match"]=gistEtag;
+  let res; try{ res=await fetch("https://api.github.com/gists/"+GH.gist,{headers,cache:"no-store"}); }catch(e){ throw new Error("Can't reach GitHub (offline?)."); }
+  if(res.status===304) return {notModified:true};
+  if(!res.ok){ let detail=""; try{ detail=(await res.json()).message||""; }catch(e){} if(res.status===403||res.status===429) pauseSync(retryAfterSecs(res)); if(res.status===401) throw new Error("Invalid or expired token (401)."); if(res.status===404) throw new Error("Gist not found (404)."); throw new Error("GitHub "+res.status+(detail?" — "+detail:"")); }
+  gistEtag=res.headers.get("ETag")||gistEtag;
+  return { data:await res.json() };
+}
+async function syncPull(force,quiet){
+  if(!GH.connected) return;
+  if(pulling && quiet) return;
+  pulling=true; if(!quiet){ spin(true); markSync("Checking…"); }
+  try{
+    const r=await gistGet();
+    if(r.notModified){ setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+    const g=r.data, f=g.files&&g.files[GIST_FILE];
+    if(!f||!f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+    const remote=JSON.parse(f.truncated&&f.raw_url? await (await fetch(f.raw_url)).text() : f.content);
+    const changed=mergeRemote(remote);
+    if(force||changed){ renderGrid(); if(activeTab==="session") renderSession(); if(activeTab==="muscles") paintExplorer(); if(detailId) $("#detFav").textContent=state.favorites[detailId]?"★":"☆"; setSyncTime(); if(changed){ markSync("Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date"); return changed?"pulled":"uptodate"; }
+    else { setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+  } finally{ pulling=false; if(!quiet) spin(false); }
+}
+async function findGist(){ const list=await ghApi("GET","/gists?per_page=100"); const mine=(list||[]).filter(g=> (g.files&&g.files[GIST_FILE]) || g.description==="FitCoach sync"); if(!mine.length) return null; mine.sort((a,b)=> new Date(a.created_at)-new Date(b.created_at)); return mine[0].id; }
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$("#syncUser"); if(el) el.textContent=u.login; }catch(e){} }
+function renderSync(){
+  const d=$("#syncDisconnected"), c=$("#syncConnected"); if(!d||!c) return;
+  d.style.display=GH.connected?"none":""; c.style.display=GH.connected?"":"none";
+  if(GH.connected){ $("#syncGistId").textContent=GH.gist; $("#syncUser").textContent=GH.user||"…"; if(!GH.user) fetchUser(); $("#ghAuto").checked=GH.auto; }
+  updateLastSync();
+}
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); updateLastSync(); toast("Synced"); }catch(e){ markSync("Sync failed: "+e.message,true); toast("Sync failed"); spin(false); } }
+function autoPull(){ if(!GH.connected||!GH.auto) return; if(document.hidden) return; if($("#detail").classList.contains("open")) return; if(syncPaused()) return; syncPull(false,true).then(r=>{ if(r) updateLastSync(); if(pendingPush) schedulePush(); }).catch(()=>{ const el=$("#syncLastTop"); if(el&&!syncPaused()){ el.classList.remove("flash"); el.style.color="var(--danger)"; el.textContent="Sync error — tap"; } }); }
+setInterval(autoPull,30000);
+let lastFgPull=0;
+function foregroundPull(){ const t=now(); if(t-lastFgPull<8000) return; lastFgPull=t; autoPull(); }
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) foregroundPull(); });
+window.addEventListener("focus", foregroundPull);
+window.addEventListener("pageshow", foregroundPull);
+
+$("#syncTop").onclick=()=>{ if(GH.connected) doSyncNow(); else { setTab("setup"); toast("Connect sync below"); } };
+$("#ghConnect").onclick=async ()=>{
+  const t=$("#ghToken").value.trim(); let gid=$("#ghGist").value.trim();
+  if(!t){ markSync("Paste your GitHub token first.",true); return; }
+  GH.token=t; spin(true); markSync("Connecting…");
+  try{
+    if(!gid) gid=await findGist();
+    if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true); if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist."); } else markSync("Connected — using your existing sync."); }
+    else { const g=await ghApi("POST","/gists",{description:"FitCoach sync",public:false,files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
+    $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
+  }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
+  finally{ spin(false); }
+};
+$("#ghSyncNow").onclick=doSyncNow;
+$("#ghAuto").onchange=()=>{ GH.auto=$("#ghAuto").checked; if(GH.auto) schedulePush(); };
+$("#ghCopyGist").onclick=()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>toast("Gist ID copied"),()=>toast(GH.gist)); };
+$("#ghDisconnect").onclick=()=>{ if(confirm("Disconnect sync on this device? Your data stays here; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+
+/* ============================ search ============================ */
+$("#search").addEventListener("input", e=>{ searchQ=e.target.value.trim(); renderGrid(); });
+
+/* ============================ init ============================ */
+applyTheme(theme); applyScale(textScale);
+renderChips(); renderGrid();
+setTab("library");
+if(GH.connected && GH.auto) syncPull(false).catch(e=>{ spin(false); markSync("Pull failed: "+e.message,true); });
+updateLastSync();
+
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+</script>
+</body>
+</html>

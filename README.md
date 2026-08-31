@@ -7,6 +7,7 @@ can be added to a phone's home screen and installed as standalone apps:
 
 - **IdeaPad** — `/ideapad/` — cross-device idea notepad.
 - **FitPlan** — `/fitplan/` — cross-device gym planner.
+- **MyFitCoach** — `/fitcoach/` — PureGym technique coach: illustrated machine movements, dual front/back muscle-group maps, a tap-a-muscle explorer, and a session builder with a combined muscle map.
 - **HealthLog** — `/healthlog/` — personal health tracker (glucose, meds, measurements).
 - **Vault** — `/vault/` — encrypted password manager.
 - **RecipeBox** — `/recipebox/` — diabetic-friendly cookbook with carbs-forward nutrition, allergen/diet filters, and a daily plate tracker.
@@ -50,4 +51,4 @@ repo, follow these rules:
    ever used for an app, check `git log -- apps/<app>/sw.js`.
 
 Current cache versions (keep this list roughly in step when you bump one):
-`fitplan-v13` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11`.
+`fitplan-v13` · `fitcoach-v1` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11`.
