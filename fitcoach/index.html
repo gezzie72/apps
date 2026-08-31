@@ -132,15 +132,34 @@
 
   /* session list */
   .slist{margin-top:12px}
-  .sitem{display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:10px 12px; margin-bottom:10px}
-  .sitem .th{width:64px; height:46px; flex:0 0 auto; background:var(--panel2); border-radius:9px; overflow:hidden; display:flex; align-items:center; justify-content:center}
+  .sitem{background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:10px 12px; margin-bottom:10px}
+  .sithead{display:flex; align-items:center; gap:12px}
+  .sitem .th{width:60px; height:44px; flex:0 0 auto; background:var(--panel2); border-radius:9px; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:pointer}
   .sitem .th svg{width:100%; height:100%}
-  .sitem .meta{flex:1; min-width:0}
+  .sitem .meta{flex:1; min-width:0; cursor:pointer}
   .sitem .meta .nm{font-weight:700; font-size:calc(14px*var(--tscale)); line-height:1.2}
   .sitem .meta .mm{font-size:calc(11.5px*var(--tscale)); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .sitem .done{width:30px;height:30px;border-radius:9px;border:2px solid var(--line);background:var(--panel2);cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:800;color:transparent}
   .sitem.on .done{background:var(--ok);border-color:var(--ok);color:#043018}
+  .sitem .ind{width:26px;height:26px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--muted);border:2px solid var(--line)}
+  .sitem.on .ind{background:var(--ok);border-color:var(--ok);color:#043018}
   .sitem .x{background:none;border:0;color:var(--muted);font-size:19px;cursor:pointer;flex:0 0 auto;padding:2px 4px}
+  /* set logger */
+  .setlog{margin-top:10px; border-top:1px solid var(--line); padding-top:8px}
+  .lasthint{font-size:calc(11px*var(--tscale)); color:var(--muted); margin-bottom:6px}
+  .lasthint b{color:var(--accent); font-weight:700}
+  .sethdr,.setrow{display:grid; grid-template-columns:26px 1fr 1fr 34px 26px; gap:6px; align-items:center}
+  .sethdr{font-size:calc(10px*var(--tscale)); text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-bottom:4px}
+  .sethdr span{text-align:center}
+  .setrow{margin-bottom:6px}
+  .setrow .sn{text-align:center; font-weight:700; font-size:calc(12px*var(--tscale)); color:var(--muted)}
+  .setrow input{width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 6px; font-size:calc(14px*var(--tscale)); text-align:center; -moz-appearance:textfield}
+  .setrow input::-webkit-outer-spin-button,.setrow input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .setrow input:focus{outline:2px solid var(--accent)}
+  .setrow .sd{width:34px;height:34px;border-radius:8px;border:2px solid var(--line);background:var(--panel2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;color:transparent;padding:0}
+  .setrow .sd.on{background:var(--ok);border-color:var(--ok);color:#043018}
+  .setrow .sx{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:0}
+  .addset{background:var(--chip); border:1px dashed var(--line); color:var(--accent); border-radius:9px; padding:8px; width:100%; font-weight:700; font-size:calc(12.5px*var(--tscale)); cursor:pointer; margin-top:2px}
 
   /* setup */
   .fld{display:block; margin:10px 0}
@@ -253,6 +272,16 @@
       <div id="syncMsg" class="muted"></div>
     </div>
 
+    <h2 class="sec">Workout</h2>
+    <div class="panel">
+      <div class="toggle"><span>Weight unit</span>
+        <div class="seg" id="segUnit">
+          <button data-v="kg">kg</button><button data-v="lb">lb</button>
+        </div>
+      </div>
+      <div class="muted" style="font-size:calc(12px*var(--tscale))">Log weight &amp; reps per set in the Session tab. Sets roll into your history each new day, so you can see last time's numbers.</div>
+    </div>
+
     <h2 class="sec">Appearance</h2>
     <div class="panel">
       <div class="toggle"><span>Theme</span>
@@ -298,7 +327,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-08-31 · v1.0";
+const APP_VERSION="2026-08-31 · v1.1 set-logging + tricep-press";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -436,6 +465,10 @@ const POSE={
     +ghostSeg([120,120],[120,150])
     +figure({head:[120,72,14],neck:[120,88],hip:[120,128],sh:[120,92],el:[100,110],ha:[78,86],kn:[128,158],an:[120,180]})
     +arrow("M150,116 q10,18 0,36")),
+  tricepress:()=>frame(ground()+bench(66,150,58,14)+`<rect x="66" y="112" width="8" height="40" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="150" y="118" width="8" height="62" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([122,140],[108,116])
+    +figure({head:[112,86,14],neck:[116,102],hip:[104,150],sh:[118,108],el:[122,140],ha:[150,152],kn:[142,150],an:[142,182]})
+    +arrow("M166,126 q6,16 0,30")),
   backext:()=>frame(ground()+`<rect x="120" y="120" width="60" height="12" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="150" y="150" width="18" height="30" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +ghostSeg([150,124],[110,150])
     +figure({head:[70,110,14],neck:[86,116],hip:[150,124],sh:[86,120],el:[80,138],ha:[78,150],kn:[150,150],an:[150,180]})
@@ -569,6 +602,10 @@ const MACHINES=[
     ["triceps","chest"],["delts"],
     ["Set the assistance weight, grip the parallel bars.","Kneel/stand on the pad, arms straight, chest up.","Lower until elbows reach about 90°.","Press back up to straight arms."],
     ["Stay fairly upright to bias the triceps.","Keep elbows tracking back, not flaring wide.","mistake:Dropping too deep and straining the shoulders."]),
+  M("seated-tricep-press","Seated Tricep Press","Arms","Selectorised (seated)","tricepress",
+    ["triceps"],["chest","delts"],
+    ["Set the seat so the handles sit near the bottom of your chest.","Back flat against the pad, grip the handles, elbows tucked in at your sides.","Press the handles down and forward until the arms are straight.","Return under control until the elbows reach about 90°."],
+    ["Keep the upper arms pinned to your sides — only the forearms move.","Squeeze the triceps hard at full extension, but don't lock out hard.","mistake:Flaring the elbows out — it shifts the work off the triceps.","mistake:Leaning forward and using your bodyweight to press."]),
   M("leg-press","Leg Press","Legs","Plate-loaded (45°)","legpress",
     ["quads","glutes"],["hamstrings","adductors"],
     ["Feet shoulder-width, mid-platform; back flat on the pad.","Release the safety catches.","Lower until knees reach about 90°.","Press through the whole foot back to nearly straight (don't lock)."],
@@ -631,11 +668,30 @@ const CATS=["All","Chest","Back","Shoulders","Arms","Legs","Core","Cardio"];
 
 /* ============================ state / persistence ============================ */
 const LS="fitcoach.state";
-function freshState(){ return {favorites:{}, session:[], sessionDone:{}, updatedAt:now()}; }
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function freshState(){ return {favorites:{}, session:[], sessionDone:{}, sessionSets:{}, sessionDate:todayISO(), history:{}, unit:"kg", updatedAt:now()}; }
 let state=load();
 function load(){ try{ const s=JSON.parse(localStorage.getItem(LS)); if(s&&typeof s==="object") return Object.assign(freshState(),s);}catch(e){} return freshState(); }
 function persist(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
 function touch(){ state.updatedAt=now(); persist(); schedulePush(); }
+
+/* Roll logged sets into history when a new day starts, so "last time" numbers carry over. */
+function rolloverSession(){
+  const t=todayISO();
+  if(!state.sessionDate){ state.sessionDate=t; return; }
+  if(state.sessionDate===t) return;
+  Object.keys(state.sessionSets||{}).forEach(id=>{
+    const sets=(state.sessionSets[id]||[]).filter(s=> s.w!=="" && s.w!=null || s.r!=="" && s.r!=null);
+    if(sets.length) archiveLog(id, state.sessionDate, sets);
+  });
+  state.sessionSets={}; state.sessionDone={}; state.sessionDate=t; persist();
+}
+function archiveLog(id, date, sets){
+  if(!state.history) state.history={};
+  const h=state.history[id]||(state.history[id]=[]);
+  h.unshift({date, sets: sets.map(s=>({w:s.w, r:s.r}))});
+  if(h.length>30) h.length=30;
+}
 
 /* settings (per-device) */
 let theme=localStorage.getItem("fitcoach.theme")||"system";
@@ -708,27 +764,77 @@ $("#detFav").onclick=()=>{ if(!detailId) return; toggleFav(detailId); $("#detFav
 function toggleFav(id){ if(state.favorites[id]) delete state.favorites[id]; else state.favorites[id]=now(); touch(); }
 
 /* ============================ session ============================ */
-function toggleSession(id){ const i=state.session.indexOf(id); if(i>=0){ state.session.splice(i,1); delete state.sessionDone[id]; } else state.session.push(id); touch(); renderSession(); }
+const isCardio=m=>m.cat==="Cardio";
+function getSets(id){ if(!state.sessionSets) state.sessionSets={}; return state.sessionSets[id]||(state.sessionSets[id]=[]); }
+function itemDone(id){ const m=byId(id); if(!m) return false; if(isCardio(m)) return !!state.sessionDone[id]; const s=state.sessionSets&&state.sessionSets[id]; return !!(s&&s.length&&s.every(x=>x.done)); }
+function toggleSession(id){
+  const i=state.session.indexOf(id);
+  if(i>=0){ state.session.splice(i,1); delete state.sessionDone[id]; if(state.sessionSets) delete state.sessionSets[id]; }
+  else { state.session.push(id); const m=byId(id); if(m&&!isCardio(m)&&!getSets(id).length){ getSets(id).push({w:"",r:"",done:false}); } }
+  touch(); renderSession();
+}
+function fmtSets(sets){ return sets.filter(s=>(s.w!==""&&s.w!=null)||(s.r!==""&&s.r!=null)).map(s=>`${s.w!==""&&s.w!=null?s.w+state.unit:"—"}×${s.r!==""&&s.r!=null?s.r:"—"}`).join(" · "); }
+function lastHint(id){
+  const h=state.history&&state.history[id]; if(!h||!h.length) return "";
+  const e=h[0]; const d=new Date(e.date+"T00:00:00"); const ds=d.toLocaleDateString(undefined,{day:"numeric",month:"short"});
+  const txt=fmtSets(e.sets); if(!txt) return "";
+  return `<div class="lasthint">Last <b>${ds}</b>: ${txt}</div>`;
+}
 function renderSession(){
+  rolloverSession();
   const list=$("#sessList"), ids=state.session.filter(byId);
   $("#sessEmpty").classList.toggle("hidden", ids.length>0);
   $("#sessMapPanel").classList.toggle("hidden", ids.length===0);
-  const doneN=ids.filter(id=>state.sessionDone[id]).length;
+  const doneN=ids.filter(itemDone).length;
   $("#sessSummary").textContent=ids.length?`${ids.length} exercise${ids.length>1?"s":""} · ${doneN}/${ids.length} done`:"Nothing added yet";
-  list.innerHTML=ids.map(id=>{ const m=byId(id); const on=state.sessionDone[id];
+  list.innerHTML=ids.map(id=>{ const m=byId(id); const on=itemDone(id);
     const mm=m.primary.concat(m.secondary).slice(0,3).map(x=>MU[x]||x).join(", ");
+    let logHTML="";
+    if(isCardio(m)){
+      logHTML=`<button class="done" data-act="done" title="Mark done">✓</button>`;
+    } else {
+      const sets=getSets(id); if(!sets.length) sets.push({w:"",r:"",done:false});
+      logHTML=`<span class="ind">✓</span>`;
+    }
+    let body="";
+    if(!isCardio(m)){
+      const sets=getSets(id);
+      body=`<div class="setlog">${lastHint(id)}
+        <div class="sethdr"><span>Set</span><span>Weight (${state.unit})</span><span>Reps</span><span>Done</span><span></span></div>
+        ${sets.map((s,i)=>`<div class="setrow" data-i="${i}">
+          <div class="sn">${i+1}</div>
+          <input class="sw" inputmode="decimal" placeholder="–" value="${s.w!=null?s.w:""}">
+          <input class="sr" inputmode="numeric" placeholder="–" value="${s.r!=null?s.r:""}">
+          <button class="sd ${s.done?'on':''}" data-act="setdone">✓</button>
+          <button class="sx" data-act="setrm">✕</button>
+        </div>`).join("")}
+        <button class="addset" data-act="addset">＋ Add set</button>
+      </div>`;
+    }
     return `<div class="sitem ${on?'on':''}" data-id="${id}">
-      <div class="th">${POSE[m.pose]?POSE[m.pose]():""}</div>
-      <div class="meta"><div class="nm">${m.name}</div><div class="mm">${mm}</div></div>
-      <button class="done" data-act="done">✓</button>
-      <button class="x" data-act="rm">✕</button>
+      <div class="sithead">
+        <div class="th">${POSE[m.pose]?POSE[m.pose]():""}</div>
+        <div class="meta"><div class="nm">${m.name}</div><div class="mm">${mm}</div></div>
+        ${logHTML}
+        <button class="x" data-act="rm">✕</button>
+      </div>
+      ${body}
     </div>`; }).join("");
   list.querySelectorAll(".sitem").forEach(el=>{
-    const id=el.dataset.id;
-    el.querySelector('[data-act=done]').onclick=()=>{ if(state.sessionDone[id]) delete state.sessionDone[id]; else state.sessionDone[id]=now(); touch(); renderSession(); };
-    el.querySelector('[data-act=rm]').onclick=()=>{ toggleSession(id); };
+    const id=el.dataset.id, m=byId(id);
     el.querySelector(".meta").onclick=()=>openDetail(id);
     el.querySelector(".th").onclick=()=>openDetail(id);
+    el.querySelector('[data-act=rm]').onclick=()=>{ toggleSession(id); };
+    const dbtn=el.querySelector('[data-act=done]'); if(dbtn) dbtn.onclick=()=>{ if(state.sessionDone[id]) delete state.sessionDone[id]; else state.sessionDone[id]=now(); touch(); renderSession(); };
+    el.querySelectorAll(".setrow").forEach(row=>{
+      const i=+row.dataset.i, sets=getSets(id);
+      row.querySelector(".sw").oninput=e=>{ sets[i].w=e.target.value.trim(); touch(); };
+      row.querySelector(".sr").oninput=e=>{ sets[i].r=e.target.value.trim(); touch(); };
+      row.querySelector('[data-act=setdone]').onclick=()=>{ sets[i].done=!sets[i].done; touch(); renderSession(); };
+      row.querySelector('[data-act=setrm]').onclick=()=>{ sets.splice(i,1); if(!sets.length) sets.push({w:"",r:"",done:false}); touch(); renderSession(); };
+    });
+    const add=el.querySelector('[data-act=addset]');
+    if(add) add.onclick=()=>{ const sets=getSets(id); const last=sets[sets.length-1]; sets.push({w:last?last.w:"",r:last?last.r:"",done:false}); touch(); renderSession(); };
   });
   // combined muscle map
   if(ids.length){
@@ -739,7 +845,9 @@ function renderSession(){
     paintBody($("#sessFront"),[...prim],[...sec]); paintBody($("#sessBack"),[...prim],[...sec]);
   }
 }
-$("#sessReset").onclick=()=>{ if(!state.session.length) return; if(confirm("Clear today's session?")){ state.session=[]; state.sessionDone={}; touch(); renderSession(); } };
+$("#sessReset").onclick=()=>{ if(!state.session.length) return; if(confirm("Finish & clear today's session? Your logged sets are saved to history for next time.")){
+  Object.keys(state.sessionSets||{}).forEach(id=>{ const sets=(state.sessionSets[id]||[]).filter(s=>(s.w!==""&&s.w!=null)||(s.r!==""&&s.r!=null)); if(sets.length) archiveLog(id, state.sessionDate||todayISO(), sets); });
+  state.session=[]; state.sessionDone={}; state.sessionSets={}; state.sessionDate=todayISO(); touch(); renderSession(); } };
 
 /* ============================ muscle explorer ============================ */
 let explSel=null;
@@ -787,11 +895,13 @@ $$("#nav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 function renderSetup(){
   $$("#segTheme button").forEach(b=>b.classList.toggle("on",b.dataset.v===theme));
   $$("#segText button").forEach(b=>b.classList.toggle("on",b.dataset.v===textScale));
+  $$("#segUnit button").forEach(b=>b.classList.toggle("on",b.dataset.v===(state.unit||"kg")));
   $("#verLine").textContent="MyFitCoach · "+APP_VERSION;
   renderSync();
 }
 $$("#segTheme button").forEach(b=>b.onclick=()=>{ applyTheme(b.dataset.v); renderSetup(); });
 $$("#segText button").forEach(b=>b.onclick=()=>{ applyScale(b.dataset.v); renderSetup(); });
+$$("#segUnit button").forEach(b=>b.onclick=()=>{ state.unit=b.dataset.v; touch(); renderSetup(); if(activeTab==="session") renderSession(); });
 $("#ghTokLink").onclick=()=>window.open("https://github.com/settings/tokens/new?scopes=gist&description=FitCoach%20sync","_blank","noopener");
 
 /* ============================ GitHub gist sync ============================ */
@@ -847,10 +957,12 @@ function mergeRemote(remote){
   const local=state;
   const rNew=(remote.updatedAt||0) > (local.updatedAt||0);
   if(!rNew) return false;
-  const before=JSON.stringify({f:local.favorites,s:local.session,d:local.sessionDone});
-  state={ favorites:remote.favorites||{}, session:Array.isArray(remote.session)?remote.session.filter(byId):[], sessionDone:remote.sessionDone||{}, updatedAt:Math.max(local.updatedAt||0,remote.updatedAt||0) };
+  const before=JSON.stringify({f:local.favorites,s:local.session,d:local.sessionDone,ss:local.sessionSets,h:local.history,u:local.unit});
+  state={ favorites:remote.favorites||{}, session:Array.isArray(remote.session)?remote.session.filter(byId):[], sessionDone:remote.sessionDone||{},
+    sessionSets:remote.sessionSets||{}, sessionDate:remote.sessionDate||todayISO(), history:remote.history||{}, unit:remote.unit||local.unit||"kg",
+    updatedAt:Math.max(local.updatedAt||0,remote.updatedAt||0) };
   persist();
-  return before!==JSON.stringify({f:state.favorites,s:state.session,d:state.sessionDone});
+  return before!==JSON.stringify({f:state.favorites,s:state.session,d:state.sessionDone,ss:state.sessionSets,h:state.history,u:state.unit});
 }
 let gistEtag=null, pulling=false;
 async function gistGet(){
@@ -917,6 +1029,7 @@ $("#search").addEventListener("input", e=>{ searchQ=e.target.value.trim(); rende
 
 /* ============================ init ============================ */
 applyTheme(theme); applyScale(textScale);
+rolloverSession(); persist();
 renderChips(); renderGrid();
 setTab("library");
 if(GH.connected && GH.auto) syncPull(false).catch(e=>{ spin(false); markSync("Pull failed: "+e.message,true); });
