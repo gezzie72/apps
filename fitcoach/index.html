@@ -16,6 +16,7 @@
     --bg:#0c1016; --panel:#141a23; --panel2:#1b2330; --line:#28313f;
     --text:#e9edf3; --muted:#95a0b2; --accent:#33c6e8; --accent2:#1f9fbe;
     --prim:#33c6e8; --sec:#1c6b7e; --body:#39485c; --bodyline:#4d6076;
+    --hl:#e8702a; --hl2:#e0a25f;
     --danger:#ff6b6b; --ok:#57d38c; --warn:#f2b21e;
     --chip:#212b3a; --radius:16px; --tscale:1;
     --headerA:#12b3d6; --headerB:#0e7fa0;
@@ -117,8 +118,8 @@
 
   .mtags{display:flex; flex-wrap:wrap; gap:7px; margin-top:10px}
   .mtag{font-size:calc(12px*var(--tscale)); padding:5px 10px; border-radius:999px; font-weight:600; border:1px solid var(--line)}
-  .mtag.p{background:color-mix(in srgb, var(--prim) 22%, transparent); border-color:var(--prim); color:var(--text)}
-  .mtag.s{background:color-mix(in srgb, var(--sec) 26%, transparent); border-color:var(--sec); color:var(--text)}
+  .mtag.p{background:color-mix(in srgb, var(--hl) 22%, transparent); border-color:var(--hl); color:var(--text)}
+  .mtag.s{background:color-mix(in srgb, var(--hl2) 28%, transparent); border-color:var(--hl2); color:var(--text)}
   .mtag .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle}
 
   ol.steps{margin:8px 0 0; padding-left:0; list-style:none; counter-reset:s}
@@ -339,7 +340,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-01 · v1.5 two-legged figures + row fix";
+const APP_VERSION="2026-09-01 · v1.6 unified orange highlight";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -855,8 +856,8 @@ function renderGrid(){
 /* ============================ detail ============================ */
 let detailId=null;
 function muscleTags(m){
-  const p=m.primary.map(id=>`<span class="mtag p"><span class="dot" style="background:var(--prim)"></span>${MU[id]||id}</span>`).join("");
-  const s=m.secondary.map(id=>`<span class="mtag s"><span class="dot" style="background:var(--sec)"></span>${MU[id]||id}</span>`).join("");
+  const p=m.primary.map(id=>`<span class="mtag p"><span class="dot" style="background:var(--hl)"></span>${MU[id]||id}</span>`).join("");
+  const s=m.secondary.map(id=>`<span class="mtag s"><span class="dot" style="background:var(--hl2)"></span>${MU[id]||id}</span>`).join("");
   return `<div class="mtags">${p}${s}</div>`;
 }
 function openDetail(id){
