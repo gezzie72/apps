@@ -327,7 +327,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-08-31 · v1.1 set-logging + tricep-press";
+const APP_VERSION="2026-08-31 · v1.2 lifelike figures";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -407,16 +407,52 @@ function paintBody(container, primary, secondary){
 }
 
 /* ============================ technique illustration engine ============================ */
-/* A side-profile mannequin drawn from joints, plus equipment + a motion arrow and a dashed ghost of the moving segment. */
-function seg(a,b,w){ return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="var(--accent)" stroke-width="${w}" stroke-linecap="round"/>`; }
-function ghostSeg(a,b){ return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 5" opacity=".4"/>`; }
+/* A side-profile figure drawn from joints as tapered, muscled silhouette shapes (all one accent
+   fill so overlaps merge seamlessly), plus equipment, a motion arrow and a faint ghost of the
+   moving segment. Joints: head[x,y,r], neck, hip, sh, el, ha, kn, an. */
+const _n=v=>(+v).toFixed(1);
+function _len(a,b){ return Math.hypot(b[0]-a[0],b[1]-a[1])||1; }
+// tapered capsule path between a (half-width wa) and b (half-width wb)
+function _cap(a,b,wa,wb){
+  const d=_len(a,b), px=-(b[1]-a[1])/d, py=(b[0]-a[0])/d;
+  return `M${_n(a[0]+px*wa)},${_n(a[1]+py*wa)} L${_n(b[0]+px*wb)},${_n(b[1]+py*wb)} `
+       + `L${_n(b[0]-px*wb)},${_n(b[1]-py*wb)} L${_n(a[0]-px*wa)},${_n(a[1]-py*wa)} Z`;
+}
+const _c=(p,r)=>`<circle cx="${_n(p[0])}" cy="${_n(p[1])}" r="${_n(r)}"/>`;
+const _e=(p,rx,ry)=>`<ellipse cx="${_n(p[0])}" cy="${_n(p[1])}" rx="${_n(rx)}" ry="${_n(ry)}"/>`;
+const _mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+function seg(a,b,w){ return `<path fill="var(--accent)" d="${_cap(a,b,w/2,w/2)}"/>${_c(a,w/2)}${_c(b,w/2)}`; }
+function ghostSeg(a,b){
+  return `<g fill="var(--accent)" opacity=".26"><path d="${_cap(a,b,4.5,3.4)}"/>${_c(a,4.5)}${_c(b,3.6)}</g>`;
+}
 function figure(J){
-  // J: head[x,y,r], neck, hip, sh, el, ha, kn, an  (single limb pair, side profile)
-  let s="";
-  s+=seg(J.neck,J.hip,13);                 // torso
-  s+=seg(J.hip,J.kn,10)+seg(J.kn,J.an,8);  // leg
-  s+=seg(J.sh,J.el,8)+seg(J.el,J.ha,7);    // arm
-  s+=`<circle cx="${J.head[0]}" cy="${J.head[1]}" r="${J.head[2]}" fill="var(--accent)"/>`;
+  const r=J.head[2];
+  const face = (J.ha[0]-J.neck[0])!==0 ? Math.sign(J.ha[0]-J.neck[0]) : (Math.sign(J.kn[0]-J.hip[0])||1);
+  const chest=[ J.neck[0]+(J.hip[0]-J.neck[0])*0.32 + face*r*0.14, J.neck[1]+(J.hip[1]-J.neck[1])*0.30 ];
+  const glute=[ J.hip[0]-face*r*0.35, J.hip[1] ];
+  const footC=[ J.an[0]+face*r*0.5, J.an[1]+r*0.22 ];
+  let body="";
+  // torso: shoulder girdle -> pelvis, with a chest swell and glute
+  body+=`<path d="${_cap(J.neck,J.hip, r*0.82, r*0.98)}"/>`;
+  body+=_c(J.neck, r*0.82)+_c(J.hip, r*1.02)+_c(glute, r*0.7)+_e(chest, r*0.78, r*0.66);
+  // leg (thigh swell -> knee -> calf swell -> ankle) + foot
+  body+=`<path d="${_cap(J.hip,J.kn, r*0.82, r*0.5)}"/>`+_c(_mid(J.hip,J.kn), r*0.6)+_c(J.kn, r*0.5);
+  body+=`<path d="${_cap(J.kn,J.an, r*0.56, r*0.3)}"/>`+_e(_mid(J.kn,J.an), r*0.5, r*0.42)+_c(J.an, r*0.32);
+  body+=_e(footC, r*0.62, r*0.28);
+  // arm (deltoid -> elbow -> wrist) + hand
+  body+=`<path d="${_cap(J.sh,J.el, r*0.6, r*0.42)}"/>`+_c(J.sh, r*0.66)+_c(_mid(J.sh,J.el), r*0.48)+_c(J.el, r*0.4);
+  body+=`<path d="${_cap(J.el,J.ha, r*0.42, r*0.3)}"/>`+_c(J.ha, r*0.36);
+  // neck + head (with a subtle nose/jaw profile in the facing direction)
+  body+=`<path d="${_cap([J.head[0]+face*r*0.05, J.head[1]+r*0.6], J.neck, r*0.36, r*0.52)}"/>`;
+  body+=_e([J.head[0], J.head[1]], r*0.98, r*1.06);
+  body+=_c([J.head[0]+face*r*0.9, J.head[1]+r*0.08], r*0.2);            // nose bump
+  let s=`<g fill="var(--accent)">${body}</g>`;
+  // soft muscle sheen (subtle, theme-safe)
+  s+=`<g fill="rgba(255,255,255,.10)">`
+     + _e(chest, r*0.42, r*0.34)
+     + _c([J.sh[0]+ (_mid(J.sh,J.el)[0]-J.sh[0])*0.4, J.sh[1]+(_mid(J.sh,J.el)[1]-J.sh[1])*0.4], r*0.24)
+     + _c(_mid(J.hip,J.kn), r*0.3)
+     + `</g>`;
   return s;
 }
 function arrow(path){
