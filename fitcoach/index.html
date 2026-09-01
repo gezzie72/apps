@@ -441,7 +441,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-02 · v2.4 figure facing fix";
+const APP_VERSION="2026-09-02 · v2.5 row + crunch redraw";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -692,10 +692,15 @@ const POSE={
     +ghostSeg([120,110],[120,66])
     +figure({head:[120,100,14],neck:[120,116],hip:[120,152],sh:[120,120],el:[120,96],ha:[120,74],kn:[150,158],an:[150,182]})
     +arrow("M136,80 q6,20 0,40")),
-  row:()=>frame(ground()+bench(150,150,60,14)+`<rect x="30" y="120" width="10" height="40" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="40" y1="130" x2="112" y2="130" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
-    +ghostSeg([120,128],[70,130])
-    +figure({head:[126,104,14],neck:[122,120],hip:[126,152],sh:[120,124],el:[104,128],ha:[86,130],kn:[156,158],an:[156,182]})
-    +arrow("M90,142 q20,5 34,-4")),
+  row:()=>frame(ground()
+    +`<rect x="24" y="92" width="8" height="94" fill="var(--panel2)" stroke="var(--bodyline)"/>`   /* cable tower */
+    +`<rect x="30" y="150" width="22" height="12" rx="2" fill="var(--panel2)" stroke="var(--bodyline)"/>`  /* foot plate */
+    +bench(100,154,58,9)                                                                              /* seat */
+    +`<line x1="34" y1="152" x2="80" y2="134" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`       /* cable */
+    +ghostSeg([102,132],[124,134])
+    +figure({head:[126,104,14],neck:[122,122],hip:[120,150],sh:[120,126],el:[100,130],ha:[80,134],kn:[92,150],an:[58,166]})
+    +`<rect x="74" y="128" width="8" height="14" rx="2" fill="var(--panel2)" stroke="var(--bodyline)"/>`  /* handle */
+    +arrow("M84,146 q18,6 32,-2")),
   pullup:()=>frame(`<rect x="60" y="18" width="120" height="8" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +ghostSeg([120,70],[120,110])
     +figure({head:[120,66,14],neck:[120,82],hip:[120,124],sh:[120,86],el:[118,58],ha:[112,30],kn:[128,158],an:[122,182]})
@@ -757,10 +762,12 @@ const POSE={
     +ghostSeg([120,116],[120,150])
     +figure({head:[112,84,14],neck:[116,100],hip:[120,140],sh:[116,104],el:[128,120],ha:[138,132],kn:[138,150],an:[120,178]})
     +arrow("M150,150 q10,-16 6,-34")),
-  crunch:()=>frame(ground()+bench(70,120,64,58)+`<rect x="70" y="112" width="54" height="8" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
-    +ghostSeg([120,116],[120,96])
-    +figure({head:[104,116,14],neck:[112,124],hip:[124,150],sh:[116,126],el:[112,110],ha:[112,98],kn:[152,150],an:[152,178]})
-    +arrow("M96,120 q-6,16 8,26")),
+  crunch:()=>frame(ground()+bench(92,152,60,10)
+    +`<rect x="156" y="98" width="9" height="58" fill="var(--panel2)" stroke="var(--bodyline)"/>`   /* handle post */
+    +`<rect x="142" y="110" width="18" height="7" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`  /* handle */
+    +ghostSeg([122,124],[120,104])
+    +figure({head:[132,110,13],neck:[124,126],hip:[116,152],sh:[122,128],el:[138,120],ha:[151,114],kn:[150,152],an:[150,180]})
+    +arrow("M136,134 q7,14 -4,22")),
   twist:()=>frame(ground()+`<ellipse cx="120" cy="150" rx="46" ry="12" fill="none" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`+bench(96,150,48,28)
     +figure({head:[120,92,14],neck:[120,108],hip:[120,150],sh:[120,118],el:[146,124],ha:[164,130],kn:[150,150],an:[150,178]})
     +`<path d="M92,138 a34,14 0 0 1 60,-6" fill="none" stroke="var(--warn)" stroke-width="2.6" marker-end="url(#ah)"/><defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto"><path d="M0,0 L6,3.2 L0,6.4 Z" fill="var(--warn)"/></marker></defs>`),
