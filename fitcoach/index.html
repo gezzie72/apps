@@ -340,7 +340,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-01 · v1.7 +7 exercises (36 total)";
+const APP_VERSION="2026-09-01 · v1.8 comprehensive (57 exercises)";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -701,6 +701,45 @@ const POSE={
   lunge:()=>frame(ground()
     +figure({head:[116,52,15],neck:[116,72],hip:[120,128],sh:[116,80],el:[112,108],ha:[110,134],kn:[148,152],an:[148,186]},{backLeg:{kn:[96,158],an:[74,186]}})
     +arrow("M150,150 q6,14 0,28")),
+  hinge:()=>frame(ground()
+    +ghostSeg([116,150],[122,120])
+    +figure({head:[92,86,14],neck:[106,94],hip:[144,122],sh:[108,98],el:[112,124],ha:[116,150],kn:[152,150],an:[150,186]})
+    +`<circle cx="116" cy="150" r="16" fill="var(--panel2)" stroke="var(--bodyline)" stroke-width="2"/>`
+    +arrow("M122,120 q4,-18 -4,-32")),
+  uprightrow:()=>frame(ground()+`<rect x="150" y="28" width="7" height="66" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="123" y1="102" x2="153" y2="90" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
+    +ghostSeg([120,128],[120,104])
+    +figure({head:[120,48,15],neck:[120,68],hip:[120,128],sh:[120,74],el:[140,92],ha:[122,102],kn:[122,158],an:[124,186]})
+    +`<rect x="110" y="98" width="24" height="7" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +arrow("M150,124 q6,-14 0,-26")),
+  facepull:()=>frame(ground()+`<rect x="20" y="28" width="7" height="60" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="27" y1="42" x2="106" y2="66" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
+    +ghostSeg([120,88],[150,96])
+    +figure({head:[128,54,15],neck:[126,74],hip:[124,132],sh:[122,80],el:[100,82],ha:[106,66],kn:[124,158],an:[122,186]})
+    +arrow("M92,84 q-12,-6 -8,-20")),
+  overheadtri:()=>frame(ground()
+    +ghostSeg([124,44],[110,66])
+    +figure({head:[120,66,14],neck:[120,84],hip:[120,138],sh:[120,88],el:[126,54],ha:[130,26],kn:[122,162],an:[124,188]})
+    +arrow("M144,40 q6,-12 2,-24")),
+  lyingcurl:()=>frame(ground()+`<rect x="70" y="150" width="110" height="10" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([176,140],[200,140])
+    +figure({head:[74,132,14],neck:[90,136],hip:[150,140],sh:[92,134],el:[110,132],ha:[128,132],kn:[176,140],an:[176,110]})
+    +arrow("M190,132 q10,-8 4,-24")),
+  standcalf:()=>frame(ground()+`<rect x="108" y="176" width="42" height="10" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([124,168],[124,178])
+    +figure({head:[120,46,15],neck:[120,66],hip:[120,126],sh:[120,72],el:[118,102],ha:[116,132],kn:[122,152],an:[124,168]})
+    +arrow("M150,150 q6,-12 0,-22")),
+  smithsquat:()=>frame(ground()+`<rect x="88" y="28" width="7" height="152" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="150" y="28" width="7" height="152" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,78],[120,62])
+    +figure({head:[116,56,15],neck:[120,78],hip:[126,132],sh:[120,82],el:[130,74],ha:[140,80],kn:[150,150],an:[122,186]})
+    +`<line x1="100" y1="80" x2="150" y2="80" stroke="var(--panel2)" stroke-width="7" stroke-linecap="round"/><circle cx="150" cy="80" r="10" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +arrow("M152,150 q10,-16 6,-34")),
+  glutekickback:()=>frame(ground()+`<rect x="36" y="88" width="12" height="52" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([118,132],[120,158])
+    +figure({head:[110,58,15],neck:[112,78],hip:[118,132],sh:[112,84],el:[102,96],ha:[94,104],kn:[150,136],an:[176,124]},{backLeg:{kn:[120,158],an:[120,186]}})
+    +arrow("M156,138 q16,-6 22,-18")),
+  hangingraise:()=>frame(`<rect x="60" y="16" width="120" height="8" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
+    +ghostSeg([120,120],[124,178])
+    +figure({head:[120,60,14],neck:[120,78],hip:[120,120],sh:[120,82],el:[120,50],ha:[120,24],kn:[150,120],an:[176,116]})
+    +arrow("M150,150 q16,-10 24,-30")),
 };
 
 /* ============================ machine data ============================ */
@@ -738,10 +777,26 @@ const MACHINES=[
     ["lats"],["biceps","upperback","forearms"],
     ["Set the thigh pad, grip the bar wider than shoulders.","Sit tall, chest up, slight lean back.","Pull the bar to your upper chest, elbows driving down.","Control the bar back up until arms are straight."],
     ["Lead with the elbows, not the hands.","Squeeze the shoulder blades down and back.","mistake:Yanking the bar behind the neck.","mistake:Using body swing to heave the weight."]),
+  M("close-grip-pulldown","Close-Grip Lat Pulldown","Back","Cable (seated)","pulldown",
+    ["lats"],["biceps","upperback","forearms"],
+    ["Attach a close/neutral-grip handle to the high pulley.","Set the thigh pad, sit tall, grip the handle.","Pull down to your upper chest, driving the elbows down and in.","Control the handle back up to a full stretch."],
+    ["The closer grip lets the elbows drive down for a strong lat contraction.","Keep the chest up and avoid leaning back too far.","mistake:Using body swing to yank the weight down."]),
+  M("straight-arm-pulldown","Straight-Arm Pulldown","Back","Cable (standing)","pulldown",
+    ["lats"],["abs"],
+    ["Set a bar on the high pulley, stand tall, slight forward lean.","Arms almost straight with a fixed soft elbow bend.","Sweep the bar down in an arc to your thighs using the lats.","Return slowly overhead under control."],
+    ["Keep the arms straight — the movement is at the shoulder, not the elbow.","Feel the lats do the work, not the triceps.","mistake:Turning it into a triceps pushdown by bending the elbows."]),
   M("seated-row","Seated Row","Back","Selectorised / cable","row",
     ["upperback","lats"],["biceps","forearms"],
     ["Chest against the pad (or feet braced), grab the handles.","Sit tall with a neutral spine.","Pull the handles to your stomach, squeezing the shoulder blades.","Extend the arms back under control."],
     ["Keep the torso still — the arms and back do the work.","Pause and squeeze at the end of each pull.","mistake:Rounding the back or rocking for momentum."]),
+  M("tbar-row","Plate-Loaded / T-Bar Row","Back","Plate-loaded","row",
+    ["upperback","lats"],["biceps","forearms","lowerback"],
+    ["Chest on the pad (or hinge over with a neutral spine), grip the handles.","Start with the arms straight and a strong flat back.","Row the handle up towards your stomach, squeezing the shoulder blades.","Lower under control to a full stretch."],
+    ["Drive the elbows back and squeeze at the top.","Keep the torso still and the back flat throughout.","mistake:Heaving with the lower back instead of the mid-back."]),
+  M("single-arm-row","Single-Arm Cable Row","Back","Cable","row",
+    ["lats"],["biceps","upperback","forearms"],
+    ["Sit or half-kneel facing a low pulley, one handle in one hand.","Start with the arm extended, torso upright.","Pull the handle to your side, driving the elbow back.","Extend the arm slowly, letting the shoulder blade reach forward."],
+    ["Working one side at a time evens out left/right strength.","Let the shoulder blade move — reach at the bottom, squeeze at the top.","mistake:Twisting the torso to help pull."]),
   M("assisted-pullup","Assisted Pull-Up","Back","Assisted (knee pad)","pullup",
     ["lats"],["biceps","upperback","forearms"],
     ["Set the assistance weight (more weight = more help).","Kneel or stand on the pad, grip the top bars.","Pull your chest towards the bar, elbows down.","Lower under control to a full hang."],
@@ -750,6 +805,10 @@ const MACHINES=[
     ["lowerback","glutes"],["hamstrings"],
     ["Set the pad just below the hip bones.","Cross arms on chest, body in a straight line.","Hinge down at the hips.","Raise back up until your body is straight — don't over-arch."],
     ["Move at the hips, keep the spine neutral.","Squeeze the glutes at the top.","mistake:Hyper-arching / cranking up past straight."]),
+  M("deadlift","Deadlift","Back","Free weight (barbell)","hinge",
+    ["lowerback","glutes","hamstrings"],["upperback","traps","quads","forearms"],
+    ["Stand with mid-foot under the bar, shins close, feet hip-width.","Hinge and bend to grip the bar, chest up, flat back, hips set.","Drive the floor away, standing up as the bar travels up the legs.","Lock out tall, then hinge the hips back to lower under control."],
+    ["It's a hip hinge — push the floor away and bring the hips through.","Keep the bar close to the body and the back flat throughout.","mistake:Rounding the lower back.","mistake:Jerking the bar or yanking with the arms."]),
   M("shoulder-press","Shoulder Press","Shoulders","Selectorised (seated)","shoulderpress",
     ["delts"],["triceps","traps"],
     ["Seat height so handles start near shoulder height.","Back flat against the pad, grip the handles.","Press overhead until arms are nearly straight.","Lower under control to shoulder level."],
@@ -766,14 +825,46 @@ const MACHINES=[
     ["traps"],["forearms"],
     ["Hold a dumbbell in each hand (or the machine handles) at your sides.","Stand tall, arms straight, shoulders relaxed down.","Shrug the shoulders straight up towards your ears.","Pause at the top, then lower under control."],
     ["Move straight up and down — don't roll the shoulders.","Squeeze the traps hard at the top.","mistake:Bending the elbows to help lift the weight."]),
+  M("db-shoulder-press","Dumbbell Shoulder Press","Shoulders","Free weight (seated)","shoulderpress",
+    ["delts"],["triceps","traps"],
+    ["Sit upright, a dumbbell in each hand at shoulder height.","Brace the core, wrists stacked over the elbows.","Press the dumbbells up until the arms are nearly straight.","Lower under control back to shoulder level."],
+    ["Dumbbells work each shoulder independently and hit stabilisers.","Don't clash the dumbbells or over-arch the back.","mistake:Pressing the weights out in front instead of straight up."]),
+  M("front-raise","Front Raise","Shoulders","Free weight / cable","lateralraise",
+    ["delts"],[],
+    ["Hold a dumbbell in each hand in front of the thighs.","Stand tall, slight bend in the elbows, core braced.","Raise the weights straight out in front to shoulder height.","Lower slowly under control."],
+    ["Targets the front of the shoulder.","Stop at shoulder height — no higher, no swinging.","mistake:Using momentum from the hips to swing the weight up."]),
+  M("upright-row","Upright Row","Shoulders","Free weight / cable","uprightrow",
+    ["delts","traps"],["biceps","forearms"],
+    ["Hold a bar/dumbbells in front of the thighs, hands shoulder-width.","Stand tall, core braced.","Pull the weight straight up the body, leading with the elbows.","Lower under control to the start."],
+    ["Lead with the elbows and keep the weight close to the body.","Don't pull much above chest height — it can pinch the shoulder.","mistake:Using a very narrow grip and shrugging aggressively."]),
+  M("face-pull","Cable Face Pull","Shoulders","Cable (rope)","facepull",
+    ["delts_rear"],["upperback","traps"],
+    ["Set a rope on a pulley at about face height.","Grip the rope ends, step back to load the cable, arms extended.","Pull the rope towards your face, elbows high and flaring out.","Return slowly under control."],
+    ["Great for rear delts and shoulder health/posture.","Think about pulling the rope apart as it reaches your face.","mistake:Dropping the elbows and turning it into a row."]),
   M("bicep-curl","Bicep Curl","Arms","Selectorised / cable","curl",
     ["biceps"],["forearms"],
     ["Upper arms on the pad (or elbows pinned at sides).","Grip the handles, palms up.","Curl up towards the shoulders, squeezing the biceps.","Lower slowly until arms are straight."],
     ["Keep the upper arms still — only the forearms move.","Full range: all the way down, all the way up.","mistake:Swinging the torso to lift heavier."]),
+  M("preacher-curl","Preacher Curl","Arms","Machine / free weight","curl",
+    ["biceps"],["forearms"],
+    ["Sit with the backs of the upper arms flat on the angled pad.","Grip the bar/handles, arms extended but not locked.","Curl up towards the shoulders, squeezing the biceps.","Lower slowly until the arms are almost straight."],
+    ["The pad stops you cheating — pure biceps.","Don't fully snap the elbows straight at the bottom under load.","mistake:Lifting the elbows off the pad to help."]),
+  M("hammer-curl","Hammer Curl","Arms","Free weight","curl",
+    ["biceps","forearms"],[],
+    ["Hold dumbbells with a neutral grip (palms facing each other).","Elbows tucked at your sides, stand or sit tall.","Curl up keeping the palms facing in the whole way.","Lower slowly under control."],
+    ["The neutral grip hits the biceps and the forearm/brachialis.","Keep the upper arms still — only the forearms move.","mistake:Swinging the torso to heave the weight."]),
+  M("concentration-curl","Concentration Curl","Arms","Free weight (seated)","curl",
+    ["biceps"],["forearms"],
+    ["Sit, elbow braced against the inside of the thigh, dumbbell hanging.","Start with the arm extended.","Curl the dumbbell up towards the shoulder, squeezing hard.","Lower slowly to a full stretch."],
+    ["Bracing the elbow isolates the biceps completely.","Squeeze at the top for a peak contraction.","mistake:Moving the upper arm or leaning back to lift."]),
   M("tricep-pushdown","Tricep Pushdown","Arms","Cable","pushdown",
     ["triceps"],["forearms"],
     ["Attach a bar/rope to the high pulley.","Elbows tucked at your sides, grip the attachment.","Push down until the arms are straight.","Return under control to about 90° at the elbow."],
     ["Only the forearms move — pin the elbows.","Squeeze the triceps hard at the bottom.","mistake:Leaning over the bar and pressing with bodyweight."]),
+  M("overhead-tricep-extension","Overhead Cable Tricep Extension","Arms","Cable (rope)","overheadtri",
+    ["triceps"],["delts"],
+    ["Face away from a low/high pulley with a rope, hands overhead.","Upper arms vertical beside the head, elbows bent, rope behind the head.","Extend the arms straight up overhead by straightening the elbows.","Lower under control back behind the head."],
+    ["Keep the upper arms still and close to the head.","The overhead position stretches and works the long head of the triceps.","mistake:Letting the elbows flare wide and drift forward."]),
   M("assisted-dip","Assisted Dip","Arms","Assisted (knee pad)","dip",
     ["triceps","chest"],["delts"],
     ["Set the assistance weight, grip the parallel bars.","Kneel/stand on the pad, arms straight, chest up.","Lower until elbows reach about 90°.","Press back up to straight arms."],
@@ -794,6 +885,10 @@ const MACHINES=[
     ["hamstrings"],["calves","glutes"],
     ["Pad rests on the back of the lower legs; thigh pad locked.","Grip the handles, back into the seat.","Curl the heels down and under towards you.","Return slowly to straight legs."],
     ["Squeeze the hamstrings at the bottom of the curl.","Keep the hips down on the seat.","mistake:Jerking or bouncing at the ends of the range."]),
+  M("lying-leg-curl","Lying Leg Curl","Legs","Selectorised (prone)","lyingcurl",
+    ["hamstrings"],["calves","glutes"],
+    ["Lie face-down, the pad resting on the back of the lower legs.","Grip the handles, hips pressed into the bench.","Curl the heels up towards your glutes.","Lower slowly to straight legs under control."],
+    ["Squeeze the hamstrings at the top of the curl.","Keep the hips down — don't let them lift off the bench.","mistake:Jerking or bouncing the weight up."]),
   M("hip-abduction","Hip Abduction (Out)","Legs","Selectorised (seated)","hipab",
     ["abductors","glutes"],[],
     ["Sit with the pads against the outside of the knees.","Sit tall, hold the handles.","Push the knees apart against the pads.","Return slowly to the start."],
@@ -805,6 +900,10 @@ const MACHINES=[
   M("calf-raise","Seated Calf Raise","Legs","Selectorised / plate","calf",
     ["calves"],[],
     ["Balls of the feet on the platform, pads over the knees/thighs.","Let the heels drop for a full stretch.","Push up onto the toes as high as possible.","Lower slowly back to the stretch."],
+    ["Full range: deep stretch at the bottom, high squeeze at the top.","Pause briefly at the top of each rep.","mistake:Short, bouncy half reps."]),
+  M("standing-calf-raise","Standing Calf Raise","Legs","Machine / free weight","standcalf",
+    ["calves"],[],
+    ["Balls of the feet on the platform, shoulders under the pads (or holding weight).","Stand tall, let the heels drop for a full stretch.","Push up onto the toes as high as possible.","Lower slowly back into the stretch."],
     ["Full range: deep stretch at the bottom, high squeeze at the top.","Pause briefly at the top of each rep.","mistake:Short, bouncy half reps."]),
   M("hack-squat","Hack Squat","Legs","Plate-loaded (sled)","hacksquat",
     ["quads","glutes"],["hamstrings","adductors"],
@@ -818,6 +917,18 @@ const MACHINES=[
     ["quads","glutes"],["hamstrings","calves","adductors"],
     ["Stand tall, a dumbbell in each hand (or bodyweight).","Step forward into a lunge, torso upright.","Lower until the back knee is just above the floor.","Drive through the front heel to stand, then step through with the other leg."],
     ["Keep the front knee over the ankle, not way past the toes.","Take a long enough step so both knees reach ~90°.","mistake:Letting the front knee cave inward.","mistake:Leaning the torso far forward."]),
+  M("smith-squat","Smith Machine Squat","Legs","Smith machine","smithsquat",
+    ["quads","glutes"],["hamstrings","adductors","abs"],
+    ["Set the bar across your upper back/traps, feet slightly forward.","Unrack by rotating the bar, brace your core.","Squat down until the thighs are about parallel.","Drive up through the whole foot to standing, then re-rack."],
+    ["The fixed bar path lets you focus on the legs safely.","Push the knees out over the toes; keep the chest up.","mistake:Setting the feet too far forward and straining the knees.","mistake:Rounding the lower back at the bottom."]),
+  M("romanian-deadlift","Romanian Deadlift","Legs","Free weight (barbell/dumbbell)","hinge",
+    ["hamstrings","glutes"],["lowerback","traps","forearms"],
+    ["Stand tall holding the bar/dumbbells against the thighs.","Soft knees, push the hips back and lower the weight down the legs.","Keep the back flat and the bar close until you feel a hamstring stretch.","Drive the hips forward to stand tall again."],
+    ["It's a hip hinge with near-straight legs — feel the hamstrings stretch.","Only go as low as your hamstring flexibility allows with a flat back.","mistake:Rounding the back or turning it into a squat.","mistake:Letting the bar drift away from the legs."]),
+  M("glute-kickback","Glute Kickback","Legs","Cable / machine","glutekickback",
+    ["glutes"],["hamstrings"],
+    ["Anchor to a cable/machine, lean slightly onto the support.","Brace the core, one leg as the working leg.","Drive that leg back and up, squeezing the glute.","Return under control without letting the back arch."],
+    ["Squeeze the glute hard at the top of each rep.","Keep the movement at the hip — don't arch the lower back to go higher.","mistake:Using momentum to swing the leg back."]),
   M("ab-crunch","Ab Crunch","Core","Selectorised (seated)","crunch",
     ["abs"],["obliques"],
     ["Sit with the chest pad against you, grip the handles.","Set a weight you can control.","Crunch forward by curling the ribcage towards the hips.","Return slowly, keeping tension on the abs."],
@@ -830,6 +941,18 @@ const MACHINES=[
     ["abs"],["obliques","lowerback"],
     ["Forearms on the floor, elbows under the shoulders.","Legs straight back, body in one straight line from head to heels.","Brace the core and squeeze the glutes.","Hold, breathing steadily — build up your time gradually."],
     ["Keep a straight line — don't let the hips sag or pike up.","Look at the floor to keep the neck neutral.","mistake:Holding your breath.","mistake:Dropping the hips so the lower back arches."]),
+  M("cable-woodchopper","Cable Woodchopper","Core","Cable","twist",
+    ["obliques"],["abs"],
+    ["Set a handle on a high pulley, stand side-on, arms extended up.","Grip with both hands, brace the core, pivot the back foot.","Pull the handle down and across to the opposite hip, rotating the trunk.","Return slowly under control; do both sides."],
+    ["Rotate through the trunk and hips, arms fairly fixed.","Control the return — don't let the cable yank you back.","mistake:Pulling with just the arms instead of rotating the core."]),
+  M("russian-twist","Russian Twist","Core","Bodyweight / weight","twist",
+    ["obliques"],["abs"],
+    ["Sit with knees bent, heels down or lifted, lean back slightly.","Hold a weight (or hands together) at your chest.","Rotate the trunk to tap the weight to one side, then the other.","Keep the movement controlled and the chest up."],
+    ["Rotate from the waist, not just the arms.","Keep the back straight, not rounded.","mistake:Going fast and flinging side to side without control."]),
+  M("hanging-leg-raise","Hanging Leg Raise","Core","Bodyweight (bar)","hangingraise",
+    ["abs"],["obliques","forearms"],
+    ["Hang from a bar with straight arms, shoulders active.","Brace the core, avoid swinging.","Raise the legs up in front (knees bent to scale it down).","Lower slowly under control — don't drop and swing."],
+    ["Curl the pelvis up, not just lifting the legs, to hit the abs.","Keep the movement slow and controlled to avoid swinging.","mistake:Using momentum and swinging between reps."]),
   M("treadmill","Treadmill","Cardio","Cardio","treadmill",
     ["quads","hamstrings","calves"],["glutes"],
     ["Start walking before increasing to your pace.","Stand tall, eyes forward, relaxed shoulders.","Add incline to raise intensity without high speed.","Cool down with a slower walk before stopping."],
