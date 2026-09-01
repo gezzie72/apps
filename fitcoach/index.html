@@ -441,7 +441,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-02 · v2.6 stair climber redraw";
+const APP_VERSION="2026-09-02 · v2.7 bike + plank redraw";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -774,9 +774,14 @@ const POSE={
   treadmill:()=>frame(ground()+`<rect x="40" y="176" width="160" height="10" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="176" y="90" width="8" height="90" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="150" y="90" width="34" height="24" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +figure({head:[104,70,14],neck:[108,86],hip:[112,130],sh:[110,90],el:[96,108],ha:[108,120],kn:[132,150],an:[150,176]})
     +ghostSeg([112,130],[92,158])+arrow("M150,150 q16,2 26,0")),
-  bike:()=>frame(ground()+`<circle cx="150" cy="160" r="24" fill="none" stroke="var(--bodyline)" stroke-width="2"/><rect x="70" y="120" width="8" height="60" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="78" y1="124" x2="120" y2="130" stroke="var(--bodyline)"/>`
-    +figure({head:[100,86,14],neck:[104,102],hip:[118,132],sh:[104,106],el:[92,120],ha:[80,128],kn:[140,150],an:[150,160]})
-    +ghostSeg([140,150],[150,178])+`<path d="M132,176 a20,20 0 1 1 30,-14" fill="none" stroke="var(--warn)" stroke-width="2.6" marker-end="url(#ah)"/><defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto"><path d="M0,0 L6,3.2 L0,6.4 Z" fill="var(--warn)"/></marker></defs>`),
+  bike:()=>frame(ground()
+    +`<circle cx="152" cy="160" r="20" fill="none" stroke="var(--bodyline)" stroke-width="2"/>`      /* crank / flywheel */
+    +`<rect x="152" y="94" width="8" height="66" fill="var(--panel2)" stroke="var(--bodyline)"/>`     /* handlebar post */
+    +`<rect x="140" y="94" width="26" height="7" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`  /* handlebars */
+    +bench(102,124,34,9)                                                                              /* saddle */
+    +`<line x1="120" y1="128" x2="152" y2="158" stroke="var(--bodyline)" stroke-width="2"/>`           /* seat tube */
+    +figure({head:[120,58,14],neck:[122,78],hip:[116,124],sh:[122,82],el:[138,92],ha:[152,98],kn:[142,140],an:[152,158]},{backLeg:{kn:[130,136],an:[138,146]}})
+    +`<defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto"><path d="M0,0 L6,3.2 L0,6.4 Z" fill="var(--warn)"/></marker></defs><path d="M136,176 a20,20 0 1 1 30,-16" fill="none" stroke="var(--warn)" stroke-width="2.6" marker-end="url(#ah)"/>`),
   rowerg:()=>frame(ground()+`<line x1="20" y1="180" x2="210" y2="180" stroke="var(--bodyline)" stroke-width="3"/><rect x="20" y="140" width="14" height="30" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +ghostSeg([120,140],[70,132])
     +figure({head:[132,110,14],neck:[126,124],hip:[150,150],sh:[122,126],el:[100,130],ha:[80,132],kn:[120,150],an:[86,158]})
@@ -807,8 +812,8 @@ const POSE={
     +figure({head:[64,126,14],neck:[80,132],hip:[138,152],sh:[84,134],el:[90,158],ha:[94,178],kn:[170,168],an:[196,182]})
     +arrow("M120,150 q4,-16 2,-30")),
   plank:()=>frame(ground()
-    +figure({head:[62,128,14],neck:[78,134],hip:[138,152],sh:[82,136],el:[98,160],ha:[118,168],kn:[170,166],an:[196,180]})
-    +`<line x1="66" y1="148" x2="196" y2="176" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 4" opacity=".85"/>`),
+    +figure({head:[74,142,13],neck:[92,146],hip:[140,150],sh:[96,150],el:[96,176],ha:[122,176],kn:[172,158],an:[198,172]})
+    +`<line x1="90" y1="143" x2="198" y2="167" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 4" opacity=".85"/>`),
   gobletsquat:()=>frame(ground()
     +ghostSeg([120,110],[120,94])
     +figure({head:[116,56,15],neck:[118,76],hip:[126,132],sh:[118,84],el:[128,102],ha:[130,118],kn:[150,150],an:[122,186]})
