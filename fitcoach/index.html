@@ -209,6 +209,15 @@
   .pickrow .meta .mm{font-size:calc(11.5px*var(--tscale)); color:var(--muted)}
   .pickrow .add{width:34px;height:34px;border-radius:9px;border:2px solid var(--accent);background:none;color:var(--accent);font-size:20px;font-weight:700;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
   .pickrow.added .add{background:var(--ok);border-color:var(--ok);color:#043018}
+  /* rest timer */
+  #restTimer{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom) + 70px); z-index:40; display:none; align-items:center; gap:8px; background:var(--accent); color:#062028; border-radius:999px; padding:7px 8px 7px 14px; box-shadow:0 6px 20px rgba(0,0,0,.35); max-width:92%}
+  #restTimer.show{display:flex}
+  #restTimer.done{background:var(--ok); animation:rtflash .5s ease-in-out 3}
+  @keyframes rtflash{50%{filter:brightness(1.35)}}
+  #restTimer .rt-time{font-size:calc(15px*var(--tscale)); font-weight:700; white-space:nowrap}
+  #restTimer .rt-time b{font-variant-numeric:tabular-nums}
+  #restTimer .rt-btn{background:rgba(0,0,0,.18); color:#062028; border:0; border-radius:999px; padding:7px 12px; font-size:calc(13px*var(--tscale)); font-weight:800; cursor:pointer}
+  #restTimer .rt-btn:active{transform:scale(.96)}
 
   /* setup */
   .fld{display:block; margin:10px 0}
@@ -298,6 +307,7 @@
             <div style="font-weight:800;font-size:calc(16px*var(--tscale))">Today's session</div>
             <div class="muted" id="sessSummary" style="font-size:calc(12.5px*var(--tscale));margin-top:3px"></div>
           </div>
+          <button class="btn ghost sm" id="restBtn" title="Start rest timer">Rest ⏱</button>
           <button class="btn ghost sm" id="sessReset">Reset</button>
         </div>
         <div class="slist" id="sessList"></div>
@@ -353,6 +363,12 @@
       <div class="toggle"><span>Distance unit</span>
         <div class="seg" id="segDist">
           <button data-v="km">km</button><button data-v="mi">mi</button>
+        </div>
+      </div>
+      <div class="toggle"><span>Auto rest timer</span><label class="switch"><input type="checkbox" id="restAutoTgl"><span class="slider"></span></label></div>
+      <div class="toggle"><span>Rest length</span>
+        <div class="seg" id="segRest">
+          <button data-v="45">45s</button><button data-v="60">60s</button><button data-v="90">90s</button><button data-v="120">2m</button>
         </div>
       </div>
       <div class="muted" style="font-size:calc(12px*var(--tscale))">In the Session tab, log weight &amp; reps for machines and time &amp; distance for cardio. Everything rolls into your history each new day, so you can see last time's numbers.</div>
@@ -412,13 +428,20 @@
   <button data-tab="setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>Setup</button>
 </nav>
 
+<div id="restTimer">
+  <button class="rt-btn" id="rtSkip">Skip</button>
+  <button class="rt-btn rt-adj" id="rtMinus">−15</button>
+  <div class="rt-time"><span id="rtLabel">Rest</span> <b id="rtVal">1:30</b></div>
+  <button class="rt-btn rt-adj" id="rtPlus">+15</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-01 · v2.2 weekly routine planner";
+const APP_VERSION="2026-09-02 · v2.3 rest timer";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -1319,7 +1342,7 @@ function renderSession(){
       const i=+row.dataset.i, sets=getSets(id);
       row.querySelector(".sw").oninput=e=>{ sets[i].w=e.target.value.trim(); touch(); };
       row.querySelector(".sr").oninput=e=>{ sets[i].r=e.target.value.trim(); touch(); };
-      row.querySelector('[data-act=setdone]').onclick=()=>{ sets[i].done=!sets[i].done; touch(); renderSession(); };
+      row.querySelector('[data-act=setdone]').onclick=()=>{ sets[i].done=!sets[i].done; if(sets[i].done && restAuto) startRest(); touch(); renderSession(); };
       row.querySelector('[data-act=setrm]').onclick=()=>{ sets.splice(i,1); if(!sets.length) sets.push({w:"",r:"",done:false}); touch(); renderSession(); };
     });
     const add=el.querySelector('[data-act=addset]');
@@ -1341,6 +1364,36 @@ $("#sessReset").onclick=()=>{ if(!state.session.length) return; if(confirm("Fini
   Object.keys(state.sessionSets||{}).forEach(id=>{ const sets=(state.sessionSets[id]||[]).filter(s=>has(s.w)||has(s.r)); if(sets.length) archiveLog(id, dt, {sets:sets.map(s=>({w:s.w,r:s.r}))}); });
   Object.keys(state.cardio||{}).forEach(id=>{ const c=state.cardio[id]; if(c&&(has(c.mins)||has(c.dist))) archiveLog(id, dt, {cardio:{mins:c.mins,dist:c.dist}}); });
   state.session=[]; state.sessionDone={}; state.sessionSets={}; state.cardio={}; state.sessionDate=todayISO(); touch(); renderSession(); } };
+
+/* ============================ rest timer (device pref) ============================ */
+let restAuto = localStorage.getItem("fitcoach.restAuto")!=="0";
+let restSecs = Math.max(5, +(localStorage.getItem("fitcoach.restSecs")||90));
+let restRemain=0, restId=null;
+function fmtMMSS(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function updateRestVal(){ const el=$("#rtVal"); if(el) el.textContent=fmtMMSS(restRemain); }
+function startRest(secs){
+  restRemain = secs || restSecs;
+  const t=$("#restTimer"); t.classList.remove("done"); t.classList.add("show");
+  $("#rtLabel").textContent="Rest"; updateRestVal();
+  clearInterval(restId); restId=setInterval(()=>{ restRemain--; if(restRemain<=0){ restRemain=0; updateRestVal(); clearInterval(restId); restDone(); } else updateRestVal(); },1000);
+}
+function stopRest(){ clearInterval(restId); restRemain=0; const t=$("#restTimer"); t.classList.remove("show","done"); }
+function restDone(){
+  const t=$("#restTimer"); t.classList.add("done"); $("#rtLabel").textContent="Rest over —"; $("#rtVal").textContent="go!";
+  restBeep(); try{ if(navigator.vibrate) navigator.vibrate([220,120,220]); }catch(e){}
+  setTimeout(()=>t.classList.remove("show","done"),3200);
+}
+let restAC=null;
+function restBeep(){
+  try{ restAC=restAC||new (window.AudioContext||window.webkitAudioContext)(); const ac=restAC; if(ac.state==="suspended") ac.resume();
+    [0,0.18].forEach(dt=>{ const o=ac.createOscillator(),g=ac.createGain(); o.connect(g); g.connect(ac.destination); o.type="sine"; o.frequency.value=880;
+      const s=ac.currentTime+dt; g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(0.25,s+0.01); g.gain.exponentialRampToValueAtTime(0.0001,s+0.14); o.start(s); o.stop(s+0.16); });
+  }catch(e){}
+}
+$("#rtSkip").onclick=stopRest;
+$("#rtMinus").onclick=()=>{ if(!restRemain) return; restRemain=Math.max(1,restRemain-15); updateRestVal(); };
+$("#rtPlus").onclick=()=>{ restRemain=(restRemain||0)+15; if(!$("#restTimer").classList.contains("show")){ $("#restTimer").classList.add("show"); $("#rtLabel").textContent="Rest"; } updateRestVal(); if(!restId){ restId=setInterval(()=>{ restRemain--; if(restRemain<=0){ restRemain=0; updateRestVal(); clearInterval(restId); restId=null; restDone(); } else updateRestVal(); },1000); } };
+$("#restBtn")&&($("#restBtn").onclick=()=>startRest());
 
 /* ============================ weekly plan ============================ */
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -1476,6 +1529,8 @@ function renderSetup(){
   $$("#segText button").forEach(b=>b.classList.toggle("on",b.dataset.v===textScale));
   $$("#segUnit button").forEach(b=>b.classList.toggle("on",b.dataset.v===(state.unit||"kg")));
   $$("#segDist button").forEach(b=>b.classList.toggle("on",b.dataset.v===(state.distUnit||"km")));
+  $("#restAutoTgl").checked=restAuto;
+  $$("#segRest button").forEach(b=>b.classList.toggle("on",+b.dataset.v===restSecs));
   $("#verLine").textContent="MyFitCoach · "+APP_VERSION;
   renderSync();
 }
@@ -1483,6 +1538,8 @@ $$("#segTheme button").forEach(b=>b.onclick=()=>{ applyTheme(b.dataset.v); rende
 $$("#segText button").forEach(b=>b.onclick=()=>{ applyScale(b.dataset.v); renderSetup(); });
 $$("#segUnit button").forEach(b=>b.onclick=()=>{ state.unit=b.dataset.v; touch(); renderSetup(); if(activeTab==="session") renderSession(); });
 $$("#segDist button").forEach(b=>b.onclick=()=>{ state.distUnit=b.dataset.v; touch(); renderSetup(); if(activeTab==="session") renderSession(); });
+$("#restAutoTgl").onchange=e=>{ restAuto=e.target.checked; localStorage.setItem("fitcoach.restAuto",restAuto?"1":"0"); };
+$$("#segRest button").forEach(b=>b.onclick=()=>{ restSecs=+b.dataset.v; localStorage.setItem("fitcoach.restSecs",String(restSecs)); renderSetup(); });
 $("#ghTokLink").onclick=()=>window.open("https://github.com/settings/tokens/new?scopes=gist&description=FitCoach%20sync","_blank","noopener");
 
 /* ============================ GitHub gist sync ============================ */
