@@ -441,7 +441,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-02 · v2.3 rest timer";
+const APP_VERSION="2026-09-02 · v2.4 figure facing fix";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -584,7 +584,10 @@ function ghostSeg(a,b){
 function figure(J, opts={}){
   // Athletic male build: broad shoulders/chest tapering to a narrow waist (V-taper), lean limbs.
   const r=J.head[2];
-  const face = (J.ha[0]-J.neck[0])!==0 ? Math.sign(J.ha[0]-J.neck[0]) : (Math.sign(J.kn[0]-J.hip[0])||1);
+  // which way the figure faces — from the legs (knee ahead of hip), so feet/nose/far-limb line up with the pose;
+  // fall back to the arm, then the foot; a pose can override with opts.face for bent-over stances.
+  const face = opts.face!=null ? opts.face
+    : (Math.sign(J.kn[0]-J.hip[0]) || (J.ha[0]-J.neck[0]!==0 ? Math.sign(J.ha[0]-J.neck[0]) : (Math.sign(J.an[0]-J.hip[0])||1)));
   const lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
   const waist=lerp(J.neck,J.hip,0.60);      // narrowest point of the trunk
   const pec  =[ J.neck[0]+(J.hip[0]-J.neck[0])*0.18 + face*r*0.34, J.neck[1]+(J.hip[1]-J.neck[1])*0.18 ];
@@ -804,7 +807,7 @@ const POSE={
     +arrow("M150,150 q6,14 0,28")),
   hinge:()=>frame(ground()
     +ghostSeg([116,150],[122,120])
-    +figure({head:[92,86,14],neck:[106,94],hip:[144,122],sh:[108,98],el:[112,124],ha:[116,150],kn:[152,150],an:[150,186]})
+    +figure({head:[92,86,14],neck:[106,94],hip:[144,122],sh:[108,98],el:[112,124],ha:[116,150],kn:[152,150],an:[150,186]},{face:-1})
     +`<circle cx="116" cy="150" r="16" fill="var(--panel2)" stroke="var(--bodyline)" stroke-width="2"/>`
     +arrow("M122,120 q4,-18 -4,-32")),
   uprightrow:()=>frame(ground()+`<rect x="150" y="28" width="7" height="66" fill="var(--panel2)" stroke="var(--bodyline)"/><line x1="123" y1="102" x2="153" y2="90" stroke="var(--bodyline)" stroke-dasharray="3 4"/>`
@@ -835,7 +838,7 @@ const POSE={
     +arrow("M152,150 q10,-16 6,-34")),
   glutekickback:()=>frame(ground()+`<rect x="36" y="88" width="12" height="52" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +ghostSeg([118,132],[120,158])
-    +figure({head:[110,58,15],neck:[112,78],hip:[118,132],sh:[112,84],el:[102,96],ha:[94,104],kn:[150,136],an:[176,124]},{backLeg:{kn:[120,158],an:[120,186]}})
+    +figure({head:[110,58,15],neck:[112,78],hip:[118,132],sh:[112,84],el:[102,96],ha:[94,104],kn:[150,136],an:[176,124]},{backLeg:{kn:[120,158],an:[120,186]},face:-1})
     +arrow("M156,138 q16,-6 22,-18")),
   hangingraise:()=>frame(`<rect x="60" y="16" width="120" height="8" rx="4" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +ghostSeg([120,120],[124,178])
