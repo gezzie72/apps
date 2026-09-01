@@ -441,7 +441,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-02 · v2.5 row + crunch redraw";
+const APP_VERSION="2026-09-02 · v2.6 stair climber redraw";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -784,9 +784,14 @@ const POSE={
   elliptical:()=>frame(ground()+`<circle cx="150" cy="160" r="22" fill="none" stroke="var(--bodyline)" stroke-width="2"/><rect x="60" y="60" width="8" height="120" fill="var(--panel2)" stroke="var(--bodyline)"/><rect x="180" y="60" width="8" height="120" fill="var(--panel2)" stroke="var(--bodyline)"/>`
     +figure({head:[120,80,14],neck:[120,96],hip:[120,140],sh:[120,100],el:[104,118],ha:[88,110],kn:[146,162],an:[164,178]})
     +ghostSeg([120,140],[98,168])+arrow("M164,176 q10,-2 14,-10")),
-  stair:()=>frame(ground()+`<path d="M60,180 h30 v-16 h30 v-16 h30 v-16 h30" fill="none" stroke="var(--bodyline)" stroke-width="2.5"/><rect x="176" y="70" width="8" height="80" fill="var(--panel2)" stroke="var(--bodyline)"/>`
-    +figure({head:[112,74,14],neck:[114,90],hip:[118,132],sh:[116,94],el:[130,108],ha:[144,112],kn:[102,150],an:[92,164]})
-    +ghostSeg([118,132],[140,150])+arrow("M140,150 q6,-14 2,-26")),
+  stair:()=>frame(ground()
+    +`<rect x="160" y="68" width="8" height="94" fill="var(--panel2)" stroke="var(--bodyline)"/>`     /* console post */
+    +`<rect x="136" y="90" width="28" height="7" rx="3" fill="var(--panel2)" stroke="var(--bodyline)"/>`  /* handrail */
+    +`<rect x="136" y="150" width="30" height="8" fill="var(--panel2)" stroke="var(--bodyline)"/>`     /* raised pedal */
+    +`<rect x="96" y="182" width="32" height="8" fill="var(--panel2)" stroke="var(--bodyline)"/>`      /* lower pedal */
+    +ghostSeg([140,140],[118,152])
+    +figure({head:[118,52,14],neck:[118,72],hip:[120,128],sh:[118,78],el:[133,90],ha:[150,94],kn:[140,140],an:[150,150]},{backLeg:{kn:[118,158],an:[116,182]}})
+    +arrow("M161,146 q7,10 0,20")),
   shrug:()=>frame(ground()
     +ghostSeg([120,74],[120,86])
     +figure({head:[120,46,15],neck:[120,66],hip:[120,128],sh:[120,74],el:[117,104],ha:[114,138],kn:[122,158],an:[124,186]})
