@@ -182,6 +182,33 @@
   .chartstats > div{flex:1; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:8px 4px; text-align:center}
   .chartstats span{display:block; font-size:calc(10px*var(--tscale)); color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:2px}
   .chartstats b{font-size:calc(14px*var(--tscale))}
+  /* weekly plan */
+  .fullseg{display:flex; width:100%; margin:14px 0 4px}
+  .fullseg button{flex:1}
+  .daycard{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px; margin:12px 0}
+  .daycard.today{border-color:var(--accent)}
+  .dayhead{display:flex; align-items:center; gap:8px; margin-bottom:8px}
+  .dayname{font-weight:800; font-size:calc(15px*var(--tscale))}
+  .todaybadge{font-size:calc(10px*var(--tscale)); font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:#062028; background:var(--accent); border-radius:999px; padding:2px 8px}
+  .daylabel{flex:1; min-width:0; background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:7px 10px; font-size:calc(13px*var(--tscale))}
+  .dayex{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line)}
+  .dayex:last-of-type{border-bottom:0}
+  .dayex .th{width:46px; height:34px; flex:0 0 auto; background:var(--panel2); border-radius:7px; overflow:hidden; display:flex; align-items:center; justify-content:center}
+  .dayex .th svg{width:100%;height:100%}
+  .dayex .nm{flex:1; min-width:0; font-size:calc(13.5px*var(--tscale)); font-weight:600}
+  .dayex .x{background:none;border:0;color:var(--muted);font-size:17px;cursor:pointer;padding:2px 4px;flex:0 0 auto}
+  .dayrest{color:var(--muted); font-size:calc(12.5px*var(--tscale)); padding:6px 0}
+  .dayactions{display:flex; gap:8px; margin-top:10px}
+  .dayactions .btn{flex:1}
+  /* picker list */
+  .pickrow{display:flex; align-items:center; gap:12px; padding:10px 4px; border-bottom:1px solid var(--line); cursor:pointer}
+  .pickrow .th{width:52px; height:38px; flex:0 0 auto; background:var(--panel2); border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center}
+  .pickrow .th svg{width:100%;height:100%}
+  .pickrow .meta{flex:1; min-width:0}
+  .pickrow .meta .nm{font-weight:700; font-size:calc(14px*var(--tscale))}
+  .pickrow .meta .mm{font-size:calc(11.5px*var(--tscale)); color:var(--muted)}
+  .pickrow .add{width:34px;height:34px;border-radius:9px;border:2px solid var(--accent);background:none;color:var(--accent);font-size:20px;font-weight:700;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+  .pickrow.added .add{background:var(--ok);border-color:var(--ok);color:#043018}
 
   /* setup */
   .fld{display:block; margin:10px 0}
@@ -261,23 +288,32 @@
 
   <!-- SESSION -->
   <section id="tab-session" class="hidden">
-    <div class="panel">
-      <div class="row">
-        <div style="flex:1">
-          <div style="font-weight:800;font-size:calc(16px*var(--tscale))">Today's session</div>
-          <div class="muted" id="sessSummary" style="font-size:calc(12.5px*var(--tscale));margin-top:3px"></div>
-        </div>
-        <button class="btn ghost sm" id="sessReset">Reset</button>
-      </div>
-      <div class="slist" id="sessList"></div>
-      <div class="empty" id="sessEmpty">Add machines from the Library (＋ Session) to build a workout.<br>The combined muscle map shows below once you do.</div>
+    <div class="seg fullseg" id="sessModeSeg">
+      <button data-v="today" class="on">Today</button><button data-v="plan">Weekly plan</button>
     </div>
-    <div class="panel hidden" id="sessMapPanel">
-      <div style="font-weight:800;font-size:calc(15px*var(--tscale));text-align:center;margin-bottom:6px">Muscles worked this session</div>
-      <div class="bodies">
-        <div class="bodywrap"><div id="sessFront"></div><div class="lbl">Front</div></div>
-        <div class="bodywrap"><div id="sessBack"></div><div class="lbl">Back</div></div>
+    <div id="sessToday">
+      <div class="panel">
+        <div class="row">
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:calc(16px*var(--tscale))">Today's session</div>
+            <div class="muted" id="sessSummary" style="font-size:calc(12.5px*var(--tscale));margin-top:3px"></div>
+          </div>
+          <button class="btn ghost sm" id="sessReset">Reset</button>
+        </div>
+        <div class="slist" id="sessList"></div>
+        <div class="empty" id="sessEmpty">Add machines from the Library (＋ Session), or load a day from your <b>Weekly plan</b> above.</div>
       </div>
+      <div class="panel hidden" id="sessMapPanel">
+        <div style="font-weight:800;font-size:calc(15px*var(--tscale));text-align:center;margin-bottom:6px">Muscles worked this session</div>
+        <div class="bodies">
+          <div class="bodywrap"><div id="sessFront"></div><div class="lbl">Front</div></div>
+          <div class="bodywrap"><div id="sessBack"></div><div class="lbl">Back</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="sessPlan" class="hidden">
+      <div class="muted" style="font-size:calc(12.5px*var(--tscale));margin:4px 4px 0">Build a routine for each day, then tap <b>Start</b> to load it into today's session and log it.</div>
+      <div id="planList"></div>
     </div>
   </section>
 
@@ -354,6 +390,20 @@
   <div class="ocontent" id="detBody"></div>
 </div>
 
+<!-- EXERCISE PICKER OVERLAY (for the weekly plan) -->
+<div class="overlay" id="picker">
+  <div class="ohead">
+    <button class="iconbtn" id="pickClose">‹</button>
+    <div style="flex:1;min-width:0"><div class="ttl" id="pickTitle">Add exercises</div><div class="sub" id="pickSub"></div></div>
+    <button class="btn sm" id="pickDone">Done</button>
+  </div>
+  <div class="ocontent">
+    <input class="search" id="pickSearch" placeholder="Search machines, muscles…" autocomplete="off" style="margin-top:0">
+    <div class="chips" id="pickChips"></div>
+    <div id="pickList"></div>
+  </div>
+</div>
+
 <nav class="tabs" id="nav">
   <button data-tab="library" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Library</button>
   <button data-tab="favs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>Saved</button>
@@ -368,7 +418,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-01 · v2.1 progress charts";
+const APP_VERSION="2026-09-01 · v2.2 weekly routine planner";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -1008,7 +1058,8 @@ const CATS=["All","Chest","Back","Shoulders","Arms","Legs","Core","Cardio"];
 /* ============================ state / persistence ============================ */
 const LS="fitcoach.state";
 function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-function freshState(){ return {favorites:{}, session:[], sessionDone:{}, sessionSets:{}, cardio:{}, sessionDate:todayISO(), history:{}, unit:"kg", distUnit:"km", updatedAt:now()}; }
+function emptyPlan(){ return Array.from({length:7},()=>({name:"", ids:[]})); }
+function freshState(){ return {favorites:{}, session:[], sessionDone:{}, sessionSets:{}, cardio:{}, sessionDate:todayISO(), history:{}, plan:emptyPlan(), unit:"kg", distUnit:"km", updatedAt:now()}; }
 let state=load();
 function load(){ try{ const s=JSON.parse(localStorage.getItem(LS)); if(s&&typeof s==="object") return Object.assign(freshState(),s);}catch(e){} return freshState(); }
 function persist(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
@@ -1291,6 +1342,91 @@ $("#sessReset").onclick=()=>{ if(!state.session.length) return; if(confirm("Fini
   Object.keys(state.cardio||{}).forEach(id=>{ const c=state.cardio[id]; if(c&&(has(c.mins)||has(c.dist))) archiveLog(id, dt, {cardio:{mins:c.mins,dist:c.dist}}); });
   state.session=[]; state.sessionDone={}; state.sessionSets={}; state.cardio={}; state.sessionDate=todayISO(); touch(); renderSession(); } };
 
+/* ============================ weekly plan ============================ */
+const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const todayDayIndex=()=> (new Date().getDay()+6)%7;   // 0 = Monday
+let sessMode="today";
+function getPlan(){ if(!Array.isArray(state.plan)||state.plan.length!==7) state.plan=emptyPlan(); return state.plan; }
+function showSession(){
+  const plan=sessMode==="plan";
+  $("#sessToday").classList.toggle("hidden",plan);
+  $("#sessPlan").classList.toggle("hidden",!plan);
+  $$("#sessModeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v===sessMode));
+  if(plan) renderPlan(); else renderSession();
+}
+$$("#sessModeSeg button").forEach(b=>b.onclick=()=>{ sessMode=b.dataset.v; showSession(); window.scrollTo(0,0); });
+function renderPlan(){
+  const plan=getPlan(), ti=todayDayIndex();
+  $("#planList").innerHTML=DAYS.map((day,i)=>{
+    const d=plan[i], ids=(d.ids||[]).filter(byId);
+    const exs = ids.length ? ids.map(id=>{ const m=byId(id);
+      return `<div class="dayex" data-id="${id}"><div class="th">${illo(m)}</div><div class="nm">${m.name}</div><button class="x" data-act="rmex">✕</button></div>`;
+    }).join("") : `<div class="dayrest">Rest day — no exercises yet.</div>`;
+    return `<div class="daycard ${i===ti?'today':''}" data-i="${i}">
+      <div class="dayhead"><span class="dayname">${day}</span>${i===ti?'<span class="todaybadge">Today</span>':''}
+        <input class="daylabel" data-act="label" placeholder="Label (e.g. Push, Legs, Rest)" value="${(d.name||'').replace(/"/g,'&quot;')}"></div>
+      ${exs}
+      <div class="dayactions">
+        <button class="btn ghost sm" data-act="add">＋ Add exercise</button>
+        ${ids.length?`<button class="btn sm" data-act="start">▶ Start</button>`:''}
+      </div>
+    </div>`;
+  }).join("");
+  $("#planList").querySelectorAll(".daycard").forEach(card=>{
+    const i=+card.dataset.i, d=plan[i];
+    card.querySelector('[data-act=label]').oninput=e=>{ d.name=e.target.value; touch(); };
+    card.querySelector('[data-act=add]').onclick=()=>openPicker(i);
+    const st=card.querySelector('[data-act=start]'); if(st) st.onclick=()=>startDay(i);
+    card.querySelectorAll('.dayex').forEach(row=>{
+      row.querySelector('[data-act=rmex]').onclick=()=>{ const id=row.dataset.id; d.ids=(d.ids||[]).filter(x=>x!==id); touch(); renderPlan(); };
+      row.querySelector('.th').onclick=()=>openDetail(row.dataset.id);
+      row.querySelector('.nm').onclick=()=>openDetail(row.dataset.id);
+    });
+  });
+}
+function startDay(i){
+  const d=getPlan()[i], ids=(d.ids||[]).filter(byId);
+  if(!ids.length) return;
+  const replace = !state.session.length || confirm("Replace today's session with this day's plan?");
+  if(!replace) return;
+  state.session=ids.slice(); state.sessionDone={}; state.sessionSets={}; state.cardio={};
+  ids.forEach(id=>{ const m=byId(id); if(m&&!isCardio(m)) getSets(id).push({w:"",r:"",done:false}); });
+  touch(); sessMode="today"; showSession(); window.scrollTo(0,0);
+  toast((d.name?d.name+" — ":"")+"loaded into today's session");
+}
+/* exercise picker overlay */
+let pickDay=null, pickCat="All", pickQ="";
+function openPicker(dayIndex){
+  pickDay=dayIndex; pickCat="All"; pickQ=""; $("#pickSearch").value="";
+  $("#pickSub").textContent=DAYS[dayIndex];
+  renderPickChips(); renderPickList();
+  $("#picker").classList.add("open"); document.body.style.overflow="hidden";
+}
+function closePicker(){ $("#picker").classList.remove("open"); document.body.style.overflow=""; pickDay=null; renderPlan(); }
+$("#pickClose").onclick=closePicker; $("#pickDone").onclick=closePicker;
+function renderPickChips(){
+  const c=$("#pickChips"); c.innerHTML="";
+  CATS.forEach(cat=>{ const b=document.createElement("button"); b.className="chip"+(cat===pickCat?" on":""); b.textContent=cat; b.onclick=()=>{pickCat=cat; renderPickChips(); renderPickList();}; c.appendChild(b); });
+}
+function renderPickList(){
+  if(pickDay==null) return;
+  const d=getPlan()[pickDay];
+  const list=MACHINES.filter(m=>{
+    if(pickCat!=="All" && m.cat!==pickCat) return false;
+    if(pickQ){ const hay=(m.name+" "+m.cat+" "+m.eq+" "+m.primary.concat(m.secondary).map(x=>MU[x]||x).join(" ")).toLowerCase(); if(!hay.includes(pickQ)) return false; }
+    return true;
+  });
+  $("#pickList").innerHTML=list.map(m=>{ const added=(d.ids||[]).includes(m.id);
+    const mm=m.primary.slice(0,2).map(x=>MU[x]||x).join(", ");
+    return `<div class="pickrow ${added?'added':''}" data-id="${m.id}"><div class="th">${illo(m)}</div><div class="meta"><div class="nm">${m.name}</div><div class="mm">${m.cat} · ${mm}</div></div><button class="add">${added?'✓':'＋'}</button></div>`;
+  }).join("");
+  $("#pickList").querySelectorAll(".pickrow").forEach(row=>{
+    row.onclick=()=>{ const id=row.dataset.id; d.ids=d.ids||[]; const at=d.ids.indexOf(id);
+      if(at>=0) d.ids.splice(at,1); else d.ids.push(id); touch(); renderPickList(); };
+  });
+}
+$("#pickSearch").addEventListener("input", e=>{ pickQ=e.target.value.trim().toLowerCase(); renderPickList(); });
+
 /* ============================ muscle explorer ============================ */
 let explSel=null;
 function renderExplorer(){
@@ -1327,7 +1463,7 @@ function setTab(t){
   ["library","favs","muscles","session","setup"].forEach(x=>$("#tab-"+x).classList.toggle("hidden",x!==t));
   $$("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));
   if(t==="favs") renderFavs();
-  if(t==="session") renderSession();
+  if(t==="session") showSession();
   if(t==="muscles") renderExplorer();
   if(t==="setup") renderSetup();
   window.scrollTo(0,0);
@@ -1402,10 +1538,11 @@ function mergeRemote(remote){
   const local=state;
   const rNew=(remote.updatedAt||0) > (local.updatedAt||0);
   if(!rNew) return false;
-  const snap=st=>JSON.stringify({f:st.favorites,s:st.session,d:st.sessionDone,ss:st.sessionSets,c:st.cardio,h:st.history,u:st.unit,du:st.distUnit});
+  const snap=st=>JSON.stringify({f:st.favorites,s:st.session,d:st.sessionDone,ss:st.sessionSets,c:st.cardio,h:st.history,p:st.plan,u:st.unit,du:st.distUnit});
   const before=snap(local);
   state={ favorites:remote.favorites||{}, session:Array.isArray(remote.session)?remote.session.filter(byId):[], sessionDone:remote.sessionDone||{},
     sessionSets:remote.sessionSets||{}, cardio:remote.cardio||{}, sessionDate:remote.sessionDate||todayISO(), history:remote.history||{},
+    plan:Array.isArray(remote.plan)&&remote.plan.length===7?remote.plan.map(d=>({name:d&&d.name||"", ids:Array.isArray(d&&d.ids)?d.ids.filter(byId):[]})):(local.plan||emptyPlan()),
     unit:remote.unit||local.unit||"kg", distUnit:remote.distUnit||local.distUnit||"km",
     updatedAt:Math.max(local.updatedAt||0,remote.updatedAt||0) };
   persist();
