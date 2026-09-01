@@ -167,6 +167,12 @@
   .setrow .sd.on{background:var(--ok);border-color:var(--ok);color:#043018}
   .setrow .sx{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:0}
   .addset{background:var(--chip); border:1px dashed var(--line); color:var(--accent); border-radius:9px; padding:8px; width:100%; font-weight:700; font-size:calc(12.5px*var(--tscale)); cursor:pointer; margin-top:2px}
+  .cardiorow{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .cfld{display:flex; flex-direction:column; gap:4px; min-width:0}
+  .cfld span{font-size:calc(11px*var(--tscale)); text-transform:uppercase; letter-spacing:.4px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .cfld input{width:100%; min-width:0; background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:10px 10px; font-size:calc(15px*var(--tscale)); text-align:center; -moz-appearance:textfield}
+  .cfld input::-webkit-outer-spin-button,.cfld input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .cfld input:focus{outline:2px solid var(--accent)}
 
   /* setup */
   .fld{display:block; margin:10px 0}
@@ -292,7 +298,12 @@
           <button data-v="kg">kg</button><button data-v="lb">lb</button>
         </div>
       </div>
-      <div class="muted" style="font-size:calc(12px*var(--tscale))">Log weight &amp; reps per set in the Session tab. Sets roll into your history each new day, so you can see last time's numbers.</div>
+      <div class="toggle"><span>Distance unit</span>
+        <div class="seg" id="segDist">
+          <button data-v="km">km</button><button data-v="mi">mi</button>
+        </div>
+      </div>
+      <div class="muted" style="font-size:calc(12px*var(--tscale))">In the Session tab, log weight &amp; reps for machines and time &amp; distance for cardio. Everything rolls into your history each new day, so you can see last time's numbers.</div>
     </div>
 
     <h2 class="sec">Appearance</h2>
@@ -340,7 +351,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-01 · v1.8 comprehensive (57 exercises)";
+const APP_VERSION="2026-09-01 · v1.9 cardio time/distance logging";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -980,7 +991,7 @@ const CATS=["All","Chest","Back","Shoulders","Arms","Legs","Core","Cardio"];
 /* ============================ state / persistence ============================ */
 const LS="fitcoach.state";
 function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-function freshState(){ return {favorites:{}, session:[], sessionDone:{}, sessionSets:{}, sessionDate:todayISO(), history:{}, unit:"kg", updatedAt:now()}; }
+function freshState(){ return {favorites:{}, session:[], sessionDone:{}, sessionSets:{}, cardio:{}, sessionDate:todayISO(), history:{}, unit:"kg", distUnit:"km", updatedAt:now()}; }
 let state=load();
 function load(){ try{ const s=JSON.parse(localStorage.getItem(LS)); if(s&&typeof s==="object") return Object.assign(freshState(),s);}catch(e){} return freshState(); }
 function persist(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
@@ -993,14 +1004,17 @@ function rolloverSession(){
   if(state.sessionDate===t) return;
   Object.keys(state.sessionSets||{}).forEach(id=>{
     const sets=(state.sessionSets[id]||[]).filter(s=> s.w!=="" && s.w!=null || s.r!=="" && s.r!=null);
-    if(sets.length) archiveLog(id, state.sessionDate, sets);
+    if(sets.length) archiveLog(id, state.sessionDate, {sets: sets.map(s=>({w:s.w, r:s.r}))});
   });
-  state.sessionSets={}; state.sessionDone={}; state.sessionDate=t; persist();
+  Object.keys(state.cardio||{}).forEach(id=>{
+    const c=state.cardio[id]; if(c && ((c.mins!==""&&c.mins!=null)||(c.dist!==""&&c.dist!=null))) archiveLog(id, state.sessionDate, {cardio:{mins:c.mins, dist:c.dist}});
+  });
+  state.sessionSets={}; state.cardio={}; state.sessionDone={}; state.sessionDate=t; persist();
 }
-function archiveLog(id, date, sets){
+function archiveLog(id, date, payload){
   if(!state.history) state.history={};
   const h=state.history[id]||(state.history[id]=[]);
-  h.unshift({date, sets: sets.map(s=>({w:s.w, r:s.r}))});
+  h.unshift(Object.assign({date}, payload));
   if(h.length>30) h.length=30;
 }
 
@@ -1080,15 +1094,18 @@ function getSets(id){ if(!state.sessionSets) state.sessionSets={}; return state.
 function itemDone(id){ const m=byId(id); if(!m) return false; if(isCardio(m)) return !!state.sessionDone[id]; const s=state.sessionSets&&state.sessionSets[id]; return !!(s&&s.length&&s.every(x=>x.done)); }
 function toggleSession(id){
   const i=state.session.indexOf(id);
-  if(i>=0){ state.session.splice(i,1); delete state.sessionDone[id]; if(state.sessionSets) delete state.sessionSets[id]; }
+  if(i>=0){ state.session.splice(i,1); delete state.sessionDone[id]; if(state.sessionSets) delete state.sessionSets[id]; if(state.cardio) delete state.cardio[id]; }
   else { state.session.push(id); const m=byId(id); if(m&&!isCardio(m)&&!getSets(id).length){ getSets(id).push({w:"",r:"",done:false}); } }
   touch(); renderSession();
 }
-function fmtSets(sets){ return sets.filter(s=>(s.w!==""&&s.w!=null)||(s.r!==""&&s.r!=null)).map(s=>`${s.w!==""&&s.w!=null?s.w+state.unit:"—"}×${s.r!==""&&s.r!=null?s.r:"—"}`).join(" · "); }
+function getCardio(id){ if(!state.cardio) state.cardio={}; return state.cardio[id]||(state.cardio[id]={mins:"",dist:""}); }
+const has=v=>v!==""&&v!=null;
+function fmtSets(sets){ return (sets||[]).filter(s=>has(s.w)||has(s.r)).map(s=>`${has(s.w)?s.w+state.unit:"—"}×${has(s.r)?s.r:"—"}`).join(" · "); }
+function fmtCardio(c){ const p=[]; if(has(c.mins)) p.push(c.mins+" min"); if(has(c.dist)) p.push(c.dist+" "+(state.distUnit||"km")); return p.join(" · "); }
 function lastHint(id){
   const h=state.history&&state.history[id]; if(!h||!h.length) return "";
   const e=h[0]; const d=new Date(e.date+"T00:00:00"); const ds=d.toLocaleDateString(undefined,{day:"numeric",month:"short"});
-  const txt=fmtSets(e.sets); if(!txt) return "";
+  const txt=e.cardio?fmtCardio(e.cardio):fmtSets(e.sets); if(!txt) return "";
   return `<div class="lasthint">Last <b>${ds}</b>: ${txt}</div>`;
 }
 function renderSession(){
@@ -1108,7 +1125,15 @@ function renderSession(){
       logHTML=`<span class="ind">✓</span>`;
     }
     let body="";
-    if(!isCardio(m)){
+    if(isCardio(m)){
+      const c=getCardio(id);
+      body=`<div class="setlog">${lastHint(id)}
+        <div class="cardiorow">
+          <label class="cfld"><span>Time (min)</span><input class="cmin" inputmode="numeric" placeholder="–" value="${c.mins!=null?c.mins:""}"></label>
+          <label class="cfld"><span>Distance (${state.distUnit})</span><input class="cdist" inputmode="decimal" placeholder="–" value="${c.dist!=null?c.dist:""}"></label>
+        </div>
+      </div>`;
+    } else {
       const sets=getSets(id);
       body=`<div class="setlog">${lastHint(id)}
         <div class="sethdr"><span>Set</span><span>Weight (${state.unit})</span><span>Reps</span><span>Done</span><span></span></div>
@@ -1146,6 +1171,8 @@ function renderSession(){
     });
     const add=el.querySelector('[data-act=addset]');
     if(add) add.onclick=()=>{ const sets=getSets(id); const last=sets[sets.length-1]; sets.push({w:last?last.w:"",r:last?last.r:"",done:false}); touch(); renderSession(); };
+    const cmin=el.querySelector('.cmin'); if(cmin) cmin.oninput=e=>{ getCardio(id).mins=e.target.value.trim(); touch(); };
+    const cdist=el.querySelector('.cdist'); if(cdist) cdist.oninput=e=>{ getCardio(id).dist=e.target.value.trim(); touch(); };
   });
   // combined muscle map
   if(ids.length){
@@ -1156,9 +1183,11 @@ function renderSession(){
     paintBody($("#sessFront"),[...prim],[...sec]); paintBody($("#sessBack"),[...prim],[...sec]);
   }
 }
-$("#sessReset").onclick=()=>{ if(!state.session.length) return; if(confirm("Finish & clear today's session? Your logged sets are saved to history for next time.")){
-  Object.keys(state.sessionSets||{}).forEach(id=>{ const sets=(state.sessionSets[id]||[]).filter(s=>(s.w!==""&&s.w!=null)||(s.r!==""&&s.r!=null)); if(sets.length) archiveLog(id, state.sessionDate||todayISO(), sets); });
-  state.session=[]; state.sessionDone={}; state.sessionSets={}; state.sessionDate=todayISO(); touch(); renderSession(); } };
+$("#sessReset").onclick=()=>{ if(!state.session.length) return; if(confirm("Finish & clear today's session? Your logged sets and cardio are saved to history for next time.")){
+  const dt=state.sessionDate||todayISO();
+  Object.keys(state.sessionSets||{}).forEach(id=>{ const sets=(state.sessionSets[id]||[]).filter(s=>has(s.w)||has(s.r)); if(sets.length) archiveLog(id, dt, {sets:sets.map(s=>({w:s.w,r:s.r}))}); });
+  Object.keys(state.cardio||{}).forEach(id=>{ const c=state.cardio[id]; if(c&&(has(c.mins)||has(c.dist))) archiveLog(id, dt, {cardio:{mins:c.mins,dist:c.dist}}); });
+  state.session=[]; state.sessionDone={}; state.sessionSets={}; state.cardio={}; state.sessionDate=todayISO(); touch(); renderSession(); } };
 
 /* ============================ muscle explorer ============================ */
 let explSel=null;
@@ -1207,12 +1236,14 @@ function renderSetup(){
   $$("#segTheme button").forEach(b=>b.classList.toggle("on",b.dataset.v===theme));
   $$("#segText button").forEach(b=>b.classList.toggle("on",b.dataset.v===textScale));
   $$("#segUnit button").forEach(b=>b.classList.toggle("on",b.dataset.v===(state.unit||"kg")));
+  $$("#segDist button").forEach(b=>b.classList.toggle("on",b.dataset.v===(state.distUnit||"km")));
   $("#verLine").textContent="MyFitCoach · "+APP_VERSION;
   renderSync();
 }
 $$("#segTheme button").forEach(b=>b.onclick=()=>{ applyTheme(b.dataset.v); renderSetup(); });
 $$("#segText button").forEach(b=>b.onclick=()=>{ applyScale(b.dataset.v); renderSetup(); });
 $$("#segUnit button").forEach(b=>b.onclick=()=>{ state.unit=b.dataset.v; touch(); renderSetup(); if(activeTab==="session") renderSession(); });
+$$("#segDist button").forEach(b=>b.onclick=()=>{ state.distUnit=b.dataset.v; touch(); renderSetup(); if(activeTab==="session") renderSession(); });
 $("#ghTokLink").onclick=()=>window.open("https://github.com/settings/tokens/new?scopes=gist&description=FitCoach%20sync","_blank","noopener");
 
 /* ============================ GitHub gist sync ============================ */
@@ -1268,12 +1299,14 @@ function mergeRemote(remote){
   const local=state;
   const rNew=(remote.updatedAt||0) > (local.updatedAt||0);
   if(!rNew) return false;
-  const before=JSON.stringify({f:local.favorites,s:local.session,d:local.sessionDone,ss:local.sessionSets,h:local.history,u:local.unit});
+  const snap=st=>JSON.stringify({f:st.favorites,s:st.session,d:st.sessionDone,ss:st.sessionSets,c:st.cardio,h:st.history,u:st.unit,du:st.distUnit});
+  const before=snap(local);
   state={ favorites:remote.favorites||{}, session:Array.isArray(remote.session)?remote.session.filter(byId):[], sessionDone:remote.sessionDone||{},
-    sessionSets:remote.sessionSets||{}, sessionDate:remote.sessionDate||todayISO(), history:remote.history||{}, unit:remote.unit||local.unit||"kg",
+    sessionSets:remote.sessionSets||{}, cardio:remote.cardio||{}, sessionDate:remote.sessionDate||todayISO(), history:remote.history||{},
+    unit:remote.unit||local.unit||"kg", distUnit:remote.distUnit||local.distUnit||"km",
     updatedAt:Math.max(local.updatedAt||0,remote.updatedAt||0) };
   persist();
-  return before!==JSON.stringify({f:state.favorites,s:state.session,d:state.sessionDone,ss:state.sessionSets,h:state.history,u:state.unit});
+  return before!==snap(state);
 }
 let gistEtag=null, pulling=false;
 async function gistGet(){
