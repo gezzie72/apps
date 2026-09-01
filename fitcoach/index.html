@@ -173,6 +173,15 @@
   .cfld input{width:100%; min-width:0; background:var(--panel2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:10px 10px; font-size:calc(15px*var(--tscale)); text-align:center; -moz-appearance:textfield}
   .cfld input::-webkit-outer-spin-button,.cfld input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .cfld input:focus{outline:2px solid var(--accent)}
+  /* progress chart */
+  .chartlabel{font-size:calc(12px*var(--tscale)); color:var(--muted); font-weight:600; margin-bottom:6px}
+  .chart{width:100%; height:auto; display:block}
+  .chart .grid{stroke:var(--line); stroke-width:1}
+  .chart .ylab,.chart .xlab{fill:var(--muted); font-size:10px}
+  .chartstats{display:flex; gap:8px; margin-top:10px}
+  .chartstats > div{flex:1; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:8px 4px; text-align:center}
+  .chartstats span{display:block; font-size:calc(10px*var(--tscale)); color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:2px}
+  .chartstats b{font-size:calc(14px*var(--tscale))}
 
   /* setup */
   .fld{display:block; margin:10px 0}
@@ -359,7 +368,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-01 · v2.0 saved/favourites tab";
+const APP_VERSION="2026-09-01 · v2.1 progress charts";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -1079,6 +1088,73 @@ function muscleTags(m){
   const s=m.secondary.map(id=>`<span class="mtag s"><span class="dot" style="background:var(--hl2)"></span>${MU[id]||id}</span>`).join("");
   return `<div class="mtags">${p}${s}</div>`;
 }
+
+/* ============================ progress charts (from logged history) ============================ */
+// Build a chronological series for an exercise: heaviest set per session (weights) or distance/time (cardio).
+function seriesFor(id){
+  const m=byId(id); if(!m) return null;
+  const cardio=isCardio(m);
+  const h=((state.history&&state.history[id])||[]).slice().reverse();   // oldest -> newest
+  let useDist=true;
+  if(cardio){
+    useDist = h.some(e=>e.cardio&&has(e.cardio.dist)&&!isNaN(+e.cardio.dist))
+            || !!(state.cardio&&state.cardio[id]&&has(state.cardio[id].dist)&&!isNaN(+state.cardio[id].dist));
+  }
+  const valOf=payload=>{
+    if(cardio){ const c=payload; if(!c) return null; const v=useDist?c.dist:c.mins; return has(v)&&!isNaN(+v)?+v:null; }
+    const sets=payload; if(!sets||!sets.length) return null; const ws=sets.map(s=>+s.w).filter(x=>!isNaN(x)); return ws.length?Math.max(...ws):null;
+  };
+  const pts=[];
+  h.forEach(e=>{ const v=valOf(cardio?e.cardio:e.sets); if(v!=null) pts.push({date:e.date, val:v}); });
+  const today=state.sessionDate||todayISO();   // include today's in-progress log
+  if(!pts.some(p=>p.date===today)){
+    const cur=cardio?(state.cardio&&state.cardio[id]):(state.sessionSets&&state.sessionSets[id]);
+    const v=valOf(cur); if(v!=null) pts.push({date:today, val:v});
+  }
+  if(!pts.length) return null;
+  const unit = cardio ? (useDist?(state.distUnit||"km"):"min") : (state.unit||"kg");
+  const label = cardio ? (useDist?"Distance per session":"Time per session") : "Heaviest set per session";
+  return {pts, unit, label};
+}
+function lineChart(pts){
+  const W=300,H=150,pl=36,pr=12,pt=12,pb=26;
+  const xs=i=> pl + (pts.length<2?(W-pl-pr)/2:(i/(pts.length-1))*(W-pl-pr));
+  const vals=pts.map(p=>p.val); let mn=Math.min(...vals), mx=Math.max(...vals);
+  if(mn===mx){ mn=Math.max(0,mn-1); mx=mx+1; } const rng=mx-mn||1;
+  const ys=v=> pt + (1-(v-mn)/rng)*(H-pt-pb);
+  const line=pts.map((p,i)=>`${i?'L':'M'}${xs(i).toFixed(1)},${ys(p.val).toFixed(1)}`).join(" ");
+  const dots=pts.map((p,i)=>`<circle cx="${xs(i).toFixed(1)}" cy="${ys(p.val).toFixed(1)}" r="3.2" fill="var(--accent)"/>`).join("");
+  const fd=d=>{const t=new Date(d+"T00:00:00");return t.toLocaleDateString(undefined,{day:"numeric",month:"short"});};
+  const num=v=>(Math.round(v*10)/10);
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart" xmlns="http://www.w3.org/2000/svg">
+    <line x1="${pl}" y1="${ys(mx).toFixed(1)}" x2="${W-pr}" y2="${ys(mx).toFixed(1)}" class="grid"/>
+    <line x1="${pl}" y1="${ys(mn).toFixed(1)}" x2="${W-pr}" y2="${ys(mn).toFixed(1)}" class="grid"/>
+    <text x="${pl-5}" y="${(ys(mx)+3).toFixed(1)}" class="ylab" text-anchor="end">${num(mx)}</text>
+    <text x="${pl-5}" y="${(ys(mn)+3).toFixed(1)}" class="ylab" text-anchor="end">${num(mn)}</text>
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}
+    <text x="${pl}" y="${H-8}" class="xlab" text-anchor="start">${fd(pts[0].date)}</text>
+    ${pts.length>1?`<text x="${W-pr}" y="${H-8}" class="xlab" text-anchor="end">${fd(pts[pts.length-1].date)}</text>`:""}
+  </svg>`;
+}
+function progressPanel(id){
+  const s=seriesFor(id);
+  if(!s || s.pts.length<2){
+    return `<h2 class="sec">Progress</h2><div class="panel"><div class="muted" style="font-size:calc(12.5px*var(--tscale))">Log this exercise across a couple of sessions (in the Session tab) and your progress chart will appear here.</div></div>`;
+  }
+  const vals=s.pts.map(p=>p.val), first=vals[0], last=vals[vals.length-1], best=Math.max(...vals);
+  const delta=Math.round((last-first)*10)/10, up=delta>=0;
+  const u=" "+s.unit;
+  return `<h2 class="sec">Progress</h2><div class="panel">
+    <div class="chartlabel">${s.label} · ${s.pts.length} session${s.pts.length>1?"s":""}</div>
+    ${lineChart(s.pts)}
+    <div class="chartstats">
+      <div><span>Latest</span><b>${Math.round(last*10)/10}${u}</b></div>
+      <div><span>Best</span><b>${Math.round(best*10)/10}${u}</b></div>
+      <div><span>Change</span><b style="color:${up?'var(--ok)':'var(--danger)'}">${up?'+':''}${delta}${u}</b></div>
+    </div>
+  </div>`;
+}
 function openDetail(id){
   const m=byId(id); if(!m) return; detailId=id;
   $("#detTitle").textContent=m.name;
@@ -1102,6 +1178,7 @@ function openDetail(id){
     <div class="panel"><ol class="steps">${m.steps.map(s=>`<li>${s}</li>`).join("")}</ol></div>
     <h2 class="sec">Tips &amp; common mistakes</h2>
     <div class="panel"><ul class="tips">${m.tips.map(t=>t.startsWith("mistake:")?`<li class="mistake">${t.slice(8)}</li>`:`<li>${t}</li>`).join("")}</ul></div>
+    ${progressPanel(id)}
   `;
   $("#detFront").innerHTML=buildBody("front"); $("#detBack").innerHTML=buildBody("back");
   paintBody($("#detFront"), m.primary, m.secondary); paintBody($("#detBack"), m.primary, m.secondary);
