@@ -1,5 +1,5 @@
 /* MyFitCoach service worker - offline app shell, network-first so updates land. */
-const CACHE = "fitcoach-v10";
+const CACHE = "fitcoach-v11";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

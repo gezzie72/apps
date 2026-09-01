@@ -228,6 +228,13 @@
     <div class="empty hidden" id="gridEmpty">No machines match your filters.</div>
   </section>
 
+  <!-- SAVED -->
+  <section id="tab-favs" class="hidden">
+    <div class="chips" id="favChips"></div>
+    <div class="grid" id="favGrid"></div>
+    <div class="empty" id="favEmpty">No saved exercises yet.<br>Tap the ☆ on any exercise to save it here.</div>
+  </section>
+
   <!-- MUSCLES -->
   <section id="tab-muscles" class="hidden">
     <div class="panel">
@@ -340,6 +347,7 @@
 
 <nav class="tabs" id="nav">
   <button data-tab="library" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Library</button>
+  <button data-tab="favs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>Saved</button>
   <button data-tab="muscles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.4"/><path d="M12 7.5v6M7 10l5 1 5-1M8.5 20l3.5-6 3.5 6"/></svg>Muscles</button>
   <button data-tab="session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3v10H4zM17 7h3v10h-3zM7 12h10M2 9v6M22 9v6"/></svg>Session</button>
   <button data-tab="setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>Setup</button>
@@ -351,7 +359,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-01 · v1.9 cardio time/distance logging";
+const APP_VERSION="2026-09-01 · v2.0 saved/favourites tab";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -1046,6 +1054,23 @@ function renderGrid(){
   g.querySelectorAll(".card").forEach(c=>c.onclick=()=>openDetail(c.dataset.id));
   $("#gridEmpty").classList.toggle("hidden", list.length>0);
 }
+function cardHTML(m){ return `<div class="card" data-id="${m.id}">${cardThumb(m)}<div class="body"><div class="cat">${m.cat}</div><div class="nm">${m.name}</div><div class="eq">${m.eq}</div></div></div>`; }
+
+/* ============================ saved / favourites ============================ */
+let favCat="All";
+function renderFavs(){
+  const g=$("#favGrid"), c=$("#favChips");
+  let list=MACHINES.filter(m=>state.favorites[m.id]).sort((a,b)=>(state.favorites[b.id]||0)-(state.favorites[a.id]||0));
+  if(favCat!=="All" && !list.some(m=>m.cat===favCat)) favCat="All";
+  // category chips (only categories present among favourites)
+  const cats=["All"].concat(CATS.filter(x=>x!=="All" && list.some(m=>m.cat===x)));
+  c.innerHTML="";
+  if(cats.length>2){ cats.forEach(cat=>{ const b=document.createElement("button"); b.className="chip"+(cat===favCat?" on":""); b.textContent=cat; b.onclick=()=>{favCat=cat; renderFavs();}; c.appendChild(b); }); }
+  const shown=favCat==="All"?list:list.filter(m=>m.cat===favCat);
+  g.innerHTML=shown.map(cardHTML).join("");
+  g.querySelectorAll(".card").forEach(el=>el.onclick=()=>openDetail(el.dataset.id));
+  $("#favEmpty").classList.toggle("hidden", list.length>0);
+}
 
 /* ============================ detail ============================ */
 let detailId=null;
@@ -1085,7 +1110,7 @@ function openDetail(id){
 }
 function closeDetail(){ $("#detail").classList.remove("open"); document.body.style.overflow=""; detailId=null; }
 $("#detClose").onclick=closeDetail;
-$("#detFav").onclick=()=>{ if(!detailId) return; toggleFav(detailId); $("#detFav").textContent=state.favorites[detailId]?"★":"☆"; renderGrid(); };
+$("#detFav").onclick=()=>{ if(!detailId) return; toggleFav(detailId); $("#detFav").textContent=state.favorites[detailId]?"★":"☆"; renderGrid(); if(activeTab==="favs") renderFavs(); };
 function toggleFav(id){ if(state.favorites[id]) delete state.favorites[id]; else state.favorites[id]=now(); touch(); }
 
 /* ============================ session ============================ */
@@ -1222,8 +1247,9 @@ function paintExplorer(){
 let activeTab="library";
 function setTab(t){
   activeTab=t;
-  ["library","muscles","session","setup"].forEach(x=>$("#tab-"+x).classList.toggle("hidden",x!==t));
+  ["library","favs","muscles","session","setup"].forEach(x=>$("#tab-"+x).classList.toggle("hidden",x!==t));
   $$("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));
+  if(t==="favs") renderFavs();
   if(t==="session") renderSession();
   if(t==="muscles") renderExplorer();
   if(t==="setup") renderSetup();
@@ -1329,7 +1355,7 @@ async function syncPull(force,quiet){
     if(!f||!f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
     const remote=JSON.parse(f.truncated&&f.raw_url? await (await fetch(f.raw_url)).text() : f.content);
     const changed=mergeRemote(remote);
-    if(force||changed){ renderGrid(); if(activeTab==="session") renderSession(); if(activeTab==="muscles") paintExplorer(); if(detailId) $("#detFav").textContent=state.favorites[detailId]?"★":"☆"; setSyncTime(); if(changed){ markSync("Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date"); return changed?"pulled":"uptodate"; }
+    if(force||changed){ renderGrid(); if(activeTab==="favs") renderFavs(); if(activeTab==="session") renderSession(); if(activeTab==="muscles") paintExplorer(); if(detailId) $("#detFav").textContent=state.favorites[detailId]?"★":"☆"; setSyncTime(); if(changed){ markSync("Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date"); return changed?"pulled":"uptodate"; }
     else { setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
   } finally{ pulling=false; if(!quiet) spin(false); }
 }
