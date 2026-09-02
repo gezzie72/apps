@@ -161,6 +161,7 @@ input:focus{outline:none; border-color:var(--accent)}
     <div class="brow"><span class="k">Coverage per tube</span><span class="v" id="cov">–</span></div>
     <div class="brow"><span class="k">Tubes needed (exact)</span><span class="v" id="exact">–</span></div>
     <div class="brow" id="costRowEach" hidden><span class="k">Cost per tube</span><span class="v" id="costEach">–</span></div>
+    <div class="brow" id="costRowPer" hidden><span class="k">Cost per doorset (avg)</span><span class="v" id="costPer">–</span></div>
     <div class="brow" id="costRowTotal" hidden><span class="k">Total materials cost</span><span class="v" id="costTotal2">–</span></div>
   </div>
 </div>
@@ -230,13 +231,18 @@ function calc(){
   const cost = num('cost');
   const showCost = covPerTube>0 && cost>0;
   const totalCost = tubes * cost;
+  const showPer = showCost && qty>0;
   $('costLine').hidden = !showCost;
   $('costRowEach').hidden = !showCost;
+  $('costRowPer').hidden = !showPer;
   $('costRowTotal').hidden = !showCost;
   if(showCost){
     $('costTotal').textContent  = money(totalCost);
     $('costEach').textContent   = money(cost);
     $('costTotal2').textContent = `${money(totalCost)}  (${tubes} × ${money(cost)})`;
+  }
+  if(showPer){
+    $('costPer').textContent = `${money(totalCost/qty)}  (${qty} ${qty===1?'doorset':'doorsets'})`;
   }
 
   // sanity check: joint depth should be roughly half the width (≈2:1)
