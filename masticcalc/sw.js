@@ -1,5 +1,5 @@
 /* Mastic Calc service worker - offline app shell, network-first so updates land. */
-const CACHE = "masticcalc-v3";
+const CACHE = "masticcalc-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
