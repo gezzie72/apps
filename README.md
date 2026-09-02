@@ -52,4 +52,4 @@ repo, follow these rules:
    ever used for an app, check `git log -- apps/<app>/sw.js`.
 
 Current cache versions (keep this list roughly in step when you bump one):
-`fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11` · `shopfloorreport-v1`.
+`fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11` · `shopfloorreport-v2`.

@@ -200,7 +200,7 @@
       <form id="incForm">
         <div class="row">
           <label class="field" style="flex:1 1 140px"><span>Date</span><input type="date" name="date" required></label>
-          <label class="field" style="flex:1 1 120px"><span>Ref No.</span><input type="text" name="ref" placeholder="e.g. SR-1006"></label>
+          <label class="field" style="flex:1 1 120px"><span>Door Number</span><input type="text" name="ref" placeholder="e.g. Door 12"></label>
           <label class="field" style="flex:1 1 160px"><span>Incident type</span><select name="type" required></select></label>
         </div>
         <div class="row">
@@ -210,7 +210,8 @@
         </div>
         <div class="row">
           <label class="field" style="flex:1 1 150px"><span>Warning level</span><select name="warning" required></select></label>
-          <label class="field" style="flex:2 1 260px"><span>Notes (optional)</span><input type="text" name="notes" placeholder="Brief detail for the record"></label>
+          <label class="field" style="flex:1 1 130px"><span>Were photos taken?</span><select name="photos"><option value="">— select —</option><option>No</option><option>Yes</option></select></label>
+          <label class="field" style="flex:2 1 220px"><span>Notes (optional)</span><input type="text" name="notes" placeholder="Brief detail for the record"></label>
         </div>
         <div class="row">
           <label class="field" style="flex:1 1 100%"><span>Investigation notes (optional)</span>
@@ -384,7 +385,7 @@
 
 <script>
 /* ================= Shopfloor Report — single-file PWA ================= */
-const APP_VERSION = "1.0";
+const APP_VERSION = "1.1";
 const KEY = "shopfloorreport.state";
 const GISTFILE = "shopfloorreport.json";
 const $ = s => document.querySelector(s);
@@ -402,17 +403,17 @@ function defaultState(){
     types:["Lateness","Unauthorised Absence","Conduct","PPE Non-compliance","Health & Safety Breach","Policy Breach","Poor Workmanship","Misuse of Equipment","Insubordination"]
   };
   const ex = [
-    ["2026-02-03","SR-1001","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Awareness","","Arrived 40 minutes late without prior notice."],
-    ["2026-02-18","SR-1002","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Verbal Given","","Second lateness within the month; verbal warning issued."],
-    ["2026-02-21","SR-1003","PPE Non-compliance","Machining","Bailey Rivers","employee","S. Cole (Production Team Leader)","Awareness","","Not wearing safety glasses at the machine."],
-    ["2026-03-06","SR-1004","Unauthorised Absence","Packing","Casey Quinn","employee","J. Bennett (Shift Team Leader)","Disciplinary","","Two days of unauthorised absence; formal meeting held."],
-    ["2026-03-12","SR-1005","Poor Workmanship","Assembly Line 2","Dana Ellis","employee","J. Bennett (Shift Team Leader)","Awareness","","Repeated assembly errors flagged at final inspection."]
+    ["2026-02-03","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Awareness","","Arrived 40 minutes late without prior notice.","No"],
+    ["2026-02-18","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Verbal Given","","Second lateness within the month; verbal warning issued.","No"],
+    ["2026-02-21","Door 11","PPE Non-compliance","Machining","Bailey Rivers","employee","S. Cole (Production Team Leader)","Awareness","","Not wearing safety glasses at the machine.","Yes"],
+    ["2026-03-06","Door 2","Unauthorised Absence","Packing","Casey Quinn","employee","J. Bennett (Shift Team Leader)","Disciplinary","","Two days of unauthorised absence; formal meeting held.","No"],
+    ["2026-03-12","Door 7","Poor Workmanship","Assembly Line 2","Dana Ellis","employee","J. Bennett (Shift Team Leader)","Awareness","","Repeated assembly errors flagged at final inspection.","Yes"]
   ];
   const emails = {};
   let seq = 1;
   const incidents = ex.map(r => ({
     id: seq++, date:r[0], ref:r[1], type:r[2], department:r[3], subject:r[4],
-    subjectKind:r[5], raisedBy:r[6], warning:r[7], notes:r[8], investigation:r[9],
+    subjectKind:r[5], raisedBy:r[6], warning:r[7], notes:r[8], investigation:r[9], photos:r[10]||"",
     createdAt: new Date().toISOString()
   }));
   return { updatedAt: Date.now(), seq, lists, emails, incidents };
@@ -528,7 +529,7 @@ function renderDashboard(){
 
   const recent = inc.slice().sort((a,b)=> (b.date||"").localeCompare(a.date||"")||b.id-a.id).slice(0,8);
   $("#recent").innerHTML = recent.length ? `<table>
-    <thead><tr><th>Date</th><th>Ref</th><th>Incident</th><th>Line</th><th>Operator / Team Leader</th><th>Raised by</th><th>Warning</th></tr></thead>
+    <thead><tr><th>Date</th><th>Door</th><th>Incident</th><th>Line</th><th>Operator / Team Leader</th><th>Raised by</th><th>Warning</th></tr></thead>
     <tbody>${recent.map(r=>`<tr><td>${esc(fmtDate(r.date))}</td><td>${esc(r.ref)}</td><td>${esc(r.type)}</td>
       <td>${esc(r.department)}</td><td>${esc(r.subject)}</td><td>${esc(r.raisedBy)}</td>
       <td class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td></tr>`).join("")}</tbody></table>`
@@ -572,14 +573,15 @@ function renderLog(){
   if(!state.incidents.length){ log.innerHTML=`<div class="empty">No incidents logged yet.</div>`; return; }
   if(!list.length){ log.innerHTML=`<div class="empty">No incidents match the current filter.</div>`; return; }
   log.innerHTML = `<table>
-    <thead><tr><th>Date</th><th>Ref</th><th>Incident</th><th>Line</th><th>Operator / Team Leader</th><th>Raised by</th><th>Warning</th><th></th></tr></thead>
+    <thead><tr><th>Date</th><th>Door</th><th>Incident</th><th>Line</th><th>Operator / Team Leader</th><th>Raised by</th><th>Warning</th><th>Photos</th><th></th></tr></thead>
     <tbody>${list.map(r=>{
       const note=[r.notes,r.investigation].filter(Boolean).join(" — ");
       return `<tr>
-        <td data-label="Date">${esc(fmtDate(r.date))}</td><td data-label="Ref">${esc(r.ref)}</td>
+        <td data-label="Date">${esc(fmtDate(r.date))}</td><td data-label="Door">${esc(r.ref)}</td>
         <td data-label="Incident">${esc(r.type)}${note?`<div class="muted" style="font-size:11px;margin-top:2px">${esc(note.length>90?note.slice(0,90)+"…":note)}</div>`:""}</td>
         <td data-label="Line">${esc(r.department)}</td><td data-label="Operator / Team Leader">${esc(r.subject)}</td><td data-label="Raised by">${esc(r.raisedBy)}</td>
         <td data-label="Warning" class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td>
+        <td data-label="Photos">${esc(r.photos||"")}</td>
         <td class="acts-cell num" style="white-space:nowrap"><button class="ghost mini" data-edit="${r.id}">Edit</button> <button class="danger mini" data-del="${r.id}">Del</button></td>
       </tr>`;
     }).join("")}</tbody></table>`;
@@ -596,7 +598,7 @@ function beginEdit(id){
   const r = state.incidents.find(x=>x.id===id); if(!r) return;
   fillIncidentForm(r);
   const f=$("#incForm");
-  f.date.value=r.date; f.ref.value=r.ref||""; f.notes.value=r.notes||""; f.investigation.value=r.investigation||"";
+  f.date.value=r.date; f.ref.value=r.ref||""; f.notes.value=r.notes||""; f.investigation.value=r.investigation||""; f.photos.value=r.photos||"";
   setMode(id); $("#incMsg").textContent=""; window.scrollTo({top:0,behavior:"smooth"});
 }
 function delIncident(id){
@@ -753,9 +755,9 @@ function renderReport(){
     <p>${esc(buildAssessment(name,kind,items))}</p>
     <h3>Incident History</h3>
     <div class="tablewrap"><table>
-      <thead><tr><th>Date</th><th>Ref</th><th>Incident</th><th>${esc(midCol)}</th><th>Warning</th></tr></thead>
+      <thead><tr><th>Date</th><th>Door</th><th>Incident</th><th>${esc(midCol)}</th><th>Warning</th></tr></thead>
       <tbody>${items.length?items.map(i=>{ const note=[i.notes,i.investigation].filter(Boolean).join(" — ");
-        return `<tr><td data-label="Date">${esc(fmtDate(i.date))}</td><td data-label="Ref">${esc(i.ref)}</td>
+        return `<tr><td data-label="Date">${esc(fmtDate(i.date))}</td><td data-label="Door">${esc(i.ref)}</td>
         <td data-label="Incident">${esc(i.type)}${note?`<div class="muted rnote" style="font-size:12px">${esc(note)}</div>`:""}</td>
         <td data-label="${esc(midCol)}">${esc(kind==="department"?i.subject:i.department)}</td>
         <td data-label="Warning" class="warn ${warnTone(i.warning)}">${esc(i.warning)}</td></tr>`;}).join("")
@@ -830,8 +832,8 @@ function listRow(key,name){
 /* ================= CSV ================= */
 function exportCsv(){
   if(!shown.length){ toast("Nothing to export for this filter."); return; }
-  const cols=[["Date",r=>fmtDate(r.date)],["Ref",r=>r.ref],["Incident",r=>r.type],["Line",r=>r.department],
-    ["Operator / Team Leader",r=>r.subject],["Raised by",r=>r.raisedBy],["Warning",r=>r.warning],["Notes",r=>r.notes],["Investigation",r=>r.investigation]];
+  const cols=[["Date",r=>fmtDate(r.date)],["Door",r=>r.ref],["Incident",r=>r.type],["Line",r=>r.department],
+    ["Operator / Team Leader",r=>r.subject],["Raised by",r=>r.raisedBy],["Warning",r=>r.warning],["Photos",r=>r.photos],["Notes",r=>r.notes],["Investigation",r=>r.investigation]];
   const cell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const csv="﻿"+[cols.map(c=>cell(c[0])).join(",")].concat(shown.map(r=>cols.map(c=>cell(c[1](r))).join(","))).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
@@ -963,7 +965,7 @@ function bind(){
     if(!req.every(k=>f[k].value)){ $("#incMsg").textContent="All required fields must be filled."; return; }
     const data={ date:f.date.value, ref:f.ref.value.trim(), type:f.type.value, department:f.department.value,
       subject:f.subject.value, subjectKind:subjectKindOf(f.subject.value), raisedBy:f.raisedBy.value,
-      warning:f.warning.value, notes:f.notes.value.trim(), investigation:f.investigation.value.trim() };
+      warning:f.warning.value, photos:f.photos.value, notes:f.notes.value.trim(), investigation:f.investigation.value.trim() };
     if(editingId){ const r=state.incidents.find(x=>x.id===editingId); Object.assign(r,data); $("#incMsg").textContent="✓ Changes saved."; }
     else { data.id=state.seq++; data.createdAt=new Date().toISOString(); state.incidents.push(data); $("#incMsg").textContent="✓ Incident logged."; }
     f.reset(); fillIncidentForm(); setMode(null); touch(); fillFilters(); renderLog();
