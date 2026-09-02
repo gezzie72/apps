@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Mastic Calc</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0f172a; --card:#1e293b; --card2:#273449; --line:#334155;
+  --txt:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --accent2:#0ea5e9;
+  --good:#34d399; --warn:#fbbf24; --bad:#f87171; --radius:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg); color:var(--txt); line-height:1.4;
+  padding:max(14px,env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+  max-width:520px; margin:0 auto;
+}
+h1{font-size:1.35rem; margin:.2rem 0 .1rem; display:flex; align-items:center; gap:.4rem}
+.sub{color:var(--muted); font-size:.82rem; margin:0 0 1rem}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:14px}
+.card h2{font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px}
+label{display:block; font-size:.8rem; color:var(--muted); margin-bottom:4px}
+.row{display:flex; gap:10px}
+.row>.field{flex:1}
+.field{margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+input[type=number]{
+  width:100%; background:var(--card2); border:1px solid var(--line); color:var(--txt);
+  border-radius:10px; padding:11px 12px; font-size:1.05rem; font-weight:600;
+}
+input:focus{outline:none; border-color:var(--accent)}
+.presets{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
+.chip{
+  flex:1; min-width:70px; text-align:center; background:var(--card2); border:1px solid var(--line);
+  color:var(--muted); border-radius:999px; padding:7px 6px; font-size:.78rem; font-weight:600; cursor:pointer;
+}
+.chip.on{background:var(--accent2); border-color:var(--accent); color:#04121e}
+.chip small{display:block; font-weight:400; font-size:.66rem; opacity:.85}
+.suffix{position:relative}
+.suffix::after{content:attr(data-suffix); position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  color:var(--muted); font-size:.82rem; font-weight:600; pointer-events:none}
+.suffix input{padding-right:44px}
+
+/* results */
+.result{background:linear-gradient(135deg,#0ea5e9,#2563eb); border:none}
+.result h2{color:rgba(255,255,255,.85)}
+.big{display:flex; align-items:baseline; gap:.5rem; margin:2px 0 4px}
+.big .num{font-size:3.2rem; font-weight:800; line-height:1; color:#fff}
+.big .unit{font-size:1rem; color:rgba(255,255,255,.9); font-weight:600}
+.result .note{color:rgba(255,255,255,.9); font-size:.85rem}
+.breakdown{margin-top:2px}
+.brow{display:flex; justify-content:space-between; padding:9px 0; border-top:1px solid var(--line); font-size:.9rem}
+.brow:first-child{border-top:none}
+.brow .k{color:var(--muted)}
+.brow .v{font-weight:700}
+.warn-box{background:#3b2f14; border:1px solid var(--warn); color:#fde68a; border-radius:10px;
+  padding:10px 12px; font-size:.82rem; margin-top:10px; display:none}
+.warn-box.show{display:block}
+.foot{color:var(--muted); font-size:.72rem; text-align:center; margin-top:6px}
+.foot code{color:var(--accent)}
+</style>
+</head>
+<body>
+<h1>🔫 Mastic Calc</h1>
+<p class="sub">Sealant coverage &amp; tubes to order — for doorsets &amp; joints.</p>
+
+<div class="card">
+  <h2>Doorset size</h2>
+  <div class="row">
+    <div class="field suffix" data-suffix="mm">
+      <label>Width</label>
+      <input id="width" type="number" inputmode="numeric" value="1000">
+    </div>
+    <div class="field suffix" data-suffix="mm">
+      <label>Height</label>
+      <input id="height" type="number" inputmode="numeric" value="2000">
+    </div>
+  </div>
+  <div class="field">
+    <label>Joint to seal</label>
+    <div class="presets" id="sidesPresets">
+      <div class="chip on" data-sides="perimeter">All 4 sides<small>2 × (W + H)</small></div>
+      <div class="chip" data-sides="three">3 sides<small>no threshold</small></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Bead size (the joint you're filling)</h2>
+  <div class="presets" id="beadPresets">
+    <div class="chip" data-w="3" data-d="3">Thin<small>3 × 3 mm</small></div>
+    <div class="chip on" data-w="5" data-d="5">Medium<small>5 × 5 mm</small></div>
+    <div class="chip" data-w="8" data-d="8">Thick<small>8 × 8 mm</small></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <div class="field suffix" data-suffix="mm">
+      <label>Bead width</label>
+      <input id="bw" type="number" inputmode="decimal" value="5">
+    </div>
+    <div class="field suffix" data-suffix="mm">
+      <label>Bead depth</label>
+      <input id="bd" type="number" inputmode="decimal" value="5">
+    </div>
+  </div>
+  <div class="warn-box" id="ratioWarn"></div>
+</div>
+
+<div class="card">
+  <h2>Tube &amp; order settings</h2>
+  <div class="field">
+    <label>Tube volume</label>
+    <div class="presets" id="tubePresets">
+      <div class="chip on" data-ml="310">310 ml<small>cartridge</small></div>
+      <div class="chip" data-ml="400">400 ml<small>foil</small></div>
+      <div class="chip" data-ml="600">600 ml<small>sausage</small></div>
+    </div>
+    <div class="field suffix" data-suffix="ml" style="margin-top:12px">
+      <input id="tube" type="number" inputmode="numeric" value="310">
+    </div>
+  </div>
+  <div class="row">
+    <div class="field suffix" data-suffix="%">
+      <label>Waste allowance</label>
+      <input id="waste" type="number" inputmode="numeric" value="10">
+    </div>
+    <div class="field suffix" data-suffix="doors">
+      <label>No. of doorsets</label>
+      <input id="qty" type="number" inputmode="numeric" value="1">
+    </div>
+  </div>
+</div>
+
+<div class="card result">
+  <h2>Tubes to order</h2>
+  <div class="big"><span class="num" id="tubes">–</span><span class="unit" id="tubesUnit">tubes</span></div>
+  <div class="note" id="perTube">–</div>
+</div>
+
+<div class="card">
+  <h2>Breakdown</h2>
+  <div class="breakdown">
+    <div class="brow"><span class="k">Perimeter per doorset</span><span class="v" id="perim">–</span></div>
+    <div class="brow"><span class="k">+ Waste allowance</span><span class="v" id="withWaste">–</span></div>
+    <div class="brow"><span class="k">× Doorsets</span><span class="v" id="total">–</span></div>
+    <div class="brow"><span class="k">Coverage per tube</span><span class="v" id="cov">–</span></div>
+    <div class="brow"><span class="k">Tubes needed (exact)</span><span class="v" id="exact">–</span></div>
+  </div>
+</div>
+
+<p class="foot">Coverage = <code>tube volume ÷ (bead width × bead depth)</code>. Tubes always rounded up.</p>
+
+<script>
+const $ = id => document.getElementById(id);
+const num = id => parseFloat($(id).value) || 0;
+let sides = 'perimeter';
+
+// preset chip groups
+function bindPresets(containerId, onPick){
+  const box = $(containerId);
+  box.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      box.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+      chip.classList.add('on');
+      onPick(chip);
+    });
+  });
+}
+bindPresets('sidesPresets', c => { sides = c.dataset.sides; calc(); });
+bindPresets('beadPresets', c => { $('bw').value = c.dataset.w; $('bd').value = c.dataset.d; calc(); });
+bindPresets('tubePresets', c => { $('tube').value = c.dataset.ml; calc(); });
+
+// typing in bead / tube boxes clears the matching preset highlight if it no longer matches
+function syncPresetHighlight(containerId, matchFn){
+  const box = $(containerId); let any=false;
+  box.querySelectorAll('.chip').forEach(c=>{
+    const on = matchFn(c); c.classList.toggle('on', on); if(on) any=true;
+  });
+}
+
+function fmt(n, dp=1){ return n.toLocaleString('en-GB',{maximumFractionDigits:dp}); }
+
+function calc(){
+  const W = num('width'), H = num('height');
+  const perimMm = sides==='perimeter' ? 2*(W+H) : (2*H + W);
+  const perimM = perimMm/1000;
+
+  const waste = num('waste');
+  const withWasteM = perimM * (1 + waste/100);
+
+  const qty = num('qty');
+  const totalM = withWasteM * qty;
+
+  const bw = num('bw'), bd = num('bd'), ml = num('tube');
+  const covPerTube = (bw>0 && bd>0) ? ml/(bw*bd) : 0;  // metres per tube
+
+  const exact = covPerTube>0 ? totalM/covPerTube : 0;
+  const tubes = covPerTube>0 ? Math.ceil(exact) : 0;
+
+  $('perim').textContent   = fmt(perimM,2)+' m';
+  $('withWaste').textContent = fmt(withWasteM,2)+' m';
+  $('total').textContent   = fmt(totalM,2)+' m';
+  $('cov').textContent     = covPerTube>0 ? fmt(covPerTube,1)+' m / tube' : '–';
+  $('exact').textContent   = covPerTube>0 ? fmt(exact,2)+' tubes' : '–';
+  $('tubes').textContent   = covPerTube>0 ? tubes : '–';
+  $('tubesUnit').textContent = tubes===1 ? 'tube' : 'tubes';
+  $('perTube').textContent = covPerTube>0
+    ? `${fmt(totalM,1)} m of joint · each ${ml} ml tube covers ~${fmt(covPerTube,1)} m`
+    : 'Enter a bead size to calculate.';
+
+  // sanity check: joint depth should be roughly half the width (≈2:1)
+  const warn = $('ratioWarn');
+  if(bw>0 && bd>0){
+    const ratio = bw/bd;
+    if(bd > bw*1.05){
+      warn.className='warn-box show';
+      warn.textContent=`⚠️ Depth (${bd}mm) is greater than width (${bw}mm). For elastic sealants aim for depth ≈ half the width (about 2:1).`;
+    } else if(ratio > 3){
+      warn.className='warn-box show';
+      warn.textContent=`⚠️ Very shallow joint (${fmt(ratio,1)}:1). Fine for a surface bead, but a deeper joint may need backer rod.`;
+    } else { warn.className='warn-box'; }
+  } else { warn.className='warn-box'; }
+
+  // keep bead/tube preset highlights honest
+  syncPresetHighlight('beadPresets', c => +c.dataset.w===bw && +c.dataset.d===bd);
+  syncPresetHighlight('tubePresets', c => +c.dataset.ml===ml);
+}
+
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));
+calc();
+
+// register the offline service worker so it installs & works with no signal on-site
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
