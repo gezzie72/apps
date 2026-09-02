@@ -201,6 +201,7 @@
         <div class="row">
           <label class="field" style="flex:1 1 140px"><span>Date</span><input type="date" name="date" required></label>
           <label class="field" style="flex:1 1 120px"><span>Door Number</span><input type="text" name="ref" placeholder="e.g. Door 12"></label>
+          <label class="field" style="flex:1 1 120px"><span>Complaint No.</span><input type="text" name="complaint" placeholder="e.g. CMP-204"></label>
           <label class="field" style="flex:1 1 160px"><span>Incident type</span><select name="type" required></select></label>
         </div>
         <div class="row">
@@ -231,6 +232,8 @@
         <div class="spacer"></div>
         <label class="field"><span>From</span><input type="date" id="fFrom" style="min-width:130px"></label>
         <label class="field"><span>To</span><input type="date" id="fTo" style="min-width:130px"></label>
+        <label class="field"><span>Door</span><input type="search" id="fDoor" placeholder="any" style="min-width:110px"></label>
+        <label class="field"><span>Complaint</span><input type="search" id="fComplaint" placeholder="any" style="min-width:120px"></label>
         <label class="field"><span>Type</span><select id="fType" style="min-width:140px"></select></label>
         <label class="field"><span>Line</span><select id="fDept" style="min-width:140px"></select></label>
         <label class="field"><span>Operator</span><select id="fEmp" style="min-width:150px"></select></label>
@@ -385,7 +388,7 @@
 
 <script>
 /* ================= Shopfloor Report — single-file PWA ================= */
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2";
 const KEY = "shopfloorreport.state";
 const GISTFILE = "shopfloorreport.json";
 const $ = s => document.querySelector(s);
@@ -403,17 +406,17 @@ function defaultState(){
     types:["Lateness","Unauthorised Absence","Conduct","PPE Non-compliance","Health & Safety Breach","Policy Breach","Poor Workmanship","Misuse of Equipment","Insubordination"]
   };
   const ex = [
-    ["2026-02-03","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Awareness","","Arrived 40 minutes late without prior notice.","No"],
-    ["2026-02-18","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Verbal Given","","Second lateness within the month; verbal warning issued.","No"],
-    ["2026-02-21","Door 11","PPE Non-compliance","Machining","Bailey Rivers","employee","S. Cole (Production Team Leader)","Awareness","","Not wearing safety glasses at the machine.","Yes"],
-    ["2026-03-06","Door 2","Unauthorised Absence","Packing","Casey Quinn","employee","J. Bennett (Shift Team Leader)","Disciplinary","","Two days of unauthorised absence; formal meeting held.","No"],
-    ["2026-03-12","Door 7","Poor Workmanship","Assembly Line 2","Dana Ellis","employee","J. Bennett (Shift Team Leader)","Awareness","","Repeated assembly errors flagged at final inspection.","Yes"]
+    ["2026-02-03","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Awareness","","Arrived 40 minutes late without prior notice.","No","CMP-201"],
+    ["2026-02-18","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Verbal Given","","Second lateness within the month; verbal warning issued.","No",""],
+    ["2026-02-21","Door 11","PPE Non-compliance","Machining","Bailey Rivers","employee","S. Cole (Production Team Leader)","Awareness","","Not wearing safety glasses at the machine.","Yes","CMP-204"],
+    ["2026-03-06","Door 2","Unauthorised Absence","Packing","Casey Quinn","employee","J. Bennett (Shift Team Leader)","Disciplinary","","Two days of unauthorised absence; formal meeting held.","No",""],
+    ["2026-03-12","Door 7","Poor Workmanship","Assembly Line 2","Dana Ellis","employee","J. Bennett (Shift Team Leader)","Awareness","","Repeated assembly errors flagged at final inspection.","Yes","CMP-209"]
   ];
   const emails = {};
   let seq = 1;
   const incidents = ex.map(r => ({
     id: seq++, date:r[0], ref:r[1], type:r[2], department:r[3], subject:r[4],
-    subjectKind:r[5], raisedBy:r[6], warning:r[7], notes:r[8], investigation:r[9], photos:r[10]||"",
+    subjectKind:r[5], raisedBy:r[6], warning:r[7], notes:r[8], investigation:r[9], photos:r[10]||"", complaint:r[11]||"",
     createdAt: new Date().toISOString()
   }));
   return { updatedAt: Date.now(), seq, lists, emails, incidents };
@@ -557,14 +560,16 @@ function fillFilters(){
   fillSelect($("#fRaised"), state.lists.management, {placeholder:"All managers"}); $("#fRaised").value=kRaised;
   fillSelect($("#fWarn"), WARN_LADDER, {placeholder:"All warnings"}); $("#fWarn").value=kWarn;
 }
-function matchesSearch(r,q){ if(!q) return true; return [r.date,fmtDate(r.date),r.ref,r.type,r.department,r.subject,r.raisedBy,r.warning,r.notes,r.investigation].some(v=>String(v??"").toLowerCase().includes(q)); }
+function matchesSearch(r,q){ if(!q) return true; return [r.date,fmtDate(r.date),r.ref,r.complaint,r.type,r.department,r.subject,r.raisedBy,r.warning,r.notes,r.investigation].some(v=>String(v??"").toLowerCase().includes(q)); }
 function renderLog(){
   const q=($("#fSearch").value||"").trim().toLowerCase();
   const from=$("#fFrom").value, to=$("#fTo").value;
+  const door=($("#fDoor").value||"").trim().toLowerCase(), complaint=($("#fComplaint").value||"").trim().toLowerCase();
   const type=$("#fType").value, dept=$("#fDept").value, emp=$("#fEmp").value, raised=$("#fRaised").value, warn=$("#fWarn").value;
-  const filtered = q||from||to||type||dept||emp||raised||warn;
+  const filtered = q||from||to||door||complaint||type||dept||emp||raised||warn;
   const list = state.incidents.slice().sort((a,b)=> (b.date||"").localeCompare(a.date||"")||b.id-a.id).filter(r=>
     matchesSearch(r,q) && (!from||r.date>=from) && (!to||r.date<=to) &&
+    (!door||String(r.ref??"").toLowerCase().includes(door)) && (!complaint||String(r.complaint??"").toLowerCase().includes(complaint)) &&
     (!type||r.type===type) && (!dept||r.department===dept) && (!emp||r.subject===emp) &&
     (!raised||r.raisedBy===raised) && (!warn||r.warning===warn));
   shown = list;
@@ -573,11 +578,11 @@ function renderLog(){
   if(!state.incidents.length){ log.innerHTML=`<div class="empty">No incidents logged yet.</div>`; return; }
   if(!list.length){ log.innerHTML=`<div class="empty">No incidents match the current filter.</div>`; return; }
   log.innerHTML = `<table>
-    <thead><tr><th>Date</th><th>Door</th><th>Incident</th><th>Line</th><th>Operator / Team Leader</th><th>Raised by</th><th>Warning</th><th>Photos</th><th></th></tr></thead>
+    <thead><tr><th>Date</th><th>Door</th><th>Complaint</th><th>Incident</th><th>Line</th><th>Operator / Team Leader</th><th>Raised by</th><th>Warning</th><th>Photos</th><th></th></tr></thead>
     <tbody>${list.map(r=>{
       const note=[r.notes,r.investigation].filter(Boolean).join(" — ");
       return `<tr>
-        <td data-label="Date">${esc(fmtDate(r.date))}</td><td data-label="Door">${esc(r.ref)}</td>
+        <td data-label="Date">${esc(fmtDate(r.date))}</td><td data-label="Door">${esc(r.ref)}</td><td data-label="Complaint">${esc(r.complaint||"")}</td>
         <td data-label="Incident">${esc(r.type)}${note?`<div class="muted" style="font-size:11px;margin-top:2px">${esc(note.length>90?note.slice(0,90)+"…":note)}</div>`:""}</td>
         <td data-label="Line">${esc(r.department)}</td><td data-label="Operator / Team Leader">${esc(r.subject)}</td><td data-label="Raised by">${esc(r.raisedBy)}</td>
         <td data-label="Warning" class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td>
@@ -598,7 +603,7 @@ function beginEdit(id){
   const r = state.incidents.find(x=>x.id===id); if(!r) return;
   fillIncidentForm(r);
   const f=$("#incForm");
-  f.date.value=r.date; f.ref.value=r.ref||""; f.notes.value=r.notes||""; f.investigation.value=r.investigation||""; f.photos.value=r.photos||"";
+  f.date.value=r.date; f.ref.value=r.ref||""; f.complaint.value=r.complaint||""; f.notes.value=r.notes||""; f.investigation.value=r.investigation||""; f.photos.value=r.photos||"";
   setMode(id); $("#incMsg").textContent=""; window.scrollTo({top:0,behavior:"smooth"});
 }
 function delIncident(id){
@@ -832,7 +837,7 @@ function listRow(key,name){
 /* ================= CSV ================= */
 function exportCsv(){
   if(!shown.length){ toast("Nothing to export for this filter."); return; }
-  const cols=[["Date",r=>fmtDate(r.date)],["Door",r=>r.ref],["Incident",r=>r.type],["Line",r=>r.department],
+  const cols=[["Date",r=>fmtDate(r.date)],["Door",r=>r.ref],["Complaint",r=>r.complaint],["Incident",r=>r.type],["Line",r=>r.department],
     ["Operator / Team Leader",r=>r.subject],["Raised by",r=>r.raisedBy],["Warning",r=>r.warning],["Photos",r=>r.photos],["Notes",r=>r.notes],["Investigation",r=>r.investigation]];
   const cell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const csv="﻿"+[cols.map(c=>cell(c[0])).join(",")].concat(shown.map(r=>cols.map(c=>cell(c[1](r))).join(","))).join("\r\n");
@@ -963,7 +968,7 @@ function bind(){
     const f=e.target; const g=n=>f[n].value.trim?f[n].value.trim():f[n].value;
     const req=["date","type","department","subject","raisedBy","warning"];
     if(!req.every(k=>f[k].value)){ $("#incMsg").textContent="All required fields must be filled."; return; }
-    const data={ date:f.date.value, ref:f.ref.value.trim(), type:f.type.value, department:f.department.value,
+    const data={ date:f.date.value, ref:f.ref.value.trim(), complaint:f.complaint.value.trim(), type:f.type.value, department:f.department.value,
       subject:f.subject.value, subjectKind:subjectKindOf(f.subject.value), raisedBy:f.raisedBy.value,
       warning:f.warning.value, photos:f.photos.value, notes:f.notes.value.trim(), investigation:f.investigation.value.trim() };
     if(editingId){ const r=state.incidents.find(x=>x.id===editingId); Object.assign(r,data); $("#incMsg").textContent="✓ Changes saved."; }
@@ -973,8 +978,8 @@ function bind(){
   });
   $("#incCancel").onclick=()=>{ $("#incForm").reset(); fillIncidentForm(); setMode(null); $("#incMsg").textContent=""; };
   ["fFrom","fTo","fType","fDept","fEmp","fRaised","fWarn"].forEach(id=> $("#"+id).addEventListener("change",renderLog));
-  $("#fSearch").addEventListener("input",renderLog);
-  $("#fClear").onclick=()=>{ ["fFrom","fTo","fType","fDept","fEmp","fRaised","fWarn","fSearch"].forEach(id=>$("#"+id).value=""); renderLog(); };
+  ["fSearch","fDoor","fComplaint"].forEach(id=> $("#"+id).addEventListener("input",renderLog));
+  $("#fClear").onclick=()=>{ ["fFrom","fTo","fDoor","fComplaint","fType","fDept","fEmp","fRaised","fWarn","fSearch"].forEach(id=>$("#"+id).value=""); renderLog(); };
   $("#csvBtn").onclick=exportCsv;
 
   // summary
