@@ -222,7 +222,7 @@
         </div>
         <div class="row">
           <label class="field" style="flex:1 1 150px"><span>Line</span><select name="department" required></select></label>
-          <label class="field" style="flex:1 1 180px"><span>Operator / Team Leader (accountable)</span><select name="subject" required></select></label>
+          <label class="field" style="flex:1 1 180px"><span>Operator (accountable)</span><select name="subject" required></select></label>
           <label class="field" style="flex:1 1 160px"><span>Raised by (manager)</span><select name="raisedBy" required></select></label>
         </div>
         <div class="row">
@@ -283,7 +283,7 @@
           <select id="sumKind">
             <option value="employee">Operator</option>
             <option value="department">Line</option>
-            <option value="manager">Team Leaders (accountable)</option>
+            <option value="manager">Management (accountable)</option>
           </select></label>
         <label class="field"><span>From</span><input type="date" id="sFrom"></label>
         <label class="field"><span>To</span><input type="date" id="sTo"></label>
@@ -301,7 +301,7 @@
           <select id="rKind">
             <option value="employee">Operator</option>
             <option value="department">Line</option>
-            <option value="manager">Team Leaders (accountable)</option>
+            <option value="manager">Management (accountable)</option>
           </select></label>
         <label class="field" style="flex:1 1 200px"><span id="rPickLabel">Operator</span><select id="rName"></select></label>
         <label class="field" style="flex:1 1 170px"><span>Send to (management)</span><select id="rTo"></select></label>
@@ -317,7 +317,7 @@
   <!-- DATA -->
   <section id="data">
     <p class="lead">Reference lists that drive the dropdowns — add, rename or remove. Renaming updates past
-      records; removing only hides the name from future dropdowns. Each <b>Team Leaders</b> entry can hold an
+      records; removing only hides the name from future dropdowns. Each <b>Management</b> entry can hold an
       email address (its address book) — used to send reports to that manager.</p>
     <div class="grid" id="lists" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))"></div>
   </section>
@@ -339,7 +339,7 @@
     <div class="card"><h3>How levels are decided</h3>
       <p class="muted" style="font-size:13px">The warning level is assigned per incident when it is logged. "Highest level reached"
       and the status flags reflect the highest warning assigned to that employee, department or manager in the selected period.
-      A manager held accountable (as the subject) appears only in the Team Leaders views.</p>
+      A manager held accountable (as the subject) appears only in the Management views.</p>
     </div>
   </section>
 
@@ -419,7 +419,7 @@
 
 <script>
 /* ================= Shopfloor Report — single-file PWA ================= */
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.5";
 const KEY = "shopfloorreport.state";
 const GISTFILE = "shopfloorreport.json";
 const $ = s => document.querySelector(s);
@@ -433,15 +433,15 @@ function defaultState(){
   const lists = {
     employees:["Alex Morgan","Bailey Rivers","Casey Quinn","Dana Ellis","Frankie Doyle"],
     departments:["Assembly Line 1","Assembly Line 2","Machining","Packing","Goods-In","Dispatch","Quality","Maintenance"],
-    management:["J. Bennett (Shift Team Leader)","S. Cole (Production Team Leader)","P. Rao (Line Team Leader)"],
+    management:["J. Bennett (Shift Manager)","S. Cole (Production Manager)","P. Rao (Line Manager)"],
     types:["Lateness","Unauthorised Absence","Conduct","PPE Non-compliance","Health & Safety Breach","Policy Breach","Poor Workmanship","Misuse of Equipment","Insubordination"]
   };
   const ex = [
-    ["2026-02-03","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Awareness","","Arrived 40 minutes late without prior notice.","No","CMP-201"],
-    ["2026-02-18","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Team Leader)","Verbal Given","","Second lateness within the month; verbal warning issued.","No",""],
-    ["2026-02-21","Door 11","PPE Non-compliance","Machining","Bailey Rivers","employee","S. Cole (Production Team Leader)","Awareness","","Not wearing safety glasses at the machine.","Yes","CMP-204"],
-    ["2026-03-06","Door 2","Unauthorised Absence","Packing","Casey Quinn","employee","J. Bennett (Shift Team Leader)","Disciplinary","","Two days of unauthorised absence; formal meeting held.","No",""],
-    ["2026-03-12","Door 7","Poor Workmanship","Assembly Line 2","Dana Ellis","employee","J. Bennett (Shift Team Leader)","Awareness","","Repeated assembly errors flagged at final inspection.","Yes","CMP-209"]
+    ["2026-02-03","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Manager)","Awareness","","Arrived 40 minutes late without prior notice.","No","CMP-201"],
+    ["2026-02-18","Door 4","Lateness","Assembly Line 1","Alex Morgan","employee","P. Rao (Line Manager)","Verbal Given","","Second lateness within the month; verbal warning issued.","No",""],
+    ["2026-02-21","Door 11","PPE Non-compliance","Machining","Bailey Rivers","employee","S. Cole (Production Manager)","Awareness","","Not wearing safety glasses at the machine.","Yes","CMP-204"],
+    ["2026-03-06","Door 2","Unauthorised Absence","Packing","Casey Quinn","employee","J. Bennett (Shift Manager)","Disciplinary","","Two days of unauthorised absence; formal meeting held.","No",""],
+    ["2026-03-12","Door 7","Poor Workmanship","Assembly Line 2","Dana Ellis","employee","J. Bennett (Shift Manager)","Awareness","","Repeated assembly errors flagged at final inspection.","Yes","CMP-209"]
   ];
   const emails = {};
   let seq = 1;
@@ -495,13 +495,8 @@ function fillSelect(sel, values, {placeholder=null, selected=null}={}){
   values.forEach(v=>{ const o=document.createElement("option"); o.value=v; o.textContent=v; if(v===selected)o.selected=true; sel.append(o); });
 }
 function fillSubject(sel, selected){
-  sel.innerHTML="";
-  const ph=document.createElement("option"); ph.value=""; ph.textContent="— select —"; sel.append(ph);
-  [["Operators",state.lists.employees,"employee"],["Team Leaders",state.lists.management,"manager"]].forEach(([label,names])=>{
-    if(!names.length) return; const g=document.createElement("optgroup"); g.label=label;
-    names.forEach(n=>{ const o=document.createElement("option"); o.value=n; o.textContent=n; if(n===selected)o.selected=true; g.append(o); });
-    sel.append(g);
-  });
+  // accountable subject is an Operator only (team leaders/management are not accountable subjects)
+  fillSelect(sel, state.lists.employees, {placeholder:"— select —", selected});
 }
 function subjectKindOf(name){ return managersSet().has(name) ? "manager" : "employee"; }
 
@@ -555,7 +550,7 @@ function renderDashboard(){
     ["Incidents this month", thisMonth],
     ["Incidents this year", thisYear],
     ["Operators involved", empSubjects.size],
-    ["Team Leaders involved", raisedMgrs.size],
+    ["Management involved", raisedMgrs.size],
     ["Lines affected", depts.size],
     ["Logged period", span]
   ];
@@ -563,7 +558,7 @@ function renderDashboard(){
 
   const recent = inc.slice().sort((a,b)=> (b.date||"").localeCompare(a.date||"")||b.id-a.id).slice(0,8);
   $("#recent").innerHTML = recent.length ? `<table>
-    <thead><tr><th>Date</th><th>Door</th><th>Incident</th><th>Line</th><th>Operator / Team Leader</th><th>Raised by</th><th>Warning</th></tr></thead>
+    <thead><tr><th>Date</th><th>Door</th><th>Incident</th><th>Line</th><th>Operator</th><th>Raised by</th><th>Warning</th></tr></thead>
     <tbody>${recent.map(r=>`<tr><td>${esc(fmtDate(r.date))}</td><td>${esc(r.ref)}</td><td>${esc(r.type)}</td>
       <td>${esc(r.department)}</td><td>${esc(r.subject)}</td><td>${esc(r.raisedBy)}</td>
       <td class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td></tr>`).join("")}</tbody></table>`
@@ -649,13 +644,13 @@ function renderLog(){
   if(!state.incidents.length){ log.innerHTML=`<div class="empty">No incidents logged yet.</div>`; return; }
   if(!list.length){ log.innerHTML=`<div class="empty">No incidents match the current filter.</div>`; return; }
   log.innerHTML = `<table>
-    <thead><tr><th>Date</th><th>Door</th><th>Complaint</th><th>Incident</th><th>Line</th><th>Operator / Team Leader</th><th>Raised by</th><th>Warning</th><th>Photos</th><th></th></tr></thead>
+    <thead><tr><th>Date</th><th>Door</th><th>Complaint</th><th>Incident</th><th>Line</th><th>Operator</th><th>Raised by</th><th>Warning</th><th>Photos</th><th></th></tr></thead>
     <tbody>${list.map(r=>{
       const note=[r.notes,r.investigation].filter(Boolean).join(" — ");
       return `<tr>
         <td data-label="Date">${esc(fmtDate(r.date))}</td><td data-label="Door">${esc(r.ref)}</td><td data-label="Complaint">${esc(r.complaint||"")}</td>
         <td data-label="Incident">${esc(r.type)}${note?`<div class="muted" style="font-size:11px;margin-top:2px">${esc(note.length>90?note.slice(0,90)+"…":note)}</div>`:""}</td>
-        <td data-label="Line">${esc(r.department)}</td><td data-label="Operator / Team Leader">${esc(r.subject)}</td><td data-label="Raised by">${esc(r.raisedBy)}</td>
+        <td data-label="Line">${esc(r.department)}</td><td data-label="Operator">${esc(r.subject)}</td><td data-label="Raised by">${esc(r.raisedBy)}</td>
         <td data-label="Warning" class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td>
         <td data-label="Photos">${esc(r.photos||"")}${photoCount(r.id)?` <span class="photocount" data-photos="${r.id}" title="View photos (this device)">📎 ${photoCount(r.id)}</span>`:""}</td>
         <td class="acts-cell num" style="white-space:nowrap"><button class="ghost mini" data-edit="${r.id}">Edit</button> <button class="danger mini" data-del="${r.id}">Del</button></td>
@@ -716,7 +711,7 @@ function renderSummary(){
   const d=summaryData(kind, $("#sFrom").value, $("#sTo").value);
   if(!$("#sFrom").value) $("#sFrom").value=d.from;
   if(!$("#sTo").value) $("#sTo").value=d.to;
-  const label = kind==="department"?"Line":kind==="manager"?"Team Leader":"Operator";
+  const label = kind==="department"?"Line":kind==="manager"?"Manager":"Operator";
   $("#sumTable").innerHTML = d.rows.length ? `<table>
     <thead><tr><th>${label}</th><th class="num">Total</th><th class="num">Aware.</th><th class="num">Verbal</th>
       <th class="num">Disc.</th><th class="num">Term.</th><th>Highest</th><th>Last</th><th>Status</th></tr></thead>
@@ -765,8 +760,8 @@ function reportPlainText(){
   const kind=$("#rKind").value, name=$("#rName").value;
   if(!name) return null;
   const items=reportItems(kind,name); const bd=breakdown(items); const hl=highestLevel(items);
-  const title = kind==="department"?"Line":kind==="manager"?"Team Leaders":"Individual";
-  const pickLabel = kind==="department"?"Line":kind==="manager"?"Team Leader":"Operator";
+  const title = kind==="department"?"Line":kind==="manager"?"Management":"Individual";
+  const pickLabel = kind==="department"?"Line":kind==="manager"?"Manager":"Operator";
   const dates=items.map(i=>i.date).filter(Boolean).sort();
   const L=[];
   L.push(`Shopfloor Staff Disciplinary — ${title} Report`);
@@ -790,7 +785,7 @@ function reportPlainText(){
 function initReport(){
   const kind=$("#rKind").value;
   const src = kind==="department"?state.lists.departments : kind==="manager"?state.lists.management : state.lists.employees;
-  $("#rPickLabel").textContent = kind==="department"?"Line":kind==="manager"?"Team Leader":"Operator";
+  $("#rPickLabel").textContent = kind==="department"?"Line":kind==="manager"?"Manager":"Operator";
   fillSelect($("#rName"), src, {placeholder:"— select —"});
   const keepTo = $("#rTo").value;
   fillSelect($("#rTo"), state.lists.management, {placeholder:"— choose manager —"});
@@ -812,9 +807,9 @@ function renderReport(){
   else items = state.incidents.filter(i=>i.subject===name && !isMgrSubject(i));
   items = items.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   const bd=breakdown(items); const hl=highestLevel(items);
-  const midCol = kind==="department"?"Operator / Team Leader":"Line";
-  const title = kind==="department"?"Line":kind==="manager"?"Team Leaders":"Individual";
-  const pickLabel = kind==="department"?"Line":kind==="manager"?"Team Leader":"Operator";
+  const midCol = kind==="department"?"Operator":"Line";
+  const title = kind==="department"?"Line":kind==="manager"?"Management":"Individual";
+  const pickLabel = kind==="department"?"Line":kind==="manager"?"Manager":"Operator";
   const dates=items.map(i=>i.date).filter(Boolean).sort();
   body.innerHTML = `<div class="card report active">
     <div class="confidential">CONFIDENTIAL — HR USE ONLY</div>
@@ -845,14 +840,14 @@ function renderReport(){
     <div class="sig">
       <div><b>Date of meeting:</b> ____________________</div>
       <div class="line">Operator — signature &amp; date</div>
-      <div class="line">Team Leader / Supervisor — signature &amp; date</div>
+      <div class="line">Manager / Supervisor — signature &amp; date</div>
       <div class="line">HR representative — signature &amp; date</div>
     </div>
   </div>`;
 }
 
 /* ================= DATA ================= */
-const LIST_META = [["employees","Operators"],["departments","Lines"],["management","Team Leaders"],["types","Incident types"]];
+const LIST_META = [["employees","Operators"],["departments","Lines"],["management","Management"],["types","Incident types"]];
 const LIST_FIELDS = { employees:["subject"], departments:["department"], management:["raisedBy","subject"], types:["type"] };
 function renderData(){
   const wrap=$("#lists"); wrap.innerHTML="";
@@ -912,7 +907,7 @@ function listRow(key,name){
 function exportCsv(){
   if(!shown.length){ toast("Nothing to export for this filter."); return; }
   const cols=[["Date",r=>fmtDate(r.date)],["Door",r=>r.ref],["Complaint",r=>r.complaint],["Incident",r=>r.type],["Line",r=>r.department],
-    ["Operator / Team Leader",r=>r.subject],["Raised by",r=>r.raisedBy],["Warning",r=>r.warning],["Photos",r=>r.photos],["Notes",r=>r.notes],["Investigation",r=>r.investigation]];
+    ["Operator",r=>r.subject],["Raised by",r=>r.raisedBy],["Warning",r=>r.warning],["Photos",r=>r.photos],["Notes",r=>r.notes],["Investigation",r=>r.investigation]];
   const cell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const csv="﻿"+[cols.map(c=>cell(c[0])).join(",")].concat(shown.map(r=>cols.map(c=>cell(c[1](r))).join(","))).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
