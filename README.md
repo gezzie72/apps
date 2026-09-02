@@ -12,6 +12,7 @@ can be added to a phone's home screen and installed as standalone apps:
 - **Vault** — `/vault/` — encrypted password manager.
 - **RecipeBox** — `/recipebox/` — diabetic-friendly cookbook with carbs-forward nutrition, allergen/diet filters, and a daily plate tracker.
 - **Office Report** — `/officereport/` — office-staff disciplinary log & management reports.
+- **Shopfloor Report** — `/shopfloorreport/` — shopfloor disciplinary log & reports (Operators / Lines / Team Leaders).
 
 Each app is a self-contained `index.html` plus a web app manifest, a service
 worker (offline app shell), and icons. The apps store data locally and sync
@@ -51,4 +52,4 @@ repo, follow these rules:
    ever used for an app, check `git log -- apps/<app>/sw.js`.
 
 Current cache versions (keep this list roughly in step when you bump one):
-`fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11`.
+`fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11` · `shopfloorreport-v1`.
