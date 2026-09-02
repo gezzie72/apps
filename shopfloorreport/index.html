@@ -163,6 +163,22 @@
     .report tr, .report .sig, .report .strip{page-break-inside:avoid}
     .strip .cell{border:1px solid #ccc}
   }
+  /* photos (device-only) */
+  .photoedit{display:flex; flex-direction:column; gap:8px; align-items:flex-start}
+  .photostrip{display:flex; flex-wrap:wrap; gap:8px}
+  .photostrip:empty{display:none}
+  .thumb{position:relative; width:72px; height:72px; border-radius:8px; overflow:hidden; border:1px solid var(--line); background:var(--panel2)}
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block; cursor:pointer}
+  .thumb .rm{position:absolute; top:2px; right:2px; width:20px; height:20px; border:0; border-radius:50%; background:#000a; color:#fff; font-size:13px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center}
+  .photocount{display:inline-block; font-size:12px; color:var(--muted); white-space:nowrap; cursor:pointer}
+  .photocount:hover{color:var(--fg)}
+  #photoViewer{position:fixed; inset:0; z-index:200; background:#000d; display:none; flex-direction:column}
+  #photoViewer.open{display:flex}
+  #photoViewer .pv-bar{display:flex; align-items:center; gap:10px; padding:12px 14px; color:#fff}
+  #photoViewer .pv-bar .sp{flex:1}
+  #photoViewer .pv-imgs{flex:1; overflow:auto; display:flex; flex-wrap:wrap; gap:10px; padding:0 14px 20px; align-content:flex-start; justify-content:center}
+  #photoViewer .pv-imgs img{max-width:100%; max-height:80vh; border-radius:8px; object-fit:contain}
+  @media print{ #photoViewer{display:none !important} }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -217,6 +233,16 @@
         <div class="row">
           <label class="field" style="flex:1 1 100%"><span>Investigation notes (optional)</span>
             <textarea name="investigation" rows="3" placeholder="Findings, statements taken, dates of meetings, outcome…"></textarea></label>
+        </div>
+        <div class="row">
+          <label class="field" style="flex:1 1 100%">
+            <span>Photos <span class="muted" style="font-weight:400">— stored on this device only, not synced</span></span>
+            <div class="photoedit">
+              <input type="file" id="incPhotoInput" accept="image/*" multiple hidden>
+              <button type="button" class="ghost mini" id="incPhotoAdd">📷 Add photos</button>
+              <div id="incPhotoStrip" class="photostrip"></div>
+            </div>
+          </label>
         </div>
         <div class="row" style="justify-content:flex-start">
           <button type="submit" class="btn" id="incSubmit">Add incident</button>
@@ -384,11 +410,16 @@
   </section>
 </main>
 
+<div id="photoViewer">
+  <div class="pv-bar"><b id="pvTitle">Photos</b><span class="sp"></span><button class="ghost mini" id="pvClose">Close ✕</button></div>
+  <div class="pv-imgs" id="pvImgs"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 /* ================= Shopfloor Report — single-file PWA ================= */
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.4";
 const KEY = "shopfloorreport.state";
 const GISTFILE = "shopfloorreport.json";
 const $ = s => document.querySelector(s);
@@ -543,6 +574,46 @@ function renderDashboard(){
 let editingId = null;
 let shown = [];
 
+/* ===== incident photos — DEVICE-ONLY (IndexedDB), never synced to the gist ===== */
+const PDB = (()=>{
+  let dbp=null;
+  function open(){ if(dbp) return dbp; dbp=new Promise((res,rej)=>{ try{ const r=indexedDB.open("shopfloorreport-photos",1);
+    r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains("photos")) r.result.createObjectStore("photos"); };
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); return dbp; }
+  function tx(mode){ return open().then(db=>db.transaction("photos",mode).objectStore("photos")); }
+  return {
+    get:id=>tx("readonly").then(s=>new Promise((res,rej)=>{ const q=s.get(String(id)); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); })).catch(()=>[]),
+    set:(id,arr)=>tx("readwrite").then(s=>new Promise((res,rej)=>{ const q=s.put(arr,String(id)); q.onsuccess=()=>res(); q.onerror=()=>rej(q.error); })).catch(()=>{}),
+    del:id=>tx("readwrite").then(s=>new Promise((res)=>{ const q=s.delete(String(id)); q.onsuccess=()=>res(); q.onerror=()=>res(); })).catch(()=>{})
+  };
+})();
+// lightweight per-device count map so the log can show a 📷 badge synchronously
+const PMETA_KEY="shopfloorreport.photometa";
+let photoMeta = (()=>{ try{ return JSON.parse(localStorage.getItem(PMETA_KEY))||{}; }catch(e){ return {}; } })();
+function savePhotoMeta(){ try{ localStorage.setItem(PMETA_KEY, JSON.stringify(photoMeta)); }catch(e){} }
+function photoCount(id){ return photoMeta[String(id)]||0; }
+function setPhotoCount(id,n){ if(n>0) photoMeta[String(id)]=n; else delete photoMeta[String(id)]; savePhotoMeta(); }
+// working set of photos for the incident form: array of {name,type,blob}
+let formPhotos=[];
+function renderPhotoStrip(){
+  const strip=$("#incPhotoStrip"); if(!strip) return;
+  strip.innerHTML=formPhotos.map((p,i)=>`<div class="thumb"><img src="${URL.createObjectURL(p.blob)}" data-view="${i}" alt="photo"><button type="button" class="rm" data-rm="${i}" title="Remove">✕</button></div>`).join("");
+  strip.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ formPhotos.splice(+b.dataset.rm,1); renderPhotoStrip(); });
+  strip.querySelectorAll("[data-view]").forEach(im=>im.onclick=()=>openViewerBlobs(formPhotos.map(p=>p.blob)));
+}
+function clearPhotoForm(){ formPhotos=[]; renderPhotoStrip(); }
+async function loadPhotoForm(id){ formPhotos = (await PDB.get(id)).map(p=>({name:p.name,type:p.type,blob:p.blob})); renderPhotoStrip(); }
+async function persistPhotos(id){ const arr=formPhotos.map(p=>({name:p.name,type:p.type,blob:p.blob})); if(arr.length) await PDB.set(id,arr); else await PDB.del(id); setPhotoCount(id,arr.length); }
+// viewer
+let pvUrls=[];
+function revokePv(){ pvUrls.forEach(u=>{ try{URL.revokeObjectURL(u)}catch(e){} }); pvUrls=[]; }
+function openViewerBlobs(blobs){
+  revokePv(); pvUrls=blobs.map(b=>URL.createObjectURL(b));
+  $("#pvImgs").innerHTML = pvUrls.length?pvUrls.map(u=>`<img src="${u}" alt="photo">`).join(""):`<div class="muted" style="color:#bbb;padding:20px">No photos on this device.</div>`;
+  $("#photoViewer").classList.add("open");
+}
+async function openViewerFor(id){ $("#pvTitle").textContent="Incident photos"; openViewerBlobs((await PDB.get(id)).map(p=>p.blob)); }
+
 function fillIncidentForm(sel){
   const f = $("#incForm"); sel = sel||{};
   fillSelect(f.type, state.lists.types, {placeholder:"— select —", selected:sel.type});
@@ -586,12 +657,13 @@ function renderLog(){
         <td data-label="Incident">${esc(r.type)}${note?`<div class="muted" style="font-size:11px;margin-top:2px">${esc(note.length>90?note.slice(0,90)+"…":note)}</div>`:""}</td>
         <td data-label="Line">${esc(r.department)}</td><td data-label="Operator / Team Leader">${esc(r.subject)}</td><td data-label="Raised by">${esc(r.raisedBy)}</td>
         <td data-label="Warning" class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td>
-        <td data-label="Photos">${esc(r.photos||"")}</td>
+        <td data-label="Photos">${esc(r.photos||"")}${photoCount(r.id)?` <span class="photocount" data-photos="${r.id}" title="View photos (this device)">📎 ${photoCount(r.id)}</span>`:""}</td>
         <td class="acts-cell num" style="white-space:nowrap"><button class="ghost mini" data-edit="${r.id}">Edit</button> <button class="danger mini" data-del="${r.id}">Del</button></td>
       </tr>`;
     }).join("")}</tbody></table>`;
   log.querySelectorAll("[data-del]").forEach(b=> b.onclick=()=>{ if(confirm("Delete this incident record?")){ delIncident(+b.dataset.del); } });
   log.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=> beginEdit(+b.dataset.edit));
+  log.querySelectorAll("[data-photos]").forEach(b=> b.onclick=()=> openViewerFor(+b.dataset.photos));
 }
 function setMode(id){
   editingId=id;
@@ -604,11 +676,13 @@ function beginEdit(id){
   fillIncidentForm(r);
   const f=$("#incForm");
   f.date.value=r.date; f.ref.value=r.ref||""; f.complaint.value=r.complaint||""; f.notes.value=r.notes||""; f.investigation.value=r.investigation||""; f.photos.value=r.photos||"";
+  loadPhotoForm(id);
   setMode(id); $("#incMsg").textContent=""; window.scrollTo({top:0,behavior:"smooth"});
 }
 function delIncident(id){
   state.incidents = state.incidents.filter(x=>x.id!==id);
-  if(editingId===id){ $("#incForm").reset(); fillIncidentForm(); setMode(null); }
+  PDB.del(id); setPhotoCount(id,0);
+  if(editingId===id){ $("#incForm").reset(); fillIncidentForm(); clearPhotoForm(); setMode(null); }
   touch(); renderLog();
 }
 
@@ -971,12 +1045,18 @@ function bind(){
     const data={ date:f.date.value, ref:f.ref.value.trim(), complaint:f.complaint.value.trim(), type:f.type.value, department:f.department.value,
       subject:f.subject.value, subjectKind:subjectKindOf(f.subject.value), raisedBy:f.raisedBy.value,
       warning:f.warning.value, photos:f.photos.value, notes:f.notes.value.trim(), investigation:f.investigation.value.trim() };
+    const wasEditing=editingId;
     if(editingId){ const r=state.incidents.find(x=>x.id===editingId); Object.assign(r,data); $("#incMsg").textContent="✓ Changes saved."; }
     else { data.id=state.seq++; data.createdAt=new Date().toISOString(); state.incidents.push(data); $("#incMsg").textContent="✓ Incident logged."; }
-    f.reset(); fillIncidentForm(); setMode(null); touch(); fillFilters(); renderLog();
+    const incId = wasEditing || data.id;
+    persistPhotos(incId).then(()=>renderLog());       // device-only photos (async)
+    f.reset(); fillIncidentForm(); clearPhotoForm(); setMode(null); touch(); fillFilters(); renderLog();
     setTimeout(()=>$("#incMsg").textContent="",2500);
   });
-  $("#incCancel").onclick=()=>{ $("#incForm").reset(); fillIncidentForm(); setMode(null); $("#incMsg").textContent=""; };
+  $("#incCancel").onclick=()=>{ $("#incForm").reset(); fillIncidentForm(); clearPhotoForm(); setMode(null); $("#incMsg").textContent=""; };
+  $("#incPhotoAdd").onclick=()=>$("#incPhotoInput").click();
+  $("#incPhotoInput").addEventListener("change",e=>{ [...e.target.files].forEach(file=>{ if(file && /^image\//.test(file.type)) formPhotos.push({name:file.name,type:file.type,blob:file}); }); e.target.value=""; renderPhotoStrip(); });
+  $("#pvClose").onclick=()=>{ $("#photoViewer").classList.remove("open"); revokePv(); $("#pvImgs").innerHTML=""; };
   ["fFrom","fTo","fType","fDept","fEmp","fRaised","fWarn"].forEach(id=> $("#"+id).addEventListener("change",renderLog));
   ["fSearch","fDoor","fComplaint"].forEach(id=> $("#"+id).addEventListener("input",renderLog));
   $("#fClear").onclick=()=>{ ["fFrom","fTo","fDoor","fComplaint","fType","fDept","fEmp","fRaised","fWarn","fSearch"].forEach(id=>$("#"+id).value=""); renderLog(); };
