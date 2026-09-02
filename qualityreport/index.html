@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Quality Report</title>
+<meta name="theme-color" content="#0e1116">
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a323d;
+    --txt:#e6edf3; --muted:#8b949e; --accent:#3fb950; --accent2:#58a6ff;
+    --danger:#f85149; --amber:#f0883e;
+    --headerA:#12171e; --headerB:#0e1116;
+    --green:#2ea043; --greenbg:#132a19; --amberbg:#2a2013; --redbg:#2a1416;
+  }
+  @media (prefers-color-scheme:light){
+    :root:not([data-theme=dark]){
+      --bg:#f4f5f8; --panel:#ffffff; --panel2:#f0f2f6; --line:#dfe3ea;
+      --txt:#1b1f27; --muted:#5a6473; --accent:#1a7f37; --accent2:#0969da;
+      --danger:#cf222e; --amber:#bc4c00;
+      --headerA:#1f3864; --headerB:#2e5496;
+      --green:#1a7f37; --greenbg:#dafbe1; --amberbg:#fff1e5; --redbg:#ffebe9;
+    }
+  }
+  /* forced Light (overrides a dark system setting) */
+  :root[data-theme=light]{
+    --bg:#f4f5f8; --panel:#ffffff; --panel2:#f0f2f6; --line:#dfe3ea;
+    --txt:#1b1f27; --muted:#5a6473; --accent:#1a7f37; --accent2:#0969da;
+    --danger:#cf222e; --amber:#bc4c00;
+    --headerA:#1f3864; --headerB:#2e5496;
+    --green:#1a7f37; --greenbg:#dafbe1; --amberbg:#fff1e5; --redbg:#ffebe9;
+  }
+  /* text-size presets (per-device) */
+  :root{ --tzoom:1 }
+  :root[data-text=small]{ --tzoom:.9 }
+  :root[data-text=large]{ --tzoom:1.12 }
+  :root[data-text=xlarge]{ --tzoom:1.25 }
+  body{ zoom:var(--tzoom,1) }
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; flex-wrap:wrap}
+  .seg button{background:var(--panel2); color:var(--txt); border:none; border-right:1px solid var(--line);
+    padding:8px 12px; font-size:13px; cursor:pointer}
+  .seg button:last-child{border-right:none}
+  .seg button.active{background:var(--accent2); color:#fff; font-weight:700}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg); color:var(--txt);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100dvh; padding-bottom:40px}
+  h1,h2,h3{margin:0}
+  a{color:var(--accent2)}
+  header{position:sticky; top:0; z-index:20; background:linear-gradient(120deg,var(--headerA),var(--headerB));
+    color:#fff; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.08)}
+  .hrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  header h1{font-size:17px; font-weight:700; letter-spacing:.2px}
+  .ver{font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px;
+    background:rgba(255,255,255,.16); color:#dbe6fb; margin-left:2px; vertical-align:middle}
+  .sub{color:#c6d2e6; font-size:11.5px}
+  .spacer{flex:1 1 auto}
+  .synctop{display:flex; align-items:center; gap:8px; font-size:12px; color:#c6d2e6}
+  .synctop .flash{color:#8ff0a4; font-weight:700}
+  nav{display:flex; gap:4px; flex-wrap:wrap; margin-top:8px}
+  nav button{background:rgba(255,255,255,.08); color:#e7edf6; border:1px solid rgba(255,255,255,.12);
+    border-radius:8px; padding:6px 10px; font-size:12.5px; cursor:pointer}
+  nav button.active{background:#fff; color:#12283f; border-color:#fff; font-weight:700}
+  main{max-width:1050px; margin:0 auto; padding:14px}
+  section{display:none}
+  section.active{display:block}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px}
+  .card h3{font-size:15px; margin-bottom:10px}
+  .lead{color:var(--muted); font-size:13px; margin:2px 0 12px}
+  .muted{color:var(--muted)}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:end}
+  .field{display:block; font-size:12px; font-weight:600; color:var(--muted)}
+  .field span{display:block; margin-bottom:4px}
+  input,select,textarea{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px;
+    font-size:14px; font-family:inherit; background:var(--panel2); color:var(--txt)}
+  textarea{resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent2); border-color:var(--accent2)}
+  button.btn,.btn{background:var(--accent2); color:#fff; border:none; border-radius:8px; padding:8px 12px;
+    font-size:13px; font-weight:600; cursor:pointer}
+  button.ghost{background:var(--panel2); color:var(--txt); border:1px solid var(--line)}
+  button.danger{background:var(--danger); color:#fff; border:none}
+  button.mini{padding:4px 8px; font-size:12px; border-radius:6px}
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  th,td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top}
+  th{color:var(--muted); font-weight:600; font-size:12px}
+  td.num,th.num{text-align:right}
+  .tablewrap{overflow-x:auto}
+  .empty{color:var(--muted); padding:14px; text-align:center}
+  .grid{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .kpi{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px}
+  .kpi .label{font-size:11.5px; color:var(--muted)}
+  .kpi .value{font-size:22px; font-weight:800; margin-top:2px}
+  .tag{display:inline-block; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700}
+  .tag.green{background:var(--greenbg); color:var(--green)}
+  .tag.amber{background:var(--amberbg); color:var(--amber)}
+  .tag.red{background:var(--redbg); color:var(--danger)}
+  .tag.none{background:var(--panel2); color:var(--muted)}
+  .warn.red{color:var(--danger); font-weight:700}
+  .warn.amber{color:var(--amber); font-weight:700}
+  .strip{display:grid; grid-template-columns:repeat(6,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:8px 0}
+  .strip .cell{background:var(--panel); padding:8px; text-align:center; font-size:12px}
+  .strip .h{color:var(--muted); font-size:11px}
+  .strip .v{font-weight:800; font-size:16px; margin-top:3px}
+  .confidential{color:var(--danger); font-weight:700; font-size:11px; letter-spacing:.5px}
+  .sig{margin-top:28px; display:grid; gap:38px}
+  .sig .line{border-top:1px solid var(--line); padding-top:6px; color:var(--muted); font-size:12px; max-width:340px}
+  .report{max-width:820px; margin:0 auto}
+  .report .tablewrap{overflow-x:visible}
+  .report table{table-layout:fixed; width:100%}
+  .report th, .report td{overflow-wrap:anywhere; word-break:break-word; vertical-align:top}
+  .report th:nth-child(1), .report td:nth-child(1){width:84px; white-space:nowrap; overflow-wrap:normal; word-break:normal}
+  .report th:nth-child(2), .report td:nth-child(2){width:74px}
+  .report th:nth-child(4), .report td:nth-child(4){width:22%}
+  .report th:nth-child(5), .report td:nth-child(5){width:92px}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000c; color:#fff;
+    padding:10px 16px; border-radius:10px; font-size:13px; z-index:50; opacity:0; transition:opacity .2s; pointer-events:none}
+  .toast.show{opacity:1}
+  .list-item{display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; padding:9px 0; border-bottom:1px solid var(--line)}
+  .list-item:last-of-type{border-bottom:none}
+  .list-item .nm{flex:1 1 120px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500}
+  .list-item .acts{flex:0 0 auto; display:flex; gap:6px; margin-left:auto}
+  .card .items{margin-top:2px}
+  .card .addf{margin-top:12px; padding-top:12px; border-top:1px solid var(--line)}
+  .filters .field{flex:0 0 auto}
+  @media screen and (max-width:640px){
+    .report{max-width:100%}
+    .report .strip{grid-template-columns:repeat(3,1fr); font-size:11px}
+    .report table, .report tbody, .report tr, .report td{display:block; width:auto !important}
+    .report thead{display:none}
+    .report tr{border:1px solid var(--line); border-radius:10px; padding:8px 12px; margin-bottom:10px}
+    .report td{border:none !important; padding:3px 0 !important; white-space:normal !important; font-size:14px}
+    .report td::before{content:attr(data-label) ": "; font-weight:700; color:var(--muted)}
+    .report td.empty::before{content:none}
+    .report td .rnote{margin-top:2px; font-size:13px !important}
+    #faultLog table, #faultLog tbody, #faultLog tr, #faultLog td{display:block; width:auto !important}
+    #faultLog thead{display:none}
+    #faultLog tr{border:1px solid var(--line); border-radius:10px; padding:8px 12px; margin-bottom:10px}
+    #faultLog td{border:none !important; padding:3px 0 !important; white-space:normal !important; text-align:left !important}
+    #faultLog td::before{content:attr(data-label) ": "; font-weight:700; color:var(--muted)}
+    #faultLog td.acts-cell::before{content:none}
+    #faultLog td.acts-cell{margin-top:8px}
+  }
+  @page{ size:A4 portrait; margin:14mm; }
+  @media print{
+    header,nav,.no-print{display:none !important}
+    body{background:#fff; color:#000; zoom:1}
+    .card{border:none; margin:0; padding:0}
+    section{display:none !important}
+    #report.active{display:block !important}
+    .report{max-width:none; margin:0; color:#000}
+    .report .tablewrap{overflow:visible}
+    .report table{table-layout:fixed; width:100%; font-size:12px}
+    .report th, .report td{padding:5px 6px}
+    .report tr, .report .sig, .report .strip{page-break-inside:avoid}
+    .strip .cell{border:1px solid #ccc}
+  }
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<script>try{var t=localStorage.getItem("qualityreport.theme");if(t&&t!=="system")document.documentElement.dataset.theme=t;var s=localStorage.getItem("qualityreport.textsize");if(s&&s!=="medium")document.documentElement.dataset.text=s;}catch(e){}</script>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div>
+      <h1>Quality Report <span class="ver" id="verPill"></span></h1>
+      <div class="sub">Shopfloor quality faults log &amp; reports</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="synctop" id="synctop" style="display:none">
+      <span id="syncLastTop">Not synced</span>
+      <button class="btn mini" id="ghSyncTop">🔄 Sync</button>
+    </div>
+  </div>
+  <nav id="nav"></nav>
+</header>
+
+<main>
+  <!-- DASHBOARD -->
+  <section id="dashboard">
+    <div class="grid" id="kpis"></div>
+    <div class="card"><h3>Recent faults</h3><div class="tablewrap" id="recent"></div></div>
+  </section>
+
+  <!-- FAULTS -->
+  <section id="faults">
+    <div class="card">
+      <h3 id="formTitle">Log a new fault</h3>
+      <form id="faultForm">
+        <div class="row">
+          <label class="field" style="flex:1 1 140px"><span>Date</span><input type="date" name="date" required></label>
+          <label class="field" style="flex:1 1 120px"><span>Door Number</span><input type="text" name="ref" placeholder="e.g. Door 12"></label>
+          <label class="field" style="flex:1 1 170px"><span>Fault type</span><select name="type" required></select></label>
+        </div>
+        <div class="row">
+          <label class="field" style="flex:1 1 160px"><span>Department</span><select name="department" required></select></label>
+          <label class="field" style="flex:1 1 180px"><span>Operative</span><select name="employee" required></select></label>
+          <label class="field" style="flex:1 1 150px"><span>Warning level</span><select name="warning" required></select></label>
+        </div>
+        <div class="row">
+          <label class="field" style="flex:1 1 100%"><span>Notes (optional)</span>
+            <input type="text" name="notes" placeholder="Brief detail for the record"></label>
+        </div>
+        <div class="row" style="justify-content:flex-start">
+          <button type="submit" class="btn" id="faultSubmit">Add fault</button>
+          <button type="button" class="ghost" id="faultCancel" style="display:none">Cancel edit</button>
+          <span id="faultMsg" class="muted" style="align-self:center"></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="row filters" style="align-items:end">
+        <h3 style="margin:0 0 6px">Log <span class="muted" id="faultCount"></span></h3>
+        <div class="spacer"></div>
+        <label class="field"><span>From</span><input type="date" id="fFrom" style="min-width:130px"></label>
+        <label class="field"><span>To</span><input type="date" id="fTo" style="min-width:130px"></label>
+        <label class="field"><span>Door</span><input type="search" id="fDoor" placeholder="any" style="min-width:110px"></label>
+        <label class="field"><span>Fault type</span><select id="fType" style="min-width:140px"></select></label>
+        <label class="field"><span>Department</span><select id="fDept" style="min-width:140px"></select></label>
+        <label class="field"><span>Operative</span><select id="fEmp" style="min-width:150px"></select></label>
+        <label class="field"><span>Warning</span><select id="fWarn" style="min-width:130px"></select></label>
+        <input type="search" id="fSearch" placeholder="Search…" style="flex:0 1 180px">
+        <button class="ghost mini" id="fClear">Clear all filters</button>
+        <button class="ghost mini" id="csvBtn">⬇ Export CSV</button>
+      </div>
+      <div class="tablewrap" id="faultLog" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- SUMMARIES -->
+  <section id="summary">
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <h3 style="margin:0">Summary</h3>
+        <div class="spacer"></div>
+        <label class="field"><span>View</span>
+          <select id="sumKind">
+            <option value="employee">Operative</option>
+            <option value="department">Department</option>
+          </select></label>
+        <label class="field"><span>From</span><input type="date" id="sFrom"></label>
+        <label class="field"><span>To</span><input type="date" id="sTo"></label>
+        <button class="ghost mini" id="sReset">Full span</button>
+      </div>
+    </div>
+    <div class="card"><div class="tablewrap" id="sumTable"></div></div>
+  </section>
+
+  <!-- REPORT -->
+  <section id="report">
+    <div class="card no-print">
+      <div class="row" style="align-items:end">
+        <label class="field"><span>Report</span>
+          <select id="rKind">
+            <option value="employee">Operative</option>
+            <option value="department">Department</option>
+          </select></label>
+        <label class="field" style="flex:1 1 220px"><span id="rPickLabel">Operative</span><select id="rName"></select></label>
+        <div class="spacer"></div>
+        <button class="ghost" id="rEmail">✉ Email report</button>
+        <button class="btn" id="rPrint">🖨 Print / Save as PDF</button>
+      </div>
+    </div>
+    <div id="reportBody"></div>
+  </section>
+
+  <!-- MONTHLY -->
+  <section id="monthly">
+    <div class="card no-print">
+      <div class="row" style="align-items:end">
+        <h3 style="margin:0">Monthly management report</h3>
+        <div class="spacer"></div>
+        <label class="field"><span>Month</span><input type="month" id="mMonth"></label>
+        <button class="btn" id="mPrint">🖨 Print / Save as PDF</button>
+      </div>
+    </div>
+    <div id="monthlyBody"></div>
+  </section>
+
+  <!-- DATA -->
+  <section id="data">
+    <p class="lead">Reference lists that drive the dropdowns — add, rename or remove. Renaming updates past
+      records; removing only hides the name from future dropdowns.</p>
+    <div class="grid" id="lists" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))"></div>
+  </section>
+
+  <!-- WARNINGS -->
+  <section id="warnings">
+    <div class="card">
+      <h3>Escalation ladder</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th class="num">Stage</th><th>Level</th><th>Meaning</th><th>Typical action</th></tr></thead>
+        <tbody>
+          <tr><td class="num">1</td><td><span class="tag green">Awareness</span></td><td>First notice — minor or one-off fault.</td><td>Informal word at the point of work.</td></tr>
+          <tr><td class="num">2</td><td><span class="tag amber">Verbal Given</span></td><td>Repeat or more significant fault.</td><td>Documented one-to-one; targeted retraining.</td></tr>
+          <tr><td class="num">3</td><td><span class="tag red">Disciplinary</span></td><td>Continued faults after a verbal warning.</td><td>Formal disciplinary meeting; report as evidence.</td></tr>
+          <tr><td class="num">4</td><td><span class="tag red">Termination</span></td><td>Final stage of the escalation policy.</td><td>Formal termination review.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card"><h3>How levels are decided</h3>
+      <p class="muted" style="font-size:13px">The warning level is assigned per fault when it is logged. "Highest level reached"
+      and the status flags reflect the highest warning assigned to that operative or department in the selected period.</p>
+    </div>
+  </section>
+
+  <!-- SETUP / SYNC -->
+  <section id="setup">
+    <div class="card">
+      <h3>Cross-device sync (GitHub gist)</h3>
+      <p class="lead">Sync this log across mobile and desktop through a private GitHub gist. Data is stored on your
+        device and mirrored to the gist; the token is stored only on this device and never leaves it except to GitHub.</p>
+      <div id="syncDisconnected">
+        <div class="row">
+          <label class="field" style="flex:2 1 260px"><span>GitHub token (classic, gist scope)</span>
+            <input type="password" id="ghToken" placeholder="ghp_…" autocomplete="off"></label>
+          <label class="field" style="flex:1 1 200px"><span>Gist ID (optional — auto-finds/creates)</span>
+            <input type="text" id="ghGist" placeholder="leave blank to auto-detect" autocomplete="off"></label>
+        </div>
+        <div class="row" style="justify-content:flex-start">
+          <button class="btn" id="ghConnect">Connect</button>
+          <button class="ghost" id="ghShowToken">Show</button>
+        </div>
+      </div>
+      <div id="syncConnected" style="display:none">
+        <div class="tablewrap"><table><tbody>
+          <tr><td class="muted">Connected as</td><td><b id="syncUser">…</b></td></tr>
+          <tr><td class="muted">Gist ID</td><td><a id="syncGistLink" href="#" target="_blank" rel="noopener"><span id="syncGistId"></span></a>
+            <button class="ghost mini" id="ghCopyGist">Copy</button></td></tr>
+          <tr><td class="muted">Last sync</td><td id="syncLast">never</td></tr>
+        </tbody></table></div>
+        <div class="row" style="justify-content:flex-start; margin-top:8px">
+          <button class="btn" id="ghSyncNow">🔄 Sync now</button>
+          <label class="field" style="flex:0 0 auto; align-self:center"><input type="checkbox" id="ghAuto" style="width:auto"> Auto-sync</label>
+          <button class="danger mini" id="ghDisconnect">Disconnect</button>
+        </div>
+      </div>
+      <p id="syncMsg" class="muted" style="font-size:12.5px; margin-top:10px"></p>
+    </div>
+    <div class="card">
+      <h3>Appearance</h3>
+      <div class="row" style="align-items:center; gap:10px 20px">
+        <div class="field" style="flex:0 0 auto"><span>Theme</span>
+          <div class="seg" id="themeSeg">
+            <button type="button" data-theme="system">System</button>
+            <button type="button" data-theme="light">Light</button>
+            <button type="button" data-theme="dark">Dark</button>
+          </div>
+        </div>
+        <div class="field" style="flex:0 0 auto"><span>Text size</span>
+          <div class="seg" id="textSeg">
+            <button type="button" data-text="small">Small</button>
+            <button type="button" data-text="medium">Medium</button>
+            <button type="button" data-text="large">Large</button>
+            <button type="button" data-text="xlarge">Extra-large</button>
+          </div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:12px; margin-top:8px">Saved on this device only (not synced). Doesn't affect printed reports.</p>
+    </div>
+    <div class="card">
+      <h3>This device</h3>
+      <div class="row" style="justify-content:flex-start">
+        <button class="ghost" id="exportJson">Export backup (JSON)</button>
+        <button class="ghost" id="importJsonBtn">Import backup</button>
+        <input type="file" id="importJson" accept="application/json" style="display:none">
+        <button class="danger" id="resetData">Reset to example data</button>
+      </div>
+      <p class="muted" style="font-size:12px; margin-top:10px" id="verLine"></p>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= Quality Report — single-file PWA ================= */
+const APP_VERSION = "1.0";
+const KEY = "qualityreport.state";
+const GISTFILE = "qualityreport.json";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+const WARN_LADDER = ["Awareness","Verbal Given","Disciplinary","Termination"];
+const WARN_RANK = {"Awareness":1,"Verbal Given":2,"Disciplinary":3,"Termination":4};
+
+/* ---------- default / example data ---------- */
+function defaultState(){
+  const lists = {
+    employees:["Alex Morgan","Bailey Rivers","Casey Quinn","Dana Ellis","Frankie Doyle"],
+    departments:["Cutting","Pressing","CNC","Edge-banding","Assembly","Finishing","Glazing","Packing","Quality"],
+    types:["Oversize","Undersize","Lippage","Glue Squeeze-out","Veneer Damage","Poor Finish","Hinge Misalignment","Wrong Ironmongery","Missing Intumescent","Core Void","Edge Delamination","Incorrect Dimensions"]
+  };
+  const ex = [
+    ["2026-02-04","Door 18","Lippage","Assembly","Alex Morgan","Awareness","Face lippage at the lock stile flagged at inspection."],
+    ["2026-02-19","Door 18","Poor Finish","Finishing","Alex Morgan","Verbal Given","Runs in the lacquer; second finish fault this month."],
+    ["2026-02-24","Door 6","Missing Intumescent","Assembly","Bailey Rivers","Awareness","Intumescent strip not fitted to the hinge edge."],
+    ["2026-03-05","Door 22","Incorrect Dimensions","CNC","Casey Quinn","Disciplinary","Door machined 6mm undersize; scrapped. Formal meeting held."],
+    ["2026-03-11","Door 9","Veneer Damage","Pressing","Dana Ellis","Awareness","Surface scuff on the veneer during pressing."]
+  ];
+  let seq = 1;
+  const faults = ex.map(r => ({
+    id: seq++, date:r[0], ref:r[1], type:r[2], department:r[3], employee:r[4],
+    warning:r[5], notes:r[6]||"", createdAt: new Date().toISOString()
+  }));
+  return { updatedAt: Date.now(), seq, lists, faults };
+}
+
+let state = load();
+function load(){
+  try{ const raw = localStorage.getItem(KEY); if(raw) return normalise(JSON.parse(raw)); }catch(e){}
+  const s = defaultState(); try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){}
+  return s;
+}
+function normalise(s){
+  s.lists = s.lists || {};
+  ["employees","departments","types"].forEach(k=> s.lists[k] = s.lists[k]||[]);
+  s.faults = s.faults || [];
+  s.seq = s.seq || (s.faults.reduce((m,i)=>Math.max(m,i.id||0),0)+1);
+  s.updatedAt = s.updatedAt || 0;
+  return s;
+}
+function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function touch(){ state.updatedAt = Date.now(); persist(); schedulePush(); }
+
+/* ---------- helpers ---------- */
+function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtDate(iso){ if(!iso) return ""; const [y,m,d]=iso.split("-"); return d&&m&&y?`${d}/${m}/${y}`:iso; }
+function todayISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function warnTone(w){ return (w==="Disciplinary"||w==="Termination")?"red":(w==="Verbal Given")?"amber":""; }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
+
+function statusFor(rank,total){
+  if(total===0) return {label:"—",tone:"none"};
+  if(rank>=3) return {label:"⚠ Review",tone:"red"};
+  if(rank===2) return {label:"Watch",tone:"amber"};
+  return {label:"OK",tone:"green"};
+}
+function breakdown(list){ const c={}; WARN_LADDER.forEach(w=>c[w]=0); list.forEach(i=>{ if(c[i.warning]!=null) c[i.warning]++; }); return c; }
+function highestLevel(list){ let br=0,bn="—"; list.forEach(i=>{ const r=WARN_RANK[i.warning]||0; if(r>br){br=r;bn=i.warning;} }); return {rank:br,name:bn}; }
+
+function fillSelect(sel, values, {placeholder=null, selected=null}={}){
+  sel.innerHTML="";
+  if(placeholder!=null){ const o=document.createElement("option"); o.value=""; o.textContent=placeholder; sel.append(o); }
+  values.forEach(v=>{ const o=document.createElement("option"); o.value=v; o.textContent=v; if(v===selected)o.selected=true; sel.append(o); });
+}
+
+/* ================= NAV ================= */
+const SECTIONS = [
+  ["dashboard","Dashboard"],["faults","Faults"],["summary","Summaries"],
+  ["report","Reports"],["monthly","Monthly"],["data","Data"],["warnings","Ladder"],["setup","Sync / Setup"]
+];
+function showSection(id){
+  $$("section").forEach(s=> s.classList.toggle("active", s.id===id));
+  $$("#nav button").forEach(b=> b.classList.toggle("active", b.dataset.id===id));
+  if(id==="dashboard") renderDashboard();
+  if(id==="faults"){ fillFaultForm(); fillFilters(); renderLog(); }
+  if(id==="summary") renderSummary();
+  if(id==="report") initReport();
+  if(id==="monthly") initMonthly();
+  if(id==="data") renderData();
+  if(id==="setup"){ renderSync(); renderAppearance(); }
+  window.scrollTo(0,0);
+}
+function buildNav(){
+  $("#nav").innerHTML="";
+  SECTIONS.forEach(([id,label])=>{
+    const b=document.createElement("button"); b.textContent=label; b.dataset.id=id;
+    b.onclick=()=>showSection(id); $("#nav").append(b);
+  });
+}
+
+/* ================= DASHBOARD ================= */
+function renderDashboard(){
+  const inc = state.faults;
+  const emps = new Set(inc.map(i=>i.employee).filter(Boolean));
+  const depts = new Set(inc.map(i=>i.department).filter(Boolean));
+  const types = new Set(inc.map(i=>i.type).filter(Boolean));
+  const dates = inc.map(i=>i.date).filter(Boolean).sort();
+  const now = new Date();
+  const y = String(now.getFullYear());
+  const ym = `${y}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  const today = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const monday = new Date(today); monday.setDate(today.getDate()-((today.getDay()+6)%7));
+  const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+  const wkS=iso(monday), wkE=iso(sunday);
+  const thisWeek = inc.filter(i=> i.date>=wkS && i.date<=wkE).length;
+  const thisMonth = inc.filter(i=> (i.date||"").startsWith(ym)).length;
+  const thisYear = inc.filter(i=> (i.date||"").startsWith(y+"-")).length;
+  const span = dates.length ? `${fmtDate(dates[0])} – ${fmtDate(dates[dates.length-1])}` : "—";
+  const tiles = [
+    ["Total faults logged", inc.length],
+    ["Faults this week", thisWeek],
+    ["Faults this month", thisMonth],
+    ["Faults this year", thisYear],
+    ["Operatives involved", emps.size],
+    ["Departments affected", depts.size],
+    ["Fault types seen", types.size],
+    ["Logged period", span]
+  ];
+  $("#kpis").innerHTML = tiles.map(([l,v])=>`<div class="kpi"><div class="label">${l}</div><div class="value">${esc(v)}</div></div>`).join("");
+
+  const recent = inc.slice().sort((a,b)=> (b.date||"").localeCompare(a.date||"")||b.id-a.id).slice(0,8);
+  $("#recent").innerHTML = recent.length ? `<table>
+    <thead><tr><th>Date</th><th>Door</th><th>Fault</th><th>Department</th><th>Operative</th><th>Warning</th></tr></thead>
+    <tbody>${recent.map(r=>`<tr><td>${esc(fmtDate(r.date))}</td><td>${esc(r.ref)}</td><td>${esc(r.type)}</td>
+      <td>${esc(r.department)}</td><td>${esc(r.employee)}</td>
+      <td class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td></tr>`).join("")}</tbody></table>`
+    : `<div class="empty">No faults logged yet.</div>`;
+}
+
+/* ================= FAULTS ================= */
+let editingId = null;
+let shown = [];
+
+function fillFaultForm(sel){
+  const f = $("#faultForm"); sel = sel||{};
+  fillSelect(f.type, state.lists.types, {placeholder:"— select —", selected:sel.type});
+  fillSelect(f.department, state.lists.departments, {placeholder:"— select —", selected:sel.department});
+  fillSelect(f.employee, state.lists.employees, {placeholder:"— select —", selected:sel.employee});
+  fillSelect(f.warning, WARN_LADDER, {placeholder:"— select —", selected:sel.warning});
+}
+function fillFilters(){
+  const keep = id => $(id).value;
+  const kType=keep("#fType"), kDept=keep("#fDept"), kEmp=keep("#fEmp"), kWarn=keep("#fWarn");
+  fillSelect($("#fType"), state.lists.types, {placeholder:"All fault types"}); $("#fType").value=kType;
+  fillSelect($("#fDept"), state.lists.departments, {placeholder:"All departments"}); $("#fDept").value=kDept;
+  fillSelect($("#fEmp"), state.lists.employees, {placeholder:"All operatives"}); $("#fEmp").value=kEmp;
+  fillSelect($("#fWarn"), WARN_LADDER, {placeholder:"All warnings"}); $("#fWarn").value=kWarn;
+}
+function matchesSearch(r,q){ if(!q) return true; return [r.date,fmtDate(r.date),r.ref,r.type,r.department,r.employee,r.warning,r.notes].some(v=>String(v??"").toLowerCase().includes(q)); }
+function renderLog(){
+  const q=($("#fSearch").value||"").trim().toLowerCase();
+  const from=$("#fFrom").value, to=$("#fTo").value;
+  const door=($("#fDoor").value||"").trim().toLowerCase();
+  const type=$("#fType").value, dept=$("#fDept").value, emp=$("#fEmp").value, warn=$("#fWarn").value;
+  const filtered = q||from||to||door||type||dept||emp||warn;
+  const list = state.faults.slice().sort((a,b)=> (b.date||"").localeCompare(a.date||"")||b.id-a.id).filter(r=>
+    matchesSearch(r,q) && (!from||r.date>=from) && (!to||r.date<=to) &&
+    (!door||String(r.ref??"").toLowerCase().includes(door)) &&
+    (!type||r.type===type) && (!dept||r.department===dept) && (!emp||r.employee===emp) &&
+    (!warn||r.warning===warn));
+  shown = list;
+  $("#faultCount").textContent = filtered ? `(${list.length} of ${state.faults.length})` : `(${state.faults.length})`;
+  const log = $("#faultLog");
+  if(!state.faults.length){ log.innerHTML=`<div class="empty">No faults logged yet.</div>`; return; }
+  if(!list.length){ log.innerHTML=`<div class="empty">No faults match the current filter.</div>`; return; }
+  log.innerHTML = `<table>
+    <thead><tr><th>Date</th><th>Door</th><th>Fault</th><th>Department</th><th>Operative</th><th>Warning</th><th></th></tr></thead>
+    <tbody>${list.map(r=>{
+      const note=r.notes||"";
+      return `<tr>
+        <td data-label="Date">${esc(fmtDate(r.date))}</td><td data-label="Door">${esc(r.ref)}</td>
+        <td data-label="Fault">${esc(r.type)}${note?`<div class="muted" style="font-size:11px;margin-top:2px">${esc(note.length>90?note.slice(0,90)+"…":note)}</div>`:""}</td>
+        <td data-label="Department">${esc(r.department)}</td><td data-label="Operative">${esc(r.employee)}</td>
+        <td data-label="Warning" class="warn ${warnTone(r.warning)}">${esc(r.warning)}</td>
+        <td class="acts-cell num" style="white-space:nowrap"><button class="ghost mini" data-edit="${r.id}">Edit</button> <button class="danger mini" data-del="${r.id}">Del</button></td>
+      </tr>`;
+    }).join("")}</tbody></table>`;
+  log.querySelectorAll("[data-del]").forEach(b=> b.onclick=()=>{ if(confirm("Delete this fault record?")){ delFault(+b.dataset.del); } });
+  log.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=> beginEdit(+b.dataset.edit));
+}
+function setMode(id){
+  editingId=id;
+  $("#formTitle").textContent = id?"Edit fault":"Log a new fault";
+  $("#faultSubmit").textContent = id?"Save changes":"Add fault";
+  $("#faultCancel").style.display = id?"":"none";
+}
+function beginEdit(id){
+  const r = state.faults.find(x=>x.id===id); if(!r) return;
+  fillFaultForm(r);
+  const f=$("#faultForm");
+  f.date.value=r.date; f.ref.value=r.ref||""; f.notes.value=r.notes||"";
+  setMode(id); $("#faultMsg").textContent=""; window.scrollTo({top:0,behavior:"smooth"});
+}
+function delFault(id){
+  state.faults = state.faults.filter(x=>x.id!==id);
+  if(editingId===id){ $("#faultForm").reset(); fillFaultForm(); setMode(null); }
+  touch(); renderLog();
+}
+
+/* ================= SUMMARY ================= */
+function summaryData(kind, from, to){
+  let inc = state.faults.slice();
+  const dates = inc.map(i=>i.date).filter(Boolean).sort();
+  from = from || (dates[0]||"1900-01-01"); to = to || (dates[dates.length-1]||"2999-12-31");
+  inc = inc.filter(i=> i.date>=from && i.date<=to);
+  let names, groupOf;
+  if(kind==="department"){
+    names = state.lists.departments.slice(); groupOf = i=>i.department;
+    inc.forEach(i=>{ if(i.department && !names.includes(i.department)) names.push(i.department); });
+  } else {
+    names = state.lists.employees.slice(); groupOf = i=>i.employee;
+    inc.forEach(i=>{ if(i.employee && !names.includes(i.employee)) names.push(i.employee); });
+  }
+  const rows = names.map(name=>{
+    const items = inc.filter(i=> groupOf(i)===name);
+    const bd=breakdown(items); const hl=highestLevel(items);
+    const last = items.map(i=>i.date).sort().slice(-1)[0];
+    return {name, total:items.length, bd, highest:hl.name, rank:hl.rank, last:last?fmtDate(last):"—", status:statusFor(hl.rank,items.length)};
+  }).sort((a,b)=> b.total-a.total || a.name.localeCompare(b.name));
+  return {from,to,rows};
+}
+function renderSummary(){
+  const kind=$("#sumKind").value;
+  const d=summaryData(kind, $("#sFrom").value, $("#sTo").value);
+  if(!$("#sFrom").value) $("#sFrom").value=d.from;
+  if(!$("#sTo").value) $("#sTo").value=d.to;
+  const label = kind==="department"?"Department":"Operative";
+  $("#sumTable").innerHTML = d.rows.length ? `<table>
+    <thead><tr><th>${label}</th><th class="num">Total</th><th class="num">Aware.</th><th class="num">Verbal</th>
+      <th class="num">Disc.</th><th class="num">Term.</th><th>Highest</th><th>Last</th><th>Status</th></tr></thead>
+    <tbody>${d.rows.map(r=>`<tr>
+      <td><a href="#" data-report="${esc(r.name)}">${esc(r.name)}</a></td>
+      <td class="num">${r.total}</td><td class="num">${r.bd.Awareness}</td><td class="num">${r.bd["Verbal Given"]}</td>
+      <td class="num">${r.bd.Disciplinary}</td><td class="num">${r.bd.Termination}</td>
+      <td>${esc(r.highest)}</td><td>${esc(r.last)}</td><td><span class="tag ${r.status.tone}">${esc(r.status.label)}</span></td>
+    </tr>`).join("")}</tbody></table>` : `<div class="empty">No data.</div>`;
+  $("#sumTable").querySelectorAll("[data-report]").forEach(a=> a.onclick=(e)=>{
+    e.preventDefault();
+    showSection("report");
+    $("#rKind").value = kind; initReport();
+    $("#rName").value = a.dataset.report; renderReport();
+  });
+}
+
+/* ================= REPORT ================= */
+function buildAssessment(subject, kind, items){
+  const total=items.length;
+  if(!total) return `${subject} has no logged quality faults in the selected period.`;
+  const dates=items.map(i=>i.date).sort();
+  const hl=highestLevel(items); const bd=breakdown(items);
+  const lead = kind==="department" ? `quality faults recorded in the ${subject} department` : `the quality record for ${subject}`;
+  let text = `This report summarises ${lead} between ${fmtDate(dates[0])} and ${fmtDate(dates[dates.length-1])}. `+
+    `Over this period, ${total} fault(s) were logged, reaching a highest warning level of ${hl.name} `+
+    `(${bd.Awareness} Awareness, ${bd["Verbal Given"]} Verbal Given, ${bd.Disciplinary} Disciplinary, ${bd.Termination} Termination).`;
+  const counts={}; items.forEach(i=> counts[i.type]=(counts[i.type]||0)+1);
+  let top=null; for(const k in counts){ if(!top||counts[k]>counts[top]) top=k; }
+  if(top && counts[top]>1) text += ` The most frequently recorded fault is "${top}" (${counts[top]} of ${total}), suggesting a recurring quality issue rather than isolated events.`;
+  const tail = ({
+    "Termination":" The record has reached the final stage of the escalation policy; this report is intended to support a formal termination review.",
+    "Disciplinary":" The record has reached Disciplinary level. A documented one-to-one meeting is recommended, with this report used as supporting evidence.",
+    "Verbal Given":" The record shows a Verbal Given warning. Continued monitoring and targeted retraining is recommended."
+  })[hl.name] || " All recorded faults remain at Awareness level; an informal word is the appropriate response.";
+  return text+tail;
+}
+function reportItems(kind,name){
+  let items = kind==="department" ? state.faults.filter(i=>i.department===name) : state.faults.filter(i=>i.employee===name);
+  return items.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+}
+function reportPlainText(){
+  const kind=$("#rKind").value, name=$("#rName").value;
+  if(!name) return null;
+  const items=reportItems(kind,name); const bd=breakdown(items); const hl=highestLevel(items);
+  const title = kind==="department"?"Department":"Individual";
+  const pickLabel = kind==="department"?"Department":"Operative";
+  const dates=items.map(i=>i.date).filter(Boolean).sort();
+  const L=[];
+  L.push(`Quality Faults — ${title} Report`);
+  L.push(`CONFIDENTIAL — MANAGEMENT USE ONLY`);
+  L.push(`${pickLabel}: ${name}`);
+  L.push(`Period: ${dates.length?fmtDate(dates[0])+" – "+fmtDate(dates[dates.length-1]):"—"} · Generated: ${fmtDate(todayISO())}`);
+  L.push("");
+  L.push(`Summary — Total ${items.length}: Awareness ${bd.Awareness}, Verbal Given ${bd["Verbal Given"]}, Disciplinary ${bd.Disciplinary}, Termination ${bd.Termination}. Highest level: ${hl.name}.`);
+  L.push("");
+  L.push("Assessment:");
+  L.push(buildAssessment(name,kind,items));
+  L.push("");
+  L.push("Fault history:");
+  if(items.length) items.forEach(i=>{
+    const mid = kind==="department"?i.employee:i.department;
+    L.push(`- ${fmtDate(i.date)}${i.ref?" ["+i.ref+"]":""}  ${i.type} — ${mid} — ${i.warning}${i.notes?"  ("+i.notes+")":""}`);
+  }); else L.push("- No faults in the selected period.");
+  return {subject:`Quality report — ${name}`, body:L.join("\n")};
+}
+function initReport(){
+  const kind=$("#rKind").value;
+  const src = kind==="department"?state.lists.departments : state.lists.employees;
+  $("#rPickLabel").textContent = kind==="department"?"Department":"Operative";
+  fillSelect($("#rName"), src, {placeholder:"— select —"});
+  renderReport();
+}
+function renderReport(){
+  const kind=$("#rKind").value, name=$("#rName").value;
+  const body=$("#reportBody");
+  if(!name){ body.innerHTML=`<div class="card"><div class="empty">Select a name above.</div></div>`; return; }
+  const items=reportItems(kind,name);
+  const bd=breakdown(items); const hl=highestLevel(items);
+  const midCol = kind==="department"?"Operative":"Department";
+  const title = kind==="department"?"Department":"Individual";
+  const pickLabel = kind==="department"?"Department":"Operative";
+  const dates=items.map(i=>i.date).filter(Boolean).sort();
+  body.innerHTML = `<div class="card report active">
+    <div class="confidential">CONFIDENTIAL — MANAGEMENT USE ONLY</div>
+    <h2 style="margin:6px 0">Quality Faults — ${title} Report</h2>
+    <div class="muted" style="font-size:12.5px">${esc(pickLabel)}: <b>${esc(name)}</b> · Period:
+      ${dates.length?esc(fmtDate(dates[0])+" – "+fmtDate(dates[dates.length-1])):"—"} · Generated: ${esc(fmtDate(todayISO()))}</div>
+    <h3 style="margin-top:14px">Summary</h3>
+    <div class="strip">
+      <div class="cell"><div class="h">Total</div><div class="v">${items.length}</div></div>
+      <div class="cell"><div class="h">Awareness</div><div class="v">${bd.Awareness}</div></div>
+      <div class="cell"><div class="h">Verbal Given</div><div class="v">${bd["Verbal Given"]}</div></div>
+      <div class="cell"><div class="h">Disciplinary</div><div class="v">${bd.Disciplinary}</div></div>
+      <div class="cell"><div class="h">Termination</div><div class="v">${bd.Termination}</div></div>
+      <div class="cell"><div class="h">Highest</div><div class="v">${esc(hl.name)}</div></div>
+    </div>
+    <h3>Assessment</h3>
+    <p>${esc(buildAssessment(name,kind,items))}</p>
+    <h3>Fault History</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Date</th><th>Door</th><th>Fault</th><th>${esc(midCol)}</th><th>Warning</th></tr></thead>
+      <tbody>${items.length?items.map(i=>
+        `<tr><td data-label="Date">${esc(fmtDate(i.date))}</td><td data-label="Door">${esc(i.ref)}</td>
+        <td data-label="Fault">${esc(i.type)}${i.notes?`<div class="muted rnote" style="font-size:12px">${esc(i.notes)}</div>`:""}</td>
+        <td data-label="${esc(midCol)}">${esc(kind==="department"?i.employee:i.department)}</td>
+        <td data-label="Warning" class="warn ${warnTone(i.warning)}">${esc(i.warning)}</td></tr>`).join("")
+        : `<tr><td colspan="5" class="empty">No faults in the selected period.</td></tr>`}</tbody>
+    </table></div>
+    <div class="sig">
+      <div><b>Date of meeting:</b> ____________________</div>
+      <div class="line">Operative — signature &amp; date</div>
+      <div class="line">Manager / Supervisor — signature &amp; date</div>
+      <div class="line">Quality representative — signature &amp; date</div>
+    </div>
+  </div>`;
+}
+
+/* ================= MONTHLY ================= */
+function initMonthly(){
+  if(!$("#mMonth").value){
+    const dates=state.faults.map(i=>i.date).filter(Boolean).sort();
+    const last = dates.length? dates[dates.length-1] : todayISO();
+    $("#mMonth").value = last.slice(0,7);
+  }
+  renderMonthly();
+}
+function renderMonthly(){
+  const ym = $("#mMonth").value;
+  const body=$("#monthlyBody");
+  if(!ym){ body.innerHTML=`<div class="card"><div class="empty">Pick a month.</div></div>`; return; }
+  const items = state.faults.filter(i=> (i.date||"").startsWith(ym)).slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const [y,m] = ym.split("-");
+  const monthName = new Date(+y,+m-1,1).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+
+  // by department
+  const dmap={};
+  items.forEach(i=>{ const d=i.department||"(none)"; (dmap[d] = dmap[d]||[]).push(i); });
+  const deptRows = Object.entries(dmap).map(([name,list])=>({name,total:list.length,bd:breakdown(list)}))
+    .sort((a,b)=> b.total-a.total || a.name.localeCompare(b.name));
+  // by operative
+  const emap={};
+  items.forEach(i=>{ const e=i.employee||"(none)"; (emap[e] = emap[e]||[]).push(i); });
+  const empRows = Object.entries(emap).map(([name,list])=>{ const hl=highestLevel(list);
+    return {name,total:list.length,bd:breakdown(list),highest:hl.name,status:statusFor(hl.rank,list.length)}; })
+    .sort((a,b)=> b.total-a.total || a.name.localeCompare(b.name));
+
+  const totBd = breakdown(items);
+  body.innerHTML = `<div class="card report active">
+    <div class="confidential">CONFIDENTIAL — MANAGEMENT USE ONLY</div>
+    <h2 style="margin:6px 0">Quality Faults — Monthly Report</h2>
+    <div class="muted" style="font-size:12.5px">Month: <b>${esc(monthName)}</b> · Generated: ${esc(fmtDate(todayISO()))}</div>
+    <h3 style="margin-top:14px">Totals</h3>
+    <div class="strip">
+      <div class="cell"><div class="h">Total</div><div class="v">${items.length}</div></div>
+      <div class="cell"><div class="h">Awareness</div><div class="v">${totBd.Awareness}</div></div>
+      <div class="cell"><div class="h">Verbal Given</div><div class="v">${totBd["Verbal Given"]}</div></div>
+      <div class="cell"><div class="h">Disciplinary</div><div class="v">${totBd.Disciplinary}</div></div>
+      <div class="cell"><div class="h">Termination</div><div class="v">${totBd.Termination}</div></div>
+      <div class="cell"><div class="h">Operatives</div><div class="v">${empRows.length}</div></div>
+    </div>
+    <h3>By department</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Department</th><th class="num">Total</th><th class="num">Aware.</th><th class="num">Verbal</th><th class="num">Disc.</th><th class="num">Term.</th></tr></thead>
+      <tbody>${deptRows.length?deptRows.map(r=>`<tr><td data-label="Department">${esc(r.name)}</td>
+        <td class="num" data-label="Total">${r.total}</td><td class="num" data-label="Aware.">${r.bd.Awareness}</td>
+        <td class="num" data-label="Verbal">${r.bd["Verbal Given"]}</td><td class="num" data-label="Disc.">${r.bd.Disciplinary}</td>
+        <td class="num" data-label="Term.">${r.bd.Termination}</td></tr>`).join("")
+        : `<tr><td colspan="6" class="empty">No faults this month.</td></tr>`}</tbody>
+    </table></div>
+    <h3>By operative</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Operative</th><th class="num">Total</th><th class="num">Aware.</th><th class="num">Verbal</th><th class="num">Disc.</th><th class="num">Term.</th><th>Highest</th><th>Status</th></tr></thead>
+      <tbody>${empRows.length?empRows.map(r=>`<tr><td data-label="Operative">${esc(r.name)}</td>
+        <td class="num" data-label="Total">${r.total}</td><td class="num" data-label="Aware.">${r.bd.Awareness}</td>
+        <td class="num" data-label="Verbal">${r.bd["Verbal Given"]}</td><td class="num" data-label="Disc.">${r.bd.Disciplinary}</td>
+        <td class="num" data-label="Term.">${r.bd.Termination}</td><td data-label="Highest">${esc(r.highest)}</td>
+        <td data-label="Status"><span class="tag ${r.status.tone}">${esc(r.status.label)}</span></td></tr>`).join("")
+        : `<tr><td colspan="8" class="empty">No faults this month.</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
+}
+
+/* ================= DATA ================= */
+const LIST_META = [["employees","Operatives"],["departments","Departments"],["types","Fault types"]];
+const LIST_FIELDS = { employees:["employee"], departments:["department"], types:["type"] };
+function renderData(){
+  const wrap=$("#lists"); wrap.innerHTML="";
+  LIST_META.forEach(([key,title])=>{
+    const card=document.createElement("div"); card.className="card";
+    const names=state.lists[key];
+    card.innerHTML=`<h3>${title} (${names.length})</h3><div class="items"></div>
+      <form class="row addf" style="margin-top:10px;justify-content:flex-start">
+        <input type="text" placeholder="Add ${title.toLowerCase().replace(/s$/,"")}" style="flex:1 1 auto">
+        <button type="submit" class="btn" style="flex:0 0 auto">Add</button></form>`;
+    const items=card.querySelector(".items");
+    if(!names.length) items.innerHTML=`<div class="empty">Empty.</div>`;
+    names.forEach(name=> items.append(listRow(key,name)));
+    card.querySelector(".addf").addEventListener("submit",(e)=>{
+      e.preventDefault(); const inp=e.target.querySelector("input"); const v=inp.value.trim();
+      if(!v) return; if(!state.lists[key].includes(v)) state.lists[key].push(v);
+      state.lists[key].sort((a,b)=>a.localeCompare(b)); touch(); renderData();
+    });
+    wrap.append(card);
+  });
+  const wcard=document.createElement("div"); wcard.className="card";
+  wcard.innerHTML=`<h3>Warning types (4)</h3><div class="items">${WARN_LADDER.map(w=>`<div class="list-item"><span class="nm">${w}</span></div>`).join("")}</div>
+    <p class="muted" style="font-size:12px;margin-top:8px">Fixed escalation ladder.</p>`;
+  wrap.append(wcard);
+}
+function listRow(key,name){
+  const row=document.createElement("div"); row.className="list-item";
+  const nm=document.createElement("span"); nm.className="nm"; nm.textContent=name;
+  const ren=document.createElement("button"); ren.className="ghost mini"; ren.textContent="Rename";
+  const rem=document.createElement("button"); rem.className="danger mini"; rem.textContent="Remove";
+  const acts=document.createElement("div"); acts.className="acts"; acts.append(ren,rem);
+  row.append(nm, acts);
+  rem.onclick=()=>{ if(confirm(`Remove "${name}" from ${key}?`)){ state.lists[key]=state.lists[key].filter(x=>x!==name); touch(); renderData(); } };
+  ren.onclick=()=>{
+    nm.innerHTML=""; const inp=document.createElement("input"); inp.value=name; inp.style.width="100%"; nm.append(inp); inp.focus(); inp.select();
+    const save=()=>{ const nv=inp.value.trim(); if(!nv||nv===name){ renderData(); return; }
+      if(state.lists[key].includes(nv)){ alert("That name already exists."); return; }
+      state.lists[key]=state.lists[key].map(x=>x===name?nv:x).sort((a,b)=>a.localeCompare(b));
+      (LIST_FIELDS[key]||[]).forEach(f=> state.faults.forEach(i=>{ if(i[f]===name) i[f]=nv; }));
+      touch(); renderData();
+    };
+    ren.textContent="Save"; ren.onclick=save; rem.textContent="Cancel"; rem.onclick=()=>renderData();
+    inp.onkeydown=(e)=>{ if(e.key==="Enter"){e.preventDefault();save();} if(e.key==="Escape")renderData(); };
+  };
+  return row;
+}
+
+/* ================= CSV ================= */
+function exportCsv(){
+  if(!shown.length){ toast("Nothing to export for this filter."); return; }
+  const cols=[["Date",r=>fmtDate(r.date)],["Door",r=>r.ref],["Fault",r=>r.type],["Department",r=>r.department],
+    ["Operative",r=>r.employee],["Warning",r=>r.warning],["Notes",r=>r.notes]];
+  const cell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const csv="﻿"+[cols.map(c=>cell(c[0])).join(",")].concat(shown.map(r=>cols.map(c=>cell(c[1](r))).join(","))).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`quality_faults_${todayISO()}.csv`;
+  document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+}
+
+/* ================= Appearance (per-device) ================= */
+const PREF = {
+  get theme(){ try{return localStorage.getItem("qualityreport.theme")||"system"}catch(e){return "system"} },
+  set theme(v){ try{localStorage.setItem("qualityreport.theme",v)}catch(e){} },
+  get text(){ try{return localStorage.getItem("qualityreport.textsize")||"medium"}catch(e){return "medium"} },
+  set text(v){ try{localStorage.setItem("qualityreport.textsize",v)}catch(e){} }
+};
+function applyTheme(){
+  const t=PREF.theme;
+  if(t==="system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=t;
+  const dark = t==="dark" || (t==="system" && matchMedia("(prefers-color-scheme:dark)").matches);
+  const m=document.querySelector('meta[name=theme-color]'); if(m) m.content = dark?"#0e1116":"#1f3864";
+}
+function applyText(){
+  const s=PREF.text;
+  if(s==="medium") delete document.documentElement.dataset.text; else document.documentElement.dataset.text=s;
+}
+function renderAppearance(){
+  document.querySelectorAll("#themeSeg button").forEach(b=> b.classList.toggle("active", b.dataset.theme===PREF.theme));
+  document.querySelectorAll("#textSeg button").forEach(b=> b.classList.toggle("active", b.dataset.text===PREF.text));
+}
+
+/* ================= GitHub Gist sync ================= */
+const GH = {
+  get token(){ try{return localStorage.getItem("qualityreport.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("qualityreport.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("qualityreport.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("qualityreport.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("qualityreport.gh.token",v):localStorage.removeItem("qualityreport.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("qualityreport.gh.gist",v):localStorage.removeItem("qualityreport.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("qualityreport.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("qualityreport.gh.user",v):localStorage.removeItem("qualityreport.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+async function ghApi(method, path, body){
+  let res;
+  try{
+    res = await fetch("https://api.github.com"+path, {
+      method, headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" },
+      body: body?JSON.stringify(body):undefined });
+  }catch(e){ throw new Error("Can't reach GitHub — network blocked. If opened via file://, serve over http/https instead."); }
+  if(!res.ok){
+    let d=""; try{ d=(await res.json()).message||""; }catch(e){}
+    if(res.status===401) throw new Error("Invalid or expired token (401). Use a CLASSIC token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited."+(d?" "+d:""));
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(d?" — "+d:""));
+  }
+  return res.json();
+}
+function markSync(msg,err){ const m=$("#syncMsg"); if(m){ m.textContent=msg||""; m.style.color=err?"var(--danger)":"var(--muted)"; } }
+function setSyncTime(){ try{ localStorage.setItem("qualityreport.gh.lastSync",String(Date.now())); }catch(e){} updateLastSync(); }
+function updateLastSync(){
+  let t=0; try{ t=Number(localStorage.getItem("qualityreport.gh.lastSync"))||0; }catch(e){}
+  const rel = !t?"never":(()=>{ const s=Math.round((Date.now()-t)/1000);
+    return s<10?"just now":s<60?s+"s ago":s<3600?Math.round(s/60)+" min ago":s<86400?Math.round(s/3600)+"h ago":new Date(t).toLocaleString(); })();
+  const el=$("#syncLast"); if(el) el.textContent=rel;
+  const el2=$("#syncLastTop"); if(el2) el2.textContent = t?"Synced "+rel:"Not synced";
+}
+setInterval(updateLastSync,30000);
+let flashTimer=null;
+function flashSynced(){ const el=$("#syncLastTop"); if(!el) return; el.classList.add("flash"); el.textContent="Updated ✓";
+  clearTimeout(flashTimer); flashTimer=setTimeout(()=>{ el.classList.remove("flash"); updateLastSync(); },2500); }
+let pushTimer=null;
+function schedulePush(){ if(!GH.connected||!GH.auto) return; clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>{ syncPush().catch(e=>markSync("Push failed: "+e.message,true)); },1500); }
+async function syncPush(){ if(!GH.connected) return; markSync("Saving…");
+  await ghApi("PATCH","/gists/"+GH.gist,{files:{[GISTFILE]:{content:JSON.stringify(state)}}}); setSyncTime(); markSync("Synced"); }
+async function syncPull(force,quiet){
+  if(!GH.connected) return; if(!quiet) markSync("Checking…");
+  const g=await ghApi("GET","/gists/"+GH.gist);
+  const f=g.files && g.files[GISTFILE];
+  if(!f||!f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+  const remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+  if(force || (remote.updatedAt||0) > (state.updatedAt||0)){
+    state=normalise(remote); persist(); refreshAll(); setSyncTime();
+    if(!quiet) markSync("Pulled latest changes"); flashSynced(); return "pulled";
+  } else { setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+}
+async function findGist(){
+  const list=await ghApi("GET","/gists?per_page=100");
+  const mine=(list||[]).filter(g=> (g.files && g.files[GISTFILE]) || g.description==="QualityReport sync");
+  if(!mine.length) return null;
+  mine.sort((a,b)=> new Date(a.created_at)-new Date(b.created_at)); return mine[0].id;
+}
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$("#syncUser"); if(el) el.textContent=u.login; }catch(e){} }
+function renderSync(){
+  $("#syncDisconnected").style.display = GH.connected?"none":"";
+  $("#syncConnected").style.display = GH.connected?"":"none";
+  $("#synctop").style.display = GH.connected?"flex":"none";
+  if(GH.connected){
+    $("#syncGistId").textContent=GH.gist; $("#syncGistLink").href="https://gist.github.com/"+GH.gist;
+    $("#syncUser").textContent=GH.user||"…"; if(!GH.user) fetchUser(); $("#ghAuto").checked=GH.auto;
+  }
+  updateLastSync();
+}
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); }catch(e){ markSync("Sync failed: "+e.message,true); } }
+setInterval(()=>{ if(!GH.connected||!GH.auto||document.hidden) return; syncPull(false,true).catch(()=>{}); },45000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && GH.connected && GH.auto) syncPull(false,true).catch(()=>{}); });
+
+/* ================= wiring ================= */
+function refreshAll(){
+  const active = $$("section").find(s=>s.classList.contains("active"));
+  const id = active?active.id:"dashboard";
+  if(id==="dashboard") renderDashboard();
+  else if(id==="faults"){ fillFaultForm(); fillFilters(); renderLog(); }
+  else if(id==="summary") renderSummary();
+  else if(id==="report") initReport();
+  else if(id==="monthly") renderMonthly();
+  else if(id==="data") renderData();
+  else if(id==="setup") renderSync();
+}
+function bind(){
+  buildNav();
+  $("#verPill").textContent="v"+APP_VERSION;
+  $("#verLine").textContent="Quality Report · v"+APP_VERSION;
+
+  // fault form
+  $("#faultForm").addEventListener("submit",(e)=>{
+    e.preventDefault();
+    const f=e.target;
+    const req=["date","type","department","employee","warning"];
+    if(!req.every(k=>f[k].value)){ $("#faultMsg").textContent="All required fields must be filled."; return; }
+    const data={ date:f.date.value, ref:f.ref.value.trim(), type:f.type.value, department:f.department.value,
+      employee:f.employee.value, warning:f.warning.value, notes:f.notes.value.trim() };
+    if(editingId){ const r=state.faults.find(x=>x.id===editingId); Object.assign(r,data); $("#faultMsg").textContent="✓ Changes saved."; }
+    else { data.id=state.seq++; data.createdAt=new Date().toISOString(); state.faults.push(data); $("#faultMsg").textContent="✓ Fault logged."; }
+    f.reset(); fillFaultForm(); setMode(null); touch(); fillFilters(); renderLog();
+    setTimeout(()=>$("#faultMsg").textContent="",2500);
+  });
+  $("#faultCancel").onclick=()=>{ $("#faultForm").reset(); fillFaultForm(); setMode(null); $("#faultMsg").textContent=""; };
+  ["fFrom","fTo","fType","fDept","fEmp","fWarn"].forEach(id=> $("#"+id).addEventListener("change",renderLog));
+  ["fSearch","fDoor"].forEach(id=> $("#"+id).addEventListener("input",renderLog));
+  $("#fClear").onclick=()=>{ ["fFrom","fTo","fDoor","fType","fDept","fEmp","fWarn","fSearch"].forEach(id=>$("#"+id).value=""); renderLog(); };
+  $("#csvBtn").onclick=exportCsv;
+
+  // summary
+  $("#sumKind").addEventListener("change",()=>{ renderSummary(); });
+  $("#sFrom").addEventListener("change",renderSummary); $("#sTo").addEventListener("change",renderSummary);
+  $("#sReset").onclick=()=>{ $("#sFrom").value=""; $("#sTo").value=""; renderSummary(); };
+
+  // report
+  $("#rKind").addEventListener("change",initReport);
+  $("#rName").addEventListener("change",renderReport);
+  $("#rPrint").onclick=()=>window.print();
+  $("#rEmail").onclick=()=>{
+    const r=reportPlainText();
+    if(!r){ toast("Select a name first."); return; }
+    location.href = `mailto:?subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(r.body)}`;
+  };
+
+  // monthly
+  $("#mMonth").addEventListener("change",renderMonthly);
+  $("#mPrint").onclick=()=>window.print();
+
+  // setup buttons
+  $("#ghConnect").onclick=async()=>{
+    const t=$("#ghToken").value.trim(); let gid=$("#ghGist").value.trim();
+    if(!t){ markSync("Paste your GitHub token first.",true); return; }
+    GH.token=t; markSync("Connecting…");
+    try{
+      if(!gid) gid=await findGist();
+      if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
+        if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your data."); }
+        else markSync("Connected — using your existing sync."); }
+      else { const g=await ghApi("POST","/gists",{description:"QualityReport sync",public:false,files:{[GISTFILE]:{content:JSON.stringify(state)}}});
+        GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
+      $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
+    }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
+  };
+  $("#ghShowToken").onclick=()=>{ const i=$("#ghToken"), show=i.type==="password"; i.type=show?"text":"password"; $("#ghShowToken").textContent=show?"Hide":"Show"; };
+  $("#ghSyncNow").onclick=doSyncNow; $("#ghSyncTop").onclick=doSyncNow;
+  $("#ghAuto").onchange=()=>{ GH.auto=$("#ghAuto").checked; if(GH.auto) schedulePush(); };
+  $("#ghCopyGist").onclick=()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>toast("Gist ID copied"),()=>toast(GH.gist)); };
+  $("#ghDisconnect").onclick=()=>{ if(confirm("Disconnect sync on this device? Local data stays; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+
+  // this-device buttons
+  $("#exportJson").onclick=()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`qualityreport_backup_${todayISO()}.json`;
+    document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(a.href); };
+  $("#importJsonBtn").onclick=()=>$("#importJson").click();
+  $("#importJson").onchange=(e)=>{ const file=e.target.files[0]; if(!file) return;
+    const rd=new FileReader(); rd.onload=()=>{ try{ const obj=JSON.parse(rd.result); state=normalise(obj); touch(); refreshAll(); toast("Backup imported"); }catch(err){ alert("Invalid backup file."); } }; rd.readAsText(file); };
+  $("#resetData").onclick=()=>{ if(confirm("Reset this device to example data? This replaces the current log.")){ state=defaultState(); touch(); refreshAll(); toast("Reset to example data"); } };
+
+  // appearance
+  document.querySelectorAll("#themeSeg button").forEach(b=> b.onclick=()=>{ PREF.theme=b.dataset.theme; applyTheme(); renderAppearance(); });
+  document.querySelectorAll("#textSeg button").forEach(b=> b.onclick=()=>{ PREF.text=b.dataset.text; applyText(); renderAppearance(); });
+  applyTheme(); applyText(); renderAppearance();
+
+  showSection("dashboard");
+  renderSync();
+  if(GH.connected) syncPull(false,true).catch(()=>{});
+}
+document.addEventListener("DOMContentLoaded",bind);
+</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+</body>
+</html>
