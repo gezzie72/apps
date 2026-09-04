@@ -218,10 +218,11 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
       <input id="ordref" type="text" placeholder="e.g. PO 7741">
     </div>
   </div>
-  <div class="field" style="margin-bottom:0">
+  <div class="field">
     <label>Door Number (optional)</label>
     <input id="door" type="text" placeholder="e.g. D12 / D13">
   </div>
+  <button class="btn" id="clearDetails" type="button" style="width:100%">Clear customer details</button>
 </div>
 
 <div class="card">
@@ -542,6 +543,12 @@ function buildReport(){
   `;
   $('report').innerHTML = html;
 }
+
+$('clearDetails').addEventListener('click',()=>{
+  ['job','prep','ordno','ordref','door'].forEach(id=>{ $(id).value=''; });
+  save();
+  $('job').focus();
+});
 
 $('pdfBtn').addEventListener('click',()=>{
   if(!last || !last.has){ alert('Enter at least one opening first.'); return; }
