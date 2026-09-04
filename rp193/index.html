@@ -39,6 +39,11 @@ body{
 }
 h1{font-size:1.7rem; margin:.2rem 0 .1rem; display:flex; align-items:center; gap:.4rem}
 .sub{color:var(--muted); font-size:1rem; margin:0 0 1rem}
+.apphead{display:flex; justify-content:space-between; align-items:flex-start; gap:10px}
+.gear{flex:none; margin-top:6px; width:46px; height:46px; background:var(--card); border:1px solid var(--line);
+  color:var(--txt); border-radius:12px; font-size:1.35rem; line-height:1; cursor:pointer}
+.gear:active{transform:translateY(1px)}
+.gear.on{background:#0369a1; border-color:#38bdf8; color:#fff}
 .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:16px}
 .card h2{font-size:.95rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 12px}
 label{display:block; font-size:.98rem; font-weight:600; color:var(--txt); margin-bottom:5px}
@@ -168,8 +173,13 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
 </style>
 </head>
 <body>
-<h1>📐 RP193 Calc</h1>
-<p class="sub">Frame material length &amp; bars to order — window / louvre openings.</p>
+<div class="apphead">
+  <div>
+    <h1>📐 RP193 Calc</h1>
+    <p class="sub">Frame material length &amp; bars to order — window / louvre openings.</p>
+  </div>
+  <button class="gear" id="setupBtn" type="button" title="Setup" aria-label="Setup">⚙</button>
+</div>
 
 <div class="card">
   <h2>Material</h2>
@@ -254,6 +264,7 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
 <button class="pdfbtn" id="pdfBtn">📄 Export / email PDF report</button>
 <p class="pdfhint">Opens your device's print sheet — choose <b>Save as PDF</b>, then attach it to an email. Nothing leaves your phone.</p>
 
+<div id="setup" hidden>
 <div class="card">
   <h2>Sync across devices</h2>
   <div id="syncDisconnected">
@@ -298,6 +309,7 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
     <button class="btn" data-s="1.3" type="button">XL</button>
   </div>
 </div>
+</div><!-- /#setup -->
 
 <p class="foot">Length per opening = <code>Qty × 2 × (W + H)</code>. Bars rounded up.<br>
 All data is stored locally on this device and, if connected, in your private GitHub gist — nothing else leaves your phone.</p>
@@ -671,6 +683,13 @@ function renderTextSize(){ document.querySelectorAll('#textSize button').forEach
 function setScale(v){ textScale=v; try{ localStorage.setItem(TSCALE_KEY,v); }catch(e){} applyScale(v); renderTextSize(); }
 document.querySelectorAll('#textSize button').forEach(b=> b.addEventListener('click', ()=> setScale(b.dataset.s)));
 applyScale(textScale); renderTextSize();
+
+/* ---------- Setup panel toggle ---------- */
+$('setupBtn').addEventListener('click', ()=>{
+  const s=$('setup'); s.hidden=!s.hidden;
+  $('setupBtn').classList.toggle('on', !s.hidden);
+  if(!s.hidden) s.scrollIntoView({behavior:'smooth', block:'start'});
+});
 
 // initial sync on load
 renderSync();
