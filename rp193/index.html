@@ -13,21 +13,27 @@
   --bg:#0f172a; --card:#1e293b; --card2:#31415a; --line:#3f4d63;
   --txt:#f1f5f9; --muted:#c2cddd; --accent:#4cc4ff; --accent2:#0ea5e9;
   --warnbg:#4a3a14; --warnborder:#fbbf24; --warntxt:#fde68a;
-  --good:#34d399; --warn:#fbbf24; --bad:#f87171; --radius:14px;
+  --good:#34d399; --warn:#fbbf24; --bad:#f87171; --radius:14px; --tscale:1;
 }
 @media (prefers-color-scheme:light){
-  :root{
+  :root:not([data-theme="dark"]){
     --bg:#eef2f7; --card:#ffffff; --card2:#f1f5f9; --line:#c3cede;
     --txt:#0b1220; --muted:#41506a; --accent:#0284c7; --accent2:#0ea5e9;
     --warnbg:#fef3c7; --warnborder:#d97706; --warntxt:#8a5a06;
   }
 }
+:root[data-theme="light"]{
+  --bg:#eef2f7; --card:#ffffff; --card2:#f1f5f9; --line:#c3cede;
+  --txt:#0b1220; --muted:#41506a; --accent:#0284c7; --accent2:#0ea5e9;
+  --warnbg:#fef3c7; --warnborder:#d97706; --warntxt:#8a5a06;
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
+html{font-size:calc(16px * var(--tscale))}
 html,body{margin:0}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  background:var(--bg); color:var(--txt); line-height:1.45; font-size:18px;
+  background:var(--bg); color:var(--txt); line-height:1.45; font-size:1.125rem;
   padding:max(16px,env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom));
   max-width:560px; margin:0 auto;
 }
@@ -95,11 +101,25 @@ input:focus{outline:none; border-color:var(--accent)}
 details{margin-top:10px}
 summary{cursor:pointer; color:var(--muted); font-size:.9rem; font-weight:600}
 details p{color:var(--muted); font-size:.9rem; margin:8px 0 0}
-input[type=text]{
+input[type=text],input[type=password]{
   width:100%; background:var(--card2); border:1px solid var(--line); color:var(--txt);
   border-radius:10px; padding:12px 14px; font-size:1.05rem; font-weight:600;
 }
-input[type=text]:focus{outline:none; border-color:var(--accent)}
+input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var(--accent)}
+.btn{background:var(--card2); border:1px solid var(--line); color:var(--txt); border-radius:10px;
+  padding:11px 15px; font-size:1rem; font-weight:700; cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:#0369a1; border-color:#38bdf8; color:#fff}
+.btn:disabled{opacity:.55; cursor:default}
+.seg{display:flex; gap:8px; flex-wrap:wrap}
+.seg .btn{flex:1; min-width:72px; text-align:center}
+.syncrow{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px}
+.syncrow:last-child{margin-bottom:0}
+.muted{color:var(--muted); font-size:.92rem}
+.muted a,.link{color:var(--accent)}
+.syncmsg{font-size:.9rem; margin:8px 0 0; min-height:1.2em; color:var(--muted)}
+.chk{display:flex; align-items:center; gap:7px; font-weight:600}
+.chk input{width:18px; height:18px}
 .pdfbtn{width:100%; background:linear-gradient(135deg,#0ea5e9,#2563eb); color:#fff; border:none;
   border-radius:12px; padding:16px; font-size:1.15rem; font-weight:800; cursor:pointer;
   display:flex; align-items:center; justify-content:center; gap:.5rem; box-shadow:0 4px 14px rgba(37,99,235,.35)}
@@ -234,7 +254,53 @@ input[type=text]:focus{outline:none; border-color:var(--accent)}
 <button class="pdfbtn" id="pdfBtn">📄 Export / email PDF report</button>
 <p class="pdfhint">Opens your device's print sheet — choose <b>Save as PDF</b>, then attach it to an email. Nothing leaves your phone.</p>
 
-<p class="foot">Length per opening = <code>Qty × 2 × (W + H)</code>. Bars rounded up.</p>
+<div class="card">
+  <h2>Sync across devices</h2>
+  <div id="syncDisconnected">
+    <p class="muted">Keep your phone and desktop in sync via a <b>private</b> GitHub gist. Create a token with only the <b>gist</b> scope and paste it on each device — it finds this app's sync automatically. Your token is stored only in this browser.</p>
+    <div class="field" style="margin:12px 0 10px">
+      <input id="ghToken" type="password" placeholder="GitHub token (gist scope)" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <input id="ghGist" type="text" placeholder="Gist ID (optional — blank = auto-find / create)">
+    </div>
+    <div class="syncrow">
+      <button class="btn primary" id="ghConnect" type="button">Connect</button>
+      <button class="btn" id="ghShowToken" type="button">Show</button>
+    </div>
+    <p class="muted"><a href="https://github.com/settings/tokens/new?scopes=gist&description=RP193%20Calc%20sync" target="_blank" rel="noopener">Create a token →</a> — use a <b>classic</b> token, tick only <b>gist</b>. (Fine-grained tokens can't access gists.)</p>
+  </div>
+  <div id="syncConnected" hidden>
+    <div class="syncrow"><span class="muted">Connected as</span> <b id="syncUser">…</b></div>
+    <div class="syncrow"><span class="muted">Gist</span> <a class="link" id="syncGistLink" target="_blank" rel="noopener"><span id="syncGistId"></span></a>
+      <button class="btn" id="ghCopyGist" type="button">Copy ID</button></div>
+    <div class="syncrow">
+      <button class="btn primary" id="ghSyncNow" type="button">Sync now</button>
+      <label class="chk muted"><input type="checkbox" id="ghAuto"> Auto-sync</label>
+      <button class="btn" id="ghDisconnect" type="button">Disconnect</button>
+    </div>
+    <p class="muted">Last synced: <span id="syncLast">never</span></p>
+  </div>
+  <p class="syncmsg" id="syncMsg"></p>
+</div>
+
+<div class="card">
+  <h2>Appearance</h2>
+  <div class="seg" id="themeCtl">
+    <button class="btn" data-t="system" type="button">System</button>
+    <button class="btn" data-t="light" type="button">Light</button>
+    <button class="btn" data-t="dark" type="button">Dark</button>
+  </div>
+  <div class="seg" id="textSize" style="margin-top:10px">
+    <button class="btn" data-s="0.9" type="button">Small</button>
+    <button class="btn" data-s="1" type="button">Medium</button>
+    <button class="btn" data-s="1.15" type="button">Large</button>
+    <button class="btn" data-s="1.3" type="button">XL</button>
+  </div>
+</div>
+
+<p class="foot">Length per opening = <code>Qty × 2 × (W + H)</code>. Bars rounded up.<br>
+All data is stored locally on this device and, if connected, in your private GitHub gist — nothing else leaves your phone.</p>
 
 <div id="report"></div>
 
@@ -275,23 +341,34 @@ function readRows(){
   }));
 }
 
+let curUpdatedAt = 0;
+function getState(){
+  return { rows: readRows().map(r=>[r.qty,r.w,r.h]),
+    bar:$('bar').value, kerf:$('kerf').value, cost:$('cost').value,
+    job:$('job').value, prep:$('prep').value,
+    ordno:$('ordno').value, ordref:$('ordref').value, door:$('door').value };
+}
 function save(){
-  const rows = readRows().map(r=>[r.qty,r.w,r.h]);
-  try{ localStorage.setItem(STORE, JSON.stringify({rows, bar:$('bar').value, kerf:$('kerf').value, cost:$('cost').value, job:$('job').value, prep:$('prep').value, ordno:$('ordno').value, ordref:$('ordref').value, door:$('door').value})); }catch(e){}
+  const s = getState(); curUpdatedAt = Date.now(); s.updatedAt = curUpdatedAt;
+  try{ localStorage.setItem(STORE, JSON.stringify(s)); }catch(e){}
+  schedulePush();
+}
+function applyFields(d){
+  if(d.bar!=null) $('bar').value=d.bar;
+  if(d.kerf!=null) $('kerf').value=d.kerf;
+  if(d.cost!=null) $('cost').value=d.cost;
+  if(d.job!=null) $('job').value=d.job;
+  if(d.prep!=null) $('prep').value=d.prep;
+  if(d.ordno!=null) $('ordno').value=d.ordno;
+  if(d.ordref!=null) $('ordref').value=d.ordref;
+  if(d.door!=null) $('door').value=d.door;
+  opsBox.innerHTML='';
+  if(Array.isArray(d.rows)&&d.rows.length){ d.rows.forEach(r=>addRow(r[0],r[1],r[2])); }
+  if(!opsBox.querySelector('.op')) addRow();
 }
 function load(){
   let d=null; try{ d=JSON.parse(localStorage.getItem(STORE)); }catch(e){}
-  if(d){
-    if(d.bar) $('bar').value=d.bar;
-    if(d.kerf!=null) $('kerf').value=d.kerf;
-    if(d.cost!=null) $('cost').value=d.cost;
-    if(d.job!=null) $('job').value=d.job;
-    if(d.prep!=null) $('prep').value=d.prep;
-    if(d.ordno!=null) $('ordno').value=d.ordno;
-    if(d.ordref!=null) $('ordref').value=d.ordref;
-    if(d.door!=null) $('door').value=d.door;
-    if(Array.isArray(d.rows)&&d.rows.length){ d.rows.forEach(r=>addRow(r[0],r[1],r[2])); }
-  }
+  if(d){ applyFields(d); curUpdatedAt = d.updatedAt||0; }
   if(!opsBox.querySelector('.op')) addRow(1,400,400);
 }
 
@@ -464,6 +541,140 @@ $('addRow').addEventListener('click',()=>{ addRow(); calc(); save(); opsBox.last
 
 load();
 calc();
+
+/* ---------- Sync (GitHub Gist) ---------- */
+const GH = {
+  get token(){ try{return localStorage.getItem("rp193.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("rp193.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("rp193.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("rp193.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("rp193.gh.token",v):localStorage.removeItem("rp193.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("rp193.gh.gist",v):localStorage.removeItem("rp193.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("rp193.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("rp193.gh.user",v):localStorage.removeItem("rp193.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+async function ghApi(method, path, body){
+  let res;
+  try{
+    res = await fetch("https://api.github.com"+path, {
+      method, headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  }catch(e){ throw new Error("Can't reach GitHub — the browser blocked the request."); }
+  if(!res.ok){
+    let detail=""; try{ detail=(await res.json()).message||""; }catch(e){}
+    if(res.status===401) throw new Error("Invalid or expired token (401). Create a new classic token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited.");
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(detail?" — "+detail:""));
+  }
+  return res.json();
+}
+function markSync(msg, err){ const m=$('syncMsg'); if(m){ m.textContent=msg||""; m.style.color=err?'var(--bad)':'var(--muted)'; } }
+function spin(on){ ['ghConnect','ghSyncNow'].forEach(id=>{ const el=$(id); if(el) el.disabled=on; }); }
+function setSyncTime(){ try{ localStorage.setItem("rp193.gh.lastSync", String(Date.now())); }catch(e){} updateLastSync(); }
+function updateLastSync(){
+  let t=0; try{ t=Number(localStorage.getItem("rp193.gh.lastSync"))||0; }catch(e){}
+  const rel = !t ? "never" : (()=>{ const s=Math.round((Date.now()-t)/1000);
+    return s<10?"just now" : s<60?s+"s ago" : s<3600?Math.round(s/60)+" min ago" : s<86400?Math.round(s/3600)+"h ago" : new Date(t).toLocaleString(); })();
+  const el=$('syncLast'); if(el) el.textContent=rel;
+}
+setInterval(updateLastSync, 30000);
+let pushTimer=null;
+function schedulePush(){ if(!GH.connected || !GH.auto) return; clearTimeout(pushTimer); pushTimer=setTimeout(()=>{ syncPush().catch(e=>{ spin(false); markSync("Push failed: "+e.message,true); }); }, 1500); }
+async function syncPush(){
+  if(!GH.connected) return;
+  spin(true); markSync("Saving…");
+  try{
+    const s=getState(); s.updatedAt=curUpdatedAt||Date.now();
+    await ghApi("PATCH","/gists/"+GH.gist,{files:{"rp193.json":{content:JSON.stringify(s)}}});
+    setSyncTime(); markSync("Synced");
+  } finally{ spin(false); }
+}
+async function syncPull(force, quiet){
+  if(!GH.connected) return;
+  if(!quiet){ spin(true); markSync("Checking…"); }
+  try{
+    const g=await ghApi("GET","/gists/"+GH.gist);
+    const f=g.files && g.files["rp193.json"];
+    if(!f || !f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+    const remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+    if(force || (remote.updatedAt||0) > (curUpdatedAt||0)){
+      applyFields(remote); calc();
+      curUpdatedAt = remote.updatedAt||Date.now();
+      try{ localStorage.setItem(STORE, JSON.stringify(remote)); }catch(e){}
+      setSyncTime(); markSync("Pulled latest changes"); return "pulled";
+    } else { setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+  } finally{ if(!quiet) spin(false); }
+}
+async function findGist(){
+  const list=await ghApi("GET","/gists?per_page=100");
+  const mine=(list||[]).filter(g => (g.files && g.files["rp193.json"]) || g.description==="RP193 Calc sync");
+  if(!mine.length) return null;
+  mine.sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  return mine[0].id;
+}
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$('syncUser'); if(el) el.textContent=u.login; }catch(e){} }
+function renderSync(){
+  $('syncDisconnected').hidden = GH.connected;
+  $('syncConnected').hidden = !GH.connected;
+  if(GH.connected){
+    $('syncGistId').textContent=GH.gist;
+    $('syncGistLink').href="https://gist.github.com/"+GH.gist;
+    $('syncUser').textContent=GH.user||"…"; if(!GH.user) fetchUser();
+    $('ghAuto').checked=GH.auto;
+  }
+  updateLastSync();
+}
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); }catch(e){ markSync("Sync failed: "+e.message,true); spin(false); } }
+setInterval(()=>{ if(!GH.connected||!GH.auto||document.hidden) return; syncPull(false,true).catch(()=>{}); }, 45000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && GH.connected && GH.auto) syncPull(false,true).catch(()=>{}); });
+$('ghConnect').addEventListener('click', async ()=>{
+  const t=$('ghToken').value.trim(); let gid=$('ghGist').value.trim();
+  if(!t){ markSync("Paste your GitHub token first.",true); return; }
+  GH.token=t; spin(true); markSync("Connecting…");
+  try{
+    if(!gid){ gid=await findGist(); }
+    if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
+      if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your data."); } else markSync("Connected — using your existing sync."); }
+    else { const s=getState(); s.updatedAt=curUpdatedAt||Date.now();
+      const g=await ghApi("POST","/gists",{description:"RP193 Calc sync", public:false, files:{"rp193.json":{content:JSON.stringify(s)}}}); GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
+    $('ghToken').value=""; $('ghGist').value=""; renderSync(); fetchUser();
+  }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
+  finally{ spin(false); }
+});
+$('ghSyncNow').addEventListener('click', doSyncNow);
+$('ghAuto').addEventListener('change', ()=>{ GH.auto=$('ghAuto').checked; if(GH.auto) schedulePush(); });
+$('ghCopyGist').addEventListener('click', ()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>markSync("Gist ID copied"), ()=>markSync(GH.gist)); });
+$('ghShowToken').addEventListener('click', ()=>{ const i=$('ghToken'); const show=i.type==='password'; i.type=show?'text':'password'; $('ghShowToken').textContent=show?'Hide':'Show'; });
+$('ghDisconnect').addEventListener('click', ()=>{ if(confirm("Disconnect sync on this device? Your local data stays; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); } });
+
+/* ---------- Appearance ---------- */
+const THEME_KEY="rp193.theme";
+function getTheme(){ try{ return localStorage.getItem(THEME_KEY)||"system"; }catch(e){ return "system"; } }
+let theme=getTheme();
+function applyTheme(v){ const r=document.documentElement; if(v==="system") r.removeAttribute("data-theme"); else r.setAttribute("data-theme",v);
+  const isLight = v==="light" || (v==="system" && window.matchMedia && matchMedia("(prefers-color-scheme:light)").matches);
+  const mc=document.querySelector('meta[name="theme-color"]'); if(mc) mc.setAttribute("content", isLight?"#eef2f7":"#0f172a"); }
+function renderTheme(){ document.querySelectorAll('#themeCtl button').forEach(b=> b.classList.toggle('primary', b.dataset.t===theme)); }
+function setTheme(v){ theme=v; try{ localStorage.setItem(THEME_KEY,v); }catch(e){} applyTheme(v); renderTheme(); }
+document.querySelectorAll('#themeCtl button').forEach(b=> b.addEventListener('click', ()=> setTheme(b.dataset.t)));
+if(window.matchMedia) matchMedia("(prefers-color-scheme:light)").addEventListener("change", ()=>{ if(theme==="system") applyTheme("system"); });
+applyTheme(theme); renderTheme();
+
+const TSCALE_KEY="rp193.textScale";
+function getScale(){ try{ return localStorage.getItem(TSCALE_KEY)||"1"; }catch(e){ return "1"; } }
+let textScale=getScale();
+function applyScale(v){ document.documentElement.style.setProperty("--tscale",v); }
+function renderTextSize(){ document.querySelectorAll('#textSize button').forEach(b=> b.classList.toggle('primary', b.dataset.s===textScale)); }
+function setScale(v){ textScale=v; try{ localStorage.setItem(TSCALE_KEY,v); }catch(e){} applyScale(v); renderTextSize(); }
+document.querySelectorAll('#textSize button').forEach(b=> b.addEventListener('click', ()=> setScale(b.dataset.s)));
+applyScale(textScale); renderTextSize();
+
+// initial sync on load
+renderSync();
+if(GH.connected){ syncPull(false).catch(e=>markSync("Sync error: "+e.message,true)); }
 
 // tiny offline service worker so it installs & works with no signal on-site
 if('serviceWorker' in navigator){
