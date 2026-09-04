@@ -545,7 +545,7 @@ function buildReport(){
 }
 
 $('clearDetails').addEventListener('click',()=>{
-  ['job','prep','ordno','ordref','door'].forEach(id=>{ $(id).value=''; });
+  ['job','ordno','ordref','door'].forEach(id=>{ $(id).value=''; });
   save();
   $('job').focus();
 });
