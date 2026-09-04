@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>RP193 Calc</title>
+<link rel="manifest" href='data:application/manifest+json,{"name":"RP193 Calc","short_name":"RP193","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#0f172a","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230f172a%22/%3E%3Ctext y=%2268%22 x=%2250%22 font-size=%2244%22 font-weight=%22bold%22 text-anchor=%22middle%22 fill=%22%234cc4ff%22%3E193%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
+<style>
+:root{
+  --bg:#0f172a; --card:#1e293b; --card2:#31415a; --line:#3f4d63;
+  --txt:#f1f5f9; --muted:#c2cddd; --accent:#4cc4ff; --accent2:#0ea5e9;
+  --warnbg:#4a3a14; --warnborder:#fbbf24; --warntxt:#fde68a;
+  --good:#34d399; --warn:#fbbf24; --bad:#f87171; --radius:14px;
+}
+@media (prefers-color-scheme:light){
+  :root{
+    --bg:#eef2f7; --card:#ffffff; --card2:#f1f5f9; --line:#c3cede;
+    --txt:#0b1220; --muted:#41506a; --accent:#0284c7; --accent2:#0ea5e9;
+    --warnbg:#fef3c7; --warnborder:#d97706; --warntxt:#8a5a06;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg); color:var(--txt); line-height:1.45; font-size:18px;
+  padding:max(16px,env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom));
+  max-width:560px; margin:0 auto;
+}
+h1{font-size:1.7rem; margin:.2rem 0 .1rem; display:flex; align-items:center; gap:.4rem}
+.sub{color:var(--muted); font-size:1rem; margin:0 0 1rem}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:16px}
+.card h2{font-size:.95rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 12px}
+label{display:block; font-size:.98rem; font-weight:600; color:var(--txt); margin-bottom:5px}
+.row{display:flex; gap:10px}
+.row>.field{flex:1}
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+input[type=number]{
+  width:100%; background:var(--card2); border:1px solid var(--line); color:var(--txt);
+  border-radius:10px; padding:13px 14px; font-size:1.2rem; font-weight:600;
+}
+input:focus{outline:none; border-color:var(--accent)}
+.suffix{position:relative}
+.suffix::after{content:attr(data-suffix); position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  color:var(--muted); font-size:.9rem; font-weight:600; pointer-events:none}
+.suffix input{padding-right:42px}
+
+/* openings list */
+.op-head{display:flex; gap:8px; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;
+  color:var(--muted); font-weight:700; margin-bottom:6px; padding:0 2px}
+.op-head .c-qty{width:58px; text-align:center}
+.op-head .c-dim{flex:1; text-align:center}
+.op-head .c-x{width:16px}
+.op-head .c-del{width:34px}
+.op{margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:12px}
+.op:last-child{border-bottom:none; padding-bottom:0}
+.op-inputs{display:flex; gap:8px; align-items:center}
+.op input{padding:11px 6px; font-size:1.15rem; text-align:center}
+.op .c-qty{width:58px; flex:none}
+.op .c-dim{flex:1; min-width:0}
+.op .c-x{width:16px; flex:none; text-align:center; color:var(--muted); font-weight:700}
+.op .del{width:34px; height:44px; flex:none; background:var(--card2); border:1px solid var(--line);
+  color:var(--muted); border-radius:9px; font-size:1.1rem; cursor:pointer; padding:0}
+.op .del:active{background:var(--bad); color:#fff}
+.op .len{display:block; margin-top:5px; padding-left:2px; font-size:.85rem; color:var(--muted); font-weight:600}
+.op .len b{color:var(--accent)}
+.addbtn{width:100%; background:var(--card2); border:1px dashed var(--line); color:var(--accent);
+  border-radius:10px; padding:12px; font-size:1rem; font-weight:700; cursor:pointer; margin-top:4px}
+
+/* results */
+.result{background:linear-gradient(135deg,#0ea5e9,#2563eb); border:none}
+.result h2{color:rgba(255,255,255,.85)}
+.big{display:flex; align-items:baseline; gap:.5rem; margin:2px 0 4px}
+.big .num{font-size:3.8rem; font-weight:800; line-height:1; color:#fff}
+.big .unit{font-size:1.25rem; color:rgba(255,255,255,.9); font-weight:600}
+.result .note{color:rgba(255,255,255,.92); font-size:1rem}
+.result .cost{margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.25);
+  font-size:1.35rem; font-weight:800; color:#fff; display:flex; justify-content:space-between; align-items:baseline}
+.result .cost small{font-size:.9rem; font-weight:600; color:rgba(255,255,255,.85)}
+.breakdown{margin-top:2px}
+.brow{display:flex; justify-content:space-between; padding:11px 0; border-top:1px solid var(--line); font-size:1.05rem}
+.brow:first-child{border-top:none}
+.brow .k{color:var(--muted)}
+.brow .v{font-weight:700}
+.warn-box{background:var(--warnbg); border:1px solid var(--warnborder); color:var(--warntxt); border-radius:10px;
+  padding:11px 13px; font-size:.98rem; margin-top:10px; display:none}
+.warn-box.show{display:block}
+.foot{color:var(--muted); font-size:.85rem; text-align:center; margin-top:6px}
+.foot code{color:var(--accent)}
+details{margin-top:10px}
+summary{cursor:pointer; color:var(--muted); font-size:.9rem; font-weight:600}
+details p{color:var(--muted); font-size:.9rem; margin:8px 0 0}
+input[type=text]{
+  width:100%; background:var(--card2); border:1px solid var(--line); color:var(--txt);
+  border-radius:10px; padding:12px 14px; font-size:1.05rem; font-weight:600;
+}
+input[type=text]:focus{outline:none; border-color:var(--accent)}
+.pdfbtn{width:100%; background:linear-gradient(135deg,#0ea5e9,#2563eb); color:#fff; border:none;
+  border-radius:12px; padding:16px; font-size:1.15rem; font-weight:800; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:.5rem; box-shadow:0 4px 14px rgba(37,99,235,.35)}
+.pdfbtn:active{transform:translateY(1px)}
+.pdfhint{color:var(--muted); font-size:.82rem; text-align:center; margin:8px 0 0}
+
+/* ---- printable report (hidden on screen, shown only when printing) ---- */
+#report{display:none}
+@media print{
+  @page{margin:16mm}
+  html,body{background:#fff}
+  body{max-width:none; margin:0; padding:0; color:#000; font-size:11pt}
+  body > *:not(#report){display:none!important}
+  #report{display:block!important}
+}
+#report{font-family:"Segoe UI",Arial,Helvetica,sans-serif; color:#111}
+#report .r-head{display:flex; justify-content:space-between; align-items:flex-start;
+  border-bottom:3px solid #1d3a5f; padding-bottom:14px; margin-bottom:20px}
+#report .r-title{font-size:22pt; font-weight:800; color:#0f172a; margin:0; letter-spacing:.3px}
+#report .r-sub{color:#475569; font-size:10.5pt; margin:4px 0 0}
+#report .r-badge{text-align:right; font-size:9.5pt; color:#475569; line-height:1.6}
+#report .r-badge b{color:#0f172a}
+#report .r-meta{display:grid; grid-template-columns:1fr 1fr; gap:6px 28px; margin:0 0 22px;
+  font-size:10.5pt}
+#report .r-meta div{border-bottom:1px solid #e2e8f0; padding:6px 0; display:flex; justify-content:space-between}
+#report .r-meta span{color:#64748b}
+#report .r-meta b{color:#0f172a}
+#report h3{font-size:11pt; text-transform:uppercase; letter-spacing:.05em; color:#1d3a5f;
+  border-bottom:2px solid #cbd5e1; padding-bottom:5px; margin:24px 0 10px}
+#report table{width:100%; border-collapse:collapse; font-size:10pt}
+#report thead th{background:#1d3a5f; color:#fff; text-align:left; padding:9px 10px; font-weight:600}
+#report thead th.num, #report td.num{text-align:right}
+#report tbody td{padding:8px 10px; border-bottom:1px solid #e2e8f0}
+#report tbody tr:nth-child(even){background:#f1f5f9}
+#report tfoot td{padding:10px; font-weight:800; border-top:2px solid #1d3a5f; background:#eef4fb}
+#report .r-result{display:flex; align-items:center; gap:22px; margin:24px 0 6px;
+  background:#0f172a; color:#fff; border-radius:12px; padding:20px 24px}
+#report .r-result .n{font-size:40pt; font-weight:800; line-height:1}
+#report .r-result .l{font-size:11pt; line-height:1.5}
+#report .r-result .l b{color:#4cc4ff}
+#report .r-disclaimer{font-weight:800; font-style:italic; font-size:10.5pt; color:#8a5a06;
+  background:#fef3c7; border:1px solid #d97706; border-radius:8px; padding:12px 14px; margin:0 0 22px}
+#report .r-note{font-size:9pt; color:#64748b; margin:10px 0 0; line-height:1.55}
+#report .r-foot{margin-top:28px; padding-top:12px; border-top:1px solid #cbd5e1;
+  font-size:8.5pt; color:#94a3b8; display:flex; justify-content:space-between}
+</style>
+</head>
+<body>
+<h1>📐 RP193 Calc</h1>
+<p class="sub">Frame material length &amp; bars to order — window / louvre openings.</p>
+
+<div class="card">
+  <h2>Material</h2>
+  <div class="row">
+    <div class="field suffix" data-suffix="mm">
+      <label>Bar length</label>
+      <input id="bar" type="number" inputmode="numeric" value="6000">
+    </div>
+    <div class="field suffix" data-suffix="mm">
+      <label>Saw kerf / cut</label>
+      <input id="kerf" type="number" inputmode="numeric" value="0">
+    </div>
+  </div>
+  <div class="field suffix" data-suffix="£">
+    <label>Cost per bar (optional)</label>
+    <input id="cost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 18.50">
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>Job / project (optional)</label>
+      <input id="job" type="text" placeholder="e.g. Plot 14 – Riverside">
+    </div>
+    <div class="field">
+      <label>Prepared by (optional)</label>
+      <input id="prep" type="text" placeholder="Your name">
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>Order Number (optional)</label>
+      <input id="ordno" type="text" placeholder="e.g. SO-10482">
+    </div>
+    <div class="field">
+      <label>Order Ref (optional)</label>
+      <input id="ordref" type="text" placeholder="e.g. PO 7741">
+    </div>
+  </div>
+  <div class="field" style="margin-bottom:0">
+    <label>Door Number (optional)</label>
+    <input id="door" type="text" placeholder="e.g. D12 / D13">
+  </div>
+</div>
+
+<div class="card">
+  <h2>Openings</h2>
+  <div class="op-head">
+    <span class="c-qty">Qty</span>
+    <span class="c-dim">Width</span>
+    <span class="c-x"></span>
+    <span class="c-dim">Height</span>
+    <span class="c-del"></span>
+  </div>
+  <div id="ops"></div>
+  <button class="addbtn" id="addRow">+ Add opening</button>
+</div>
+
+<div class="card result">
+  <h2>Bars to order</h2>
+  <div class="big"><span class="num" id="bars">–</span><span class="unit" id="barsUnit">bars</span></div>
+  <div class="note" id="barsNote">Add an opening to calculate.</div>
+  <div class="cost" id="costLine" hidden><span>Materials cost</span><span id="costTotal">–</span></div>
+</div>
+
+<div class="card">
+  <h2>Breakdown</h2>
+  <div class="breakdown">
+    <div class="brow"><span class="k">Total frame length</span><span class="v" id="totLen">–</span></div>
+    <div class="brow"><span class="k">Total pieces to cut</span><span class="v" id="totPcs">–</span></div>
+    <div class="brow"><span class="k">Bars — offcuts reused (order this)</span><span class="v" id="barsPack">–</span></div>
+    <div class="brow"><span class="k">Theoretical min (length ÷ bar)</span><span class="v" id="barsPool">–</span></div>
+    <div class="brow"><span class="k">Offcut left over on last bar</span><span class="v" id="offcut">–</span></div>
+    <div class="brow" id="costRowEach" hidden><span class="k">Cost per bar</span><span class="v" id="costEach">–</span></div>
+    <div class="brow" id="costRowTotal" hidden><span class="k">Total materials cost</span><span class="v" id="costTotal2">–</span></div>
+  </div>
+  <div class="warn-box" id="warn"></div>
+  <details>
+    <summary>How the bar count works</summary>
+    <p>Each opening needs 4 pieces — 2 widths + 2 heights (perimeter = 2 × (W + H)), cut to exact size. The app packs every piece into 6&nbsp;m bars using offcut nesting, so a bar's leftover is reused for the next piece that fits. That's the real number of bars you need on the saw. The theoretical minimum just divides total length by bar length and assumes zero waste — it's a floor, not usually achievable.</p>
+  </details>
+</div>
+
+<button class="pdfbtn" id="pdfBtn">📄 Export / email PDF report</button>
+<p class="pdfhint">Opens your device's print sheet — choose <b>Save as PDF</b>, then attach it to an email. Nothing leaves your phone.</p>
+
+<p class="foot">Length per opening = <code>Qty × 2 × (W + H)</code>. Bars rounded up.</p>
+
+<div id="report"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const opsBox = $('ops');
+const STORE = 'rp193.ops.v1';
+let last = null;
+
+function fmt(n, dp=0){ return n.toLocaleString('en-GB',{maximumFractionDigits:dp}); }
+function money(n){ return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function rowHTML(qty='', w='', h=''){
+  const d = document.createElement('div');
+  d.className = 'op';
+  d.innerHTML =
+    `<div class="op-inputs">`+
+      `<input class="c-qty q" type="number" inputmode="numeric" min="0" placeholder="1" value="${qty}">`+
+      `<input class="c-dim w" type="number" inputmode="numeric" min="0" placeholder="W" value="${w}">`+
+      `<span class="c-x">×</span>`+
+      `<input class="c-dim h" type="number" inputmode="numeric" min="0" placeholder="H" value="${h}">`+
+      `<button class="del" title="Remove">✕</button>`+
+    `</div>`+
+    `<span class="len">–</span>`;
+  d.querySelector('.del').addEventListener('click',()=>{ d.remove(); ensureRow(); calc(); save(); });
+  d.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{ calc(); save(); }));
+  return d;
+}
+function addRow(qty,w,h){ opsBox.appendChild(rowHTML(qty,w,h)); }
+function ensureRow(){ if(!opsBox.querySelector('.op')) addRow(); }
+
+function readRows(){
+  return [...opsBox.querySelectorAll('.op')].map(op=>({
+    el:op,
+    qty:parseFloat(op.querySelector('.q').value)||0,
+    w:parseFloat(op.querySelector('.w').value)||0,
+    h:parseFloat(op.querySelector('.h').value)||0,
+  }));
+}
+
+function save(){
+  const rows = readRows().map(r=>[r.qty,r.w,r.h]);
+  try{ localStorage.setItem(STORE, JSON.stringify({rows, bar:$('bar').value, kerf:$('kerf').value, cost:$('cost').value, job:$('job').value, prep:$('prep').value, ordno:$('ordno').value, ordref:$('ordref').value, door:$('door').value})); }catch(e){}
+}
+function load(){
+  let d=null; try{ d=JSON.parse(localStorage.getItem(STORE)); }catch(e){}
+  if(d){
+    if(d.bar) $('bar').value=d.bar;
+    if(d.kerf!=null) $('kerf').value=d.kerf;
+    if(d.cost!=null) $('cost').value=d.cost;
+    if(d.job!=null) $('job').value=d.job;
+    if(d.prep!=null) $('prep').value=d.prep;
+    if(d.ordno!=null) $('ordno').value=d.ordno;
+    if(d.ordref!=null) $('ordref').value=d.ordref;
+    if(d.door!=null) $('door').value=d.door;
+    if(Array.isArray(d.rows)&&d.rows.length){ d.rows.forEach(r=>addRow(r[0],r[1],r[2])); }
+  }
+  if(!opsBox.querySelector('.op')) addRow(1,400,400);
+}
+
+// First-fit-decreasing bin packing → real bars needed (offcuts reused within a bar)
+function packBars(pieces, bar, kerf){
+  const bins=[]; // remaining length in each open bar
+  for(const len of pieces){
+    let placed=false;
+    for(let i=0;i<bins.length;i++){
+      if(bins[i] >= len){ bins[i]-=(len+kerf); placed=true; break; }
+    }
+    if(!placed){ bins.push(bar-(len+kerf)); }
+  }
+  return bins;
+}
+
+function calc(){
+  const bar = parseFloat($('bar').value)||0;
+  const kerf = parseFloat($('kerf').value)||0;
+  const rows = readRows();
+
+  let totLen=0, totPcs=0, oversize=false;
+  const pieces=[];
+  for(const r of rows){
+    const per = 2*(r.w + r.h);           // perimeter of one frame
+    const len = r.qty*per;
+    r.el.querySelector('.len').innerHTML = (r.qty>0 && (r.w||r.h))
+      ? `Length: <b>${fmt(len)} mm</b>  ·  4 pieces × ${fmt(r.qty)}`
+      : 'Length: –';
+    totLen += len;
+    if(r.qty>0){
+      const n = Math.round(r.qty);
+      for(let k=0;k<n;k++){ pieces.push(r.w,r.w,r.h,r.h); totPcs+=4; }
+      if(r.w>bar || r.h>bar) oversize=true;
+    }
+  }
+  // drop zero-length pieces, sort descending for FFD
+  const cut = pieces.filter(p=>p>0).sort((a,b)=>b-a);
+  const bins = bar>0 ? packBars(cut, bar, kerf) : [];
+  const barsPack = bins.length;
+  const barsPool = bar>0 ? Math.ceil(totLen/bar) : 0;
+  const lastOffcut = bins.length ? bins[bins.length-1] : 0;
+
+  const has = totLen>0 && bar>0;
+  $('bars').textContent = has ? barsPack : '–';
+  $('barsUnit').textContent = barsPack===1 ? 'bar' : 'bars';
+  $('barsNote').textContent = has
+    ? `${fmt(totPcs)} pieces · ${fmt(totLen/1000,1)} m of ${bar}mm bar`
+    : 'Add an opening to calculate.';
+
+  $('totLen').textContent = has ? fmt(totLen)+' mm  ('+fmt(totLen/1000,2)+' m)' : '–';
+  $('totPcs').textContent = has ? fmt(totPcs)+' pieces' : '–';
+  $('barsPack').textContent = has ? barsPack+(barsPack===1?' bar':' bars') : '–';
+  $('barsPool').textContent = has ? barsPool+(barsPool===1?' bar':' bars') : '–';
+  $('offcut').textContent = has ? fmt(lastOffcut)+' mm' : '–';
+
+  // cost
+  const cost = parseFloat($('cost').value)||0;
+  const showCost = has && cost>0;
+  const totalCost = barsPack*cost;
+  $('costLine').hidden = !showCost;
+  $('costRowEach').hidden = !showCost;
+  $('costRowTotal').hidden = !showCost;
+  if(showCost){
+    $('costTotal').textContent = money(totalCost);
+    $('costEach').textContent = money(cost);
+    $('costTotal2').textContent = `${money(totalCost)}  (${barsPack} × ${money(cost)})`;
+  }
+
+  const warn=$('warn');
+  if(oversize){
+    warn.className='warn-box show';
+    warn.textContent=`⚠️ A piece is longer than the ${bar}mm bar — it can't be cut from one length. Check your dimensions or bar size.`;
+  } else { warn.className='warn-box'; }
+
+  // stash the computed figures for the PDF report
+  last = {
+    rows: rows.filter(r=>r.qty>0 && (r.w||r.h)).map(r=>({
+      qty:Math.round(r.qty), w:r.w, h:r.h,
+      frame:2*(r.w+r.h), pieces:4*Math.round(r.qty), len:r.qty*2*(r.w+r.h)
+    })),
+    bar, kerf, totLen, totPcs, barsPack, barsPool, lastOffcut, cost, oversize, has
+  };
+}
+
+function esc(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function buildReport(){
+  const s = last;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const job = $('job').value.trim();
+  const prep = $('prep').value.trim();
+  const ordno = $('ordno').value.trim();
+  const ordref = $('ordref').value.trim();
+  const door = $('door').value.trim();
+
+  const rowsHtml = s.rows.map((r,i)=>
+    `<tr><td class="num">${i+1}</td><td>${fmt(r.w)} × ${fmt(r.h)} mm</td>`+
+    `<td class="num">${fmt(r.qty)}</td><td class="num">${fmt(r.frame)} mm</td>`+
+    `<td class="num">${fmt(r.pieces)}</td><td class="num">${fmt(r.len)} mm</td></tr>`).join('');
+
+  const costRows = (s.cost>0)
+    ? `<div><span>Cost per bar</span><b>${money(s.cost)}</b></div>`+
+      `<div><span>Estimated material cost</span><b>${money(s.barsPack*s.cost)}</b></div>`
+    : '';
+
+  const html = `
+    <div class="r-head">
+      <div>
+        <p class="r-title">Material Order Summary</p>
+        <p class="r-sub">RP193 frame profile — approximate lengths to order</p>
+      </div>
+      <div class="r-badge"><b>RP193 CALC</b><br>Prepared ${esc(dateStr)}${prep?'<br>By '+esc(prep):''}</div>
+    </div>
+    <div class="r-meta">
+      <div><span>Job / project</span><b>${job?esc(job):'—'}</b></div>
+      <div><span>Order Number</span><b>${ordno?esc(ordno):'—'}</b></div>
+      <div><span>Order Ref</span><b>${ordref?esc(ordref):'—'}</b></div>
+      <div><span>Door Number</span><b>${door?esc(door):'—'}</b></div>
+      <div><span>Bar (stock) length</span><b>${fmt(s.bar)} mm</b></div>
+      <div><span>No. of openings</span><b>${fmt(s.rows.length)}</b></div>
+      <div><span>Saw kerf allowance</span><b>${s.kerf>0?fmt(s.kerf)+' mm / cut':'none'}</b></div>
+    </div>
+
+    <p class="r-disclaimer">Please check sizes before cutting as these dims may change from the programmed sizes.</p>
+
+    <h3>Schedule of openings</h3>
+    <table>
+      <thead><tr>
+        <th class="num">#</th><th>Opening (W × H)</th><th class="num">Qty</th>
+        <th class="num">Frame length</th><th class="num">Pieces</th><th class="num">Total length</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+      <tfoot><tr>
+        <td colspan="2">TOTALS</td>
+        <td class="num">${fmt(s.rows.reduce((a,r)=>a+r.qty,0))}</td>
+        <td></td>
+        <td class="num">${fmt(s.totPcs)}</td>
+        <td class="num">${fmt(s.totLen)} mm</td>
+      </tr></tfoot>
+    </table>
+
+    <div class="r-result">
+      <div class="n">${s.barsPack}</div>
+      <div class="l">bars of <b>${fmt(s.bar)} mm</b> to order<br>
+        ${fmt(s.totLen/1000,2)} m of profile across ${fmt(s.totPcs)} cut pieces</div>
+    </div>
+    ${costRows?`<h3>Cost estimate</h3><div class="r-meta" style="margin-bottom:0">${costRows}</div>`:''}
+    <p class="r-note"><b>Method.</b> Each opening requires four pieces — two widths and two heights
+      (perimeter = 2 × (width + height)), cut to exact size. Bar quantity is calculated by nesting every
+      piece into ${fmt(s.bar)} mm stock lengths and reusing offcuts where they are long enough, giving the
+      true number of bars required at the saw${s.kerf>0?` (allowing ${fmt(s.kerf)} mm per cut)`:''}.
+      For reference the theoretical minimum (total length ÷ bar length, assuming zero waste) is
+      ${s.barsPool} bar${s.barsPool===1?'':'s'} — a floor that is rarely achievable in practice.
+      Figures are approximate and exclude general wastage, damages and defects.</p>
+    <div class="r-foot"><span>Generated by RP193 Calc</span><span>${esc(dateStr)}</span></div>
+  `;
+  $('report').innerHTML = html;
+}
+
+$('pdfBtn').addEventListener('click',()=>{
+  if(!last || !last.has){ alert('Enter at least one opening first.'); return; }
+  buildReport();
+  setTimeout(()=>window.print(), 60);
+});
+
+$('addRow').addEventListener('click',()=>{ addRow(); calc(); save(); opsBox.lastChild.querySelector('.q').focus(); });
+['bar','kerf','cost','job','prep','ordno','ordref','door'].forEach(id=>$(id).addEventListener('input',()=>{ calc(); save(); }));
+
+load();
+calc();
+
+// tiny offline service worker so it installs & works with no signal on-site
+if('serviceWorker' in navigator){
+  const sw = `self.addEventListener('fetch',e=>{});`;
+  const blob = new Blob([sw],{type:'text/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+</script>
+</body>
+</html>
