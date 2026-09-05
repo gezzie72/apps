@@ -203,8 +203,8 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
     </div>
   </div>
   <div class="field suffix" data-suffix="£">
-    <label>Cost per bar (optional)</label>
-    <input id="cost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 18.50">
+    <label>Price per metre (optional)</label>
+    <input id="cost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 3.10">
   </div>
   <div class="row">
     <div class="field">
@@ -267,7 +267,7 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
     <div class="brow"><span class="k">Bars — offcuts reused (order this)</span><span class="v" id="barsPack">–</span></div>
     <div class="brow"><span class="k">Theoretical min (length ÷ bar)</span><span class="v" id="barsPool">–</span></div>
     <div class="brow"><span class="k">Offcut left over on last bar</span><span class="v" id="offcut">–</span></div>
-    <div class="brow" id="costRowEach" hidden><span class="k">Cost per bar</span><span class="v" id="costEach">–</span></div>
+    <div class="brow" id="costRowEach" hidden><span class="k">Price per metre</span><span class="v" id="costEach">–</span></div>
     <div class="brow" id="costRowTotal" hidden><span class="k">Total materials cost</span><span class="v" id="costTotal2">–</span></div>
   </div>
   <div class="warn-box" id="warn"></div>
@@ -454,17 +454,18 @@ function calc(){
   $('barsPool').textContent = has ? barsPool+(barsPool===1?' bar':' bars') : '–';
   $('offcut').textContent = has ? fmt(lastOffcut)+' mm' : '–';
 
-  // cost
-  const cost = parseFloat($('cost').value)||0;
-  const showCost = has && cost>0;
-  const totalCost = barsPack*cost;
+  // cost — price is per metre of stock, charged on the bars ordered
+  const pricePerM = parseFloat($('cost').value)||0;
+  const showCost = has && pricePerM>0;
+  const metresOrdered = barsPack * bar/1000;
+  const totalCost = metresOrdered * pricePerM;
   $('costLine').hidden = !showCost;
   $('costRowEach').hidden = !showCost;
   $('costRowTotal').hidden = !showCost;
   if(showCost){
     $('costTotal').textContent = money(totalCost);
-    $('costEach').textContent = money(cost);
-    $('costTotal2').textContent = `${money(totalCost)}  (${barsPack} × ${money(cost)})`;
+    $('costEach').textContent = money(pricePerM)+' / m';
+    $('costTotal2').textContent = `${money(totalCost)}  (${fmt(metresOrdered,1)} m × ${money(pricePerM)}/m)`;
   }
 
   const warn=$('warn');
@@ -479,7 +480,7 @@ function calc(){
       qty:Math.round(r.qty), w:r.w, h:r.h,
       frame:2*(r.w+r.h), pieces:4*Math.round(r.qty), len:r.qty*2*(r.w+r.h)
     })),
-    bar, kerf, totLen, totPcs, barsPack, barsPool, lastOffcut, cost, oversize, has
+    bar, kerf, totLen, totPcs, barsPack, barsPool, lastOffcut, cost:pricePerM, oversize, has
   };
 }
 
@@ -501,9 +502,11 @@ function buildReport(){
     `<td class="num">${fmt(r.qty)}</td><td class="num">${fmt(r.frame)} mm</td>`+
     `<td class="num">${fmt(r.pieces)}</td><td class="num">${fmt(r.len)} mm</td></tr>`).join('');
 
+  const metresOrdered = s.barsPack * s.bar/1000;
   const costRows = (s.cost>0)
-    ? `<div><span>Cost per bar</span><b>${money(s.cost)}</b></div>`+
-      `<div><span>Estimated material cost</span><b>${money(s.barsPack*s.cost)}</b></div>`
+    ? `<div><span>Price per metre</span><b>${money(s.cost)} / m</b></div>`+
+      `<div><span>Metres of stock to order</span><b>${fmt(metresOrdered,1)} m</b></div>`+
+      `<div><span>Estimated material cost</span><b>${money(metresOrdered*s.cost)}</b></div>`
     : '';
 
   const html = `
