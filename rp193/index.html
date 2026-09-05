@@ -144,6 +144,8 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
 }
 /* all report sizes are relative to this base font-size, so one value scales the whole sheet to fit A4 */
 #report{font-family:"Segoe UI",Arial,Helvetica,sans-serif; color:#111; font-size:11pt}
+/* force background colours to print (mobile browsers strip them by default) */
+#report, #report *{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important}
 #report .r-head{display:flex; justify-content:space-between; align-items:flex-start;
   border-bottom:3px solid #1d3a5f; padding-bottom:1.1em; margin-bottom:1.5em}
 #report .r-title{font-size:2em; font-weight:800; color:#0f172a; margin:0; letter-spacing:.3px; line-height:1.1}
