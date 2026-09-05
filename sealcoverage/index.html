@@ -63,6 +63,8 @@
   }
   .reset:hover { border-color: var(--amber); color: var(--amber); }
   .reset:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .reset.on { border-color: var(--amber); color: var(--amber); }
+  .head-actions { display: flex; gap: 10px; flex: none; }
 
   /* Card grid */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px; }
@@ -174,13 +176,16 @@
       <h1>TFP Seal Coverage Calculator</h1>
       <p class="intro">Enter leaf dimensions and door quantities for each seal type to calculate metres of material required and rolls to order. A 5% cutting allowance is applied automatically.</p>
     </div>
-    <button class="reset" id="resetBtn" type="button">Reset to defaults</button>
+    <div class="head-actions">
+      <button class="reset" id="setupBtn" type="button" aria-expanded="false" aria-controls="syncPanel">Setup</button>
+      <button class="reset" id="resetBtn" type="button">Reset to defaults</button>
+    </div>
   </header>
 
   <main class="grid" id="cards"></main>
 
-  <!-- Sync -->
-  <section class="sync" aria-labelledby="syncTitle">
+  <!-- Sync (hidden until Setup is opened) -->
+  <section class="sync" id="syncPanel" aria-labelledby="syncTitle" hidden>
     <div class="sync-head">
       <span class="badge">Sync · Phone ↔ Desktop</span>
     </div>
@@ -400,6 +405,19 @@
     if (!confirm("Reset all seal types back to their default dimensions and quantities?")) return;
     var d = defaults(); state.products = d.products; save(); renderCards();
   });
+
+  // Setup button — show/hide the sync panel
+  (function () {
+    var setupBtn = document.getElementById("setupBtn");
+    var panel = document.getElementById("syncPanel");
+    setupBtn.addEventListener("click", function () {
+      var open = panel.hidden;                 // about to open?
+      panel.hidden = !open;
+      setupBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      setupBtn.classList.toggle("on", open);
+      if (open) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  })();
 
   // =========================================================
   //  Sync across devices — private GitHub gist

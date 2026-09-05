@@ -56,4 +56,4 @@ repo, follow these rules:
    ever used for an app, check `git log -- apps/<app>/sw.js`.
 
 Current cache versions (keep this list roughly in step when you bump one):
-`financemanager-v12` · `fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11` · `shopfloorreport-v3` · `masticcalc-v5` · `qualityreport-v1` · `sealcoverage-v4`.
+`financemanager-v12` · `fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11` · `shopfloorreport-v3` · `masticcalc-v5` · `qualityreport-v1` · `sealcoverage-v5`.
