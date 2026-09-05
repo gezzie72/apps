@@ -531,7 +531,7 @@ function buildReport(){
 
     <div class="r-result">
       <div class="n">${s.barsPack}</div>
-      <div class="l">bars of <b>${fmt(s.bar)} mm</b> to order<br>
+      <div class="l">No. <b>${fmt(s.bar)} mm</b> ${s.barsPack===1?'length':'lengths'} required for this order<br>
         ${fmt(s.totLen/1000,2)} m of profile across ${fmt(s.totPcs)} cut pieces</div>
     </div>
     <p class="r-stocknote">Please make sure there is enough stock available to fulfil this order.</p>
