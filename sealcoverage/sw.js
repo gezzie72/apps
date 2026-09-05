@@ -1,5 +1,5 @@
 /* Seal Coverage service worker - offline app shell, network-first so updates land. */
-const CACHE = "sealcoverage-v2";
+const CACHE = "sealcoverage-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

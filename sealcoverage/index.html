@@ -3,585 +3,265 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#C4402F">
+<meta name="theme-color" content="#0a0e19">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="description" content="Fire-door intumescent seal estimator — enter leaf sizes and doors, get metres and rolls to order.">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="TFP fire-door seal coverage calculator — leaf dimensions and door quantities to metres and rolls to order.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>[hidden]{display:none!important}img{max-width:100%}html,body{margin:0}</style>
-<title>Seal Coverage</title>
+<title>TFP Seal Coverage</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
   :root {
-    --ground: #F5F3F0;
-    --surface: #FFFFFF;
-    --surface-2: #FBF9F6;
-    --ink: #1C1A18;
-    --muted: #6E6862;
-    --faint: #9A938B;
-    --line: #E4DED6;
-    --line-strong: #D3CBC0;
-    --accent: #C4402F;
-    --accent-soft: #F6E3DF;
-    --good: #2E7D5B;
-    --good-soft: #E1F0E8;
-    --warn: #A8730B;
-    --warn-soft: #F7ECD4;
-    --danger: #C0392B;
-    --shadow: 0 1px 2px rgba(28,26,24,.06), 0 8px 24px rgba(28,26,24,.05);
-    --radius: 10px;
-    --pad: 20px;
-    --row: 40px;
+    --bg:        #0a0e19;
+    --grid:      rgba(96,128,180,.055);
+    --panel:     #0e1424;
+    --panel-in:  #0a0f1e;
+    --line:      #1f2b45;
+    --line-soft: #253350;
+    --ink:       #eef2fb;
+    --muted:     #8fa0c0;
+    --faint:     #6f80a4;
+    --amber:     #f5a623;
+    --amber-brd: #5a4a1f;
+    --amber-hi:  #ffbe4d;
+    --red:       #e5484d;
+    --good:      #4bd07f;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   }
-  :root:not([data-theme="light"]) {
-    @media (prefers-color-scheme: dark) {
-      --ground: #17150F;
-      --surface: #201D17;
-      --surface-2: #262218;
-      --ink: #F1ECE3;
-      --muted: #A69E92;
-      --faint: #7C7367;
-      --line: #322D24;
-      --line-strong: #453E32;
-      --accent: #E86A54;
-      --accent-soft: #3A241E;
-      --good: #5FBF8E;
-      --good-soft: #1E3329;
-      --warn: #D9A93F;
-      --warn-soft: #362B14;
-      --danger: #E8705C;
-      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
-    }
-  }
-  :root[data-theme="dark"] {
-    --ground: #17150F;
-    --surface: #201D17;
-    --surface-2: #262218;
-    --ink: #F1ECE3;
-    --muted: #A69E92;
-    --faint: #7C7367;
-    --line: #322D24;
-    --line-strong: #453E32;
-    --accent: #E86A54;
-    --accent-soft: #3A241E;
-    --good: #5FBF8E;
-    --good-soft: #1E3329;
-    --warn: #D9A93F;
-    --warn-soft: #362B14;
-    --danger: #E8705C;
-    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
-  }
-
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
+  html, body { margin: 0; }
   body {
-    margin: 0;
-    background: var(--ground);
+    background: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 44px 44px;
     color: var(--ink);
-    font-family: "Public Sans", system-ui, -apple-system, sans-serif;
+    font-family: var(--sans);
     font-size: 15px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
   }
-  [data-density="compact"] { --pad: 14px; --row: 34px; }
-
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px 72px; }
+  .redline { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--red); z-index: 100; }
+  .wrap { max-width: 1300px; margin: 0 auto; padding: 40px 26px 64px; }
 
   /* Header */
-  header.app {
-    position: sticky; top: 0; z-index: 20;
-    background: color-mix(in srgb, var(--ground) 86%, transparent);
-    backdrop-filter: saturate(1.4) blur(10px);
-    border-bottom: 1px solid var(--line);
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 28px; margin-bottom: 30px; }
+  .eyebrow { font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--amber); }
+  h1 { margin: 12px 0 14px; font-family: var(--sans); font-weight: 800; font-size: 46px; line-height: 1.02; letter-spacing: -.02em; color: #fff; text-wrap: balance; }
+  .intro { margin: 0; max-width: 62ch; color: var(--muted); font-size: 15px; }
+  .reset {
+    flex: none; white-space: nowrap; cursor: pointer;
+    font-family: var(--mono); font-weight: 600; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); background: transparent; border: 1px solid #2b3a5a; border-radius: 4px; padding: 11px 16px;
   }
-  .head-inner { max-width: 1120px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .mark {
-    width: 34px; height: 34px; border-radius: 8px; flex: none;
-    background: var(--accent); position: relative;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
-  }
-  .mark::before, .mark::after {
-    content: ""; position: absolute; background: var(--ground);
-  }
-  .mark::before { left: 8px; right: 8px; top: 9px; height: 3px; border-radius: 2px; }
-  .mark::after { left: 8px; right: 8px; top: 15px; bottom: 9px; border-radius: 2px; opacity: .55; }
-  .brand h1 {
-    margin: 0; font-family: "Barlow Condensed", sans-serif;
-    font-weight: 700; font-size: 26px; letter-spacing: .3px; line-height: 1;
-    text-transform: uppercase;
-  }
-  .brand .sub {
-    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
-    color: var(--muted); font-weight: 600; margin-top: 3px;
-  }
-  /* Setup menu */
-  .menu { position: relative; }
-  .setup-btn {
-    appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 9px;
-    font-family: "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .05em;
-    font-weight: 600; font-size: 16px; color: var(--ink);
-    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
-    padding: 9px 14px; box-shadow: var(--shadow);
-  }
-  .setup-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .setup-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .setup-btn .gear { width: 15px; height: 15px; display: inline-block; }
-  .setup-btn .now { color: var(--muted); font-weight: 500; }
-  .setup-btn .now::before { content: "· "; }
-  .setup-btn .chev { font-size: 11px; color: var(--muted); transition: transform .18s; }
-  .setup-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .reset:hover { border-color: var(--amber); color: var(--amber); }
+  .reset:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
-  .menu-pop {
-    position: absolute; right: 0; top: calc(100% + 8px); z-index: 40; min-width: 210px;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-    box-shadow: 0 6px 14px rgba(28,26,24,.10), 0 18px 40px rgba(28,26,24,.14);
-    padding: 6px; animation: pop .14s ease both;
-  }
-  @keyframes pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-  .menu-pop button {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
-    appearance: none; border: 0; background: none; cursor: pointer; text-align: left;
-    font-family: "Public Sans", sans-serif; font-size: 14px; font-weight: 600; color: var(--ink);
-    padding: 10px 12px; border-radius: 7px;
-  }
-  .menu-pop button .mi-desc { font-weight: 400; font-size: 12px; color: var(--muted); }
-  .menu-pop button:hover { background: var(--surface-2); }
-  .menu-pop button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .menu-pop button[aria-checked="true"] { color: var(--accent); }
-  .menu-pop button[aria-checked="true"] .tick { color: var(--accent); }
-  .menu-pop .tick { width: 16px; text-align: center; color: transparent; font-weight: 700; }
-  .menu-pop .mi-main { display: flex; flex-direction: column; gap: 1px; }
-  .menu-pop .mi-name { font-family: "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .04em; font-size: 16px; }
-
-  /* Panels */
-  main { padding-top: 26px; }
-  .panel { display: none; }
-  .panel.active { display: block; animation: rise .25s ease both; }
-  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-
-  .panel-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
-  .panel-head .lede { max-width: 62ch; color: var(--muted); font-size: 14px; margin: 6px 0 0; }
-  h2.section {
-    font-family: "Barlow Condensed", sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: .02em; font-size: 30px; margin: 0; line-height: 1;
-  }
-  .example-flag {
-    display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: .1em; color: var(--warn);
-    background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
-    padding: 5px 10px; border-radius: 100px;
-  }
-  .example-flag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
-
-  /* Cards grid */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+  /* Card grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px; }
   .card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-    box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column;
-    transition: opacity .2s, border-color .2s;
+    background: var(--panel); border: 1px solid var(--line); border-left: 2px solid var(--amber);
+    border-radius: 6px; padding: 18px; display: flex; flex-direction: column; gap: 14px;
   }
-  .card.off { opacity: .52; }
-  .card-top {
-    display: flex; align-items: flex-start; gap: 12px; padding: var(--pad) var(--pad) 12px;
-    border-bottom: 1px solid var(--line);
+  .chead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .badge {
+    align-self: flex-start; font-family: var(--mono); font-weight: 700; font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--amber); border: 1px solid var(--amber-brd);
+    background: rgba(245,166,35,.06); border-radius: 3px; padding: 4px 8px;
   }
-  .card-title { flex: 1; min-width: 0; }
-  .card-title .name {
-    font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 21px;
-    text-transform: uppercase; letter-spacing: .02em; line-height: 1.05;
-  }
-  .card-title .roll {
-    font-size: 12px; color: var(--muted); margin-top: 3px;
-    font-family: "IBM Plex Mono", monospace;
-  }
-  /* toggle */
-  .toggle { flex: none; cursor: pointer; }
-  .toggle input { position: absolute; opacity: 0; pointer-events: none; }
-  .toggle .track {
-    display: block; width: 40px; height: 23px; border-radius: 100px;
-    background: var(--line-strong); position: relative; transition: background .18s;
-  }
-  .toggle .track::after {
-    content: ""; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px;
-    border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .18s;
-  }
-  .toggle input:checked + .track { background: var(--accent); }
-  .toggle input:checked + .track::after { transform: translateX(17px); }
-  .toggle input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cname { font-family: var(--sans); font-weight: 800; font-size: 21px; letter-spacing: -.01em; color: #fff; margin-top: 12px; }
+  .leaf { flex: none; }
 
-  .edges { padding: 6px var(--pad) 4px; }
-  .edge-row, .field-row {
-    display: grid; grid-template-columns: 1fr auto auto; align-items: center;
-    gap: 10px; height: var(--row); border-bottom: 1px dashed var(--line);
+  /* Edge input rows */
+  .edge { display: grid; grid-template-columns: 1fr 88px; gap: 12px; }
+  .flab { font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: .11em; text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+  .in {
+    width: 100%; background: var(--panel-in); border: 1px solid var(--line-soft); color: var(--ink);
+    font-family: var(--mono); font-weight: 500; font-size: 16px; padding: 11px 12px; border-radius: 4px;
   }
-  .edge-row .lab, .field-row .lab {
-    font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600;
-  }
-  .num-in {
-    font-family: "IBM Plex Mono", monospace; font-size: 14px; font-weight: 500;
-    width: 78px; text-align: right; padding: 6px 8px; color: var(--ink);
-    background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 6px;
-  }
-  .num-in.narrow { width: 52px; }
-  .num-in:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
-  .times { font-family: "IBM Plex Mono", monospace; color: var(--faint); font-size: 13px; text-align: center; width: 12px; }
-  .unit { font-size: 11px; color: var(--faint); width: 22px; }
+  .in:focus { outline: none; border-color: var(--amber); }
+  .in.dis { color: var(--muted); opacity: .75; cursor: not-allowed; }
 
-  .card-out { margin-top: auto; padding: 12px var(--pad) var(--pad); background: var(--surface-2); border-top: 1px solid var(--line); }
-  .out-line { display: flex; align-items: baseline; justify-content: space-between; padding: 3px 0; }
-  .out-line .k { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
-  .out-line .v { font-family: "IBM Plex Mono", monospace; font-weight: 500; font-variant-numeric: tabular-nums; }
-  .out-line.total { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line-strong); }
-  .out-line.total .v { font-size: 22px; font-weight: 600; color: var(--accent); }
-  .out-line.total .v .u { font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 3px; }
+  .sep { border-top: 1px dashed var(--line-soft); }
 
-  /* Controls bar */
-  .toolbar {
-    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 12px 16px; margin-bottom: 18px; box-shadow: var(--shadow);
-  }
-  .toolbar .grp { display: flex; align-items: center; gap: 9px; }
-  .toolbar label { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
-  .toolbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: -4px 2px; }
-  .btn {
-    appearance: none; font-family: "Public Sans", sans-serif; font-size: 13px; font-weight: 600;
-    padding: 8px 14px; border-radius: 7px; border: 1px solid var(--line-strong);
-    background: var(--surface-2); color: var(--ink); cursor: pointer;
-  }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Calc readout rows */
+  .calc { display: flex; flex-direction: column; gap: 1px; }
+  .crow { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono); font-size: 14px; padding: 4px 0; }
+  .crow .lbl { color: var(--muted); }
+  .crow .val { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .crow .val i { font-style: normal; color: var(--faint); font-size: 12px; margin-left: 5px; }
+  .crow.total { border-top: 1px solid var(--line-soft); margin-top: 4px; padding-top: 9px; }
+  .crow.total .lbl { color: var(--ink); font-weight: 700; }
+  .crow.total .val { font-weight: 700; }
 
-  /* Gist */
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px; }
-  .tile {
-    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 18px var(--pad); box-shadow: var(--shadow);
+  /* Qty */
+  .qty .flab { margin-bottom: 7px; }
+  .synced { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 9px; font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+  .indep {
+    cursor: pointer; font-family: var(--mono); font-weight: 700; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--amber); background: transparent; border: 1px solid var(--amber-brd); border-radius: 3px; padding: 4px 8px;
   }
-  .tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: .11em; color: var(--muted); font-weight: 600; }
-  .tile .v { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 42px; line-height: 1; margin-top: 8px; letter-spacing: .01em; }
-  .tile .v .u { font-family: "Public Sans"; font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 6px; text-transform: uppercase; letter-spacing: .06em; }
-  .tile.accent { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .tile.accent .k { color: rgba(255,255,255,.82); }
-  .tile.accent .v .u { color: rgba(255,255,255,.82); }
+  .indep:hover { border-color: var(--amber); }
+  .indep:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
-  .order-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-  .order-head { display: flex; align-items: center; justify-content: space-between; padding: 16px var(--pad); border-bottom: 1px solid var(--line); }
-  .order-head h3 { margin: 0; font-family: "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .03em; font-size: 20px; }
-  .table-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 560px; }
-  thead th {
-    text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
-    color: var(--muted); font-weight: 600; padding: 11px var(--pad); border-bottom: 1px solid var(--line-strong);
-    background: var(--surface-2); white-space: nowrap;
-  }
-  thead th:first-child { text-align: left; }
-  tbody td { padding: 12px var(--pad); border-bottom: 1px solid var(--line); text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; font-size: 14px; }
-  tbody td:first-child { text-align: left; font-family: "Public Sans"; font-weight: 600; }
-  tbody tr:last-child td { border-bottom: 0; }
-  .prod-sub { font-family: "IBM Plex Mono", monospace; font-weight: 400; font-size: 11px; color: var(--faint); display: block; margin-top: 2px; }
-  .pill { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 100px; background: var(--good-soft); color: var(--good); }
-  tfoot td { padding: 14px var(--pad); font-family: "IBM Plex Mono", monospace; font-weight: 600; text-align: right; border-top: 2px solid var(--line-strong); background: var(--surface-2); }
-  tfoot td:first-child { text-align: left; font-family: "Barlow Condensed"; text-transform: uppercase; letter-spacing: .04em; font-size: 16px; }
-  .empty-note { padding: 40px var(--pad); text-align: center; color: var(--muted); }
+  /* Result tiles */
+  .results { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2px; }
+  .rtile { background: var(--panel-in); border: 1px solid var(--line); border-radius: 4px; padding: 13px 14px; }
+  .rlab { font-family: var(--mono); font-weight: 500; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin-bottom: 9px; }
+  .rmet { font-family: var(--mono); font-weight: 700; font-size: 26px; line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; }
+  .rnum { font-family: var(--mono); font-weight: 700; font-size: 30px; line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; }
+  .rexact { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--faint); margin-top: 7px; font-variant-numeric: tabular-nums; }
 
-  /* Appearance */
-  .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-  .set-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--pad); box-shadow: var(--shadow); }
-  .set-card h3 { margin: 0 0 4px; font-family: "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .03em; font-size: 19px; }
-  .set-card p.desc { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
-  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 8px; padding: 3px; gap: 3px; }
-  .seg button {
-    appearance: none; border: 0; background: none; cursor: pointer; padding: 7px 14px; border-radius: 6px;
-    font-family: "Public Sans"; font-size: 13px; font-weight: 600; color: var(--muted);
-  }
-  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
-  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
-  .swatch { width: 34px; height: 34px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; position: relative; }
-  .swatch[aria-pressed="true"] { border-color: var(--ink); }
-  .swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-
-  /* Sync */
-  .sync-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: var(--pad); max-width: 560px; }
-  .sync-copy { margin: 0 0 16px; font-size: 14px; color: var(--muted); }
-  .sync-field { margin-bottom: 14px; }
-  .sync-field label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
-  .sync-field label .opt { text-transform: none; letter-spacing: 0; color: var(--faint); font-weight: 500; }
+  /* Sync panel */
+  .sync { margin-top: 22px; background: var(--panel); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 6px; padding: 20px; }
+  .sync-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .sync-title { font-family: var(--sans); font-weight: 800; font-size: 18px; color: #fff; }
+  .sync-copy { max-width: 70ch; color: var(--muted); font-size: 14px; margin: 8px 0 16px; }
+  .sync-copy b { color: var(--ink); font-weight: 700; }
+  .sync-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; max-width: 720px; }
   .sync-inline { display: flex; gap: 8px; }
-  .sync-field input[type="text"], .sync-field input[type="password"] {
-    flex: 1; width: 100%; font-family: "IBM Plex Mono", monospace; font-size: 14px;
-    padding: 10px 12px; color: var(--ink); background: var(--surface-2);
-    border: 1px solid var(--line-strong); border-radius: 8px;
+  .sync-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+  .btn {
+    cursor: pointer; font-family: var(--mono); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink); background: var(--panel-in); border: 1px solid #2b3a5a; border-radius: 4px; padding: 11px 16px;
   }
-  .sync-field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
-  .sync-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primary:hover { filter: brightness(1.06); color: #fff; }
-  .btn.small { padding: 6px 11px; font-size: 12px; }
-  .btn.ghost { background: none; border-color: transparent; color: var(--muted); }
-  .btn.ghost:hover { color: var(--danger); border-color: transparent; }
+  .btn:hover { border-color: var(--amber); color: var(--amber); }
+  .btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .btn.primary { background: var(--amber); border-color: var(--amber); color: #1a1204; font-weight: 700; }
+  .btn.primary:hover { background: var(--amber-hi); color: #1a1204; }
+  .btn.small { padding: 7px 11px; font-size: 11px; }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn.ghost:hover { color: var(--red); }
   .btn:disabled { opacity: .5; cursor: default; }
-  .sync-link { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 13px; }
+  .sync-link { color: var(--amber); text-decoration: none; font-family: var(--mono); font-size: 12px; font-weight: 600; }
   .sync-link:hover { text-decoration: underline; }
-  #syncGistId { font-family: "IBM Plex Mono", monospace; font-weight: 500; }
-  .sync-note { margin: 12px 0 0; font-size: 12px; color: var(--faint); }
-  .sync-stat { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); flex-wrap: wrap; }
-  .sync-stat .k { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; min-width: 108px; }
-  .sync-chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); font-weight: 500; cursor: pointer; }
-  .sync-chk input { width: 16px; height: 16px; accent-color: var(--accent); }
-  .sync-msg { margin: 14px 0 0; min-height: 1.2em; font-size: 13px; color: var(--muted); font-weight: 500; }
-  .sync-msg.err { color: var(--danger); }
+  .sync-stat { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px dashed var(--line-soft); font-family: var(--mono); font-size: 13px; }
+  .sync-stat .k { color: var(--faint); text-transform: uppercase; font-size: 10px; letter-spacing: .1em; min-width: 116px; }
+  .sync-stat b { color: var(--ink); }
+  .sync-chk { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); cursor: pointer; }
+  .sync-chk input { width: 15px; height: 15px; accent-color: var(--amber); }
+  .sync-note { margin: 12px 0 0; font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+  .sync-msg { margin: 14px 0 0; min-height: 1.2em; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .sync-msg.err { color: var(--red); }
+  #syncGistId { color: var(--amber); }
 
-  footer.app { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  code.k { font-family: "IBM Plex Mono", monospace; background: var(--surface-2); border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  /* Notes */
+  .notes { margin-top: 32px; border-top: 1px solid var(--line); padding-top: 18px; display: flex; flex-direction: column; gap: 7px; }
+  .note { font-family: var(--mono); font-size: 12px; line-height: 1.55; color: var(--faint); }
+  .note b { color: var(--muted); font-weight: 700; }
 
+  @media (max-width: 620px) {
+    h1 { font-size: 34px; }
+    .head { flex-direction: column; gap: 16px; }
+    .wrap { padding: 32px 16px 52px; }
+  }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
 </head>
 <body>
-<header class="app">
-  <div class="head-inner">
-    <div class="brand">
-      <div class="mark" aria-hidden="true"></div>
-      <div>
-        <h1>Seal Coverage</h1>
-        <div class="sub">Intumescent &amp; fire-door seal estimator</div>
-      </div>
-    </div>
-    <div class="menu">
-      <button class="setup-btn" id="setupBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="setupMenu">
-        <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        <span>Setup</span><span class="now" id="setupNow">Text</span><span class="chev" aria-hidden="true">▾</span>
-      </button>
-      <div class="menu-pop" id="setupMenu" role="menu" aria-label="Views" hidden>
-        <button role="menuitemradio" id="mi-gist" data-view="gist" aria-checked="false">
-          <span class="mi-main"><span class="mi-name">Gist</span><span class="mi-desc">Order summary &amp; totals</span></span><span class="tick">✓</span>
-        </button>
-        <button role="menuitemradio" id="mi-text" data-view="text" aria-checked="true">
-          <span class="mi-main"><span class="mi-name">Text</span><span class="mi-desc">Calculation sheet</span></span><span class="tick">✓</span>
-        </button>
-        <button role="menuitemradio" id="mi-appearance" data-view="appearance" aria-checked="false">
-          <span class="mi-main"><span class="mi-name">Appearance</span><span class="mi-desc">Theme, accent &amp; density</span></span><span class="tick">✓</span>
-        </button>
-        <button role="menuitemradio" id="mi-sync" data-view="sync" aria-checked="false">
-          <span class="mi-main"><span class="mi-name">Sync</span><span class="mi-desc">Phone ↔ desktop via GitHub gist</span></span><span class="tick">✓</span>
-        </button>
-      </div>
-    </div>
-  </div>
-</header>
-
+<div class="redline" aria-hidden="true"></div>
 <div class="wrap">
-  <main>
-    <!-- ================= TEXT (calculation sheet) ================= -->
-    <section class="panel active" id="panel-text" role="tabpanel" aria-labelledby="mi-text" tabindex="0">
-      <div class="panel-head">
+  <header class="head">
+    <div class="head-main">
+      <div class="eyebrow">Door Seal Estimator // Material Takeoff</div>
+      <h1>TFP Seal Coverage Calculator</h1>
+      <p class="intro">Enter leaf dimensions and door quantities for each seal type to calculate metres of material required and rolls to order. A 5% cutting allowance is applied automatically.</p>
+    </div>
+    <button class="reset" id="resetBtn" type="button">Reset to defaults</button>
+  </header>
+
+  <main class="grid" id="cards"></main>
+
+  <!-- Sync -->
+  <section class="sync" aria-labelledby="syncTitle">
+    <div class="sync-head">
+      <span class="badge">Sync · Phone ↔ Desktop</span>
+    </div>
+    <div class="sync-title" id="syncTitle">Keep this takeoff in step across devices</div>
+    <p class="sync-copy">Sync through a <b>private</b> GitHub gist. Create a <b>classic</b> token with only the <b>gist</b> scope and paste it on each device — your token is stored only in this browser and is sent nowhere but GitHub.</p>
+
+    <div id="syncDisconnected">
+      <div class="sync-grid">
         <div>
-          <h2 class="section">Calculation sheet</h2>
-          <p class="lede">Enter leaf sizes, how many edges each seal runs, and the doors on the job. Coverage adds waste and converts to rolls. Toggle a product off to leave it out of the order.</p>
+          <div class="flab">GitHub token</div>
+          <div class="sync-inline">
+            <input id="ghToken" class="in" type="password" placeholder="Token with gist scope" autocomplete="off" spellcheck="false">
+            <button class="btn small" id="ghShowToken" type="button">Show</button>
+          </div>
         </div>
-        <span class="example-flag"><span class="dot"></span> Example figures — edit for your job</span>
-      </div>
-
-      <div class="toolbar">
-        <div class="grp">
-          <label for="globalQty">Doors on job</label>
-          <input class="num-in" id="globalQty" type="number" min="0" step="1" inputmode="numeric" value="12" aria-label="Apply door quantity to all products">
-          <button class="btn" id="applyQty" type="button">Apply to all</button>
-        </div>
-        <div class="sep" aria-hidden="true"></div>
-        <div class="grp">
-          <label for="wastePct">Waste %</label>
-          <input class="num-in narrow" id="wastePct" type="number" min="0" step="0.5" inputmode="decimal" value="5" aria-label="Waste percentage added to every product">
-        </div>
-        <div class="sep" aria-hidden="true"></div>
-        <button class="btn" id="resetBtn" type="button">Reset to defaults</button>
-      </div>
-
-      <div class="grid" id="cards"></div>
-    </section>
-
-    <!-- ================= GIST (order summary) ================= -->
-    <section class="panel" id="panel-gist" role="tabpanel" aria-labelledby="mi-gist" tabindex="0">
-      <div class="panel-head">
         <div>
-          <h2 class="section">Order gist</h2>
-          <p class="lede">The bottom line — total material to order across every active product, ready to hand to the supplier. Rolls are always rounded up to whole units.</p>
-        </div>
-        <span class="example-flag"><span class="dot"></span> From example figures</span>
-      </div>
-      <div class="tiles" id="tiles"></div>
-      <div class="order-wrap">
-        <div class="order-head">
-          <h3>Purchase list</h3>
-          <span id="jobMeta" class="prod-sub" style="font-size:12px"></span>
-        </div>
-        <div class="table-scroll">
-          <table id="orderTable">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Per doorset</th>
-                <th>Doors</th>
-                <th>+ Waste</th>
-                <th>Metres</th>
-                <th>Order</th>
-              </tr>
-            </thead>
-            <tbody id="orderBody"></tbody>
-            <tfoot id="orderFoot"></tfoot>
-          </table>
+          <div class="flab">Gist ID (optional)</div>
+          <input id="ghGist" class="in" type="text" placeholder="Blank = auto-find or create" autocomplete="off" spellcheck="false">
         </div>
       </div>
-    </section>
+      <div class="sync-actions">
+        <button class="btn primary" id="ghConnect" type="button">Connect</button>
+        <a class="sync-link" href="https://github.com/settings/tokens/new?scopes=gist&description=TFP%20Seal%20Coverage%20sync" target="_blank" rel="noopener">Create a token →</a>
+      </div>
+      <p class="sync-note">Use a CLASSIC token, tick only GIST. Fine-grained tokens can't access gists.</p>
+    </div>
 
-    <!-- ================= APPEARANCE ================= -->
-    <section class="panel" id="panel-appearance" role="tabpanel" aria-labelledby="mi-appearance" tabindex="0">
-      <div class="panel-head">
-        <div>
-          <h2 class="section">Appearance</h2>
-          <p class="lede">Set how the estimator looks on this device. Your choices are remembered in this browser.</p>
-        </div>
+    <div id="syncConnected" hidden>
+      <div class="sync-stat"><span class="k">Connected as</span><b id="syncUser">…</b></div>
+      <div class="sync-stat"><span class="k">Gist</span><a class="sync-link" id="syncGistLink" target="_blank" rel="noopener"><span id="syncGistId"></span></a><button class="btn small" id="ghCopyGist" type="button">Copy ID</button></div>
+      <div class="sync-stat"><span class="k">Last synced</span><b id="syncLast">never</b></div>
+      <div class="sync-actions">
+        <button class="btn primary" id="ghSyncNow" type="button">Sync now</button>
+        <label class="sync-chk"><input type="checkbox" id="ghAuto"> Auto-sync</label>
+        <button class="btn ghost" id="ghDisconnect" type="button">Disconnect</button>
       </div>
-      <div class="settings">
-        <div class="set-card">
-          <h3>Theme</h3>
-          <p class="desc">Follow the device, or lock light / dark.</p>
-          <div class="seg" id="themeSeg" role="group" aria-label="Theme">
-            <button data-theme-val="system" aria-pressed="true">System</button>
-            <button data-theme-val="light" aria-pressed="false">Light</button>
-            <button data-theme-val="dark" aria-pressed="false">Dark</button>
-          </div>
-        </div>
-        <div class="set-card">
-          <h3>Accent</h3>
-          <p class="desc">The highlight colour on totals and controls.</p>
-          <div class="swatches" id="accentSwatches" role="group" aria-label="Accent colour"></div>
-        </div>
-        <div class="set-card">
-          <h3>Density</h3>
-          <p class="desc">Comfortable rows, or tighter for more on screen.</p>
-          <div class="seg" id="densitySeg" role="group" aria-label="Density">
-            <button data-density-val="comfortable" aria-pressed="true">Comfortable</button>
-            <button data-density-val="compact" aria-pressed="false">Compact</button>
-          </div>
-        </div>
-      </div>
-    </section>
+    </div>
+    <p class="sync-msg" id="syncMsg" role="status" aria-live="polite"></p>
+  </section>
 
-    <!-- ================= SYNC ================= -->
-    <section class="panel" id="panel-sync" role="tabpanel" aria-labelledby="mi-sync" tabindex="0">
-      <div class="panel-head">
-        <div>
-          <h2 class="section">Sync across devices</h2>
-          <p class="lede">Keep this job in step between your phone and desktop through a <strong>private</strong> GitHub gist. Your token is stored only in this browser and is sent nowhere but GitHub — nothing is written into the app's files.</p>
-        </div>
-      </div>
-
-      <div class="sync-wrap">
-        <div id="syncDisconnected">
-          <p class="sync-copy">Create a <strong>classic</strong> token with only the <strong>gist</strong> scope and paste it on each device. Leave the Gist ID blank and it finds (or creates) this app's sync automatically.</p>
-          <div class="sync-field">
-            <label for="ghToken">GitHub token</label>
-            <div class="sync-inline">
-              <input id="ghToken" type="password" placeholder="Token with gist scope" autocomplete="off" spellcheck="false">
-              <button class="btn" id="ghShowToken" type="button">Show</button>
-            </div>
-          </div>
-          <div class="sync-field">
-            <label for="ghGist">Gist ID <span class="opt">(optional)</span></label>
-            <input id="ghGist" type="text" placeholder="Blank = auto-find or create" autocomplete="off" spellcheck="false">
-          </div>
-          <div class="sync-actions">
-            <button class="btn primary" id="ghConnect" type="button">Connect</button>
-            <a class="sync-link" href="https://github.com/settings/tokens/new?scopes=gist&description=Seal%20Coverage%20sync" target="_blank" rel="noopener">Create a token →</a>
-          </div>
-          <p class="sync-note">Use a <strong>classic</strong> token, tick only <strong>gist</strong>. Fine-grained tokens can't access gists.</p>
-        </div>
-
-        <div id="syncConnected" hidden>
-          <div class="sync-stat"><span class="k">Connected as</span><b id="syncUser">…</b></div>
-          <div class="sync-stat"><span class="k">Gist</span>
-            <a class="sync-link" id="syncGistLink" target="_blank" rel="noopener"><span id="syncGistId"></span></a>
-            <button class="btn small" id="ghCopyGist" type="button">Copy ID</button>
-          </div>
-          <div class="sync-stat"><span class="k">Last synced</span><span id="syncLast">never</span></div>
-          <div class="sync-actions">
-            <button class="btn primary" id="ghSyncNow" type="button">Sync now</button>
-            <label class="sync-chk"><input type="checkbox" id="ghAuto"> Auto-sync</label>
-            <button class="btn ghost" id="ghDisconnect" type="button">Disconnect</button>
-          </div>
-        </div>
-        <p class="sync-msg" id="syncMsg" role="status" aria-live="polite"></p>
-      </div>
-    </section>
-  </main>
-
-  <footer class="app">
-    <span>Coverage = (Σ edge × count) × (1 + waste) × doors ÷ 1000. Rolls rounded up.</span>
-    <span>Built from <code class="k">TFP_SEAL_COVERAGE.xlsx</code></span>
-  </footer>
+  <!-- Notes -->
+  <div class="notes">
+    <div class="note"><b>Note —</b> "Edges ×" is the number of leaf edges that use each dimension per doorset (e.g. 2 = both sides).</div>
+    <div class="note"><b>Note —</b> 15×2 TFPS and Flipper TFPS door quantities are linked to the 25×2 TFPS quantity by default, since they are typically ordered against the same doorset run. Use "Independent qty" to override.</div>
+    <div class="note"><b>Note —</b> "Rolls/lengths to order" is rounded up to the nearest whole unit for practical purchasing; the exact calculated value is shown alongside it.</div>
+  </div>
 </div>
 
 <script>
 (function () {
   "use strict";
-  var LS = "sealcov.v1";
+  var LS = "tfpseal.v1";
+  var MASTER = "25x2";
 
-  // ---- Product model (decoded from the spreadsheet) ----
   function defaults() {
     return {
-      waste: 5,
       products: [
-        { id:"25x2",  name:"25 × 2 TFPS", rollLen:100, unit:"rolls",   on:true, qty:12,
-          edges:[ {lab:"Leaf width",  size:1000, count:0},
-                  {lab:"Leaf height", size:2100, count:1} ] },
-        { id:"20x2",  name:"20 × 2 TFPS", rollLen:200, unit:"rolls",   on:false, qty:12,
-          edges:[ {lab:"Leaf height", size:2100, count:1} ] },
-        { id:"flood", name:"Flood seal", rollLen:50, unit:"rolls", on:true, qty:12, note:"6305/001 D/Excluder · 50 m",
-          edges:[ {lab:"Leaf width",  size:1300, count:2},
-                  {lab:"Leaf height", size:3000, count:2} ] },
-        { id:"15x2",  name:"15 × 2 TFPS", rollLen:200, unit:"rolls",   on:true, qty:12,
-          edges:[ {lab:"Leaf height", size:2100, count:1} ] },
-        { id:"flipper", name:"Flipper TFPS", rollLen:2.1, unit:"lengths", on:false, qty:12,
-          edges:[ {lab:"Leaf width", size:1000, count:2} ] }
+        { id:"25x2", name:"25 × 2 TFPS", badge:"100M ROLL", rollLen:100, unit:"rolls", qty:0,
+          edges:[ {lab:"Leaf width (mm)", size:1000, count:0}, {lab:"Leaf height (mm)", size:2100, count:1} ] },
+        { id:"20x2", name:"20 × 2 TFPS", badge:"200M ROLL", rollLen:200, unit:"rolls", qty:0,
+          edges:[ {lab:"Leaf height (mm)", size:2100, count:1} ] },
+        { id:"flood", name:"Flood Seal", badge:"6305/001 · 50M ROLL", rollLen:50, unit:"rolls", qty:0,
+          edges:[ {lab:"Leaf width (mm)", size:1300, count:2}, {lab:"Leaf height (mm)", size:3000, count:2} ] },
+        { id:"15x2", name:"15 × 2 TFPS", badge:"200M ROLL", rollLen:200, unit:"rolls", qty:0, syncQty:true,
+          edges:[ {lab:"Leaf height (mm)", size:2100, count:1} ] },
+        { id:"flipper", name:"Flipper TFPS", badge:"2.1M LENGTHS", rollLen:2.1, unit:"lengths", qty:0, syncQty:true,
+          edges:[ {lab:"Leaf width (mm)", size:1000, count:2} ] }
       ]
     };
   }
 
-  var ACCENTS = [
-    { id:"red",    light:"#C4402F", dark:"#E86A54", soft:"#F6E3DF", softD:"#3A241E" },
-    { id:"amber",  light:"#B26B12", dark:"#E0972F", soft:"#F7EBD7", softD:"#3A2C13" },
-    { id:"forest", light:"#2F6E4F", dark:"#57BC8B", soft:"#E0EFE7", softD:"#1D3328" },
-    { id:"slate",  light:"#3E5C78", dark:"#7AA6CE", soft:"#E1EAF2", softD:"#1E2E3D" },
-    { id:"plum",   light:"#7A3E6B", dark:"#C079AE", soft:"#F0E2ED", softD:"#331E2E" }
-  ];
-
-  // ---- State ----
   var state = load();
   function load() {
     try {
       var raw = localStorage.getItem(LS);
       if (raw) {
         var p = JSON.parse(raw);
-        var d = defaults();
-        return {
-          waste: typeof p.waste === "number" ? p.waste : d.waste,
-          products: (p.products && p.products.length) ? p.products : d.products,
-          theme: p.theme || "system",
-          accent: p.accent || "red",
-          density: p.density || "comfortable"
-        };
+        if (p && p.products && p.products.length) return p;
       }
     } catch (e) {}
-    var dd = defaults();
-    dd.theme = "system"; dd.accent = "red"; dd.density = "comfortable";
-    return dd;
+    return defaults();
   }
   function save(noPush) {
     state.updatedAt = Date.now();
@@ -589,304 +269,162 @@
     if (!noPush && typeof schedulePush === "function") schedulePush();
   }
 
-  // ---- Math ----
+  function masterQty() {
+    var m = state.products.filter(function (p) { return p.id === MASTER; })[0];
+    return m ? (m.qty || 0) : 0;
+  }
+  function effQty(p) { return p.syncQty ? masterQty() : (p.qty || 0); }
   function perDoorset(p) {
-    var s = 0;
-    for (var i = 0; i < p.edges.length; i++) s += (p.edges[i].size || 0) * (p.edges[i].count || 0);
-    return s; // mm
+    var s = 0; for (var i = 0; i < p.edges.length; i++) s += (p.edges[i].size || 0) * (p.edges[i].count || 0); return s;
   }
   function calc(p) {
-    var per = perDoorset(p);                       // mm per doorset
-    var withWaste = per * (1 + state.waste / 100);  // mm per doorset incl waste
-    var metres = withWaste * (p.qty || 0) / 1000;   // total metres
-    var rawUnits = p.rollLen ? metres / p.rollLen : 0;
-    var units = Math.ceil(rawUnits - 1e-9);
-    if (units < 0) units = 0;
-    return { per: per, withWaste: withWaste, metres: metres, rawUnits: rawUnits, units: units };
+    var per = perDoorset(p);
+    var extra = per * 0.05;
+    var total = per + extra;
+    var q = effQty(p);
+    var metres = total * q / 1000;
+    var exact = p.rollLen ? metres / p.rollLen : 0;
+    var units = Math.ceil(exact - 1e-9); if (units < 0) units = 0;
+    return { per: per, extra: extra, total: total, metres: metres, exact: exact, units: units };
   }
-  function fmt(n, dp) { dp = dp == null ? 0 : dp; return (Math.round(n * Math.pow(10,dp)) / Math.pow(10,dp)).toLocaleString(undefined, {minimumFractionDigits:dp, maximumFractionDigits:dp}); }
+  function fmt(n, dp) { dp = dp || 0; return (Math.round(n * Math.pow(10,dp)) / Math.pow(10,dp)).toLocaleString(undefined, {minimumFractionDigits:dp, maximumFractionDigits:dp}); }
 
-  // ---- Render: cards (Text) ----
+  function leafSVG(p) {
+    var dbl = p.edges.some(function (e) { return /width/i.test(e.lab) && e.count >= 2; });
+    var stile = dbl
+      ? '<line x1="35" y1="13" x2="35" y2="79" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>'
+      : '<line x1="49" y1="15" x2="49" y2="77" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>';
+    return '<svg class="leaf" width="64" height="86" viewBox="0 0 64 92" fill="none" aria-hidden="true">' +
+      '<text x="58" y="9" fill="var(--faint)" font-family="var(--mono)" font-size="8" text-anchor="end">W</text>' +
+      '<text x="5" y="48" fill="var(--faint)" font-family="var(--mono)" font-size="8">H</text>' +
+      '<rect x="12" y="13" width="46" height="66" rx="1.5" stroke="var(--amber)" stroke-width="1.5"/>' +
+      stile + '</svg>';
+  }
+
   var cardsEl = document.getElementById("cards");
   function renderCards() {
     cardsEl.innerHTML = "";
     state.products.forEach(function (p, pi) {
       var c = calc(p);
-      var subLabel = p.note ? p.note : (fmt(p.rollLen, p.rollLen % 1 ? 1 : 0) + " m / " + p.unit);
-      var card = document.createElement("div");
-      card.className = "card" + (p.on ? "" : " off");
+      var isSynced = !!p.syncQty;
+      var qtyVal = effQty(p);
+      var unitLabel = p.unit === "lengths" ? "Lengths to order" : "Rolls to order";
 
       var edgesHtml = p.edges.map(function (e, ei) {
-        return '<div class="edge-row">' +
-          '<span class="lab">' + e.lab + '</span>' +
-          '<input class="num-in" type="number" min="0" step="1" inputmode="numeric" value="' + e.size + '" data-p="'+pi+'" data-e="'+ei+'" data-f="size" aria-label="'+p.name+' '+e.lab+' size in mm">' +
-          '<span class="unit">mm</span>' +
-          '<span class="times">×</span>' +
-          '<input class="num-in narrow" type="number" min="0" step="1" inputmode="numeric" value="' + e.count + '" data-p="'+pi+'" data-e="'+ei+'" data-f="count" aria-label="'+p.name+' '+e.lab+' number of edges">' +
-        '</div>';
+        return '<div class="edge">' +
+            '<div><div class="flab">' + e.lab + '</div>' +
+              '<input class="in" type="number" min="0" step="1" inputmode="numeric" value="' + e.size + '" data-p="'+pi+'" data-e="'+ei+'" data-f="size" aria-label="'+p.name+' '+e.lab+'"></div>' +
+            '<div><div class="flab">Edges ×</div>' +
+              '<input class="in" type="number" min="0" step="1" inputmode="numeric" value="' + e.count + '" data-p="'+pi+'" data-e="'+ei+'" data-f="count" aria-label="'+p.name+' edges for '+e.lab+'"></div>' +
+          '</div>';
       }).join("");
 
+      var qtyExtra = "";
+      if (isSynced) {
+        qtyExtra = '<div class="synced">Synced with 25 × 2 TFPS qty <button class="indep" type="button" data-p="'+pi+'" data-act="independent">Independent qty</button></div>';
+      } else if (p.id === "15x2" || p.id === "flipper") {
+        qtyExtra = '<div class="synced">Using its own qty <button class="indep" type="button" data-p="'+pi+'" data-act="relink">Sync to 25 × 2</button></div>';
+      }
+      var qtyBlock =
+        '<div class="qty">' +
+          '<div class="flab">Qty of doors</div>' +
+          '<input class="in qtyin' + (isSynced ? ' dis' : '') + '" type="number" min="0" step="1" inputmode="numeric" value="' + qtyVal + '"' +
+            (isSynced ? ' disabled' : '') + ' data-p="'+pi+'" data-f="qty" aria-label="'+p.name+' quantity of doors">' +
+          qtyExtra +
+        '</div>';
+
+      var card = document.createElement("div");
+      card.className = "card";
+      card.dataset.pid = p.id;
       card.innerHTML =
-        '<div class="card-top">' +
-          '<div class="card-title">' +
-            '<div class="name">' + p.name + '</div>' +
-            '<div class="roll">' + subLabel + '</div>' +
-          '</div>' +
-          '<label class="toggle" title="Include in order">' +
-            '<input type="checkbox" ' + (p.on ? "checked" : "") + ' data-p="'+pi+'" data-f="on" aria-label="Include '+p.name+' in the order">' +
-            '<span class="track"></span>' +
-          '</label>' +
+        '<div class="chead">' +
+          '<div><span class="badge">' + p.badge + '</span><div class="cname">' + p.name + '</div></div>' +
+          leafSVG(p) +
         '</div>' +
-        '<div class="edges">' +
-          edgesHtml +
-          '<div class="field-row">' +
-            '<span class="lab">Doors on job</span>' +
-            '<input class="num-in" type="number" min="0" step="1" inputmode="numeric" value="' + p.qty + '" data-p="'+pi+'" data-f="qty" aria-label="'+p.name+' door quantity">' +
-            '<span class="unit"></span><span class="times"></span><span></span>' +
-          '</div>' +
+        edgesHtml +
+        '<div class="sep"></div>' +
+        '<div class="calc">' +
+          '<div class="crow"><span class="lbl">Per doorset</span><span class="val o-per">' + fmt(c.per) + '<i>mm</i></span></div>' +
+          '<div class="crow"><span class="lbl">+5% extra</span><span class="val o-extra">' + fmt(c.extra) + '<i>mm</i></span></div>' +
+          '<div class="crow total"><span class="lbl">Total per doorset</span><span class="val o-total">' + fmt(c.total) + '<i>mm</i></span></div>' +
         '</div>' +
-        '<div class="card-out">' +
-          '<div class="out-line"><span class="k">Per doorset</span><span class="v">' + fmt(c.per) + ' mm</span></div>' +
-          '<div class="out-line"><span class="k">Total run</span><span class="v">' + fmt(c.metres, 1) + ' m</span></div>' +
-          '<div class="out-line total"><span class="k">Order</span><span class="v">' + c.units + '<span class="u">' + p.unit + '</span></span></div>' +
+        qtyBlock +
+        '<div class="results">' +
+          '<div class="rtile"><div class="rlab">Metres to order</div><div class="rmet o-met">' + fmt(c.metres,2) + '</div></div>' +
+          '<div class="rtile"><div class="rlab">' + unitLabel + '</div><div class="rnum o-num">' + c.units + '</div><div class="rexact o-exact">exact: ' + fmt(c.exact,2) + '</div></div>' +
         '</div>';
       cardsEl.appendChild(card);
     });
   }
 
-  // ---- Render: gist ----
-  function renderGist() {
-    var active = state.products.filter(function (p) { return p.on; });
-    var totalMetres = 0, totalUnits = 0;
-    active.forEach(function (p) { var c = calc(p); totalMetres += c.metres; totalUnits += c.units; });
-
-    var tiles = document.getElementById("tiles");
-    tiles.innerHTML =
-      tile("Active products", active.length, "of " + state.products.length) +
-      tile("Total run", fmt(totalMetres, 1), "metres") +
-      tile("Waste added", fmt(state.waste,1), "%") +
-      '<div class="tile accent"><div class="k">Units to order</div><div class="v">' + totalUnits + '<span class="u">rolls / lengths</span></div></div>';
-
-    var body = document.getElementById("orderBody");
-    var foot = document.getElementById("orderFoot");
-    if (!active.length) {
-      body.innerHTML = '<tr><td colspan="6"><div class="empty-note">No products switched on. Turn one on in the <strong>Text</strong> tab to build an order.</div></td></tr>';
-      foot.innerHTML = "";
-    } else {
-      body.innerHTML = active.map(function (p) {
-        var c = calc(p);
-        var sub = p.note ? p.note : (fmt(p.rollLen, p.rollLen % 1 ? 1 : 0) + " m / " + p.unit);
-        return '<tr>' +
-          '<td>' + p.name + '<span class="prod-sub">' + sub + '</span></td>' +
-          '<td>' + fmt(c.per) + ' mm</td>' +
-          '<td>' + p.qty + '</td>' +
-          '<td>' + fmt(c.withWaste * p.qty / 1000, 1) + ' m</td>' +
-          '<td>' + fmt(c.metres, 1) + '</td>' +
-          '<td><span class="pill">' + c.units + ' ' + p.unit + '</span></td>' +
-        '</tr>';
-      }).join("");
-      foot.innerHTML = '<tr><td>Total</td><td></td><td></td><td></td><td>' + fmt(totalMetres,1) + ' m</td><td>' + totalUnits + '</td></tr>';
-    }
-    var maxDoors = active.reduce(function (m,p){ return Math.max(m, p.qty||0); }, 0);
-    document.getElementById("jobMeta").textContent = active.length ? ("up to " + maxDoors + " doors · " + fmt(state.waste,1) + "% waste") : "";
-  }
-  function tile(k, v, u) {
-    return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '<span class="u">' + u + '</span></div></div>';
-  }
-
-  // ---- Appearance apply ----
-  function applyTheme() {
-    var root = document.documentElement;
-    if (state.theme === "system") root.removeAttribute("data-theme");
-    else root.setAttribute("data-theme", state.theme);
-    Array.prototype.forEach.call(document.querySelectorAll("#themeSeg button"), function (b) {
-      b.setAttribute("aria-pressed", b.dataset.themeVal === state.theme ? "true" : "false");
-    });
-  }
-  function applyAccent() {
-    var a = ACCENTS.filter(function (x){ return x.id === state.accent; })[0] || ACCENTS[0];
-    var root = document.documentElement;
-    var isDark = state.theme === "dark" || (state.theme === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    root.style.setProperty("--accent", isDark ? a.dark : a.light);
-    root.style.setProperty("--accent-soft", isDark ? a.softD : a.soft);
-    Array.prototype.forEach.call(document.querySelectorAll("#accentSwatches .swatch"), function (b) {
-      b.setAttribute("aria-pressed", b.dataset.accent === state.accent ? "true" : "false");
-    });
-  }
-  function applyDensity() {
-    document.documentElement.setAttribute("data-density", state.density);
-    Array.prototype.forEach.call(document.querySelectorAll("#densitySeg button"), function (b) {
-      b.setAttribute("aria-pressed", b.dataset.densityVal === state.density ? "true" : "false");
-    });
-  }
-  function buildSwatches() {
-    var wrap = document.getElementById("accentSwatches");
-    wrap.innerHTML = "";
-    ACCENTS.forEach(function (a) {
-      var b = document.createElement("button");
-      b.className = "swatch"; b.dataset.accent = a.id; b.style.background = a.light;
-      b.setAttribute("aria-label", a.id + " accent");
-      b.setAttribute("aria-pressed", a.id === state.accent ? "true" : "false");
-      b.addEventListener("click", function () { state.accent = a.id; save(); applyAccent(); });
-      wrap.appendChild(b);
-    });
-  }
-
-  // ---- Setup menu navigation ----
-  var setupBtn = document.getElementById("setupBtn");
-  var setupMenu = document.getElementById("setupMenu");
-  var setupNow = document.getElementById("setupNow");
-  var menuItems = Array.prototype.slice.call(setupMenu.querySelectorAll("button"));
-  var LABELS = { gist: "Gist", text: "Text", appearance: "Appearance", sync: "Sync" };
-  var VIEWS = ["gist","text","appearance","sync"];
-
-  function selectTab(id) {
-    VIEWS.forEach(function (n) {
-      document.getElementById("panel-" + n).classList.toggle("active", n === id);
-    });
-    menuItems.forEach(function (b) { b.setAttribute("aria-checked", b.dataset.view === id ? "true" : "false"); });
-    setupNow.textContent = LABELS[id] || "";
-  }
-  function openMenu(open) {
-    setupBtn.setAttribute("aria-expanded", open ? "true" : "false");
-    setupMenu.hidden = !open;
-    if (open) {
-      var cur = setupMenu.querySelector('[aria-checked="true"]') || menuItems[0];
-      cur.focus();
-    }
-  }
-  setupBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    openMenu(setupBtn.getAttribute("aria-expanded") !== "true");
-  });
-  menuItems.forEach(function (b, i) {
-    b.addEventListener("click", function () { selectTab(b.dataset.view); openMenu(false); setupBtn.focus(); });
-    b.addEventListener("keydown", function (e) {
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        var d = e.key === "ArrowDown" ? 1 : -1;
-        menuItems[(i + d + menuItems.length) % menuItems.length].focus();
-      } else if (e.key === "Escape") {
-        openMenu(false); setupBtn.focus();
-      }
-    });
-  });
-  document.addEventListener("click", function (e) {
-    if (setupBtn.getAttribute("aria-expanded") === "true" && !e.target.closest(".menu")) openMenu(false);
-  });
-  setupBtn.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") openMenu(false);
-    else if ((e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") && setupMenu.hidden) {
-      e.preventDefault(); openMenu(true);
-    }
-  });
-
-  // ---- Events: inputs (delegated) ----
-  cardsEl.addEventListener("input", function (e) {
-    var el = e.target;
-    if (!el.dataset || el.dataset.p == null) return;
-    var p = state.products[+el.dataset.p];
-    var f = el.dataset.f;
-    if (f === "size" || f === "count") {
-      p.edges[+el.dataset.e][f] = clampNum(el.value);
-    } else if (f === "qty") {
-      p.qty = clampNum(el.value);
-    }
-    save(); renderGistLive();
-  });
-  cardsEl.addEventListener("change", function (e) {
-    var el = e.target;
-    if (!el.dataset || el.dataset.f !== "on") return;
-    state.products[+el.dataset.p].on = el.checked;
-    save(); renderCards(); renderGist();
-  });
-  function clampNum(v) { var n = parseFloat(v); return isNaN(n) || n < 0 ? 0 : n; }
-  // update the card's own output + gist without stealing focus from the field
-  function renderGistLive() {
-    // recompute just the outputs of the card being edited is overkill; refresh all outputs cheaply
+  function recompute() {
+    var mq = masterQty();
     state.products.forEach(function (p, pi) {
       var card = cardsEl.children[pi]; if (!card) return;
-      card.classList.toggle("off", !p.on);
       var c = calc(p);
-      var outs = card.querySelectorAll(".card-out .v");
-      if (outs.length === 3) {
-        outs[0].textContent = fmt(c.per) + " mm";
-        outs[1].textContent = fmt(c.metres, 1) + " m";
-        outs[2].innerHTML = c.units + '<span class="u">' + p.unit + '</span>';
+      set(card, ".o-per", fmt(c.per) + '<i>mm</i>', true);
+      set(card, ".o-extra", fmt(c.extra) + '<i>mm</i>', true);
+      set(card, ".o-total", fmt(c.total) + '<i>mm</i>', true);
+      set(card, ".o-met", fmt(c.metres,2));
+      set(card, ".o-num", String(c.units));
+      set(card, ".o-exact", "exact: " + fmt(c.exact,2));
+      if (p.syncQty) {
+        var qi = card.querySelector(".qtyin");
+        if (qi && document.activeElement !== qi) qi.value = mq;
       }
     });
-    renderGist();
+  }
+  function set(card, sel, html, isHtml) {
+    var el = card.querySelector(sel); if (!el) return;
+    if (isHtml) el.innerHTML = html; else el.textContent = html;
   }
 
-  // toolbar
-  document.getElementById("applyQty").addEventListener("click", function () {
-    var q = clampNum(document.getElementById("globalQty").value);
-    state.products.forEach(function (p) { p.qty = q; });
-    save(); renderCards(); renderGist();
+  function clampNum(v) { var n = parseFloat(v); return (isNaN(n) || n < 0) ? 0 : n; }
+
+  cardsEl.addEventListener("input", function (e) {
+    var el = e.target; if (!el.dataset || el.dataset.p == null) return;
+    var p = state.products[+el.dataset.p]; var f = el.dataset.f;
+    if (f === "size" || f === "count") p.edges[+el.dataset.e][f] = clampNum(el.value);
+    else if (f === "qty") p.qty = clampNum(el.value);
+    save(); recompute();
   });
-  document.getElementById("wastePct").addEventListener("input", function () {
-    state.waste = clampNum(this.value); save(); renderGistLive();
+  cardsEl.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]"); if (!b) return;
+    var p = state.products[+b.dataset.p];
+    if (b.dataset.act === "independent") { p.syncQty = false; p.qty = masterQty(); }
+    else if (b.dataset.act === "relink") { p.syncQty = true; }
+    save(); renderCards();
   });
+
   document.getElementById("resetBtn").addEventListener("click", function () {
-    var keep = { theme: state.theme, accent: state.accent, density: state.density };
-    state = defaults();
-    state.theme = keep.theme; state.accent = keep.accent; state.density = keep.density;
-    save();
-    document.getElementById("globalQty").value = 12;
-    document.getElementById("wastePct").value = state.waste;
-    renderCards(); renderGist();
+    if (!confirm("Reset all seal types back to their default dimensions and quantities?")) return;
+    var d = defaults(); state.products = d.products; save(); renderCards();
   });
-
-  // appearance events
-  document.getElementById("themeSeg").addEventListener("click", function (e) {
-    var b = e.target.closest("button"); if (!b) return;
-    state.theme = b.dataset.themeVal; save(); applyTheme(); applyAccent();
-  });
-  document.getElementById("densitySeg").addEventListener("click", function (e) {
-    var b = e.target.closest("button"); if (!b) return;
-    state.density = b.dataset.densityVal; save(); applyDensity();
-  });
-  if (window.matchMedia) {
-    var mq = window.matchMedia("(prefers-color-scheme: dark)");
-    (mq.addEventListener ? mq.addEventListener.bind(mq,"change") : mq.addListener.bind(mq))(function () {
-      if (state.theme === "system") applyAccent();
-    });
-  }
 
   // =========================================================
   //  Sync across devices — private GitHub gist
-  //  (token stored only in this browser; sent only to GitHub)
   // =========================================================
-  var GH_FILE = "sealcoverage.json";
-  var GH_DESC = "Seal Coverage sync";
+  var GH_FILE = "tfpseal.json";
+  var GH_DESC = "TFP Seal Coverage sync";
   function $(id) { return document.getElementById(id); }
   var GH = {
-    get token(){ try { return localStorage.getItem("sealcov.gh.token") || ""; } catch(e){ return ""; } },
-    get gist(){  try { return localStorage.getItem("sealcov.gh.gist")  || ""; } catch(e){ return ""; } },
-    get auto(){  try { return localStorage.getItem("sealcov.gh.auto") !== "0"; } catch(e){ return true; } },
-    get user(){  try { return localStorage.getItem("sealcov.gh.user")  || ""; } catch(e){ return ""; } },
-    set token(v){ try { v ? localStorage.setItem("sealcov.gh.token",v) : localStorage.removeItem("sealcov.gh.token"); } catch(e){} },
-    set gist(v){  try { v ? localStorage.setItem("sealcov.gh.gist",v)  : localStorage.removeItem("sealcov.gh.gist"); } catch(e){} },
-    set auto(v){  try { localStorage.setItem("sealcov.gh.auto", v ? "1" : "0"); } catch(e){} },
-    set user(v){  try { v ? localStorage.setItem("sealcov.gh.user",v)  : localStorage.removeItem("sealcov.gh.user"); } catch(e){} },
+    get token(){ try { return localStorage.getItem("tfpseal.gh.token") || ""; } catch(e){ return ""; } },
+    get gist(){  try { return localStorage.getItem("tfpseal.gh.gist")  || ""; } catch(e){ return ""; } },
+    get auto(){  try { return localStorage.getItem("tfpseal.gh.auto") !== "0"; } catch(e){ return true; } },
+    get user(){  try { return localStorage.getItem("tfpseal.gh.user")  || ""; } catch(e){ return ""; } },
+    set token(v){ try { v ? localStorage.setItem("tfpseal.gh.token",v) : localStorage.removeItem("tfpseal.gh.token"); } catch(e){} },
+    set gist(v){  try { v ? localStorage.setItem("tfpseal.gh.gist",v)  : localStorage.removeItem("tfpseal.gh.gist"); } catch(e){} },
+    set auto(v){  try { localStorage.setItem("tfpseal.gh.auto", v ? "1" : "0"); } catch(e){} },
+    set user(v){  try { v ? localStorage.setItem("tfpseal.gh.user",v)  : localStorage.removeItem("tfpseal.gh.user"); } catch(e){} },
     get connected(){ return !!(this.token && this.gist); }
   };
-
   function getState() { state.updatedAt = state.updatedAt || Date.now(); return state; }
   function applyRemote(remote) {
-    if (typeof remote.waste === "number") state.waste = remote.waste;
     if (remote.products && remote.products.length) state.products = remote.products;
-    if (remote.theme) state.theme = remote.theme;
-    if (remote.accent) state.accent = remote.accent;
-    if (remote.density) state.density = remote.density;
     state.updatedAt = remote.updatedAt || Date.now();
     try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {}
-    $("wastePct").value = state.waste;
-    $("globalQty").value = (state.products[0] && state.products[0].qty) || 0;
-    applyTheme(); applyAccent(); applyDensity();
-    renderCards(); renderGist();
+    renderCards();
   }
-
   async function ghApi(method, path, body) {
     var res;
     try {
@@ -905,12 +443,11 @@
     }
     return res.json();
   }
-
   function markSync(msg, err) { var m = $("syncMsg"); if (m) { m.textContent = msg || ""; m.classList.toggle("err", !!err); } }
   function spin(on) { ["ghConnect","ghSyncNow"].forEach(function (id) { var el = $(id); if (el) el.disabled = on; }); }
-  function setSyncTime() { try { localStorage.setItem("sealcov.gh.lastSync", String(Date.now())); } catch (e) {} updateLastSync(); }
+  function setSyncTime() { try { localStorage.setItem("tfpseal.gh.lastSync", String(Date.now())); } catch (e) {} updateLastSync(); }
   function updateLastSync() {
-    var t = 0; try { t = Number(localStorage.getItem("sealcov.gh.lastSync")) || 0; } catch (e) {}
+    var t = 0; try { t = Number(localStorage.getItem("tfpseal.gh.lastSync")) || 0; } catch (e) {}
     var rel = !t ? "never" : (function () {
       var s = Math.round((Date.now() - t) / 1000);
       return s < 10 ? "just now" : s < 60 ? s + "s ago" : s < 3600 ? Math.round(s/60) + " min ago" : s < 86400 ? Math.round(s/3600) + "h ago" : new Date(t).toLocaleString();
@@ -918,7 +455,6 @@
     var el = $("syncLast"); if (el) el.textContent = rel;
   }
   setInterval(updateLastSync, 30000);
-
   var pushTimer = null;
   function schedulePush() {
     if (!GH.connected || !GH.auto) return;
@@ -929,8 +465,7 @@
     if (!GH.connected) return;
     spin(true); markSync("Saving…");
     try {
-      var s = getState();
-      var files = {}; files[GH_FILE] = { content: JSON.stringify(s) };
+      var files = {}; files[GH_FILE] = { content: JSON.stringify(getState()) };
       await ghApi("PATCH", "/gists/" + GH.gist, { files: files });
       setSyncTime(); markSync("Synced");
     } finally { spin(false); }
@@ -945,8 +480,7 @@
       var raw = (f.truncated && f.raw_url) ? await (await fetch(f.raw_url)).text() : f.content;
       var remote = JSON.parse(raw);
       if (force || (remote.updatedAt || 0) > (state.updatedAt || 0)) {
-        applyRemote(remote);
-        setSyncTime(); markSync("Pulled latest changes"); return "pulled";
+        applyRemote(remote); setSyncTime(); markSync("Pulled latest changes"); return "pulled";
       } else { setSyncTime(); if (!quiet) markSync("Up to date"); return "uptodate"; }
     } finally { if (!quiet) spin(false); }
   }
@@ -957,9 +491,7 @@
     mine.sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); });
     return mine[0].id;
   }
-  async function fetchUser() {
-    try { var u = await ghApi("GET", "/user"); GH.user = u.login; var el = $("syncUser"); if (el) el.textContent = u.login; } catch (e) {}
-  }
+  async function fetchUser() { try { var u = await ghApi("GET", "/user"); GH.user = u.login; var el = $("syncUser"); if (el) el.textContent = u.login; } catch (e) {} }
   function renderSync() {
     $("syncDisconnected").hidden = GH.connected;
     $("syncConnected").hidden = !GH.connected;
@@ -972,7 +504,6 @@
     updateLastSync();
   }
   async function doSyncNow() { try { await syncPull(false); await syncPush(); } catch (e) { markSync("Sync failed: " + e.message, true); spin(false); } }
-
   setInterval(function () { if (!GH.connected || !GH.auto || document.hidden) return; syncPull(false, true).catch(function () {}); }, 45000);
   document.addEventListener("visibilitychange", function () { if (!document.hidden && GH.connected && GH.auto) syncPull(false, true).catch(function () {}); });
 
@@ -981,22 +512,20 @@
     if (!t) { markSync("Paste your GitHub token first.", true); return; }
     GH.token = t; spin(true); markSync("Connecting…");
     try {
-      if (!gid) { gid = await findGist(); }
+      if (!gid) gid = await findGist();
       if (gid) {
         GH.gist = gid; renderSync();
         var r = await syncPull(true);
         if (r === "empty") { await syncPush(); markSync("Connected — seeded this gist with your data."); }
         else markSync("Connected — using your existing sync.");
       } else {
-        var s = getState();
-        var files = {}; files[GH_FILE] = { content: JSON.stringify(s) };
+        var files = {}; files[GH_FILE] = { content: JSON.stringify(getState()) };
         var g = await ghApi("POST", "/gists", { description: GH_DESC, public: false, files: files });
         GH.gist = g.id; setSyncTime(); markSync("Connected — new sync created.");
       }
       $("ghToken").value = ""; $("ghGist").value = ""; renderSync(); fetchUser();
-    } catch (e) {
-      GH.token = ""; GH.gist = ""; GH.user = ""; renderSync(); markSync("Couldn't connect: " + e.message, true);
-    } finally { spin(false); }
+    } catch (e) { GH.token = ""; GH.gist = ""; GH.user = ""; renderSync(); markSync("Couldn't connect: " + e.message, true); }
+    finally { spin(false); }
   });
   $("ghSyncNow").addEventListener("click", doSyncNow);
   $("ghAuto").addEventListener("change", function () { GH.auto = $("ghAuto").checked; if (GH.auto) schedulePush(); });
@@ -1008,17 +537,11 @@
     var i = $("ghToken"); var show = i.type === "password"; i.type = show ? "text" : "password"; $("ghShowToken").textContent = show ? "Hide" : "Show";
   });
   $("ghDisconnect").addEventListener("click", function () {
-    if (confirm("Disconnect sync on this device? Your local data stays; the gist is untouched.")) {
-      GH.token = ""; GH.gist = ""; GH.user = ""; renderSync(); markSync("");
-    }
+    if (confirm("Disconnect sync on this device? Your local data stays; the gist is untouched.")) { GH.token = ""; GH.gist = ""; GH.user = ""; renderSync(); markSync(""); }
   });
 
   // ---- Init ----
-  document.getElementById("wastePct").value = state.waste;
-  buildSwatches();
-  applyTheme(); applyAccent(); applyDensity();
-  renderCards(); renderGist();
-  selectTab("text");
+  renderCards();
   renderSync();
   if (GH.connected) { syncPull(false).catch(function (e) { markSync("Sync error: " + e.message, true); }); }
 })();
