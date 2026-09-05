@@ -16,6 +16,7 @@ can be added to a phone's home screen and installed as standalone apps:
 - **Shopfloor Report** — `/shopfloorreport/` — shopfloor disciplinary log & reports (Operators / Lines / Team Leaders).
 - **Mastic Calc** — `/masticcalc/` — sealant coverage & tubes-to-order calculator: doorset perimeter, bead size, tube volume, waste, and materials cost (total + per-doorset).
 - **Quality Report** — `/qualityreport/` — shopfloor quality faults log & reports: faults by department, date, door number and operative, an Awareness → Termination escalation ladder, and per-operative, per-department and monthly management reports.
+- **Seal Coverage** — `/sealcoverage/` — fire-door intumescent seal estimator: leaf sizes, edge counts and doors on the job converted to metres and rolls/lengths to order across each seal type (25×2, 20×2, Flood, 15×2, Flipper), with waste added.
 
 Each app is a self-contained `index.html` plus a web app manifest, a service
 worker (offline app shell), and icons. The apps store data locally and sync
@@ -55,4 +56,4 @@ repo, follow these rules:
    ever used for an app, check `git log -- apps/<app>/sw.js`.
 
 Current cache versions (keep this list roughly in step when you bump one):
-`financemanager-v12` · `fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11` · `shopfloorreport-v3` · `masticcalc-v5` · `qualityreport-v1`.
+`financemanager-v12` · `fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v7` · `vault-v8` · `recipebox-v25` · `officereport-v11` · `shopfloorreport-v3` · `masticcalc-v5` · `qualityreport-v1` · `sealcoverage-v2`.

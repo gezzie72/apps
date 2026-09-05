@@ -30,6 +30,7 @@
     --good-soft: #E1F0E8;
     --warn: #A8730B;
     --warn-soft: #F7ECD4;
+    --danger: #C0392B;
     --shadow: 0 1px 2px rgba(28,26,24,.06), 0 8px 24px rgba(28,26,24,.05);
     --radius: 10px;
     --pad: 20px;
@@ -51,6 +52,7 @@
       --good-soft: #1E3329;
       --warn: #D9A93F;
       --warn-soft: #362B14;
+      --danger: #E8705C;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
     }
   }
@@ -69,6 +71,7 @@
     --good-soft: #1E3329;
     --warn: #D9A93F;
     --warn-soft: #362B14;
+    --danger: #E8705C;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
   }
 
@@ -303,6 +306,37 @@
   .swatch[aria-pressed="true"] { border-color: var(--ink); }
   .swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
+  /* Sync */
+  .sync-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: var(--pad); max-width: 560px; }
+  .sync-copy { margin: 0 0 16px; font-size: 14px; color: var(--muted); }
+  .sync-field { margin-bottom: 14px; }
+  .sync-field label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .sync-field label .opt { text-transform: none; letter-spacing: 0; color: var(--faint); font-weight: 500; }
+  .sync-inline { display: flex; gap: 8px; }
+  .sync-field input[type="text"], .sync-field input[type="password"] {
+    flex: 1; width: 100%; font-family: "IBM Plex Mono", monospace; font-size: 14px;
+    padding: 10px 12px; color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--line-strong); border-radius: 8px;
+  }
+  .sync-field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .sync-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.06); color: #fff; }
+  .btn.small { padding: 6px 11px; font-size: 12px; }
+  .btn.ghost { background: none; border-color: transparent; color: var(--muted); }
+  .btn.ghost:hover { color: var(--danger); border-color: transparent; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .sync-link { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 13px; }
+  .sync-link:hover { text-decoration: underline; }
+  #syncGistId { font-family: "IBM Plex Mono", monospace; font-weight: 500; }
+  .sync-note { margin: 12px 0 0; font-size: 12px; color: var(--faint); }
+  .sync-stat { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); flex-wrap: wrap; }
+  .sync-stat .k { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; min-width: 108px; }
+  .sync-chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); font-weight: 500; cursor: pointer; }
+  .sync-chk input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .sync-msg { margin: 14px 0 0; min-height: 1.2em; font-size: 13px; color: var(--muted); font-weight: 500; }
+  .sync-msg.err { color: var(--danger); }
+
   footer.app { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
   code.k { font-family: "IBM Plex Mono", monospace; background: var(--surface-2); border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
 
@@ -333,6 +367,9 @@
         </button>
         <button role="menuitemradio" id="mi-appearance" data-view="appearance" aria-checked="false">
           <span class="mi-main"><span class="mi-name">Appearance</span><span class="mi-desc">Theme, accent &amp; density</span></span><span class="tick">✓</span>
+        </button>
+        <button role="menuitemradio" id="mi-sync" data-view="sync" aria-checked="false">
+          <span class="mi-main"><span class="mi-name">Sync</span><span class="mi-desc">Phone ↔ desktop via GitHub gist</span></span><span class="tick">✓</span>
         </button>
       </div>
     </div>
@@ -436,6 +473,53 @@
         </div>
       </div>
     </section>
+
+    <!-- ================= SYNC ================= -->
+    <section class="panel" id="panel-sync" role="tabpanel" aria-labelledby="mi-sync" tabindex="0">
+      <div class="panel-head">
+        <div>
+          <h2 class="section">Sync across devices</h2>
+          <p class="lede">Keep this job in step between your phone and desktop through a <strong>private</strong> GitHub gist. Your token is stored only in this browser and is sent nowhere but GitHub — nothing is written into the app's files.</p>
+        </div>
+      </div>
+
+      <div class="sync-wrap">
+        <div id="syncDisconnected">
+          <p class="sync-copy">Create a <strong>classic</strong> token with only the <strong>gist</strong> scope and paste it on each device. Leave the Gist ID blank and it finds (or creates) this app's sync automatically.</p>
+          <div class="sync-field">
+            <label for="ghToken">GitHub token</label>
+            <div class="sync-inline">
+              <input id="ghToken" type="password" placeholder="Token with gist scope" autocomplete="off" spellcheck="false">
+              <button class="btn" id="ghShowToken" type="button">Show</button>
+            </div>
+          </div>
+          <div class="sync-field">
+            <label for="ghGist">Gist ID <span class="opt">(optional)</span></label>
+            <input id="ghGist" type="text" placeholder="Blank = auto-find or create" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="sync-actions">
+            <button class="btn primary" id="ghConnect" type="button">Connect</button>
+            <a class="sync-link" href="https://github.com/settings/tokens/new?scopes=gist&description=Seal%20Coverage%20sync" target="_blank" rel="noopener">Create a token →</a>
+          </div>
+          <p class="sync-note">Use a <strong>classic</strong> token, tick only <strong>gist</strong>. Fine-grained tokens can't access gists.</p>
+        </div>
+
+        <div id="syncConnected" hidden>
+          <div class="sync-stat"><span class="k">Connected as</span><b id="syncUser">…</b></div>
+          <div class="sync-stat"><span class="k">Gist</span>
+            <a class="sync-link" id="syncGistLink" target="_blank" rel="noopener"><span id="syncGistId"></span></a>
+            <button class="btn small" id="ghCopyGist" type="button">Copy ID</button>
+          </div>
+          <div class="sync-stat"><span class="k">Last synced</span><span id="syncLast">never</span></div>
+          <div class="sync-actions">
+            <button class="btn primary" id="ghSyncNow" type="button">Sync now</button>
+            <label class="sync-chk"><input type="checkbox" id="ghAuto"> Auto-sync</label>
+            <button class="btn ghost" id="ghDisconnect" type="button">Disconnect</button>
+          </div>
+        </div>
+        <p class="sync-msg" id="syncMsg" role="status" aria-live="polite"></p>
+      </div>
+    </section>
   </main>
 
   <footer class="app">
@@ -499,8 +583,10 @@
     dd.theme = "system"; dd.accent = "red"; dd.density = "comfortable";
     return dd;
   }
-  function save() {
+  function save(noPush) {
+    state.updatedAt = Date.now();
     try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {}
+    if (!noPush && typeof schedulePush === "function") schedulePush();
   }
 
   // ---- Math ----
@@ -651,10 +737,11 @@
   var setupMenu = document.getElementById("setupMenu");
   var setupNow = document.getElementById("setupNow");
   var menuItems = Array.prototype.slice.call(setupMenu.querySelectorAll("button"));
-  var LABELS = { gist: "Gist", text: "Text", appearance: "Appearance" };
+  var LABELS = { gist: "Gist", text: "Text", appearance: "Appearance", sync: "Sync" };
+  var VIEWS = ["gist","text","appearance","sync"];
 
   function selectTab(id) {
-    ["gist","text","appearance"].forEach(function (n) {
+    VIEWS.forEach(function (n) {
       document.getElementById("panel-" + n).classList.toggle("active", n === id);
     });
     menuItems.forEach(function (b) { b.setAttribute("aria-checked", b.dataset.view === id ? "true" : "false"); });
@@ -766,12 +853,174 @@
     });
   }
 
+  // =========================================================
+  //  Sync across devices — private GitHub gist
+  //  (token stored only in this browser; sent only to GitHub)
+  // =========================================================
+  var GH_FILE = "sealcoverage.json";
+  var GH_DESC = "Seal Coverage sync";
+  function $(id) { return document.getElementById(id); }
+  var GH = {
+    get token(){ try { return localStorage.getItem("sealcov.gh.token") || ""; } catch(e){ return ""; } },
+    get gist(){  try { return localStorage.getItem("sealcov.gh.gist")  || ""; } catch(e){ return ""; } },
+    get auto(){  try { return localStorage.getItem("sealcov.gh.auto") !== "0"; } catch(e){ return true; } },
+    get user(){  try { return localStorage.getItem("sealcov.gh.user")  || ""; } catch(e){ return ""; } },
+    set token(v){ try { v ? localStorage.setItem("sealcov.gh.token",v) : localStorage.removeItem("sealcov.gh.token"); } catch(e){} },
+    set gist(v){  try { v ? localStorage.setItem("sealcov.gh.gist",v)  : localStorage.removeItem("sealcov.gh.gist"); } catch(e){} },
+    set auto(v){  try { localStorage.setItem("sealcov.gh.auto", v ? "1" : "0"); } catch(e){} },
+    set user(v){  try { v ? localStorage.setItem("sealcov.gh.user",v)  : localStorage.removeItem("sealcov.gh.user"); } catch(e){} },
+    get connected(){ return !!(this.token && this.gist); }
+  };
+
+  function getState() { state.updatedAt = state.updatedAt || Date.now(); return state; }
+  function applyRemote(remote) {
+    if (typeof remote.waste === "number") state.waste = remote.waste;
+    if (remote.products && remote.products.length) state.products = remote.products;
+    if (remote.theme) state.theme = remote.theme;
+    if (remote.accent) state.accent = remote.accent;
+    if (remote.density) state.density = remote.density;
+    state.updatedAt = remote.updatedAt || Date.now();
+    try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {}
+    $("wastePct").value = state.waste;
+    $("globalQty").value = (state.products[0] && state.products[0].qty) || 0;
+    applyTheme(); applyAccent(); applyDensity();
+    renderCards(); renderGist();
+  }
+
+  async function ghApi(method, path, body) {
+    var res;
+    try {
+      res = await fetch("https://api.github.com" + path, {
+        method: method,
+        headers: { "Authorization": "Bearer " + GH.token, "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined
+      });
+    } catch (e) { throw new Error("Can't reach GitHub — the browser blocked the request."); }
+    if (!res.ok) {
+      var detail = ""; try { detail = (await res.json()).message || ""; } catch (e) {}
+      if (res.status === 401) throw new Error("Invalid or expired token (401). Create a new classic token with gist scope.");
+      if (res.status === 403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited.");
+      if (res.status === 404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+      throw new Error("GitHub " + res.status + (detail ? " — " + detail : ""));
+    }
+    return res.json();
+  }
+
+  function markSync(msg, err) { var m = $("syncMsg"); if (m) { m.textContent = msg || ""; m.classList.toggle("err", !!err); } }
+  function spin(on) { ["ghConnect","ghSyncNow"].forEach(function (id) { var el = $(id); if (el) el.disabled = on; }); }
+  function setSyncTime() { try { localStorage.setItem("sealcov.gh.lastSync", String(Date.now())); } catch (e) {} updateLastSync(); }
+  function updateLastSync() {
+    var t = 0; try { t = Number(localStorage.getItem("sealcov.gh.lastSync")) || 0; } catch (e) {}
+    var rel = !t ? "never" : (function () {
+      var s = Math.round((Date.now() - t) / 1000);
+      return s < 10 ? "just now" : s < 60 ? s + "s ago" : s < 3600 ? Math.round(s/60) + " min ago" : s < 86400 ? Math.round(s/3600) + "h ago" : new Date(t).toLocaleString();
+    })();
+    var el = $("syncLast"); if (el) el.textContent = rel;
+  }
+  setInterval(updateLastSync, 30000);
+
+  var pushTimer = null;
+  function schedulePush() {
+    if (!GH.connected || !GH.auto) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(function () { syncPush().catch(function (e) { spin(false); markSync("Push failed: " + e.message, true); }); }, 1500);
+  }
+  async function syncPush() {
+    if (!GH.connected) return;
+    spin(true); markSync("Saving…");
+    try {
+      var s = getState();
+      var files = {}; files[GH_FILE] = { content: JSON.stringify(s) };
+      await ghApi("PATCH", "/gists/" + GH.gist, { files: files });
+      setSyncTime(); markSync("Synced");
+    } finally { spin(false); }
+  }
+  async function syncPull(force, quiet) {
+    if (!GH.connected) return;
+    if (!quiet) { spin(true); markSync("Checking…"); }
+    try {
+      var g = await ghApi("GET", "/gists/" + GH.gist);
+      var f = g.files && g.files[GH_FILE];
+      if (!f || !f.content) { if (!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+      var raw = (f.truncated && f.raw_url) ? await (await fetch(f.raw_url)).text() : f.content;
+      var remote = JSON.parse(raw);
+      if (force || (remote.updatedAt || 0) > (state.updatedAt || 0)) {
+        applyRemote(remote);
+        setSyncTime(); markSync("Pulled latest changes"); return "pulled";
+      } else { setSyncTime(); if (!quiet) markSync("Up to date"); return "uptodate"; }
+    } finally { if (!quiet) spin(false); }
+  }
+  async function findGist() {
+    var list = await ghApi("GET", "/gists?per_page=100");
+    var mine = (list || []).filter(function (g) { return (g.files && g.files[GH_FILE]) || g.description === GH_DESC; });
+    if (!mine.length) return null;
+    mine.sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+    return mine[0].id;
+  }
+  async function fetchUser() {
+    try { var u = await ghApi("GET", "/user"); GH.user = u.login; var el = $("syncUser"); if (el) el.textContent = u.login; } catch (e) {}
+  }
+  function renderSync() {
+    $("syncDisconnected").hidden = GH.connected;
+    $("syncConnected").hidden = !GH.connected;
+    if (GH.connected) {
+      $("syncGistId").textContent = GH.gist;
+      $("syncGistLink").href = "https://gist.github.com/" + GH.gist;
+      $("syncUser").textContent = GH.user || "…"; if (!GH.user) fetchUser();
+      $("ghAuto").checked = GH.auto;
+    }
+    updateLastSync();
+  }
+  async function doSyncNow() { try { await syncPull(false); await syncPush(); } catch (e) { markSync("Sync failed: " + e.message, true); spin(false); } }
+
+  setInterval(function () { if (!GH.connected || !GH.auto || document.hidden) return; syncPull(false, true).catch(function () {}); }, 45000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && GH.connected && GH.auto) syncPull(false, true).catch(function () {}); });
+
+  $("ghConnect").addEventListener("click", async function () {
+    var t = $("ghToken").value.trim(); var gid = $("ghGist").value.trim();
+    if (!t) { markSync("Paste your GitHub token first.", true); return; }
+    GH.token = t; spin(true); markSync("Connecting…");
+    try {
+      if (!gid) { gid = await findGist(); }
+      if (gid) {
+        GH.gist = gid; renderSync();
+        var r = await syncPull(true);
+        if (r === "empty") { await syncPush(); markSync("Connected — seeded this gist with your data."); }
+        else markSync("Connected — using your existing sync.");
+      } else {
+        var s = getState();
+        var files = {}; files[GH_FILE] = { content: JSON.stringify(s) };
+        var g = await ghApi("POST", "/gists", { description: GH_DESC, public: false, files: files });
+        GH.gist = g.id; setSyncTime(); markSync("Connected — new sync created.");
+      }
+      $("ghToken").value = ""; $("ghGist").value = ""; renderSync(); fetchUser();
+    } catch (e) {
+      GH.token = ""; GH.gist = ""; GH.user = ""; renderSync(); markSync("Couldn't connect: " + e.message, true);
+    } finally { spin(false); }
+  });
+  $("ghSyncNow").addEventListener("click", doSyncNow);
+  $("ghAuto").addEventListener("change", function () { GH.auto = $("ghAuto").checked; if (GH.auto) schedulePush(); });
+  $("ghCopyGist").addEventListener("click", function () {
+    if (navigator.clipboard) navigator.clipboard.writeText(GH.gist).then(function () { markSync("Gist ID copied"); }, function () { markSync(GH.gist); });
+    else markSync(GH.gist);
+  });
+  $("ghShowToken").addEventListener("click", function () {
+    var i = $("ghToken"); var show = i.type === "password"; i.type = show ? "text" : "password"; $("ghShowToken").textContent = show ? "Hide" : "Show";
+  });
+  $("ghDisconnect").addEventListener("click", function () {
+    if (confirm("Disconnect sync on this device? Your local data stays; the gist is untouched.")) {
+      GH.token = ""; GH.gist = ""; GH.user = ""; renderSync(); markSync("");
+    }
+  });
+
   // ---- Init ----
   document.getElementById("wastePct").value = state.waste;
   buildSwatches();
   applyTheme(); applyAccent(); applyDensity();
   renderCards(); renderGist();
   selectTab("text");
+  renderSync();
+  if (GH.connected) { syncPull(false).catch(function (e) { markSync("Sync error: " + e.message, true); }); }
 })();
 </script>
 
