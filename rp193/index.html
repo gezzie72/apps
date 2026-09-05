@@ -185,7 +185,7 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
 <div class="apphead">
   <div>
     <h1>📐 RP193 Calc</h1>
-    <p class="sub">Frame material length &amp; bars to order — window / louvre openings.</p>
+    <p class="sub">Frame material length &amp; bars to order — window / louvre frames.</p>
   </div>
   <button class="gear" id="setupBtn" type="button" title="Setup" aria-label="Setup">⚙</button>
 </div>
@@ -226,15 +226,21 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
       <input id="ordref" type="text" placeholder="e.g. PO 7741">
     </div>
   </div>
-  <div class="field">
-    <label>Door Number (optional)</label>
-    <input id="door" type="text" placeholder="e.g. D12 / D13">
+  <div class="row">
+    <div class="field">
+      <label>Door Number (optional)</label>
+      <input id="door" type="text" placeholder="e.g. D12 / D13">
+    </div>
+    <div class="field">
+      <label>Qty of doors with frames</label>
+      <input id="doorsQty" type="number" inputmode="numeric" min="0" placeholder="e.g. 6">
+    </div>
   </div>
   <button class="btn" id="clearDetails" type="button" style="width:100%">Clear customer details</button>
 </div>
 
 <div class="card">
-  <h2>Openings</h2>
+  <h2>Frames</h2>
   <div class="op-head">
     <span class="c-qty">Qty</span>
     <span class="c-dim">Width</span>
@@ -243,13 +249,13 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
     <span class="c-del"></span>
   </div>
   <div id="ops"></div>
-  <button class="addbtn" id="addRow">+ Add opening</button>
+  <button class="addbtn" id="addRow">+ Add frame</button>
 </div>
 
 <div class="card result">
   <h2>Bars to order</h2>
   <div class="big"><span class="num" id="bars">–</span><span class="unit" id="barsUnit">bars</span></div>
-  <div class="note" id="barsNote">Add an opening to calculate.</div>
+  <div class="note" id="barsNote">Add a frame to calculate.</div>
   <div class="cost" id="costLine" hidden><span>Materials cost</span><span id="costTotal">–</span></div>
 </div>
 
@@ -267,7 +273,7 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
   <div class="warn-box" id="warn"></div>
   <details>
     <summary>How the bar count works</summary>
-    <p>Each opening needs 4 pieces — 2 widths + 2 heights (perimeter = 2 × (W + H)), cut to exact size. The app packs every piece into 6&nbsp;m bars using offcut nesting, so a bar's leftover is reused for the next piece that fits. That's the real number of bars you need on the saw. The theoretical minimum just divides total length by bar length and assumes zero waste — it's a floor, not usually achievable.</p>
+    <p>Each frame needs 4 pieces — 2 widths + 2 heights (perimeter = 2 × (W + H)), cut to exact size. The app packs every piece into 6&nbsp;m bars using offcut nesting, so a bar's leftover is reused for the next piece that fits. That's the real number of bars you need on the saw. The theoretical minimum just divides total length by bar length and assumes zero waste — it's a floor, not usually achievable.</p>
   </details>
 </div>
 
@@ -321,7 +327,7 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
 </div>
 </div><!-- /#setup -->
 
-<p class="foot">Length per opening = <code>Qty × 2 × (W + H)</code>. Bars rounded up.<br>
+<p class="foot">Length per frame = <code>Qty × 2 × (W + H)</code>. Bars rounded up.<br>
 All data is stored locally on this device and, if connected, in your private GitHub gist — nothing else leaves your phone.</p>
 
 <div id="report"></div>
@@ -368,7 +374,7 @@ function getState(){
   return { rows: readRows().map(r=>[r.qty,r.w,r.h]),
     bar:$('bar').value, kerf:$('kerf').value, cost:$('cost').value,
     job:$('job').value, prep:$('prep').value,
-    ordno:$('ordno').value, ordref:$('ordref').value, door:$('door').value };
+    ordno:$('ordno').value, ordref:$('ordref').value, door:$('door').value, doorsQty:$('doorsQty').value };
 }
 function save(){
   const s = getState(); curUpdatedAt = Date.now(); s.updatedAt = curUpdatedAt;
@@ -384,6 +390,7 @@ function applyFields(d){
   if(d.ordno!=null) $('ordno').value=d.ordno;
   if(d.ordref!=null) $('ordref').value=d.ordref;
   if(d.door!=null) $('door').value=d.door;
+  if(d.doorsQty!=null) $('doorsQty').value=d.doorsQty;
   opsBox.innerHTML='';
   if(Array.isArray(d.rows)&&d.rows.length){ d.rows.forEach(r=>addRow(r[0],r[1],r[2])); }
   if(!opsBox.querySelector('.op')) addRow();
@@ -439,7 +446,7 @@ function calc(){
   $('barsUnit').textContent = barsPack===1 ? 'bar' : 'bars';
   $('barsNote').textContent = has
     ? `${fmt(totPcs)} pieces · ${fmt(totLen/1000,1)} m of ${bar}mm bar`
-    : 'Add an opening to calculate.';
+    : 'Add a frame to calculate.';
 
   $('totLen').textContent = has ? fmt(totLen)+' mm  ('+fmt(totLen/1000,2)+' m)' : '–';
   $('totPcs').textContent = has ? fmt(totPcs)+' pieces' : '–';
@@ -487,6 +494,7 @@ function buildReport(){
   const ordno = $('ordno').value.trim();
   const ordref = $('ordref').value.trim();
   const door = $('door').value.trim();
+  const doorsQty = $('doorsQty').value.trim();
 
   const rowsHtml = s.rows.map((r,i)=>
     `<tr><td class="num">${i+1}</td><td>${fmt(r.w)} × ${fmt(r.h)} mm</td>`+
@@ -502,7 +510,7 @@ function buildReport(){
     <div class="r-head">
       <div>
         <p class="r-title">Material Order Summary</p>
-        <p class="r-sub">RP193 frame profile — approximate lengths to order</p>
+        <p class="r-sub">RP193 / 02.535 Profile 50/20 — approximate lengths to order</p>
       </div>
       <div class="r-badge"><b>RP193 CALC</b><br>Prepared ${esc(dateStr)}${prep?'<br>By '+esc(prep):''}</div>
     </div>
@@ -511,17 +519,18 @@ function buildReport(){
       <div><span>Order Number</span><b>${ordno?esc(ordno):'—'}</b></div>
       <div><span>Order Ref</span><b>${ordref?esc(ordref):'—'}</b></div>
       <div><span>Door Number</span><b>${door?esc(door):'—'}</b></div>
+      <div><span>Qty of doors (with frames)</span><b>${doorsQty?esc(doorsQty):'—'}</b></div>
       <div><span>Bar (stock) length</span><b>${fmt(s.bar)} mm</b></div>
-      <div><span>No. of openings</span><b>${fmt(s.rows.length)}</b></div>
+      <div><span>No. of frames</span><b>${fmt(s.rows.length)}</b></div>
       <div><span>Saw kerf allowance</span><b>${s.kerf>0?fmt(s.kerf)+' mm / cut':'none'}</b></div>
     </div>
 
     <p class="r-disclaimer">Please check sizes before cutting as these dims may change from the programmed sizes. The sizes given are based on the drawing dimensions at assessing stage — this is not a cutting list.<br>It is designed to pre-empt booking / ordering of material.</p>
 
-    <h3>Schedule of openings</h3>
+    <h3>Schedule of frames</h3>
     <table>
       <thead><tr>
-        <th class="num">#</th><th>Opening (W × H)</th><th class="num">Qty</th>
+        <th class="num">#</th><th>Frame (W × H)</th><th class="num">Qty</th>
         <th class="num">Frame length</th><th class="num">Pieces</th><th class="num">Total length</th>
       </tr></thead>
       <tbody>${rowsHtml}</tbody>
@@ -540,7 +549,7 @@ function buildReport(){
     </div>
     <p class="r-stocknote">Please make sure there is enough stock available to fulfil this order.</p>
     ${costRows?`<h3>Cost estimate</h3><div class="r-meta" style="margin-bottom:0">${costRows}</div>`:''}
-    <p class="r-note"><b>Method.</b> Each opening requires four pieces — two widths and two heights
+    <p class="r-note"><b>Method.</b> Each frame requires four pieces — two widths and two heights
       (perimeter = 2 × (width + height)), cut to exact size. Bar quantity is calculated by nesting every
       piece into ${fmt(s.bar)} mm stock lengths and reusing offcuts where they are long enough, giving the
       true number of bars required at the saw${s.kerf>0?` (allowing ${fmt(s.kerf)} mm per cut)`:''}.
@@ -553,7 +562,7 @@ function buildReport(){
 }
 
 $('clearDetails').addEventListener('click',()=>{
-  ['job','ordno','ordref','door'].forEach(id=>{ $(id).value=''; });
+  ['job','ordno','ordref','door','doorsQty'].forEach(id=>{ $(id).value=''; });
   save();
   $('job').focus();
 });
@@ -585,14 +594,14 @@ function fitReportToPage(){
 }
 
 $('pdfBtn').addEventListener('click',()=>{
-  if(!last || !last.has){ alert('Enter at least one opening first.'); return; }
+  if(!last || !last.has){ alert('Enter at least one frame first.'); return; }
   buildReport();
   fitReportToPage();
   setTimeout(()=>window.print(), 150);
 });
 
 $('addRow').addEventListener('click',()=>{ addRow(); calc(); save(); opsBox.lastChild.querySelector('.q').focus(); });
-['bar','kerf','cost','job','prep','ordno','ordref','door'].forEach(id=>$(id).addEventListener('input',()=>{ calc(); save(); }));
+['bar','kerf','cost','job','prep','ordno','ordref','door','doorsQty'].forEach(id=>$(id).addEventListener('input',()=>{ calc(); save(); }));
 
 load();
 calc();
