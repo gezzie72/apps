@@ -141,40 +141,41 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
   body > *:not(#report){display:none!important}
   #report{display:block!important}
 }
-#report{font-family:"Segoe UI",Arial,Helvetica,sans-serif; color:#111}
+/* all report sizes are relative to this base font-size, so one value scales the whole sheet to fit A4 */
+#report{font-family:"Segoe UI",Arial,Helvetica,sans-serif; color:#111; font-size:11pt}
 #report .r-head{display:flex; justify-content:space-between; align-items:flex-start;
-  border-bottom:3px solid #1d3a5f; padding-bottom:14px; margin-bottom:20px}
-#report .r-title{font-size:22pt; font-weight:800; color:#0f172a; margin:0; letter-spacing:.3px}
-#report .r-sub{color:#475569; font-size:10.5pt; margin:4px 0 0}
-#report .r-badge{text-align:right; font-size:9.5pt; color:#475569; line-height:1.6}
+  border-bottom:3px solid #1d3a5f; padding-bottom:1.1em; margin-bottom:1.5em}
+#report .r-title{font-size:2em; font-weight:800; color:#0f172a; margin:0; letter-spacing:.3px; line-height:1.1}
+#report .r-sub{color:#475569; font-size:.95em; margin:.3em 0 0}
+#report .r-badge{text-align:right; font-size:.86em; color:#475569; line-height:1.6}
 #report .r-badge b{color:#0f172a}
-#report .r-meta{display:grid; grid-template-columns:1fr 1fr; gap:6px 28px; margin:0 0 22px;
-  font-size:10.5pt}
-#report .r-meta div{border-bottom:1px solid #e2e8f0; padding:6px 0; display:flex; justify-content:space-between}
+#report .r-meta{display:grid; grid-template-columns:1fr 1fr; gap:.5em 2.4em; margin:0 0 1.5em;
+  font-size:.95em}
+#report .r-meta div{border-bottom:1px solid #e2e8f0; padding:.5em 0; display:flex; justify-content:space-between}
 #report .r-meta span{color:#64748b}
 #report .r-meta b{color:#0f172a}
-#report h3{font-size:11pt; text-transform:uppercase; letter-spacing:.05em; color:#1d3a5f;
-  border-bottom:2px solid #cbd5e1; padding-bottom:5px; margin:24px 0 10px}
-#report table{width:100%; border-collapse:collapse; font-size:10pt}
-#report thead th{background:#1d3a5f; color:#fff; text-align:left; padding:9px 10px; font-weight:600}
+#report h3{font-size:1em; text-transform:uppercase; letter-spacing:.05em; color:#1d3a5f;
+  border-bottom:2px solid #cbd5e1; padding-bottom:.45em; margin:1.5em 0 .7em}
+#report table{width:100%; border-collapse:collapse; font-size:.9em}
+#report thead th{background:#1d3a5f; color:#fff; text-align:left; padding:.75em .85em; font-weight:600}
 #report thead th.num, #report td.num{text-align:right}
-#report tbody td{padding:8px 10px; border-bottom:1px solid #e2e8f0}
+#report tbody td{padding:.62em .85em; border-bottom:1px solid #e2e8f0}
 #report tbody tr:nth-child(even){background:#f1f5f9}
-#report tfoot td{padding:10px; font-weight:800; border-top:2px solid #1d3a5f; background:#eef4fb}
-#report .r-result{display:block; margin:24px 0 6px;
-  background:#0f172a; color:#fff; border-radius:12px; padding:22px 24px}
-#report .r-result .rmain{font-size:26pt; font-weight:800; line-height:1.15}
+#report tfoot td{padding:.8em .85em; font-weight:800; border-top:2px solid #1d3a5f; background:#eef4fb}
+#report .r-result{display:block; margin:1.5em 0 .4em;
+  background:#0f172a; color:#fff; border-radius:12px; padding:1.4em 1.6em}
+#report .r-result .rmain{font-size:2.35em; font-weight:800; line-height:1.15}
 #report .r-result .rmain .n{color:#fff}
 #report .r-result .rmain b{color:#4cc4ff}
-#report .r-result .rsub{font-size:11pt; line-height:1.5; margin-top:12px; color:rgba(255,255,255,.92)}
-#report .r-disclaimer{font-weight:800; font-style:italic; font-size:10.5pt; color:#8a5a06;
-  background:#fef3c7; border:1px solid #d97706; border-radius:8px; padding:12px 14px; margin:0 0 22px}
-#report .r-stocknote{font-size:14pt; font-weight:800; text-transform:uppercase; letter-spacing:.03em;
+#report .r-result .rsub{font-size:1em; line-height:1.5; margin-top:.85em; color:rgba(255,255,255,.92)}
+#report .r-disclaimer{font-weight:800; font-style:italic; font-size:.95em; color:#8a5a06;
+  background:#fef3c7; border:1px solid #d97706; border-radius:8px; padding:1em 1.2em; margin:0 0 1.5em}
+#report .r-stocknote{font-size:1.27em; font-weight:800; text-transform:uppercase; letter-spacing:.03em;
   color:#0f172a; text-align:center; background:#fef3c7; border:2px solid #d97706; border-radius:8px;
-  padding:14px 16px; margin:0 0 6px; line-height:1.35}
-#report .r-note{font-size:9pt; color:#64748b; margin:10px 0 0; line-height:1.55}
-#report .r-foot{margin-top:28px; padding-top:12px; border-top:1px solid #cbd5e1;
-  font-size:8.5pt; color:#94a3b8; display:flex; justify-content:space-between}
+  padding:1.05em 1.3em; margin:0 0 .4em; line-height:1.35}
+#report .r-note{font-size:.82em; color:#64748b; margin:.9em 0 0; line-height:1.5}
+#report .r-foot{margin-top:1.8em; padding-top:1em; border-top:1px solid #cbd5e1;
+  font-size:.77em; color:#94a3b8; display:flex; justify-content:space-between}
 </style>
 </head>
 <body>
@@ -554,9 +555,29 @@ $('clearDetails').addEventListener('click',()=>{
   $('job').focus();
 });
 
+// shrink the whole report (one base font-size drives everything) so it fits on a single A4 page
+function fitReportToPage(){
+  const rep = $('report');
+  // measure this device's A4 usable height (297mm − 2×16mm margins) in px
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:absolute; left:-9999px; top:0; width:1mm; height:265mm';
+  document.body.appendChild(probe);
+  const pageH = probe.offsetHeight;
+  probe.remove();
+  // render offscreen at the print width (A4 usable ≈ 178mm) and base size, then measure
+  const prev = rep.getAttribute('style') || '';
+  rep.style.cssText = 'display:block; position:absolute; left:-9999px; top:0; width:178mm; font-size:11pt';
+  const natH = rep.offsetHeight;
+  const scale = Math.min(1, (pageH * 0.97) / natH);
+  // restore normal (hidden) state but keep the fitted base font-size for printing
+  rep.setAttribute('style', prev);
+  rep.style.fontSize = (11 * scale).toFixed(2) + 'pt';
+}
+
 $('pdfBtn').addEventListener('click',()=>{
   if(!last || !last.has){ alert('Enter at least one opening first.'); return; }
   buildReport();
+  fitReportToPage();
   setTimeout(()=>window.print(), 60);
 });
 
