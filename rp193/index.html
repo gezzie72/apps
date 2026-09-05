@@ -161,11 +161,12 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
 #report tbody td{padding:8px 10px; border-bottom:1px solid #e2e8f0}
 #report tbody tr:nth-child(even){background:#f1f5f9}
 #report tfoot td{padding:10px; font-weight:800; border-top:2px solid #1d3a5f; background:#eef4fb}
-#report .r-result{display:flex; align-items:center; gap:22px; margin:24px 0 6px;
-  background:#0f172a; color:#fff; border-radius:12px; padding:20px 24px}
-#report .r-result .n{font-size:40pt; font-weight:800; line-height:1}
-#report .r-result .l{font-size:11pt; line-height:1.5}
-#report .r-result .l b{color:#4cc4ff}
+#report .r-result{display:block; margin:24px 0 6px;
+  background:#0f172a; color:#fff; border-radius:12px; padding:22px 24px}
+#report .r-result .rmain{font-size:26pt; font-weight:800; line-height:1.15}
+#report .r-result .rmain .n{color:#fff}
+#report .r-result .rmain b{color:#4cc4ff}
+#report .r-result .rsub{font-size:11pt; line-height:1.5; margin-top:12px; color:rgba(255,255,255,.92)}
 #report .r-disclaimer{font-weight:800; font-style:italic; font-size:10.5pt; color:#8a5a06;
   background:#fef3c7; border:1px solid #d97706; border-radius:8px; padding:12px 14px; margin:0 0 22px}
 #report .r-stocknote{font-size:14pt; font-weight:800; text-transform:uppercase; letter-spacing:.03em;
@@ -530,9 +531,8 @@ function buildReport(){
     </table>
 
     <div class="r-result">
-      <div class="n">${s.barsPack}</div>
-      <div class="l">No. <b>${fmt(s.bar)} mm</b> ${s.barsPack===1?'length':'lengths'} required for this order<br>
-        ${fmt(s.totLen/1000,2)} m of profile across ${fmt(s.totPcs)} cut pieces</div>
+      <div class="rmain"><span class="n">${s.barsPack}</span> No. <b>${fmt(s.bar)} mm</b> ${s.barsPack===1?'length':'lengths'} required for this order</div>
+      <div class="rsub">${fmt(s.totLen/1000,2)} m of profile across ${fmt(s.totPcs)} cut pieces</div>
     </div>
     <p class="r-stocknote">Please make sure there is enough stock available to fulfil this order.</p>
     ${costRows?`<h3>Cost estimate</h3><div class="r-meta" style="margin-bottom:0">${costRows}</div>`:''}
