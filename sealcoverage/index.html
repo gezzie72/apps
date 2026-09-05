@@ -360,7 +360,7 @@
       </button>
       <div class="menu-pop" id="setupMenu" role="menu" aria-label="Views" hidden>
         <button role="menuitemradio" id="mi-gist" data-view="gist" aria-checked="false">
-          <span class="mi-main"><span class="mi-name">Gist</span><span class="mi-desc">Order summary &amp; totals</span></span><span class="tick">✓</span>
+          <span class="mi-main"><span class="mi-name">Order</span><span class="mi-desc">Summary &amp; purchase list</span></span><span class="tick">✓</span>
         </button>
         <button role="menuitemradio" id="mi-text" data-view="text" aria-checked="true">
           <span class="mi-main"><span class="mi-name">Text</span><span class="mi-desc">Calculation sheet</span></span><span class="tick">✓</span>
@@ -369,7 +369,7 @@
           <span class="mi-main"><span class="mi-name">Appearance</span><span class="mi-desc">Theme, accent &amp; density</span></span><span class="tick">✓</span>
         </button>
         <button role="menuitemradio" id="mi-sync" data-view="sync" aria-checked="false">
-          <span class="mi-main"><span class="mi-name">Sync</span><span class="mi-desc">Phone ↔ desktop via GitHub gist</span></span><span class="tick">✓</span>
+          <span class="mi-main"><span class="mi-name">Gist</span><span class="mi-desc">Sync phone ↔ desktop</span></span><span class="tick">✓</span>
         </button>
       </div>
     </div>
@@ -410,7 +410,7 @@
     <section class="panel" id="panel-gist" role="tabpanel" aria-labelledby="mi-gist" tabindex="0">
       <div class="panel-head">
         <div>
-          <h2 class="section">Order gist</h2>
+          <h2 class="section">Order</h2>
           <p class="lede">The bottom line — total material to order across every active product, ready to hand to the supplier. Rolls are always rounded up to whole units.</p>
         </div>
         <span class="example-flag"><span class="dot"></span> From example figures</span>
@@ -737,7 +737,7 @@
   var setupMenu = document.getElementById("setupMenu");
   var setupNow = document.getElementById("setupNow");
   var menuItems = Array.prototype.slice.call(setupMenu.querySelectorAll("button"));
-  var LABELS = { gist: "Gist", text: "Text", appearance: "Appearance", sync: "Sync" };
+  var LABELS = { gist: "Order", text: "Text", appearance: "Appearance", sync: "Gist" };
   var VIEWS = ["gist","text","appearance","sync"];
 
   function selectTab(id) {
