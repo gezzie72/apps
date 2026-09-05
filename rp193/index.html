@@ -135,11 +135,12 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
 /* ---- printable report (hidden on screen, shown only when printing) ---- */
 #report{display:none}
 @media print{
-  @page{margin:16mm}
+  @page{size:A4 portrait; margin:16mm}
   html,body{background:#fff}
   body{max-width:none; margin:0; padding:0; color:#000; font-size:11pt}
   body > *:not(#report){display:none!important}
-  #report{display:block!important}
+  /* pin to A4 usable width so the printed layout matches what fitReportToPage() measures */
+  #report{display:block!important; width:178mm; margin:0 auto}
 }
 /* all report sizes are relative to this base font-size, so one value scales the whole sheet to fit A4 */
 #report{font-family:"Segoe UI",Arial,Helvetica,sans-serif; color:#111; font-size:11pt}
@@ -558,27 +559,34 @@ $('clearDetails').addEventListener('click',()=>{
 // shrink the whole report (one base font-size drives everything) so it fits on a single A4 page
 function fitReportToPage(){
   const rep = $('report');
-  // measure this device's A4 usable height (297mm − 2×16mm margins) in px
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:absolute; left:-9999px; top:0; width:1mm; height:265mm';
-  document.body.appendChild(probe);
-  const pageH = probe.offsetHeight;
-  probe.remove();
-  // render offscreen at the print width (A4 usable ≈ 178mm) and base size, then measure
-  const prev = rep.getAttribute('style') || '';
-  rep.style.cssText = 'display:block; position:absolute; left:-9999px; top:0; width:178mm; font-size:11pt';
-  const natH = rep.offsetHeight;
-  const scale = Math.min(1, (pageH * 0.97) / natH);
-  // restore normal (hidden) state but keep the fitted base font-size for printing
-  rep.setAttribute('style', prev);
-  rep.style.fontSize = (11 * scale).toFixed(2) + 'pt';
+  const BASE = 11;               // base pt when the report fits without shrinking
+  let scale = 1;
+  try{
+    // measure this device's A4 usable height (297mm − 2×16mm margins) in px
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute; left:-9999px; top:0; width:1mm; height:265mm';
+    document.body.appendChild(probe);
+    const pageH = probe.offsetHeight;
+    probe.remove();
+    // render offscreen at the exact printed width (A4 usable = 178mm) and base size, then measure
+    const prev = rep.getAttribute('style') || '';
+    rep.style.cssText = 'display:block; position:absolute; left:-9999px; top:0; width:178mm; font-size:'+BASE+'pt';
+    const natH = rep.offsetHeight;
+    rep.setAttribute('style', prev);            // back to hidden
+    if(pageH > 0 && natH > 0) scale = (pageH * 0.95) / natH;
+  }catch(e){ scale = 1; }
+  // safety net: never let a busy sheet stay large even if the measurement misbehaves
+  const rows = (last && last.rows) ? last.rows.length : 0;
+  const rowCap = rows <= 6 ? 1 : rows <= 9 ? 0.82 : rows <= 12 ? 0.70 : rows <= 16 ? 0.60 : 0.52;
+  scale = Math.min(1, scale, rowCap);
+  rep.style.fontSize = (BASE * scale).toFixed(2) + 'pt';
 }
 
 $('pdfBtn').addEventListener('click',()=>{
   if(!last || !last.has){ alert('Enter at least one opening first.'); return; }
   buildReport();
   fitReportToPage();
-  setTimeout(()=>window.print(), 60);
+  setTimeout(()=>window.print(), 150);
 });
 
 $('addRow').addEventListener('click',()=>{ addRow(); calc(); save(); opsBox.lastChild.querySelector('.q').focus(); });
