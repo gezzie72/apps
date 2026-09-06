@@ -9,7 +9,7 @@
   :root{
     --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a323d;
     --txt:#e6edf3; --muted:#8b949e; --accent:#3fb950; --accent2:#58a6ff;
-    --warn:#f0883e; --danger:#f85149; --purple:#bc8cff;
+    --warn:#f0883e; --danger:#f85149; --purple:#bc8cff; --pink:#f778ba;
     --good:#3fb950; --high:#f85149; --low:#f0883e;
     --headerA:#12171e; --headerB:#0e1116;
     --tscale:1;
@@ -18,7 +18,7 @@
     :root:not([data-theme]){
       --bg:#f4f6f8; --panel:#ffffff; --panel2:#eef1f5; --line:#d8dee6;
       --txt:#1b2027; --muted:#5a6673; --accent:#2ea043; --accent2:#2f6fed;
-      --warn:#bf6a1a; --danger:#d1242f; --purple:#8250df;
+      --warn:#bf6a1a; --danger:#d1242f; --purple:#8250df; --pink:#bf3989;
       --good:#2ea043; --high:#d1242f; --low:#bf6a1a;
       --headerA:#ffffff; --headerB:#eef1f5;
     }
@@ -124,6 +124,8 @@
   .cday.today{outline:2px solid var(--accent2)}
   .cday .num{color:var(--muted); font-weight:600}
   .cday.inj{background:color-mix(in srgb, var(--purple) 22%, var(--panel2)); border-color:var(--purple)}
+  .cday.act{background:color-mix(in srgb, var(--pink) 20%, var(--panel2)); border-color:var(--pink)}
+  .cday .mk.act{color:var(--pink)}
   .cday.due{background:color-mix(in srgb, var(--warn) 22%, var(--panel2)); border-color:var(--warn)}
   .cday .mk{font-size:calc(11px * var(--tscale)); font-weight:700}
   .cday.inj .mk{color:var(--purple)} .cday.due .mk{color:var(--warn)}
@@ -433,6 +435,14 @@
         </label>
         <button class="btn primary" id="nbAdd">Add injection</button>
       </div>
+      <div class="row" style="align-items:flex-end; margin-top:12px">
+        <label class="fld">Log activity
+          <input type="date" id="actDate">
+        </label>
+        <button class="btn" id="actAdd">Add</button>
+        <button class="btn" id="actToday">Log today</button>
+        <span class="muted">Private personal log — marked ♥ on the calendar. Log more than once a day if you like.</span>
+      </div>
       <div id="nbNext" style="margin-top:14px"></div>
     </div>
 
@@ -444,12 +454,17 @@
         <button class="btn" id="nbToday" style="margin-left:auto">Today</button>
       </div>
       <div class="cal" id="nbCal"></div>
-      <p class="muted" style="margin-top:10px"><span class="pill" style="border-color:var(--purple);color:var(--purple)">Injection given</span> &nbsp; <span class="pill" style="border-color:var(--warn);color:var(--warn)">Next due</span></p>
+      <p class="muted" style="margin-top:10px"><span class="pill" style="border-color:var(--purple);color:var(--purple)">Injection given</span> &nbsp; <span class="pill" style="border-color:var(--warn);color:var(--warn)">Next due</span> &nbsp; <span class="pill" style="border-color:var(--pink);color:var(--pink)">♥ Activity</span></p>
     </div>
 
     <div class="panel">
       <h2>Injection history</h2>
       <div class="scrollx"><table class="hist" id="nbHist"><tbody></tbody></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Activity log</h2>
+      <div class="scrollx"><table class="hist" id="actHist"><tbody></tbody></table></div>
     </div>
   </section>
 
@@ -606,11 +621,11 @@
       <h2>My apps</h2>
       <p class="muted">Open on any device, then use your browser menu → <b>Install</b> / <b>Add to Home screen</b>.</p>
       <p class="muted" style="margin-top:6px">✚ HealthLog — <a class="link" href="https://gezzie72.github.io/apps/healthlog/" target="_blank" rel="noopener">gezzie72.github.io/apps/healthlog</a></p>
-      <p class="muted" style="margin-top:6px">💷 Finance Manager — <a class="link" href="https://gezzie72.github.io/apps/financemanager/" target="_blank" rel="noopener">gezzie72.github.io/apps/financemanager</a></p>
       <p class="muted" style="margin-top:6px">🏋 FitPlan — <a class="link" href="https://gezzie72.github.io/apps/fitplan/" target="_blank" rel="noopener">gezzie72.github.io/apps/fitplan</a></p>
       <p class="muted" style="margin-top:6px">💡 IdeaPad — <a class="link" href="https://gezzie72.github.io/apps/ideapad/" target="_blank" rel="noopener">gezzie72.github.io/apps/ideapad</a></p>
       <p class="muted" style="margin-top:6px">🔐 Vault — <a class="link" href="https://gezzie72.github.io/apps/vault/" target="_blank" rel="noopener">gezzie72.github.io/apps/vault</a></p>
       <p class="muted" style="margin-top:6px">🥗 RecipeBox — <a class="link" href="https://gezzie72.github.io/apps/recipebox/" target="_blank" rel="noopener">gezzie72.github.io/apps/recipebox</a></p>
+      <p class="muted" style="margin-top:6px">💷 Finance Manager — <a class="link" href="https://gezzie72.github.io/apps/financemanager/" target="_blank" rel="noopener">gezzie72.github.io/apps/financemanager</a></p>
     </div>
     <p class="muted" id="verLine" style="text-align:center; margin-top:16px"></p>
   </section>
@@ -619,7 +634,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-08-23 · v6 bt-reminder-from-date";
+const APP_VERSION = "2026-09-06 · v7 activity-log";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -651,6 +666,7 @@ function defaultState(){
     measureFields:[...defaultFields],
     measurements:[],            // {id, date:"YYYY-MM-DD", unit, values:{field:number}, note}
     nebido:{ intervalWeeks:12, history:[] },  // history: ["YYYY-MM-DD", ...]
+    activity:[],                // personal activity log: ["YYYY-MM-DD", ...] (duplicates = multiple per day)
     bloodType:"",               // "" | "A+" | "O-" | ...
     bp:[],                      // {id, dt:"YYYY-MM-DDTHH:MM", sys, dia, pulse, note}
     appts:[],                   // {id, type, who, date:"YYYY-MM-DD", time, loc, notes, results}
@@ -670,7 +686,7 @@ function normalize(s){
   if(!s.nebido || typeof s.nebido!=="object") s.nebido={intervalWeeks:12,history:[]};
   if(!Array.isArray(s.nebido.history)) s.nebido.history=[];
   if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
-  ["glucose","meds","measurements","bp","appts","weights","bowel"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ["glucose","meds","measurements","bp","appts","weights","bowel","activity"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   if(typeof s.bloodType!=="string") s.bloodType="";
   if(!s.bloodTestReminder || typeof s.bloodTestReminder!=="object") s.bloodTestReminder={enabled:false,weeks:12,fromDate:""};
   s.bloodTestReminder.enabled=!!s.bloodTestReminder.enabled;
@@ -981,9 +997,21 @@ function addInjection(dateISO){
   state.nebido.history.sort();
   save(); renderNebidoUI();
 }
+function addActivity(dateISO){ state.activity.push(dateISO); state.activity.sort(); save(); renderNebidoUI(); }
+function removeActivity(dateISO){ const i=state.activity.indexOf(dateISO); if(i>=0){ state.activity.splice(i,1); save(); renderNebidoUI(); } }
+function renderActivityHist(){
+  const tb=$("#actHist").querySelector("tbody");
+  const dates=[...new Set(state.activity)].sort().reverse();
+  if(!dates.length){ tb.innerHTML=`<tr><td class="muted">No activity logged.</td></tr>`; return; }
+  tb.innerHTML=`<tr><th>Date</th><th>Count</th><th></th></tr>`+
+    dates.map(d=>{ const n=state.activity.filter(x=>x===d).length;
+      return `<tr><td>${fmtDate(d)}</td><td>♥ ×${n}</td><td><button class="btn sm danger" data-actdel="${d}">Remove one</button></td></tr>`; }).join("");
+  tb.querySelectorAll("[data-actdel]").forEach(b=> b.onclick=()=> removeActivity(b.dataset.actdel));
+}
 function renderNebidoUI(){
   $("#nbInterval").value = state.nebido.intervalWeeks || 12;
   if(!$("#nbDate").value) $("#nbDate").value=todayISO();
+  if(!$("#actDate").value) $("#actDate").value=todayISO();
   // next due banner
   const due=nebidoNextDue(); const el=$("#nbNext");
   if(!due){ el.innerHTML=`<div class="banner"><span class="em">💉</span><div class="grow">Log your most recent injection to start tracking the next one.</div></div>`; }
@@ -1007,6 +1035,7 @@ function renderNebidoUI(){
         return `<tr><td>${fmtDate(d)}</td><td class="muted">${gap}</td><td><button class="btn sm danger" data-nbdel="${d}">✕</button></td></tr>`; }).join("");
     tb.querySelectorAll("[data-nbdel]").forEach(b=> b.onclick=()=>{ state.nebido.history=state.nebido.history.filter(x=>x!==b.dataset.nbdel); save(); renderNebidoUI(); });
   }
+  renderActivityHist();
 }
 function renderNebidoCal(){
   $("#nbMonth").textContent=MON[nbView.getMonth()]+" "+nbView.getFullYear();
@@ -1020,9 +1049,12 @@ function renderNebidoCal(){
     const ds=iso(new Date(y,m,d));
     const isInj=state.nebido.history.includes(ds);
     const isDue=due===ds;
+    const actN=state.activity.filter(x=>x===ds).length;
     const cell=document.createElement("div");
-    cell.className="cday"+(isInj?" inj":"")+(isDue&&!isInj?" due":"")+(ds===todayISO()?" today":"");
-    cell.innerHTML=`<div class="num">${d}</div>`+(isInj?`<div class="mk">💉 Given</div>`:isDue?`<div class="mk">Due</div>`:"");
+    cell.className="cday"+(isInj?" inj":(actN?" act":(isDue?" due":"")))+(ds===todayISO()?" today":"");
+    let marks = isInj?`<div class="mk">💉 Given</div>`:isDue?`<div class="mk">Due</div>`:"";
+    if(actN) marks+=`<div class="mk act">♥${actN>1?" ×"+actN:""}</div>`;
+    cell.innerHTML=`<div class="num">${d}</div>`+marks;
     cell.onclick=()=>{ if(isInj){ if(confirm("Remove the injection logged on "+fmtDate(ds)+"?")){ state.nebido.history=state.nebido.history.filter(x=>x!==ds); save(); renderNebidoUI(); } } else { if(confirm("Log a Nebido injection on "+fmtDate(ds)+"?")) addInjection(ds); } };
     cal.appendChild(cell);
   }
@@ -1397,6 +1429,8 @@ $("#msPeriod").querySelectorAll("button").forEach(b=> b.onclick=()=>{
 });
 $("#nbSaveInt").onclick=()=>{ const v=Math.max(1,Math.round(Number($("#nbInterval").value)||12)); state.nebido.intervalWeeks=v; save(); renderNebidoUI(); toast("Interval saved"); };
 $("#nbAdd").onclick=()=>{ const d=$("#nbDate").value; if(!d){ toast("Pick a date"); return; } addInjection(d); toast("Injection added"); };
+$("#actAdd").onclick=()=>{ const d=$("#actDate").value; if(!d){ toast("Pick a date"); return; } addActivity(d); toast("Activity logged"); };
+$("#actToday").onclick=()=>{ addActivity(todayISO()); toast("Logged for today"); };
 $("#nbPrev").onclick=()=>{ nbView.setMonth(nbView.getMonth()-1); renderNebidoCal(); };
 $("#nbNextM").onclick=()=>{ nbView.setMonth(nbView.getMonth()+1); renderNebidoCal(); };
 $("#nbToday").onclick=()=>{ nbView=new Date(); renderNebidoCal(); };
@@ -1616,6 +1650,7 @@ applyScale(textScale); renderTextSize();
 function initAll(){
   $("#gWhen").value=nowLocalInput();
   $("#nbDate").value=todayISO();
+  $("#actDate").value=todayISO();
   $("#msDate").value=todayISO();
   $("#bpWhen").value=nowLocalInput();
   $("#apDate").value=todayISO();
