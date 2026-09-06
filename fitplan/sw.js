@@ -1,5 +1,5 @@
 /* FitPlan service worker - offline app shell, network-first so updates land. */
-const CACHE = "fitplan-v14";
+const CACHE = "fitplan-v15";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

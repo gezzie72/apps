@@ -145,6 +145,20 @@
   .modal-head{display:flex; align-items:center; gap:10px; margin-bottom:14px}
   .modal-head h2{margin:0}
   .modal-head .close{margin-left:auto}
+  .btn:disabled{opacity:.45; cursor:default}
+  /* Copy-day picker */
+  .cpnav{display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:8px}
+  .cpnav .cptitle{font-weight:700; min-width:150px; text-align:center}
+  .copygrid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
+  .copygrid .cg-dow{text-align:center; font-size:11px; color:var(--muted); font-weight:700; padding-bottom:2px}
+  .copygrid .cg-day{
+    text-align:center; padding:8px 0; border:1px solid var(--line); border-radius:8px; cursor:pointer;
+    background:var(--panel2); font-size:13px; user-select:none;
+  }
+  .copygrid .cg-day.empty{background:transparent; border:none; cursor:default}
+  .copygrid .cg-day.has{border-color:var(--accent2)}
+  .copygrid .cg-day.sel{background:var(--accent); color:#04150a; border-color:var(--accent); font-weight:700}
+  .copygrid .cg-day.src{outline:2px solid var(--accent2); cursor:default; opacity:.6}
   /* Exercise cards */
   .ex{border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; background:var(--panel2)}
   .ex-head{display:flex; align-items:center; gap:8px; margin-bottom:8px}
@@ -470,7 +484,39 @@
     <div class="row" style="margin-top:14px">
       <button class="btn" id="toggleRestBtn">Toggle rest day</button>
       <button class="btn" id="restBtn">Rest ⏱</button>
+      <button class="btn" id="copyDayBtn">📋 Copy to…</button>
       <button class="btn primary" id="markDoneBtn" style="margin-left:auto">Mark complete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Copy day modal -->
+<div class="overlay" id="copyOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="copyTitle">Copy day</h2>
+      <button class="btn sm close" id="copyClose">✕</button>
+    </div>
+    <p class="muted" id="copySummary" style="margin:0 0 10px"></p>
+    <div class="row" style="gap:6px; margin-bottom:10px; flex-wrap:wrap">
+      <button class="btn sm" id="copyWeek">This week</button>
+      <button class="btn sm" id="copyWeekday">All same weekday</button>
+      <button class="btn sm" id="copyNext7">Next 7 days</button>
+      <button class="btn sm" id="copyClear">Clear</button>
+    </div>
+    <div class="cpnav">
+      <button class="btn sm" id="cpPrev">‹</button>
+      <div class="cptitle" id="cpMonthTitle"></div>
+      <button class="btn sm" id="cpNext">›</button>
+    </div>
+    <div class="copygrid" id="copyGrid"></div>
+    <div class="row" style="gap:16px; margin-top:12px; flex-wrap:wrap">
+      <label class="row" style="gap:6px; margin:0"><input type="checkbox" id="cpReplace" checked> Replace existing days</label>
+      <label class="row" style="gap:6px; margin:0"><input type="checkbox" id="cpNote"> Also copy note</label>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="copyCancel">Cancel</button>
+      <button class="btn primary" id="copyDo" style="margin-left:auto">Copy to 0 days</button>
     </div>
   </div>
 </div>
@@ -489,7 +535,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-08-21 · +healthlog-link";
+const APP_VERSION = "2026-09-06 · copy-day-to-days";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -895,6 +941,87 @@ $("#markDoneBtn").onclick=()=>{ const s=state.sessions[openDate]; s.done=!s.done
 $("#toggleRestBtn").onclick=()=>{
   const s=state.sessions[openDate]; s.rest=!s.rest; if(s.rest) s.done=false; save(); renderDayBody();
 };
+
+/* ---------- Copy day to other days ---------- */
+let copyViewDate = null;
+let copyTargets = new Set();
+function dayHasWork(k){ const x=state.sessions[k]; return !!(x && !x.rest && x.exercises && x.exercises.length); }
+function openCopyDay(){
+  const s = state.sessions[openDate];
+  if(!s || s.rest || !s.exercises.length){ toast("Nothing to copy on this day"); return; }
+  copyViewDate = parseISO(openDate); copyTargets = new Set();
+  const d = parseISO(openDate);
+  $("#copyTitle").textContent = "Copy " + DOW[d.getDay()] + ", " + MON[d.getMonth()] + " " + d.getDate();
+  $("#copySummary").textContent = s.exercises.length + " exercise" + (s.exercises.length>1?"s":"") + " — tap the days to copy this workout to.";
+  renderCopyGrid();
+  $("#copyOverlay").classList.add("open");
+}
+function updateCopyBtn(){
+  const n=copyTargets.size;
+  $("#copyDo").textContent = "Copy to "+n+" day"+(n===1?"":"s");
+  $("#copyDo").disabled = n===0;
+}
+function renderCopyGrid(){
+  $("#cpMonthTitle").textContent = MON[copyViewDate.getMonth()]+" "+copyViewDate.getFullYear();
+  const grid=$("#copyGrid"); grid.innerHTML="";
+  DOW.forEach(dn=>{ const h=document.createElement("div"); h.className="cg-dow"; h.textContent=dn[0]; grid.appendChild(h); });
+  const y=copyViewDate.getFullYear(), m=copyViewDate.getMonth();
+  const first=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
+  for(let i=0;i<first;i++){ const e=document.createElement("div"); e.className="cg-day empty"; grid.appendChild(e); }
+  for(let dd=1;dd<=days;dd++){
+    const dateISO=iso(new Date(y,m,dd));
+    const isSrc=dateISO===openDate;
+    const has=dayHasWork(dateISO) && !isSrc;
+    const cell=document.createElement("div");
+    cell.className="cg-day"+(isSrc?" src":"")+(copyTargets.has(dateISO)?" sel":"")+(has?" has":"");
+    cell.textContent=dd;
+    if(isSrc){ cell.title="Source day"; }
+    else if(has){ cell.title="Already has a workout"; }
+    if(!isSrc) cell.onclick=()=>{ copyTargets.has(dateISO)?copyTargets.delete(dateISO):copyTargets.add(dateISO); renderCopyGrid(); };
+    grid.appendChild(cell);
+  }
+  updateCopyBtn();
+}
+$("#copyDayBtn").onclick=openCopyDay;
+$("#cpPrev").onclick=()=>{ copyViewDate.setMonth(copyViewDate.getMonth()-1); renderCopyGrid(); };
+$("#cpNext").onclick=()=>{ copyViewDate.setMonth(copyViewDate.getMonth()+1); renderCopyGrid(); };
+$("#copyClear").onclick=()=>{ copyTargets.clear(); renderCopyGrid(); };
+$("#copyNext7").onclick=()=>{
+  const base=parseISO(openDate);
+  for(let i=1;i<=7;i++){ const dt=new Date(base); dt.setDate(base.getDate()+i); copyTargets.add(iso(dt)); }
+  copyViewDate=parseISO(openDate); renderCopyGrid();
+};
+$("#copyWeekday").onclick=()=>{   // every same-weekday in the viewed month
+  const wd=parseISO(openDate).getDay();
+  const y=copyViewDate.getFullYear(), m=copyViewDate.getMonth(), days=new Date(y,m+1,0).getDate();
+  for(let dd=1;dd<=days;dd++){ const dt=new Date(y,m,dd); if(dt.getDay()===wd){ const k=iso(dt); if(k!==openDate) copyTargets.add(k); } }
+  renderCopyGrid();
+};
+$("#copyWeek").onclick=()=>{      // the Mon–Sun week containing the source day
+  const base=parseISO(openDate); const monOff=(base.getDay()+6)%7;
+  const monday=new Date(base); monday.setDate(base.getDate()-monOff);
+  for(let i=0;i<7;i++){ const dt=new Date(monday); dt.setDate(monday.getDate()+i); const k=iso(dt); if(k!==openDate) copyTargets.add(k); }
+  copyViewDate=parseISO(openDate); renderCopyGrid();
+};
+$("#copyDo").onclick=()=>{
+  if(!copyTargets.size) return;
+  const src=state.sessions[openDate];
+  const replace=$("#cpReplace").checked, copyNote=$("#cpNote").checked;
+  let n=0;
+  copyTargets.forEach(k=>{
+    const clone=src.exercises.map(ex=>{ const c=JSON.parse(JSON.stringify(ex)); c.sets.forEach(st=>st.done=false); return c; });
+    let tgt=state.sessions[k]; if(!tgt){ tgt={rest:false,done:false,exercises:[]}; state.sessions[k]=tgt; }
+    tgt.rest=false; tgt.done=false;
+    tgt.exercises = replace ? clone : (tgt.exercises||[]).concat(clone);
+    if(copyNote && src.note) tgt.note=src.note;
+    n++;
+  });
+  save(); renderCalendar();
+  $("#copyOverlay").classList.remove("open");
+  toast("Copied to "+n+" day"+(n===1?"":"s"));
+};
+$("#copyClose").onclick=$("#copyCancel").onclick=()=>{ $("#copyOverlay").classList.remove("open"); };
+$("#copyOverlay").onclick=(e)=>{ if(e.target.id==="copyOverlay") $("#copyOverlay").classList.remove("open"); };
 
 /* ---------- Progress ---------- */
 function allSessionsSorted(){
