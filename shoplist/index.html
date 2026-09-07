@@ -221,6 +221,8 @@
   .item.bought .tick{background:transparent; border-color:var(--line2); color:var(--muted); font-size:15px; font-weight:800}
   .item .tag{display:inline-block; font-size:9px; font-weight:800; letter-spacing:.5px; color:var(--accent-d);
     background:var(--accent-soft); border-radius:5px; padding:1px 5px; margin-left:7px; vertical-align:middle}
+  .item .priceup{display:inline-block; margin-left:8px; color:var(--amber); font-weight:800; font-size:11px; letter-spacing:.2px}
+  .item.bought .priceup{opacity:.7}
   /* editable history rows */
   .hist-row{cursor:pointer; border-radius:8px; padding-left:8px; padding-right:8px}
   .hist-row:hover{background:var(--bg)}
@@ -286,7 +288,7 @@
     <div class="row">
       <div>
         <label>Item</label>
-        <input id="fName" placeholder="Add an item…" autocomplete="off" onkeydown="if(event.key==='Enter')addItem()">
+        <input id="fName" placeholder="Add an item…" autocomplete="off" onchange="fillLast()" onkeydown="if(event.key==='Enter')addItem()">
       </div>
       <div class="trio">
         <div>
@@ -517,6 +519,7 @@ function normalize(s){
   s.items   = Array.isArray(s.items)   ? s.items   : [];
   s.history = Array.isArray(s.history) ? s.history : [];
   s.budget  = +s.budget || 0;
+  s.prices  = (s.prices && typeof s.prices==='object' && !Array.isArray(s.prices)) ? s.prices : {};  // { NAME: {price,shop,at} } last paid
   s.updatedAt = +s.updatedAt || 0;
   return s;
 }
@@ -548,14 +551,25 @@ function pickShop(inputId, idx){
 function addItem(){
   const name=uc($('fName').value);
   if(!name){ $('fName').focus(); return; }
-  const price=parseFloat($('fPrice').value)||0;
+  const mem=state.prices[name];
+  let price=parseFloat($('fPrice').value)||0;
+  if(!price && mem) price=mem.price;                       // fall back to last paid
   const qty=Math.max(1, parseInt($('fQty').value)||1);
-  const shop=uc($('fShop').value)||'ANY';
+  let shop=uc($('fShop').value); if(!shop) shop=(mem&&mem.shop)||'ANY';
   state.items.push({id:Date.now()+''+Math.random().toString(36).slice(2,6),name,price,qty,shop,done:false});
   save();
   $('fName').value=''; $('fPrice').value=''; $('fQty').value='1';
   $('fName').focus();
   render();
+}
+/* When you finish typing a known item name, prefill its last-paid price/shop. */
+function fillLast(){
+  const name=uc($('fName').value); if(!name) return;
+  const mem=state.prices[name]; if(!mem) return;
+  let msg='';
+  if(!(parseFloat($('fPrice').value)>0)){ $('fPrice').value=mem.price.toFixed(2); msg='last paid '+money(mem.price); }
+  if(!uc($('fShop').value) && mem.shop && mem.shop!=='ANY'){ $('fShop').value=mem.shop; renderChips('shopChips','fShop'); msg+=(msg?' at ':'last at ')+mem.shop; }
+  if(msg) toast(name+' — '+msg);
 }
 function toggle(id){
   const it=state.items.find(i=>i.id===id); if(!it) return;
@@ -623,6 +637,8 @@ function checkout(){
     total, count:picked.length, shop,
     items:picked.map(i=>({name:i.name,price:i.price,qty:i.qty,shop:i.shop}))
   });
+  const at=new Date().toISOString();
+  picked.forEach(i=>{ if(i.price>0) state.prices[i.name]={price:i.price, shop:i.shop, at}; });  // remember last paid
   picked.forEach(i=>{ i.bought=true; i.done=false; });      // shade & set aside for reuse (don't delete)
   save(); render();
   toast('Logged '+money(total)+' — items shaded for next time');
@@ -664,11 +680,13 @@ function itemRow(i){
   const cls=i.bought?'bought':(i.done?'done':'');
   const tick=i.bought?'↺':(i.done?'✓':'');
   const tag=i.bought?'<span class="tag">SAVED</span>':'';
+  const last=state.prices[i.name];
+  const rise=(last && i.price>last.price+0.001) ? `<span class="priceup" title="Was ${money(last.price)} last time">▲ was ${money(last.price)}</span>` : '';
   return `<div class="item ${cls}">
     <button class="tick" onclick="toggle('${i.id}')" title="${i.bought?'Reuse for this trip':'Tick off'}">${tick}</button>
     <div class="body" onclick="openEdit('${i.id}')">
       <div class="name">${i.name}${tag}</div>
-      <div class="meta">${meta}</div>
+      <div class="meta">${meta}${rise}</div>
     </div>
     <div class="price">${money(line)}</div>
     <button class="del" onclick="del('${i.id}')" title="Remove">✕</button>
