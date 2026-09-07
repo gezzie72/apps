@@ -216,6 +216,15 @@
   .hist-row:hover{background:var(--bg)}
   .hist-row .edit{color:var(--muted); font-size:13px; margin-left:10px; flex:none}
   .hist-right{display:flex; align-items:center; gap:2px}
+  /* header sync button (top-right) */
+  .brand .btxt{flex:1; min-width:0}
+  .brand .btxt p{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .syncbtn{margin-left:auto; flex:none; display:flex; align-items:center; gap:7px; background:var(--card);
+    border:1px solid var(--line); color:var(--ink); border-radius:20px; padding:7px 12px; font-size:12px;
+    font-weight:800; letter-spacing:.2px; cursor:pointer; font-family:inherit; box-shadow:var(--shadow); white-space:nowrap}
+  .syncbtn:active{transform:scale(.97)}
+  .syncbtn .sdot{width:8px; height:8px; border-radius:50%; background:var(--muted); flex:none}
+  .syncbtn.on .sdot{background:var(--accent)}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -226,10 +235,13 @@
 <header>
   <div class="brand">
     <div class="logo">🥬</div>
-    <div>
+    <div class="btxt">
       <h1>Shop List</h1>
       <p>Groceries &amp; spend tracker</p>
     </div>
+    <button class="syncbtn" id="syncBtn" onclick="openSync()" title="Cross-device sync">
+      <span class="sdot" id="syncDot"></span><span id="syncBtnLabel">Sync</span>
+    </button>
   </div>
   <div class="hero">
     <div>
@@ -347,38 +359,8 @@
   </div>
 
   <div class="card">
-    <div class="listhead" style="margin:0 0 12px"><span class="ttl">Cross-device sync</span><span class="chip2" id="syncState">Off</span></div>
-    <div id="syncDisconnected">
-      <label>GitHub token (classic, “gist” scope)</label>
-      <div class="syncrow" style="margin-bottom:10px">
-        <input id="ghToken" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" style="flex:1 1 150px">
-        <button class="btn ghost sm" id="ghShowToken" onclick="toggleToken()">Show</button>
-      </div>
-      <label>Gist ID (optional — leave blank to auto-find / create)</label>
-      <input id="ghGist" placeholder="blank on your first device" autocomplete="off" spellcheck="false" style="margin-bottom:12px">
-      <button class="btn full" onclick="ghConnect()">Connect</button>
-    </div>
-    <div id="syncConnected" hidden>
-      <div class="hint" style="text-align:left; margin:0 0 4px">Connected as <b id="syncUser">…</b></div>
-      <div class="hint" style="text-align:left; margin:0">Gist <code id="syncGistId"></code></div>
-      <div class="syncrow" style="margin-top:12px">
-        <button class="btn sm" onclick="doSyncNow()">Sync now</button>
-        <label class="muted" style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600"><input type="checkbox" id="ghAuto" onchange="toggleAuto()"> Auto-sync</label>
-        <button class="btn ghost sm" onclick="ghDisconnect()" style="margin-left:auto">Disconnect</button>
-      </div>
-      <div class="syncrow" style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line2)">
-        <span class="muted" style="font-size:13px; font-weight:600">Cloud encryption:</span> <b id="encStatus" style="font-size:13px"></b>
-      </div>
-      <div class="syncrow" style="margin-top:8px">
-        <input id="ghPass" type="password" placeholder="Sync passphrase" autocomplete="off" spellcheck="false" style="flex:1 1 150px">
-        <button class="btn ghost sm" id="passShowBtn" onclick="passShow()">Show</button>
-        <button class="btn sm" id="passSet" onclick="passSet()">Encrypt cloud copy</button>
-        <button class="btn ghost sm" id="passClear" onclick="passClear()" style="display:none">Remove</button>
-      </div>
-      <div class="hint" style="text-align:left">Encrypts the copy stored in your gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. <b>No recovery</b> if you forget it — keep a backup (the CSV export). Your on-device list stays readable.</div>
-    </div>
-    <div id="syncMsg" class="hint" style="text-align:left; min-height:1.1em; margin-top:10px"></div>
-    <div class="hint" style="text-align:left">Your list syncs through a <b>private gist</b> in your own GitHub account — same as your other apps. Use the <b>same token</b> on each device; the first device to save wins if you edit two at once.</div>
+    <div class="listhead" style="margin:0 0 8px"><span class="ttl">Cross-device sync</span></div>
+    <div class="hint" style="text-align:left; margin:0">Sync now lives on the <b>⟳ button, top-right</b>. Tap it to connect a device, sync your list, or set an encryption passphrase.</div>
   </div>
 </section>
 
@@ -421,6 +403,45 @@
         <button class="btn" onclick="saveHistEdit()">Save</button>
       </div>
     </div>
+  </div>
+</dialog>
+
+<!-- sync modal (opened from the top-right ⟳ button) -->
+<dialog id="syncDlg">
+  <div class="modal" style="max-height:88vh; overflow:auto">
+    <div class="listhead" style="margin:0 0 12px"><span class="ttl">Cross-device sync</span><span class="chip2" id="syncState">Off</span></div>
+    <div id="syncDisconnected">
+      <label>GitHub token (classic, “gist” scope)</label>
+      <div class="syncrow" style="margin-bottom:10px">
+        <input id="ghToken" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" style="flex:1 1 150px">
+        <button class="btn ghost sm" id="ghShowToken" onclick="toggleToken()">Show</button>
+      </div>
+      <label>Gist ID (optional — leave blank to auto-find / create)</label>
+      <input id="ghGist" placeholder="blank on your first device" autocomplete="off" spellcheck="false" style="margin-bottom:12px">
+      <button class="btn full" onclick="ghConnect()">Connect</button>
+    </div>
+    <div id="syncConnected" hidden>
+      <div class="hint" style="text-align:left; margin:0 0 4px">Connected as <b id="syncUser">…</b></div>
+      <div class="hint" style="text-align:left; margin:0">Gist <code id="syncGistId"></code></div>
+      <div class="syncrow" style="margin-top:12px">
+        <button class="btn sm" onclick="doSyncNow()">Sync now</button>
+        <label class="muted" style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600"><input type="checkbox" id="ghAuto" onchange="toggleAuto()"> Auto-sync</label>
+        <button class="btn ghost sm" onclick="ghDisconnect()" style="margin-left:auto">Disconnect</button>
+      </div>
+      <div class="syncrow" style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line2)">
+        <span class="muted" style="font-size:13px; font-weight:600">Cloud encryption:</span> <b id="encStatus" style="font-size:13px"></b>
+      </div>
+      <div class="syncrow" style="margin-top:8px">
+        <input id="ghPass" type="password" placeholder="Sync passphrase" autocomplete="off" spellcheck="false" style="flex:1 1 150px">
+        <button class="btn ghost sm" id="passShowBtn" onclick="passShow()">Show</button>
+        <button class="btn sm" id="passSet" onclick="passSet()">Encrypt cloud copy</button>
+        <button class="btn ghost sm" id="passClear" onclick="passClear()" style="display:none">Remove</button>
+      </div>
+      <div class="hint" style="text-align:left">Encrypts the copy stored in your gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. <b>No recovery</b> if you forget it — keep a backup (the CSV export). Your on-device list stays readable.</div>
+    </div>
+    <div id="syncMsg" class="hint" style="text-align:left; min-height:1.1em; margin-top:10px"></div>
+    <div class="hint" style="text-align:left">Your list syncs through a <b>private gist</b> in your own GitHub account — same as your other apps. Use the <b>same token</b> on each device; the first device to save wins if you edit two at once.</div>
+    <button class="btn ghost full" style="margin-top:14px" onclick="syncDlg.close()">Close</button>
   </div>
 </dialog>
 
@@ -833,8 +854,10 @@ function renderSync(){
   $('syncConnected').hidden=!conn;
   const st=$('syncState'); if(st){ st.textContent=conn?'On':'Off'; st.style.color=conn?'var(--accent-d)':'var(--muted)'; }
   if(conn){ $('syncGistId').textContent=GH.gist; $('syncUser').textContent=GH.user||'…'; if(!GH.user) fetchUser(); $('ghAuto').checked=GH.auto; }
+  const btn=$('syncBtn'); if(btn){ btn.classList.toggle('on',conn); const lbl=$('syncBtnLabel'); if(lbl) lbl.textContent = conn ? (SYNC_PASS?'Synced 🔒':'Synced') : 'Sync'; }
   renderEnc();
 }
+function openSync(){ renderSync(); $('syncDlg').showModal(); }
 function passShow(){ const i=$('ghPass'); const show=i.type==='password'; i.type=show?'text':'password'; $('passShowBtn').textContent=show?'Hide':'Show'; }
 async function passSet(){
   const p=$('ghPass').value;
