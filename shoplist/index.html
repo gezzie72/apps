@@ -361,7 +361,7 @@
       <div class="trio">
         <div><label>Price £</label><input id="ePrice" type="number" step="0.01" min="0" inputmode="decimal"></div>
         <div><label>Qty</label><input id="eQty" type="number" step="1" min="1" inputmode="numeric"></div>
-        <div><label>Shop</label><input id="eShop" list="shops"></div>
+        <div><label>Shop</label><input id="eShop" list="shopsEdit" autocomplete="off"><datalist id="shopsEdit"></datalist></div>
       </div>
       <div class="row" style="grid-template-columns:1fr 1fr; margin-top:4px">
         <button class="btn ghost" onclick="editDlg.close()">Cancel</button>
@@ -447,7 +447,9 @@ function checkout(){
 
 function render(){
   const shops=[...new Set([...state.items.map(i=>i.shop), ...state.history.map(h=>h.shop)])].filter(s=>s&&s!=='ANY');
-  $('shops').innerHTML=shops.map(s=>`<option value="${s}">`).join('');
+  const opts=shops.map(s=>`<option value="${s}">`).join('');
+  $('shops').innerHTML=opts;
+  const se=$('shopsEdit'); if(se) se.innerHTML=opts;
 
   const items=state.items;
   const outstanding=items.filter(i=>!i.done).reduce((s,i)=>s+i.price*i.qty,0);
