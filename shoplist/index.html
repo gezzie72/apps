@@ -353,6 +353,14 @@
     <div class="box"><b id="stTotal">£0</b><small>All time</small></div>
   </div>
 
+  <div class="card" id="spendBudgetCard">
+    <div class="listhead" style="margin:0 0 10px">
+      <span class="ttl" id="sbTitle">Monthly budget</span>
+      <button class="btn ghost sm" onclick="editSpendBudget()"><span id="sbEditLbl">Set</span></button>
+    </div>
+    <div id="sbBody"></div>
+  </div>
+
   <div class="card">
     <div class="listhead" style="margin:0 0 14px">
       <span class="ttl" id="chartTitle">Spend by week</span>
@@ -503,6 +511,22 @@
   </div>
 </dialog>
 
+<!-- spend budget (per period) -->
+<dialog id="sbDlg">
+  <div class="modal">
+    <h3 id="sbDlgTitle">Monthly spend budget</h3>
+    <div class="row">
+      <div><label id="sbDlgLabel">Target £ per month</label><input id="sbInput" type="number" step="1" min="0" inputmode="decimal" placeholder="e.g. 300" onkeydown="if(event.key==='Enter')saveSpendBudget()"></div>
+      <div class="hint" style="text-align:left; margin:2px 0 0">Draws a line on the graph and tracks how much you've spent this period.</div>
+      <div class="row" style="grid-template-columns:auto 1fr 1fr; gap:8px; margin-top:6px; align-items:center">
+        <button class="btn ghost sm" onclick="clearSpendBudget()" style="color:var(--danger)">Clear</button>
+        <button class="btn ghost" onclick="sbDlg.close()">Cancel</button>
+        <button class="btn" onclick="saveSpendBudget()">Save</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
 <div id="printArea"></div>
 
 <script>
@@ -520,6 +544,7 @@ function normalize(s){
   s.history = Array.isArray(s.history) ? s.history : [];
   s.budget  = +s.budget || 0;
   s.prices  = (s.prices && typeof s.prices==='object' && !Array.isArray(s.prices)) ? s.prices : {};  // { NAME: {price,shop,at} } last paid
+  s.spendBudget = (s.spendBudget && typeof s.spendBudget==='object' && !Array.isArray(s.spendBudget)) ? s.spendBudget : {};  // {week,month,year} £ targets
   s.updatedAt = +s.updatedAt || 0;
   return s;
 }
@@ -741,7 +766,9 @@ function renderSpend(){
   $('stTotal').textContent=money0(allTotal);
   $('chartTitle').textContent='Spend by '+(range==='week'?'week':range==='month'?'month':'year');
 
-  $('chart').innerHTML = data.length ? drawChart(data) : '<div class="empty"><div class="big">📊</div>No shops logged yet.<br>Tick items and press “Shop done”.</div>';
+  const target=(state.spendBudget||{})[range]||0;
+  renderSpendBudget(thisVal, target);
+  $('chart').innerHTML = data.length ? drawChart(data, target) : '<div class="empty"><div class="big">📊</div>No shops logged yet.<br>Tick items and press “Shop done”.</div>';
 
   const hist=[...h].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,40);
   $('history').innerHTML = hist.length ? hist.map(e=>{
@@ -754,9 +781,9 @@ function renderSpend(){
   }).join('') : '<div class="empty" style="padding:22px">No history yet.</div>';
 }
 
-function drawChart(data){
+function drawChart(data, target){
   const W=Math.max(320, data.length*56), H=210, pad=30, base=H-26, top=18;
-  const max=Math.max(...data.map(d=>d.val),1);
+  const max=Math.max(...data.map(d=>d.val), target||0, 1);
   const n=data.length;
   const colW=(W-pad*2)/n;
   const x=i=>pad+colW*i+colW/2;
@@ -785,8 +812,52 @@ function drawChart(data){
          data.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d.val)}" r="4" fill="var(--card)" stroke="var(--accent)" stroke-width="2.5"/>`+
            `<text x="${x(i)}" y="${y(d.val)-10}" text-anchor="middle" class="barval">£${Math.round(d.val)}</text>`).join('');
   }
+  let tline='';
+  if(target>0){ const ty=y(target);
+    tline=`<line x1="${pad}" y1="${ty}" x2="${W-pad+10}" y2="${ty}" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="5 4"/>`+
+          `<text x="${W-pad+8}" y="${ty-4}" text-anchor="end" class="barval" fill="var(--amber)">Target £${Math.round(target)}</text>`;
+  }
   const labels=data.map((d,i)=>`<text x="${x(i)}" y="${H-7}" text-anchor="middle" class="barlbl">${d.label}</text>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${grid}${body}${labels}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${grid}${tline}${body}${labels}</svg>`;
+}
+
+/* ---------- spend budget per period (week/month/year) ---------- */
+function renderSpendBudget(thisVal, target){
+  const per = range==='week'?'week':range==='month'?'month':'year';
+  const cap = range==='week'?'Weekly':range==='month'?'Monthly':'Yearly';
+  $('sbTitle').textContent = cap+' budget';
+  $('sbEditLbl').textContent = target?'Edit':'Set';
+  if(!target){
+    $('sbBody').innerHTML='<div class="hint" style="text-align:left;margin:0">No '+per+' spend target set. Tap <b>Set</b> to add one — it draws a line on the graph and tracks how much you\'ve spent this '+per+'.</div>';
+    return;
+  }
+  const pct=Math.max(0,Math.min(100, thisVal/target*100));
+  const rem=target-thisVal;
+  const cls = thisVal>target?'over':(thisVal>target*0.85?'warn':'');
+  const remCol = thisVal>target?'var(--danger)':(thisVal>target*0.85?'var(--amber)':'var(--accent-d)');
+  $('sbBody').innerHTML =
+    '<div class="budget '+cls+'" style="box-shadow:none;border:none;padding:0;margin:0;background:transparent">'
+    +'<div class="brow"><span>This '+per+' '+money(thisVal)+' of '+money(target)+'</span>'
+    +'<span class="rem" style="color:'+remCol+'">'+(rem>=0?money(rem)+' left':money(-rem)+' over')+'</span></div>'
+    +'<div class="track"><div class="fill" style="width:'+pct+'%"></div></div></div>';
+}
+function editSpendBudget(){
+  const per = range==='week'?'week':range==='month'?'month':'year';
+  const cap = range==='week'?'Weekly':range==='month'?'Monthly':'Yearly';
+  $('sbDlgTitle').textContent = cap+' spend budget';
+  $('sbDlgLabel').textContent = 'Target £ per '+per;
+  $('sbInput').value = (state.spendBudget && state.spendBudget[range]) || '';
+  $('sbDlg').showModal();
+}
+function saveSpendBudget(){
+  const v=Math.max(0, parseFloat($('sbInput').value)||0);
+  state.spendBudget = state.spendBudget || {};
+  state.spendBudget[range]=v; save(); $('sbDlg').close(); renderSpend();
+  toast(v?('Target set: '+money(v)+' / '+range):'Target cleared');
+}
+function clearSpendBudget(){
+  state.spendBudget = state.spendBudget || {};
+  state.spendBudget[range]=0; save(); $('sbDlg').close(); renderSpend(); toast('Target cleared');
 }
 
 function exportCSV(){

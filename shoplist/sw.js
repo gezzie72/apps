@@ -1,5 +1,5 @@
 /* Shop List service worker - offline app shell, network-first so updates land. */
-const CACHE = "shoplist-v9";
+const CACHE = "shoplist-v10";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
