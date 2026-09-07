@@ -425,6 +425,16 @@
         <button class="btn" id="ghSyncNow">Sync now <span class="spin" id="syncSpin"></span></button>
         <button class="btn ghost" id="ghDisconnect" style="margin-left:auto">Disconnect</button>
       </div>
+      <div class="row" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line,#ddd); align-items:center; gap:8px; flex-wrap:wrap">
+        <span class="muted">Cloud encryption:</span> <b id="encStatus"></b>
+      </div>
+      <div class="row" style="margin-top:8px; gap:8px; flex-wrap:wrap">
+        <input type="password" id="ghPass" class="in" placeholder="Sync passphrase" autocomplete="off" spellcheck="false" style="flex:1 1 160px">
+        <button class="btn" id="ghPassShow">Show</button>
+        <button class="btn primary" id="ghPassSet">Encrypt cloud copy</button>
+        <button class="btn ghost" id="ghPassClear" style="display:none">Remove</button>
+      </div>
+      <p class="muted" style="font-size:12px; margin-top:6px">Encrypts the copy stored in your GitHub gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. <b>No recovery</b> if you forget it - keep an Export JSON backup. On-device data stays readable.</p>
     </div>
 
     <hr class="sep">
@@ -469,7 +479,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "v1.5";
+const APP_VERSION = "v1.6";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -1204,6 +1214,37 @@ const GH = {
   set user(v){ try{v?localStorage.setItem("finance.gh.user",v):localStorage.removeItem("finance.gh.user")}catch(e){} },
   get connected(){ return !!(this.token && this.gist); }
 };
+
+/* ---------- cloud-copy encryption: PBKDF2(200k) -> AES-GCM 256 (gist only) ---------- */
+const _enc=new TextEncoder(), _dec=new TextDecoder();
+const _b64={ enc:buf=>btoa(String.fromCharCode(...new Uint8Array(buf))), dec:str=>Uint8Array.from(atob(str),c=>c.charCodeAt(0)) };
+Object.defineProperty(GH,"pass",{
+  get(){ try{return localStorage.getItem("finance.gh.pass")||""}catch(e){return ""} },
+  set(v){ try{v?localStorage.setItem("finance.gh.pass",v):localStorage.removeItem("finance.gh.pass")}catch(e){} }
+});
+let SYNC_PASS = GH.pass;
+async function _deriveKey(pass, salt){
+  const base=await crypto.subtle.importKey("raw", _enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:200000, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function encodeForGist(){
+  const plain = JSON.stringify(state);
+  if(!SYNC_PASS) return plain;
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await _deriveKey(SYNC_PASS, salt);
+  const cipher=await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, _enc.encode(plain));
+  return JSON.stringify({ __enc:1, alg:"AES-GCM-PBKDF2-200k", salt:_b64.enc(salt), iv:_b64.enc(iv), data:_b64.enc(cipher), updatedAt: state.updatedAt||Date.now() });
+}
+async function decodeEnvelope(env){
+  const key=await _deriveKey(SYNC_PASS, _b64.dec(env.salt));
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM", iv:_b64.dec(env.iv)}, key, _b64.dec(env.data));
+  return JSON.parse(_dec.decode(plain));
+}
+function renderEnc(){
+  const s=$("#encStatus"); if(s){ s.textContent = SYNC_PASS ? "On 🔒" : "Off - cloud copy is plain text"; s.style.color = SYNC_PASS ? "#16a34a" : "var(--danger)"; }
+  const clr=$("#ghPassClear"); if(clr) clr.style.display = SYNC_PASS ? "" : "none";
+  const setb=$("#ghPassSet"); if(setb) setb.textContent = SYNC_PASS ? "Update passphrase" : "Encrypt cloud copy";
+}
 const GIST_FILE="finance.json";
 async function ghApi(method, path, body){
   let res;
@@ -1236,8 +1277,8 @@ function retryAfterSecs(res){ const ra=res.headers.get("Retry-After"); if(ra){ c
 function pauseSync(secs){ syncPausedUntil=now()+secs*1000; const el=$("#syncLastTop"); if(el){ el.classList.remove("flash"); el.style.color="var(--danger)"; el.textContent="Rate-limited — paused "+secs+"s"; } }
 let pushTimer=null;
 function schedulePush(){ if(!GH.connected||!GH.auto) return; if(syncPaused()){ pendingPush=true; return; } clearTimeout(pushTimer); pushTimer=setTimeout(()=>{ syncPush().then(()=>pendingPush=false).catch(e=>{ pendingPush=true; spin(false); if(!syncPaused()) markSync("Push failed: "+e.message,true); }); }, 1500); }
-async function syncPush(){ if(!GH.connected) return; persist(); spin(true); markSync("Saving…"); try{ await ghApi("PATCH","/gists/"+GH.gist,{files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); setSyncTime(); markSync("Synced"); } finally{ spin(false); } }
-function syncPushBeacon(){ if(!GH.connected) return; try{ fetch("https://api.github.com/gists/"+GH.gist,{ method:"PATCH", keepalive:true, headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" }, body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}}) }).then(()=>{ try{localStorage.setItem("finance.gh.lastSync",String(now()))}catch(e){} }).catch(()=>{}); }catch(e){} }
+async function syncPush(){ if(!GH.connected) return; persist(); spin(true); markSync("Saving…"); try{ const content=await encodeForGist(); await ghApi("PATCH","/gists/"+GH.gist,{files:{[GIST_FILE]:{content}}}); setSyncTime(); markSync(SYNC_PASS?"Synced 🔒":"Synced"); } finally{ spin(false); } }
+function syncPushBeacon(){ if(!GH.connected||SYNC_PASS) return; try{ fetch("https://api.github.com/gists/"+GH.gist,{ method:"PATCH", keepalive:true, headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" }, body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}}) }).then(()=>{ try{localStorage.setItem("finance.gh.lastSync",String(now()))}catch(e){} }).catch(()=>{}); }catch(e){} }
 // Whole-document last-write-wins: newer updatedAt wins. Simple + safe for a single budget.
 function mergeRemote(remote){
   if(!remote || typeof remote!=="object") return false;
@@ -1264,10 +1305,21 @@ async function syncPull(force, quiet){
     if(r.notModified){ setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
     const f=r.data.files && r.data.files[GIST_FILE];
     if(!f || !f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
-    const remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
-    const changed=mergeRemote(remote);
+    let remote, wasEnc=false;
+    try{ remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content); }
+    catch(e){ if(!quiet) markSync("Sync data unreadable",true); return "error"; }
+    if(remote && remote.__enc===1){
+      wasEnc=true;
+      if(!SYNC_PASS){ if(!quiet) markSync("This sync is encrypted - set your passphrase below to unlock it.",true); return "locked"; }
+      try{ remote=await decodeEnvelope(remote); }
+      catch(e){ if(!quiet) markSync("Wrong sync passphrase - your local data was kept.",true); return "badpass"; }
+    }
+    let changed;
+    if(force){ state=migrate(remote); persist(); changed=true; }   // force: adopt the cloud copy (used when setting/unlocking a passphrase)
+    else { changed=mergeRemote(remote); }
+    if(!wasEnc && SYNC_PASS) schedulePush();   // plaintext gist -> re-encrypt on next push
     setSyncTime();
-    if(force||changed){ setTab(currentTab); if(changed){ markSync("Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date"); return changed?"pulled":"uptodate"; }
+    if(force||changed){ setTab(currentTab); if(changed){ markSync(wasEnc?"Pulled latest changes 🔒":"Pulled latest changes"); flashSynced(); } else if(!quiet) markSync("Up to date"); return changed?"pulled":"uptodate"; }
     if(!quiet) markSync("Up to date"); return "uptodate";
   } finally{ pulling=false; if(!quiet) spin(false); }
 }
@@ -1276,7 +1328,7 @@ async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.l
 function renderSync(){
   $("#syncDisconnected").style.display = GH.connected?"none":"";
   $("#syncConnected").style.display = GH.connected?"":"none";
-  if(GH.connected){ $("#syncGistId").textContent=GH.gist; $("#syncGistLink").href="https://gist.github.com/"+GH.gist; $("#syncUser").textContent=GH.user||"…"; if(!GH.user) fetchUser(); $("#ghAuto").checked=GH.auto; }
+  if(GH.connected){ $("#syncGistId").textContent=GH.gist; $("#syncGistLink").href="https://gist.github.com/"+GH.gist; $("#syncUser").textContent=GH.user||"…"; if(!GH.user) fetchUser(); $("#ghAuto").checked=GH.auto; renderEnc(); }
   updateLastSync();
 }
 async function doSyncNow(){ try{ await syncPull(false); await syncPush(); updateLastSync(); toast("Synced"); }catch(e){ markSync("Sync failed: "+e.message,true); toast("Sync failed"); spin(false); } }
@@ -1298,8 +1350,12 @@ $("#ghConnect").onclick = async ()=>{
   GH.token=t; spin(true); markSync("Connecting…");
   try{
     if(!gid) gid=await findGist();
-    if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true); if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your budget."); } else markSync("Connected — using your existing sync."); }
-    else { const g=await ghApi("POST","/gists",{description:"Finance Manager sync", public:false, files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
+    if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
+      if(r==="empty"){ await syncPush(); markSync(SYNC_PASS?"Connected - seeded this gist (encrypted 🔒).":"Connected — seeded this gist with your budget."); }
+      else if(r==="locked"){ markSync("Connected - this sync is encrypted. Set your passphrase below to unlock it.",true); }
+      else if(r==="badpass"){ markSync("Connected, but that passphrase does not match this sync. Update it below.",true); }
+      else markSync("Connected — using your existing sync."); }
+    else { const content=await encodeForGist(); const g=await ghApi("POST","/gists",{description:"Finance Manager sync", public:false, files:{[GIST_FILE]:{content}}}); GH.gist=g.id; setSyncTime(); markSync(SYNC_PASS?"Connected - new encrypted sync created 🔒.":"Connected — new sync created."); }
     $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
   }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
   finally{ spin(false); }
@@ -1309,6 +1365,30 @@ $("#ghAuto").onchange = ()=>{ GH.auto=$("#ghAuto").checked; if(GH.auto) schedule
 $("#ghCopyGist").onclick = ()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>toast("Gist ID copied"),()=>toast(GH.gist)); };
 $("#ghShowToken").onclick = ()=>{ const i=$("#ghToken"); const show=i.type==="password"; i.type=show?"text":"password"; $("#ghShowToken").textContent=show?"Hide":"Show"; };
 $("#ghDisconnect").onclick = ()=>{ if(confirm("Disconnect sync on this device? Your data stays here; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+$("#ghPassShow").onclick = ()=>{ const i=$("#ghPass"); const show=i.type==="password"; i.type=show?"text":"password"; $("#ghPassShow").textContent=show?"Hide":"Show"; };
+$("#ghPassSet").onclick = async ()=>{
+  const p=$("#ghPass").value;
+  if(!p){ markSync("Enter a passphrase first.",true); return; }
+  if(p.length<6){ markSync("Use at least 6 characters.",true); return; }
+  SYNC_PASS=p; GH.pass=p; $("#ghPass").value=""; if($("#ghPass").type==="text"){ $("#ghPass").type="password"; $("#ghPassShow").textContent="Show"; }
+  renderEnc();
+  if(!GH.connected){ toast("Passphrase saved - connect sync to use it."); return; }
+  spin(true); markSync("Applying passphrase...");
+  try{ const r=await syncPull(true);
+    if(r==="badpass"){ markSync("That passphrase does not match your existing encrypted sync - local data kept. Check it and try again.",true); return; }
+    await syncPush(); markSync("Cloud copy is now encrypted 🔒"); toast("Cloud copy encrypted"); }
+  catch(e){ markSync("Couldn't update the gist: "+e.message,true); }
+  finally{ spin(false); }
+};
+$("#ghPassClear").onclick = async ()=>{
+  if(!confirm("Remove cloud encryption? On the next sync your data will be written back to the gist as PLAIN TEXT.")) return;
+  SYNC_PASS=""; GH.pass=""; renderEnc();
+  if(!GH.connected){ toast("Passphrase removed."); return; }
+  spin(true); markSync("Removing encryption...");
+  try{ await syncPush(); markSync("Cloud encryption removed."); }
+  catch(e){ markSync("Couldn't update the gist: "+e.message,true); }
+  finally{ spin(false); }
+};
 
 /* ============ Init ============ */
 applyTheme(theme); renderTheme(); applyScale(textScale); renderTextSize();

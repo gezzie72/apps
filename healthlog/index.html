@@ -1697,7 +1697,7 @@ $("#ghPassSet").onclick=async ()=>{
   try{
     // Pull first: if the gist is already encrypted this adopts (decrypts) the real data,
     // so we never overwrite a good cloud copy with this device's local state.
-    const r=await syncPull(false);
+    const r=await syncPull(true);   // force: always try to decrypt/adopt the cloud copy, never overwrite it blindly
     if(r==="badpass"){ markSync("That passphrase doesn't match your existing encrypted sync — local data kept. Check it and try again.",true); return; }
     await syncPush();   // seeds/encrypts the cloud copy
     markSync("Cloud copy is now encrypted 🔒"); toast("Cloud copy encrypted");
