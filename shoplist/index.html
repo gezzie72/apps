@@ -223,6 +223,10 @@
     background:var(--accent-soft); border-radius:5px; padding:1px 5px; margin-left:7px; vertical-align:middle}
   .item .priceup{display:inline-block; margin-left:8px; color:var(--amber); font-weight:800; font-size:11px; letter-spacing:.2px}
   .item.bought .priceup{opacity:.7}
+  .item .grip{flex:none; cursor:grab; color:var(--muted); font-size:17px; line-height:1; padding:4px 3px; margin-left:2px;
+    touch-action:none; user-select:none; -webkit-user-select:none; opacity:.55}
+  .item .grip:active{cursor:grabbing}
+  .item.dragging{opacity:.92; box-shadow:0 14px 30px -8px rgba(0,0,0,.5); position:relative; z-index:5}
   /* editable history rows */
   .hist-row{cursor:pointer; border-radius:8px; padding-left:8px; padding-right:8px}
   .hist-row:hover{background:var(--bg)}
@@ -779,13 +783,14 @@ function itemRow(i){
   const tag=i.bought?'<span class="tag">SAVED</span>':'';
   const last=state.prices[i.name];
   const rise=(last && i.price>last.price+0.001) ? `<span class="priceup" title="Was ${money(last.price)} last time">▲ was ${money(last.price)}</span>` : '';
-  return `<div class="item ${cls}">
+  return `<div class="item ${cls}" data-id="${i.id}">
     <button class="tick" onclick="toggle('${i.id}')" title="${i.bought?'Reuse for this trip':'Tick off'}">${tick}</button>
     <div class="body" onclick="openEdit('${i.id}')">
       <div class="name">${i.name}${tag}</div>
       <div class="meta">${meta}${rise}</div>
     </div>
     <div class="price">${money(line)}</div>
+    <span class="grip" title="Drag to reorder">⠿</span>
     <button class="del" onclick="del('${i.id}')" title="Remove">✕</button>
   </div>`;
 }
@@ -1209,7 +1214,49 @@ setInterval(()=>{ if(GH.connected&&GH.auto&&!document.hidden) syncPull(false,tru
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden&&GH.connected&&GH.auto) syncPull(false,true).catch(()=>{}); });
 window.addEventListener("pagehide", ()=>{ if(GH.connected&&GH.auto&&!SYNC_PASS){ try{ fetch("https://api.github.com/gists/"+GH.gist,{method:"PATCH",keepalive:true,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}})}).catch(()=>{}); }catch(e){} } });
 
+/* ---------- drag-to-reorder items (pointer events: touch + mouse) ---------- */
+let dragState=null;
+function initDrag(){
+  const wrap=$('items');
+  wrap.addEventListener('pointerdown', e=>{
+    const handle=e.target.closest('.grip'); if(!handle) return;
+    const item=handle.closest('.item'); if(!item) return;
+    e.preventDefault();
+    dragState={ item, group:item.parentElement, pid:e.pointerId };
+    try{ wrap.setPointerCapture(e.pointerId); }catch(_){}
+    item.classList.add('dragging');
+    document.body.style.userSelect='none';
+  });
+  wrap.addEventListener('pointermove', e=>{
+    if(!dragState) return;
+    e.preventDefault();
+    const {item, group}=dragState;
+    const sibs=[...group.querySelectorAll(':scope > .item')].filter(el=>el!==item);
+    let placed=false;
+    for(const sib of sibs){
+      const r=sib.getBoundingClientRect();
+      if(e.clientY < r.top + r.height/2){ group.insertBefore(item, sib); placed=true; break; }
+    }
+    if(!placed) group.appendChild(item);
+  });
+  const end=()=>{
+    if(!dragState) return;
+    dragState.item.classList.remove('dragging');
+    document.body.style.userSelect='';
+    dragState=null;
+    commitOrder();
+  };
+  wrap.addEventListener('pointerup', end);
+  wrap.addEventListener('pointercancel', end);
+}
+function commitOrder(){
+  const pos={}; [...$('items').querySelectorAll('.item')].forEach((el,i)=>{ pos[el.dataset.id]=i; });
+  state.items.sort((a,b)=>(pos[a.id]??0)-(pos[b.id]??0));
+  save(); render();
+}
+
 render();
+initDrag();
 renderSync();
 if(GH.connected) syncPull(false,true).catch(()=>{});
 </script>
