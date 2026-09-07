@@ -14,10 +14,11 @@
     --chrome:#14171c; --chrome-ink:#f6f5f1;
     --danger:#e5484d; --amber:#f59e0b;
     --shadow:0 1px 2px rgba(20,23,28,.04), 0 6px 20px -12px rgba(20,23,28,.18);
-    --radius:18px;
+    --radius:18px; --tscale:1;
   }
+  /* dark palette — used for system-dark (unless the user forced light) and for a forced dark choice */
   @media (prefers-color-scheme:dark){
-    :root{
+    :root:not([data-theme="light"]){
       --bg:#0d0f12; --card:#171a1f; --ink:#eaecef; --muted:#868d97;
       --line:#242830; --line2:#2c313a;
       --accent:#5aa588; --accent-d:#4c9075; --accent-soft:#18271f;
@@ -25,6 +26,14 @@
       --danger:#ff6369; --amber:#fbbf24;
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
     }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d0f12; --card:#171a1f; --ink:#eaecef; --muted:#868d97;
+    --line:#242830; --line2:#2c313a;
+    --accent:#5aa588; --accent-d:#4c9075; --accent-soft:#18271f;
+    --chrome:#171a1f; --chrome-ink:#eaecef;
+    --danger:#ff6369; --amber:#fbbf24;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0}
@@ -34,6 +43,7 @@
     padding:0 15px calc(40px + env(safe-area-inset-bottom));
     max-width:640px; margin:0 auto; line-height:1.45;
     -webkit-font-smoothing:antialiased;
+    zoom:var(--tscale);
   }
 
   /* header */
@@ -225,6 +235,18 @@
   .syncbtn:active{transform:scale(.97)}
   .syncbtn .sdot{width:8px; height:8px; border-radius:50%; background:var(--muted); flex:none}
   .syncbtn.on .sdot{background:var(--accent)}
+  /* print the current list only */
+  #printArea{display:none}
+  @media print{
+    body{zoom:1 !important; max-width:none; padding:0}
+    body > *{display:none !important}
+    body > #printArea{display:block !important; color:#000; background:#fff; padding:6px 10px}
+    #printArea h2{font-size:20px; margin:0 0 2px}
+    #printArea .pmeta{color:#555; font-size:12px; margin-bottom:14px}
+    #printArea .pshop{font-weight:800; margin:14px 0 4px; border-bottom:1px solid #000; padding-bottom:3px; text-transform:uppercase; font-size:13px; letter-spacing:.5px}
+    #printArea .pitem{display:flex; justify-content:space-between; padding:4px 0; font-size:14px; border-bottom:1px dotted #bbb}
+    #printArea .ptotal{margin-top:16px; font-weight:800; font-size:16px; border-top:2px solid #000; padding-top:8px; display:flex; justify-content:space-between}
+  }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -297,7 +319,10 @@
 
   <div class="listhead">
     <span class="ttl">Shopping list</span>
-    <span class="pill" id="listPill">0 items</span>
+    <span style="display:flex; align-items:center; gap:8px">
+      <button class="btn ghost sm" onclick="openShare()">⤴ Share</button>
+      <span class="pill" id="listPill">0 items</span>
+    </span>
   </div>
 
   <div id="items"></div>
@@ -348,6 +373,23 @@
 
 <!-- ============ SETUP VIEW ============ -->
 <section id="viewSetup" hidden>
+  <div class="card">
+    <div class="listhead" style="margin:0 0 12px"><span class="ttl">Appearance</span></div>
+    <label>Theme</label>
+    <div class="seg" id="themeSeg" style="margin-bottom:14px">
+      <button data-t="system" onclick="setTheme('system')">System</button>
+      <button data-t="light" onclick="setTheme('light')">Light</button>
+      <button data-t="dark" onclick="setTheme('dark')">Dark</button>
+    </div>
+    <label>Text size</label>
+    <div class="seg" id="sizeSeg" style="margin-bottom:0">
+      <button data-s="0.9" onclick="setSize('0.9')">S</button>
+      <button data-s="1" onclick="setSize('1')">M</button>
+      <button data-s="1.12" onclick="setSize('1.12')">L</button>
+      <button data-s="1.25" onclick="setSize('1.25')">XL</button>
+    </div>
+  </div>
+
   <div class="card">
     <div class="listhead" style="margin:0 0 12px"><span class="ttl">Shop budget</span></div>
     <label>Budget cap for a shop (£) — set 0 to turn off</label>
@@ -444,6 +486,22 @@
     <button class="btn ghost full" style="margin-top:14px" onclick="syncDlg.close()">Close</button>
   </div>
 </dialog>
+
+<!-- share / print the current list -->
+<dialog id="shareDlg">
+  <div class="modal">
+    <h3>Share this list</h3>
+    <div class="row" style="gap:8px">
+      <button class="btn full" onclick="shareText()">⤴ Share / copy as text</button>
+      <button class="btn ghost full" onclick="printList()">🖨 Print</button>
+      <button class="btn ghost full" onclick="exportListCSV()">⤓ Download CSV</button>
+      <button class="btn ghost full" style="margin-top:4px" onclick="shareDlg.close()">Close</button>
+    </div>
+    <div class="hint" style="text-align:left; margin-top:6px">Includes everything still to buy (shaded “SAVED” items are left out).</div>
+  </div>
+</dialog>
+
+<div id="printArea"></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -750,7 +808,72 @@ function setBudget(){
   state.budget=v; save(); renderBudget();
   toast(v ? 'Budget set to '+money(v) : 'Budget turned off');
 }
-function renderSetup(){ $('fBudget').value = state.budget || ''; renderSync(); }
+function renderSetup(){ $('fBudget').value = state.budget || ''; renderSync(); renderAppearance(); }
+
+/* ---------- APPEARANCE: theme + text size (per device) ---------- */
+const THEME_KEY='shoplist.theme', SIZE_KEY='shoplist.tsize';
+function getTheme(){ try{ return localStorage.getItem(THEME_KEY)||'system'; }catch(e){ return 'system'; } }
+function getSize(){ try{ return localStorage.getItem(SIZE_KEY)||'1'; }catch(e){ return '1'; } }
+function applyTheme(v){ const r=document.documentElement; if(v==='system') r.removeAttribute('data-theme'); else r.setAttribute('data-theme',v); }
+function applySize(v){ document.documentElement.style.setProperty('--tscale', v); }
+function setTheme(v){ try{ localStorage.setItem(THEME_KEY,v); }catch(e){} applyTheme(v); renderAppearance(); }
+function setSize(v){ try{ localStorage.setItem(SIZE_KEY,v); }catch(e){} applySize(v); renderAppearance(); }
+function renderAppearance(){
+  const t=getTheme(); document.querySelectorAll('#themeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  const s=getSize(); document.querySelectorAll('#sizeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.s===s));
+}
+applyTheme(getTheme()); applySize(getSize());
+
+/* ---------- SHARE / PRINT the current list ---------- */
+function openShare(){ if(!state.items.filter(i=>!i.bought).length){ toast('Nothing to share yet.'); return; } $('shareDlg').showModal(); }
+function listGroups(){
+  const items=state.items.filter(i=>!i.bought);
+  const groups={}; items.forEach(i=>{ (groups[i.shop]=groups[i.shop]||[]).push(i); });
+  const order=Object.keys(groups).sort((a,b)=> a==='ANY'?1:b==='ANY'?-1:a.localeCompare(b));
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+  return {items,groups,order,total};
+}
+function buildListText(){
+  const {groups,order,total}=listGroups();
+  const lines=['SHOP LIST — '+new Date().toLocaleDateString('en-GB')];
+  if(state.budget) lines.push('Budget: '+money(state.budget));
+  lines.push('');
+  order.forEach(shop=>{
+    lines.push(shop);
+    groups[shop].forEach(i=>{ lines.push('  '+(i.done?'[x] ':'[ ] ')+i.name+(i.qty>1?(' x'+i.qty):'')+'  '+money(i.price*i.qty)); });
+    lines.push('');
+  });
+  lines.push('TOTAL: '+money(total));
+  return lines.join('\n');
+}
+async function shareText(){
+  const text=buildListText();
+  try{ if(navigator.share){ await navigator.share({title:'Shop List', text}); $('shareDlg').close(); return; } }
+  catch(e){ if(e && e.name==='AbortError') return; }
+  try{ await navigator.clipboard.writeText(text); toast('List copied to clipboard'); $('shareDlg').close(); }
+  catch(e){ window.prompt('Copy your list:', text); }
+}
+function printList(){
+  const {groups,order,total}=listGroups();
+  let html='<h2>Shop List</h2><div class="pmeta">'+new Date().toLocaleDateString('en-GB')+(state.budget?(' · Budget '+money(state.budget)):'')+'</div>';
+  order.forEach(shop=>{
+    html+='<div class="pshop">'+escapeHtml(shop)+'</div>';
+    groups[shop].forEach(i=>{ html+='<div class="pitem"><span>'+(i.done?'☑ ':'☐ ')+escapeHtml(i.name)+(i.qty>1?(' ×'+i.qty):'')+'</span><span>'+money(i.price*i.qty)+'</span></div>'; });
+  });
+  html+='<div class="ptotal"><span>Total</span><span>'+money(total)+'</span></div>';
+  $('printArea').innerHTML=html;
+  $('shareDlg').close();
+  setTimeout(()=>window.print(), 80);
+}
+function exportListCSV(){
+  const {items}=listGroups();
+  const rows=[['SHOP','ITEM','QTY','UNIT PRICE','LINE TOTAL','TICKED']];
+  items.forEach(i=>rows.push([i.shop,i.name,i.qty,i.price.toFixed(2),(i.price*i.qty).toFixed(2), i.done?'yes':'no']));
+  const csv=rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='shopping-list.csv'; a.click();
+  $('shareDlg').close();
+}
 
 /* ---------- TOAST ---------- */
 let toastTimer=null;
