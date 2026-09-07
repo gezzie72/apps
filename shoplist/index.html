@@ -306,6 +306,7 @@
       </div>
       <div class="shopchips" id="shopChips"></div>
       <button class="btn full" onclick="addItem()">＋ Add to list</button>
+      <button class="btn ghost full" id="usualsBtn" hidden style="margin-top:8px" onclick="openUsuals()">★ Add from my usuals</button>
     </div>
   </div>
 
@@ -527,6 +528,19 @@
   </div>
 </dialog>
 
+<!-- my usuals quick-add -->
+<dialog id="usualsDlg">
+  <div class="modal" style="max-height:82vh; overflow:auto">
+    <h3>Your usuals</h3>
+    <div class="hint" style="text-align:left; margin:0 0 12px">Tap the items you want, then add them all at once. Prices &amp; shops fill in from last time.</div>
+    <div class="shopchips" id="usualsList" style="gap:8px"></div>
+    <div class="row" style="grid-template-columns:1fr 1fr; gap:8px; margin-top:16px">
+      <button class="btn ghost" onclick="usualsDlg.close()">Cancel</button>
+      <button class="btn" id="usualsAdd" onclick="addUsuals()">Add to list</button>
+    </div>
+  </div>
+</dialog>
+
 <div id="printArea"></div>
 
 <script>
@@ -537,6 +551,7 @@ const uc=s=>(s||'').toString().toUpperCase().trim();
 
 let state = load();
 let range='week', chartType='bar', editId=null, editHistId=null;
+let usualsSel=new Set(), _usuals=[];
 
 function normalize(s){
   s = s || {};
@@ -587,6 +602,49 @@ function addItem(){
   $('fName').focus();
   render();
 }
+/* ---------- MY USUALS: quick-add previously-bought items ---------- */
+function computeUsuals(){
+  const counts={};
+  state.history.forEach(e=>(e.items||[]).forEach(it=>{ if(it&&it.name) counts[it.name]=(counts[it.name]||0)+1; }));
+  Object.keys(state.prices||{}).forEach(n=>{ if(!(n in counts)) counts[n]=0; });
+  const onList=new Set(state.items.filter(i=>!i.bought).map(i=>i.name));
+  const list=Object.keys(counts).map(name=>{ const m=(state.prices||{})[name]||{}; return {name, count:counts[name], price:m.price||0, shop:m.shop||'ANY', on:onList.has(name)}; });
+  list.sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name));
+  return list;
+}
+function hasUsuals(){ return Object.keys(state.prices||{}).length>0 || state.history.some(e=>(e.items||[]).length); }
+function openUsuals(){
+  _usuals=computeUsuals();
+  if(!_usuals.length){ toast('No usuals yet — they build up as you shop.'); return; }
+  usualsSel=new Set();
+  renderUsualsList();
+  $('usualsDlg').showModal();
+}
+function renderUsualsList(){
+  const el=$('usualsList'); if(!el) return;
+  el.innerHTML=_usuals.map((u,idx)=>{
+    const sub=u.price?(' · '+money(u.price)):'';
+    const dis=u.on;
+    return `<button type="button" class="${usualsSel.has(u.name)?'on':''}" ${dis?'disabled style="opacity:.4"':''} onclick="toggleUsual(${idx})" title="${dis?'Already on your list':(u.count?('bought '+u.count+'×'):'')}">${escapeHtml(u.name)}${sub}</button>`;
+  }).join('');
+  $('usualsAdd').textContent = usualsSel.size ? ('Add '+usualsSel.size+' to list') : 'Add to list';
+}
+function toggleUsual(idx){
+  const u=_usuals[idx]; if(!u || u.on) return;
+  if(usualsSel.has(u.name)) usualsSel.delete(u.name); else usualsSel.add(u.name);
+  renderUsualsList();
+}
+function addUsuals(){
+  if(!usualsSel.size){ $('usualsDlg').close(); return; }
+  let n=0;
+  usualsSel.forEach(name=>{
+    const m=(state.prices||{})[name]||{};
+    state.items.push({id:Date.now()+''+Math.random().toString(36).slice(2,6), name, price:m.price||0, qty:1, shop:m.shop||'ANY', done:false});
+    n++;
+  });
+  save(); render(); $('usualsDlg').close(); toast('Added '+n+' item'+(n===1?'':'s'));
+}
+
 /* When you finish typing a known item name, prefill its last-paid price/shop. */
 function fillLast(){
   const name=uc($('fName').value); if(!name) return;
@@ -681,6 +739,7 @@ function render(){
   const ticked=active.filter(i=>i.done).length;
   $('listPill').textContent = active.length ? ticked+'/'+active.length+' ticked' : (boughtCount? boughtCount+' saved' : '0 items');
   const bb=$('boughtBar'); if(bb){ bb.hidden=!boughtCount; const cb=$('clearBoughtBtn'); if(cb) cb.textContent='Remove '+boughtCount+' bought item'+(boughtCount===1?'':'s'); }
+  const ub=$('usualsBtn'); if(ub) ub.hidden=!hasUsuals();
 
   renderBudget();
 
