@@ -249,6 +249,14 @@
     #printArea .pitem{display:flex; justify-content:space-between; padding:4px 0; font-size:14px; border-bottom:1px dotted #bbb}
     #printArea .ptotal{margin-top:16px; font-weight:800; font-size:16px; border-top:2px solid #000; padding-top:8px; display:flex; justify-content:space-between}
   }
+  /* spend-by-shop breakdown */
+  .sb-row{margin-bottom:13px}
+  .sb-row:last-child{margin-bottom:0}
+  .sb-top{display:flex; justify-content:space-between; align-items:baseline; font-size:13px; margin-bottom:5px}
+  .sb-name{font-weight:800; letter-spacing:.3px}
+  .sb-val{font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums}
+  .sb-track{height:9px; border-radius:5px; background:var(--bg); border:1px solid var(--line2); overflow:hidden}
+  .sb-fill{height:100%; background:var(--accent); border-radius:5px}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -371,6 +379,11 @@
       </div>
     </div>
     <div class="chartwrap"><div id="chart"></div></div>
+  </div>
+
+  <div class="card" id="shopBreakdownCard">
+    <div class="listhead" style="margin:0 0 12px"><span class="ttl" id="sbdTitle">Spend by shop</span></div>
+    <div id="shopBreakdown"></div>
   </div>
 
   <div class="card">
@@ -829,6 +842,8 @@ function renderSpend(){
   renderSpendBudget(thisVal, target);
   $('chart').innerHTML = data.length ? drawChart(data, target) : '<div class="empty"><div class="big">📊</div>No shops logged yet.<br>Tick items and press “Shop done”.</div>';
 
+  renderShopBreakdown(new Set(keys));
+
   const hist=[...h].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,40);
   $('history').innerHTML = hist.length ? hist.map(e=>{
     const d=new Date(e.date);
@@ -840,6 +855,25 @@ function renderSpend(){
   }).join('') : '<div class="empty" style="padding:22px">No history yet.</div>';
 }
 
+function renderShopBreakdown(keySet){
+  const el=$('shopBreakdown'); if(!el) return;
+  const per = range==='week'?'weeks':range==='month'?'months':'years';
+  const tEl=$('sbdTitle'); if(tEl) tEl.textContent='Spend by shop';
+  const totals={};
+  state.history.forEach(e=>{ if(keySet.has(bucketKey(e.date,range))) totals[e.shop]=(totals[e.shop]||0)+e.total; });
+  const rows=Object.keys(totals).map(s=>({shop:s,total:totals[s]})).sort((a,b)=>b.total-a.total);
+  if(!rows.length){ el.innerHTML='<div class="empty" style="padding:18px">Nothing logged in this range yet.</div>'; return; }
+  const grand=rows.reduce((s,r)=>s+r.total,0);
+  const max=rows[0].total||1;
+  el.innerHTML=rows.map(r=>{
+    const pct=grand?Math.round(r.total/grand*100):0;
+    const w=Math.max(3, r.total/max*100);
+    return `<div class="sb-row">
+      <div class="sb-top"><span class="sb-name">${escapeHtml(r.shop)}</span><span class="sb-val">${money(r.total)} · ${pct}%</span></div>
+      <div class="sb-track"><div class="sb-fill" style="width:${w}%"></div></div>
+    </div>`;
+  }).join('');
+}
 function drawChart(data, target){
   const W=Math.max(320, data.length*56), H=210, pad=30, base=H-26, top=18;
   const max=Math.max(...data.map(d=>d.val), target||0, 1);
