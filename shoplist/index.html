@@ -3,15 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#14171c">
-<title>Shop List</title>
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Shop List">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#101317">
+<title>SHOP LIST</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%AC%3C/text%3E%3C/svg%3E">
 <style>
   :root{
     --bg:#f6f5f1; --card:#ffffff; --ink:#14171c; --muted:#8b909a;
@@ -185,7 +179,29 @@
     border-radius:20px; padding:20px; width:360px; max-width:90vw; box-shadow:0 20px 50px -12px rgba(0,0,0,.4)}
   .modal h3{margin:0 0 14px; letter-spacing:-.2px; font-size:16px}
   .foot{text-align:center; color:var(--muted); font-size:11px; margin:22px 0 4px; font-weight:500}
+  .muted{color:var(--muted)}
+  /* budget bar */
+  .budget{background:var(--card); border:1px solid var(--line); border-radius:15px; padding:13px 15px; margin-bottom:16px; box-shadow:var(--shadow)}
+  .budget .brow{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:9px; font-size:13px; font-weight:700}
+  .budget .brow .rem{font-weight:800; font-variant-numeric:tabular-nums}
+  .budget .track{height:10px; border-radius:6px; background:var(--bg); border:1px solid var(--line2); overflow:hidden}
+  .budget .fill{height:100%; background:var(--accent); border-radius:6px; transition:width .3s ease}
+  .budget.warn .fill{background:var(--amber)}
+  .budget.over{border-color:var(--danger)}
+  .budget.over .fill{background:var(--danger)}
+  /* sync */
+  .syncrow{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .chip2{font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px; background:var(--accent-soft); color:var(--accent-d); letter-spacing:.3px}
+  code{background:var(--bg); border:1px solid var(--line2); border-radius:6px; padding:1px 6px; font-size:11px}
+  #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--card);
+    padding:11px 18px; border-radius:12px; font-size:13px; font-weight:700; opacity:0; pointer-events:none; transition:.2s; z-index:100;
+    box-shadow:0 12px 34px -10px rgba(0,0,0,.55); max-width:88vw; text-align:center}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 </style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
 <header>
@@ -208,6 +224,7 @@
 <div class="tabs">
   <button id="tabList" class="on" onclick="show('list')">LIST</button>
   <button id="tabSpend" onclick="show('spend')">SPEND</button>
+  <button id="tabSetup" onclick="show('setup')">SETUP</button>
 </div>
 
 <!-- ============ LIST VIEW ============ -->
@@ -234,6 +251,16 @@
         </div>
       </div>
       <button class="btn full" onclick="addItem()">＋ Add to list</button>
+    </div>
+  </div>
+
+  <div id="budgetWrap" hidden>
+    <div class="budget" id="budgetBox">
+      <div class="brow">
+        <span id="budgetLabel">Basket £0.00 of £0.00</span>
+        <span class="rem" id="budgetRem">£0.00 left</span>
+      </div>
+      <div class="track"><div class="fill" id="budgetFill" style="width:0%"></div></div>
     </div>
   </div>
 
@@ -285,7 +312,45 @@
   </div>
 </section>
 
-<div class="foot">Saved on this device · works offline</div>
+<!-- ============ SETUP VIEW ============ -->
+<section id="viewSetup" hidden>
+  <div class="card">
+    <div class="listhead" style="margin:0 0 12px"><span class="ttl">Shop budget</span></div>
+    <label>Budget cap for a shop (£) — set 0 to turn off</label>
+    <div class="syncrow">
+      <input id="fBudget" type="number" inputmode="decimal" step="1" min="0" placeholder="e.g. 50" style="flex:1 1 140px" onkeydown="if(event.key==='Enter')setBudget()">
+      <button class="btn" onclick="setBudget()">Save budget</button>
+    </div>
+    <div class="hint" style="text-align:left; margin-top:10px">The <b>List</b> tab shows a progress bar for your basket and turns amber, then red, as you approach and pass the cap.</div>
+  </div>
+
+  <div class="card">
+    <div class="listhead" style="margin:0 0 12px"><span class="ttl">Cross-device sync</span><span class="chip2" id="syncState">Off</span></div>
+    <div id="syncDisconnected">
+      <label>GitHub token (classic, “gist” scope)</label>
+      <div class="syncrow" style="margin-bottom:10px">
+        <input id="ghToken" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" style="flex:1 1 150px">
+        <button class="btn ghost sm" id="ghShowToken" onclick="toggleToken()">Show</button>
+      </div>
+      <label>Gist ID (optional — leave blank to auto-find / create)</label>
+      <input id="ghGist" placeholder="blank on your first device" autocomplete="off" spellcheck="false" style="margin-bottom:12px">
+      <button class="btn full" onclick="ghConnect()">Connect</button>
+    </div>
+    <div id="syncConnected" hidden>
+      <div class="hint" style="text-align:left; margin:0 0 4px">Connected as <b id="syncUser">…</b></div>
+      <div class="hint" style="text-align:left; margin:0">Gist <code id="syncGistId"></code></div>
+      <div class="syncrow" style="margin-top:12px">
+        <button class="btn sm" onclick="doSyncNow()">Sync now</button>
+        <label class="muted" style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600"><input type="checkbox" id="ghAuto" onchange="toggleAuto()"> Auto-sync</label>
+        <button class="btn ghost sm" onclick="ghDisconnect()" style="margin-left:auto">Disconnect</button>
+      </div>
+    </div>
+    <div id="syncMsg" class="hint" style="text-align:left; min-height:1.1em; margin-top:10px"></div>
+    <div class="hint" style="text-align:left">Your list syncs through a <b>private gist</b> in your own GitHub account — same as your other apps. Use the <b>same token</b> on each device; the first device to save wins if you edit two at once.</div>
+  </div>
+</section>
+
+<div class="foot">Syncs to your private GitHub gist · works offline</div>
 
 <!-- edit modal -->
 <dialog id="editDlg">
@@ -315,11 +380,20 @@ const uc=s=>(s||'').toString().toUpperCase().trim();
 let state = load();
 let range='week', chartType='bar', editId=null;
 
-function load(){
-  try{ return JSON.parse(localStorage.getItem('shoplist')) || {items:[],history:[]}; }
-  catch{ return {items:[],history:[]}; }
+function normalize(s){
+  s = s || {};
+  s.items   = Array.isArray(s.items)   ? s.items   : [];
+  s.history = Array.isArray(s.history) ? s.history : [];
+  s.budget  = +s.budget || 0;
+  s.updatedAt = +s.updatedAt || 0;
+  return s;
 }
-function save(){ try{ localStorage.setItem('shoplist', JSON.stringify(state)); }catch(e){/* storage blocked (e.g. preview sandbox) — keep working in-memory */} }
+function load(){
+  try{ return normalize(JSON.parse(localStorage.getItem('shoplist')) || {}); }
+  catch{ return normalize({}); }
+}
+function persist(){ try{ localStorage.setItem('shoplist', JSON.stringify(state)); }catch(e){/* storage blocked (e.g. preview sandbox) — keep working in-memory */} }
+function save(){ state.updatedAt = Date.now(); persist(); schedulePush(); }
 
 /* ---------- LIST ---------- */
 function addItem(){
@@ -382,6 +456,8 @@ function render(){
   const ticked=items.filter(i=>i.done).length;
   $('listPill').textContent=items.length?ticked+'/'+items.length+' ticked':'0 items';
 
+  renderBudget();
+
   const wrap=$('items');
   if(!items.length){ wrap.innerHTML='<div class="empty"><div class="big">🛒</div>Your list is empty.<br>Add your first item above.</div>'; return; }
 
@@ -415,9 +491,12 @@ function itemRow(i){
 function show(v){
   $('viewList').hidden = v!=='list';
   $('viewSpend').hidden = v!=='spend';
+  $('viewSetup').hidden = v!=='setup';
   $('tabList').classList.toggle('on',v==='list');
   $('tabSpend').classList.toggle('on',v==='spend');
+  $('tabSetup').classList.toggle('on',v==='setup');
   if(v==='spend') renderSpend();
+  if(v==='setup') renderSetup();
 }
 function setRange(r){ range=r; document.querySelectorAll('#rangeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.r===r)); renderSpend(); }
 function setChart(t){ chartType=t; $('cgBar').classList.toggle('on',t==='bar'); $('cgLine').classList.toggle('on',t==='line'); renderSpend(); }
@@ -519,12 +598,121 @@ function exportCSV(){
   a.click();
 }
 
-render();
-
-/* PWA: register service worker for offline + installability */
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+/* ---------- BUDGET ---------- */
+function renderBudget(){
+  const wrap=$('budgetWrap'); if(!wrap) return;
+  const b=state.budget||0;
+  if(!b){ wrap.hidden=true; return; }
+  wrap.hidden=false;
+  const total=state.items.reduce((s,i)=>s+i.price*i.qty,0);
+  const pct=Math.max(0, Math.min(100, b?total/b*100:0));
+  const rem=b-total;
+  const box=$('budgetBox');
+  box.className='budget'+(total>b?' over':(total>b*0.85?' warn':''));
+  $('budgetLabel').textContent='Basket '+money(total)+' of '+money(b);
+  const remEl=$('budgetRem');
+  remEl.textContent = rem>=0 ? money(rem)+' left' : money(-rem)+' over';
+  remEl.style.color = total>b ? 'var(--danger)' : (total>b*0.85 ? 'var(--amber)' : 'var(--accent-d)');
+  $('budgetFill').style.width=pct+'%';
 }
+function setBudget(){
+  const v=Math.max(0, parseFloat($('fBudget').value)||0);
+  state.budget=v; save(); renderBudget();
+  toast(v ? 'Budget set to '+money(v) : 'Budget turned off');
+}
+function renderSetup(){ $('fBudget').value = state.budget || ''; renderSync(); }
+
+/* ---------- TOAST ---------- */
+let toastTimer=null;
+function toast(msg){
+  let t=$('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast'; document.body.appendChild(t); }
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1900);
+}
+
+/* ---------- SYNC (private gist, whole-document last-write-wins) ---------- */
+const GIST_FILE="shoplist.json";
+const GH={
+  get token(){ try{return localStorage.getItem("shoplist.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("shoplist.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("shoplist.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("shoplist.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("shoplist.gh.token",v):localStorage.removeItem("shoplist.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("shoplist.gh.gist",v):localStorage.removeItem("shoplist.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("shoplist.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("shoplist.gh.user",v):localStorage.removeItem("shoplist.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+async function ghApi(method,path,body){
+  let res;
+  try{ res=await fetch("https://api.github.com"+path,{method,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined}); }
+  catch(e){ throw new Error("Can't reach GitHub — if you opened this as a file, use the hosted version instead."); }
+  if(!res.ok){ let d=""; try{d=(await res.json()).message||""}catch(e){}
+    if(res.status===401) throw new Error("Invalid or expired token (401). Use a CLASSIC token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited.");
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(d?" — "+d:"")); }
+  return res.json();
+}
+function syncMsg(m,err){ const el=$('syncMsg'); if(el){ el.textContent=m||''; el.style.color=err?'var(--danger)':'var(--muted)'; } }
+function setSyncTime(){ try{localStorage.setItem("shoplist.gh.lastSync",String(Date.now()))}catch(e){} }
+let pushTimer=null;
+function schedulePush(){ if(!GH.connected||!GH.auto) return; clearTimeout(pushTimer); pushTimer=setTimeout(()=>{ syncPush().catch(e=>syncMsg("Push failed: "+e.message,true)); },1500); }
+async function syncPush(){ if(!GH.connected) return; syncMsg("Saving…"); await ghApi("PATCH","/gists/"+GH.gist,{files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); setSyncTime(); syncMsg("Synced ✓"); }
+async function syncPull(force,quiet){
+  if(!GH.connected) return;
+  if(!quiet) syncMsg("Checking…");
+  const g=await ghApi("GET","/gists/"+GH.gist);
+  const f=g.files && g.files[GIST_FILE];
+  if(!f||!f.content){ if(!quiet) syncMsg("Connected — no data in this gist yet"); return "empty"; }
+  let remote; try{ remote=JSON.parse(f.truncated&&f.raw_url ? await (await fetch(f.raw_url)).text() : f.content); }
+  catch(e){ if(!quiet) syncMsg("Sync data unreadable",true); return "error"; }
+  if(force || (remote.updatedAt||0) > (state.updatedAt||0)){
+    state=normalize(remote); persist(); render(); if(!$('viewSetup').hidden) renderSetup(); setSyncTime();
+    if(!quiet) syncMsg("Pulled latest changes ✓"); return "pulled";
+  }
+  setSyncTime(); if(!quiet) syncMsg("Up to date"); return "uptodate";
+}
+async function findGist(){
+  const list=await ghApi("GET","/gists?per_page=100");
+  const mine=(list||[]).filter(g=>(g.files&&g.files[GIST_FILE])||g.description==="ShopList sync");
+  if(!mine.length) return null;
+  mine.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)); return mine[0].id;
+}
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$('syncUser'); if(el) el.textContent=u.login; }catch(e){} }
+function renderSync(){
+  const conn=GH.connected;
+  $('syncDisconnected').hidden=conn;
+  $('syncConnected').hidden=!conn;
+  const st=$('syncState'); if(st){ st.textContent=conn?'On':'Off'; st.style.color=conn?'var(--accent-d)':'var(--muted)'; }
+  if(conn){ $('syncGistId').textContent=GH.gist; $('syncUser').textContent=GH.user||'…'; if(!GH.user) fetchUser(); $('ghAuto').checked=GH.auto; }
+}
+function toggleToken(){ const i=$('ghToken'); const show=i.type==='password'; i.type=show?'text':'password'; $('ghShowToken').textContent=show?'Hide':'Show'; }
+function toggleAuto(){ GH.auto=$('ghAuto').checked; if(GH.auto) schedulePush(); }
+async function ghConnect(){
+  const t=$('ghToken').value.trim(); let gid=$('ghGist').value.trim();
+  if(!t){ syncMsg("Paste your GitHub token first.",true); return; }
+  GH.token=t; syncMsg("Connecting…");
+  try{
+    if(!gid) gid=await findGist();
+    if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
+      if(r==="empty"){ await syncPush(); syncMsg("Connected — seeded this gist with your list."); }
+      else syncMsg("Connected — using your existing sync."); }
+    else { const g=await ghApi("POST","/gists",{description:"ShopList sync",public:false,files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); GH.gist=g.id; setSyncTime(); syncMsg("Connected — new sync created."); }
+    $('ghToken').value=''; $('ghGist').value=''; renderSync(); fetchUser();
+  }catch(e){ GH.token=''; GH.gist=''; GH.user=''; renderSync(); syncMsg("Couldn't connect: "+e.message,true); }
+}
+function ghDisconnect(){ if(confirm("Disconnect sync on this device? Your list stays here; the gist is untouched.")){ GH.token=''; GH.gist=''; GH.user=''; renderSync(); syncMsg(''); toast("Disconnected"); } }
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); toast("Synced"); }catch(e){ syncMsg("Sync failed: "+e.message,true); } }
+setInterval(()=>{ if(GH.connected&&GH.auto&&!document.hidden) syncPull(false,true).catch(()=>{}); }, 45000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden&&GH.connected&&GH.auto) syncPull(false,true).catch(()=>{}); });
+window.addEventListener("pagehide", ()=>{ if(GH.connected&&GH.auto){ try{ fetch("https://api.github.com/gists/"+GH.gist,{method:"PATCH",keepalive:true,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}})}).catch(()=>{}); }catch(e){} } });
+
+render();
+renderSync();
+if(GH.connected) syncPull(false,true).catch(()=>{});
 </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </body>
 </html>
