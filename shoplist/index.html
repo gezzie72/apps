@@ -197,6 +197,13 @@
     padding:11px 18px; border-radius:12px; font-size:13px; font-weight:700; opacity:0; pointer-events:none; transition:.2s; z-index:100;
     box-shadow:0 12px 34px -10px rgba(0,0,0,.55); max-width:88vw; text-align:center}
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  /* shop quick-pick chips */
+  .shopchips{display:flex; flex-wrap:wrap; gap:6px; margin-top:2px}
+  .shopchips button{border:1.5px solid var(--line2); background:var(--bg); color:var(--ink); border-radius:20px;
+    padding:6px 13px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:.2px; transition:.12s}
+  .shopchips button:hover{border-color:var(--accent); color:var(--accent-d)}
+  .shopchips button.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .shopchips .none{color:var(--muted); font-size:12px; font-weight:600; padding:2px 0}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -246,10 +253,10 @@
         </div>
         <div>
           <label>Shop</label>
-          <input id="fShop" list="shops" placeholder="Any" autocomplete="off" onkeydown="if(event.key==='Enter')addItem()">
-          <datalist id="shops"></datalist>
+          <input id="fShop" placeholder="Any" autocomplete="off" onkeydown="if(event.key==='Enter')addItem()">
         </div>
       </div>
+      <div class="shopchips" id="shopChips"></div>
       <button class="btn full" onclick="addItem()">＋ Add to list</button>
     </div>
   </div>
@@ -371,8 +378,9 @@
       <div class="trio">
         <div><label>Price £</label><input id="ePrice" type="number" step="0.01" min="0" inputmode="decimal"></div>
         <div><label>Qty</label><input id="eQty" type="number" step="1" min="1" inputmode="numeric"></div>
-        <div><label>Shop</label><input id="eShop" list="shopsEdit" autocomplete="off"><datalist id="shopsEdit"></datalist></div>
+        <div><label>Shop</label><input id="eShop" autocomplete="off"></div>
       </div>
+      <div class="shopchips" id="shopChipsEdit"></div>
       <div class="row" style="grid-template-columns:1fr 1fr; margin-top:4px">
         <button class="btn ghost" onclick="editDlg.close()">Cancel</button>
         <button class="btn" onclick="saveEdit()">Save</button>
@@ -405,6 +413,23 @@ function load(){
 function persist(){ try{ localStorage.setItem('shoplist', JSON.stringify(state)); }catch(e){/* storage blocked (e.g. preview sandbox) — keep working in-memory */} }
 function save(){ state.updatedAt = Date.now(); persist(); schedulePush(); }
 
+/* ---------- SHOP QUICK-PICK CHIPS (reliable on every device; datalist wasn't) ---------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let _chipShops=[];
+function renderChips(containerId, inputId, current){
+  const el=$(containerId); if(!el) return;
+  _chipShops=[...new Set([...state.items.map(i=>i.shop), ...state.history.map(h=>h.shop)])].filter(s=>s&&s!=='ANY').sort();
+  if(!_chipShops.length){ el.innerHTML='<span class="none">No saved shops yet — type one in the Shop box.</span>'; return; }
+  const inp=$(inputId);
+  const cur=uc(current!=null ? current : (inp?inp.value:''));
+  el.innerHTML=_chipShops.map((s,idx)=>`<button type="button" class="${uc(s)===cur?'on':''}" onclick="pickShop('${inputId}',${idx})">${escapeHtml(s)}</button>`).join('');
+}
+function pickShop(inputId, idx){
+  const s=_chipShops[idx]; if(s==null) return;
+  const inp=$(inputId); if(inp) inp.value=s;
+  renderChips(inputId==='eShop'?'shopChipsEdit':'shopChips', inputId, s);
+}
+
 /* ---------- LIST ---------- */
 function addItem(){
   const name=uc($('fName').value);
@@ -428,6 +453,7 @@ function openEdit(id){
   const it=state.items.find(i=>i.id===id); if(!it)return;
   editId=id;
   $('eName').value=it.name; $('ePrice').value=it.price||''; $('eQty').value=it.qty; $('eShop').value=it.shop;
+  renderChips('shopChipsEdit','eShop', it.shop);
   $('editDlg').showModal();
 }
 function saveEdit(){
@@ -456,10 +482,7 @@ function checkout(){
 }
 
 function render(){
-  const shops=[...new Set([...state.items.map(i=>i.shop), ...state.history.map(h=>h.shop)])].filter(s=>s&&s!=='ANY');
-  const opts=shops.map(s=>`<option value="${s}">`).join('');
-  $('shops').innerHTML=opts;
-  const se=$('shopsEdit'); if(se) se.innerHTML=opts;
+  renderChips('shopChips','fShop');
 
   const items=state.items;
   const outstanding=items.filter(i=>!i.done).reduce((s,i)=>s+i.price*i.qty,0);
