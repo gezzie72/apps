@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14171c">
+<title>Shop List</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Shop List">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#f6f5f1; --card:#ffffff; --ink:#14171c; --muted:#8b909a;
+    --line:#eceae3; --line2:#e3e1d8;
+    --accent:#4a9375; --accent-d:#3c7a61; --accent-soft:#eaf2ed;
+    --chrome:#14171c; --chrome-ink:#f6f5f1;
+    --danger:#e5484d; --amber:#f59e0b;
+    --shadow:0 1px 2px rgba(20,23,28,.04), 0 6px 20px -12px rgba(20,23,28,.18);
+    --radius:18px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0d0f12; --card:#171a1f; --ink:#eaecef; --muted:#868d97;
+      --line:#242830; --line2:#2c313a;
+      --accent:#5aa588; --accent-d:#4c9075; --accent-soft:#18271f;
+      --chrome:#171a1f; --chrome-ink:#eaecef;
+      --danger:#ff6369; --amber:#fbbf24;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg); color:var(--ink);
+    padding:0 15px calc(40px + env(safe-area-inset-bottom));
+    max-width:640px; margin:0 auto; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* header */
+  header{
+    position:sticky; top:0; z-index:30;
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:saturate(180%) blur(14px);
+    margin:0 -15px; padding:calc(16px + env(safe-area-inset-top)) 15px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex; align-items:center; gap:11px}
+  .logo{
+    width:38px; height:38px; border-radius:12px; flex:none;
+    background:var(--accent); color:#fff; display:grid; place-items:center;
+    font-size:20px; box-shadow:0 4px 12px -4px color-mix(in srgb,var(--accent) 60%,transparent);
+  }
+  .brand h1{margin:0; font-size:17px; font-weight:800; letter-spacing:-.2px}
+  .brand p{margin:1px 0 0; font-size:12px; color:var(--muted); font-weight:600}
+  .hero{margin-top:14px; display:flex; align-items:flex-end; justify-content:space-between; gap:12px}
+  .hero .lbl{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.8px}
+  .hero .amt{font-size:34px; font-weight:800; letter-spacing:-1px; line-height:1; font-variant-numeric:tabular-nums; margin-top:3px}
+  .hero .side{text-align:right; font-size:12px; color:var(--muted); font-weight:600; padding-bottom:3px}
+
+  /* segmented tabs */
+  .tabs{display:flex; gap:4px; background:var(--card); border:1px solid var(--line);
+    padding:4px; border-radius:14px; margin:16px 0 18px; box-shadow:var(--shadow)}
+  .tabs button{
+    flex:1; padding:9px 6px; border:none; border-radius:10px; cursor:pointer;
+    background:transparent; color:var(--muted); font-weight:700; font-size:13px;
+    letter-spacing:.3px; font-family:inherit; transition:.15s;
+  }
+  .tabs button.on{background:var(--ink); color:var(--card)}
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:16px; box-shadow:var(--shadow);
+  }
+
+  label{display:block; font-size:11px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.6px; margin:0 0 5px}
+  input,select{
+    width:100%; padding:12px 13px; border:1.5px solid var(--line2); border-radius:12px;
+    background:var(--bg); color:var(--ink); font-size:16px; font-family:inherit; font-weight:600;
+    transition:.15s;
+  }
+  input::placeholder{color:var(--muted); font-weight:500}
+  input:focus,select:focus{outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent); background:var(--card)}
+  .row{display:grid; gap:10px}
+  .trio{display:grid; grid-template-columns:1fr 1fr 1.1fr; gap:10px}
+
+  .btn{
+    border:none; border-radius:12px; padding:13px; font-size:15px; font-weight:800;
+    cursor:pointer; background:var(--accent); color:#fff; letter-spacing:.2px;
+    font-family:inherit; transition:.12s; display:flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .btn:hover{background:var(--accent-d)}
+  .btn:active{transform:scale(.985)}
+  .btn.full{width:100%}
+  .btn.ghost{background:var(--bg); color:var(--ink); border:1.5px solid var(--line2)}
+  .btn.ghost:hover{background:var(--card); border-color:var(--muted)}
+  .btn.dark{background:var(--ink); color:var(--card)}
+  .btn.sm{padding:10px 14px; font-size:13px}
+
+  .listhead{display:flex; justify-content:space-between; align-items:center; margin:4px 2px 12px}
+  .listhead .ttl{font-weight:800; letter-spacing:-.2px; font-size:15px}
+  .pill{font-size:11px; font-weight:800; padding:4px 10px; border-radius:20px;
+    background:var(--accent-soft); color:var(--accent-d); letter-spacing:.3px}
+
+  .shopgroup{margin-bottom:18px}
+  .shophdr{display:flex; justify-content:space-between; align-items:center; margin:0 4px 9px}
+  .shophdr .s-name{display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800;
+    letter-spacing:.5px; color:var(--muted)}
+  .shophdr .s-name::before{content:''; width:7px; height:7px; border-radius:50%; background:var(--accent)}
+  .shophdr .s-tot{font-size:12px; font-weight:800; color:var(--muted); font-variant-numeric:tabular-nums}
+
+  .item{
+    display:flex; align-items:center; gap:12px; padding:13px 14px;
+    border:1px solid var(--line); border-radius:15px; background:var(--card);
+    margin-bottom:9px; box-shadow:var(--shadow); transition:.12s;
+  }
+  .item.done{background:var(--bg); border-color:var(--line)}
+  .item.done .name{text-decoration:line-through; color:var(--muted)}
+  .item.done .price{color:var(--muted)}
+  .tick{
+    width:26px; height:26px; flex:none; border-radius:50%; border:2px solid var(--line2);
+    display:grid; place-items:center; cursor:pointer; font-size:14px; color:#fff;
+    background:transparent; transition:.12s;
+  }
+  .item.done .tick{background:var(--accent); border-color:var(--accent)}
+  .item .body{flex:1; min-width:0; cursor:pointer}
+  .item .name{font-weight:700; letter-spacing:-.1px; word-break:break-word}
+  .item .meta{font-size:12px; color:var(--muted); margin-top:1px; font-weight:600}
+  .item .price{font-weight:800; white-space:nowrap; font-variant-numeric:tabular-nums; font-size:15px}
+  .item .del{
+    border:none; background:transparent; color:var(--muted); font-size:15px;
+    cursor:pointer; padding:4px 4px; flex:none; border-radius:8px; line-height:1; transition:.12s;
+  }
+  .item .del:hover{color:var(--danger); background:color-mix(in srgb,var(--danger) 12%,transparent)}
+
+  .empty{text-align:center; color:var(--muted); padding:44px 16px; font-size:14px; font-weight:600}
+  .empty .big{font-size:32px; margin-bottom:8px; opacity:.55}
+
+  .actbar{display:grid; grid-template-columns:1fr 1.3fr; gap:10px; margin-top:6px}
+  .hint{text-align:center; color:var(--muted); font-size:11.5px; margin:14px 6px 0; font-weight:500; line-height:1.5}
+
+  /* spend */
+  .seg{display:flex; gap:4px; background:var(--card); border:1px solid var(--line);
+    padding:4px; border-radius:13px; margin-bottom:16px; box-shadow:var(--shadow)}
+  .seg button{flex:1; padding:9px; border:none; border-radius:9px;
+    background:transparent; color:var(--muted); font-weight:700; font-size:12px; cursor:pointer;
+    letter-spacing:.4px; font-family:inherit; transition:.15s}
+  .seg button.on{background:var(--accent); color:#fff}
+
+  .stat{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px}
+  .stat .box{background:var(--card); border:1px solid var(--line); border-radius:15px;
+    padding:14px 10px; text-align:center; box-shadow:var(--shadow)}
+  .stat .box b{display:block; font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.5px}
+  .stat .box small{color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.6px; font-weight:700}
+  .stat .box.hi b{color:var(--accent-d)}
+
+  .miniseg{display:flex; gap:3px; background:var(--bg); border:1px solid var(--line2);
+    padding:3px; border-radius:10px}
+  .miniseg button{border:none; background:transparent; color:var(--muted); font-weight:800;
+    font-size:11px; padding:6px 12px; border-radius:7px; cursor:pointer; font-family:inherit; letter-spacing:.4px}
+  .miniseg button.on{background:var(--ink); color:var(--card)}
+
+  .chartwrap{overflow-x:auto; margin:4px -4px 0; padding:0 4px}
+  svg{display:block; width:100%; height:auto}
+  .barlbl{font-size:10px; fill:var(--muted); font-weight:600}
+  .barval{font-size:10px; fill:var(--ink); font-weight:800}
+
+  .hist-row{display:flex; justify-content:space-between; align-items:center; padding:12px 4px;
+    border-bottom:1px solid var(--line); font-size:14px}
+  .hist-row:last-child{border:none}
+  .hist-row .h-l{font-weight:700}
+  .hist-row .h-sub{color:var(--muted); font-weight:600; font-size:12px; margin-top:1px}
+  .hist-row b{font-variant-numeric:tabular-nums; font-weight:800}
+
+  dialog{border:none; border-radius:20px; padding:0; background:transparent; max-width:92vw}
+  dialog::backdrop{background:rgba(10,12,15,.55); backdrop-filter:blur(3px)}
+  .modal{background:var(--card); color:var(--ink); border:1px solid var(--line);
+    border-radius:20px; padding:20px; width:360px; max-width:90vw; box-shadow:0 20px 50px -12px rgba(0,0,0,.4)}
+  .modal h3{margin:0 0 14px; letter-spacing:-.2px; font-size:16px}
+  .foot{text-align:center; color:var(--muted); font-size:11px; margin:22px 0 4px; font-weight:500}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">🥬</div>
+    <div>
+      <h1>Shop List</h1>
+      <p>Groceries &amp; spend tracker</p>
+    </div>
+  </div>
+  <div class="hero">
+    <div>
+      <div class="lbl">Left to buy</div>
+      <div class="amt" id="hdrTotal">£0.00</div>
+    </div>
+    <div class="side" id="hdrCount">0 items</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button id="tabList" class="on" onclick="show('list')">LIST</button>
+  <button id="tabSpend" onclick="show('spend')">SPEND</button>
+</div>
+
+<!-- ============ LIST VIEW ============ -->
+<section id="viewList">
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Item</label>
+        <input id="fName" placeholder="Add an item…" autocomplete="off" onkeydown="if(event.key==='Enter')addItem()">
+      </div>
+      <div class="trio">
+        <div>
+          <label>Price £</label>
+          <input id="fPrice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" onkeydown="if(event.key==='Enter')addItem()">
+        </div>
+        <div>
+          <label>Qty</label>
+          <input id="fQty" type="number" inputmode="numeric" step="1" min="1" value="1">
+        </div>
+        <div>
+          <label>Shop</label>
+          <input id="fShop" list="shops" placeholder="Any" autocomplete="off" onkeydown="if(event.key==='Enter')addItem()">
+          <datalist id="shops"></datalist>
+        </div>
+      </div>
+      <button class="btn full" onclick="addItem()">＋ Add to list</button>
+    </div>
+  </div>
+
+  <div class="listhead">
+    <span class="ttl">Shopping list</span>
+    <span class="pill" id="listPill">0 items</span>
+  </div>
+
+  <div id="items"></div>
+
+  <div class="actbar">
+    <button class="btn ghost sm" onclick="clearDone()">Clear ticked</button>
+    <button class="btn dark sm" onclick="checkout()">✓ Shop done</button>
+  </div>
+  <div class="hint">Tick items as you pick them up. <b>Shop done</b> logs the ticked total to your spend history and clears them.</div>
+</section>
+
+<!-- ============ SPEND VIEW ============ -->
+<section id="viewSpend" hidden>
+  <div class="seg" id="rangeSeg">
+    <button data-r="week" class="on" onclick="setRange('week')">WEEKLY</button>
+    <button data-r="month" onclick="setRange('month')">MONTHLY</button>
+    <button data-r="year" onclick="setRange('year')">YEARLY</button>
+  </div>
+
+  <div class="stat">
+    <div class="box hi"><b id="stThis">£0</b><small id="stThisLbl">This week</small></div>
+    <div class="box"><b id="stAvg">£0</b><small>Average</small></div>
+    <div class="box"><b id="stTotal">£0</b><small>All time</small></div>
+  </div>
+
+  <div class="card">
+    <div class="listhead" style="margin:0 0 14px">
+      <span class="ttl" id="chartTitle">Spend by week</span>
+      <div class="miniseg">
+        <button id="cgBar" class="on" onclick="setChart('bar')">BAR</button>
+        <button id="cgLine" onclick="setChart('line')">LINE</button>
+      </div>
+    </div>
+    <div class="chartwrap"><div id="chart"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="listhead" style="margin:0 0 4px">
+      <span class="ttl">Shop history</span>
+      <button class="btn ghost sm" onclick="exportCSV()">Export CSV</button>
+    </div>
+    <div id="history"></div>
+  </div>
+</section>
+
+<div class="foot">Saved on this device · works offline</div>
+
+<!-- edit modal -->
+<dialog id="editDlg">
+  <div class="modal">
+    <h3>Edit item</h3>
+    <div class="row">
+      <div><label>Item</label><input id="eName"></div>
+      <div class="trio">
+        <div><label>Price £</label><input id="ePrice" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div><label>Qty</label><input id="eQty" type="number" step="1" min="1" inputmode="numeric"></div>
+        <div><label>Shop</label><input id="eShop" list="shops"></div>
+      </div>
+      <div class="row" style="grid-template-columns:1fr 1fr; margin-top:4px">
+        <button class="btn ghost" onclick="editDlg.close()">Cancel</button>
+        <button class="btn" onclick="saveEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const $=id=>document.getElementById(id);
+const money=n=>'£'+(n||0).toFixed(2);
+const money0=n=>'£'+Math.round(n||0).toLocaleString();
+const uc=s=>(s||'').toString().toUpperCase().trim();
+
+let state = load();
+let range='week', chartType='bar', editId=null;
+
+function load(){
+  try{ return JSON.parse(localStorage.getItem('shoplist')) || {items:[],history:[]}; }
+  catch{ return {items:[],history:[]}; }
+}
+function save(){ try{ localStorage.setItem('shoplist', JSON.stringify(state)); }catch(e){/* storage blocked (e.g. preview sandbox) — keep working in-memory */} }
+
+/* ---------- LIST ---------- */
+function addItem(){
+  const name=uc($('fName').value);
+  if(!name){ $('fName').focus(); return; }
+  const price=parseFloat($('fPrice').value)||0;
+  const qty=Math.max(1, parseInt($('fQty').value)||1);
+  const shop=uc($('fShop').value)||'ANY';
+  state.items.push({id:Date.now()+''+Math.random().toString(36).slice(2,6),name,price,qty,shop,done:false});
+  save();
+  $('fName').value=''; $('fPrice').value=''; $('fQty').value='1';
+  $('fName').focus();
+  render();
+}
+function toggle(id){ const it=state.items.find(i=>i.id===id); if(it){it.done=!it.done; save(); render();} }
+function del(id){ state.items=state.items.filter(i=>i.id!==id); save(); render(); }
+function clearDone(){
+  if(!state.items.some(i=>i.done)) return;
+  state.items=state.items.filter(i=>!i.done); save(); render();
+}
+function openEdit(id){
+  const it=state.items.find(i=>i.id===id); if(!it)return;
+  editId=id;
+  $('eName').value=it.name; $('ePrice').value=it.price||''; $('eQty').value=it.qty; $('eShop').value=it.shop;
+  $('editDlg').showModal();
+}
+function saveEdit(){
+  const it=state.items.find(i=>i.id===editId); if(!it)return;
+  it.name=uc($('eName').value)||it.name;
+  it.price=parseFloat($('ePrice').value)||0;
+  it.qty=Math.max(1,parseInt($('eQty').value)||1);
+  it.shop=uc($('eShop').value)||'ANY';
+  save(); $('editDlg').close(); render();
+}
+function checkout(){
+  const picked=state.items.filter(i=>i.done);
+  if(!picked.length){ alert('Tick the items you bought first.'); return; }
+  const total=picked.reduce((s,i)=>s+i.price*i.qty,0);
+  const byShop={};
+  picked.forEach(i=>{byShop[i.shop]=(byShop[i.shop]||0)+i.price*i.qty;});
+  const shop=Object.keys(byShop).sort((a,b)=>byShop[b]-byShop[a])[0]||'SHOP';
+  state.history.push({
+    id:Date.now()+'', date:new Date().toISOString(),
+    total, count:picked.length, shop,
+    items:picked.map(i=>({name:i.name,price:i.price,qty:i.qty,shop:i.shop}))
+  });
+  state.items=state.items.filter(i=>!i.done);
+  save(); render();
+  alert('Logged '+money(total)+' to spend history.');
+}
+
+function render(){
+  const shops=[...new Set([...state.items.map(i=>i.shop), ...state.history.map(h=>h.shop)])].filter(s=>s&&s!=='ANY');
+  $('shops').innerHTML=shops.map(s=>`<option value="${s}">`).join('');
+
+  const items=state.items;
+  const outstanding=items.filter(i=>!i.done).reduce((s,i)=>s+i.price*i.qty,0);
+  $('hdrTotal').textContent=money(outstanding);
+  $('hdrCount').textContent=items.length+' item'+(items.length===1?'':'s');
+  const ticked=items.filter(i=>i.done).length;
+  $('listPill').textContent=items.length?ticked+'/'+items.length+' ticked':'0 items';
+
+  const wrap=$('items');
+  if(!items.length){ wrap.innerHTML='<div class="empty"><div class="big">🛒</div>Your list is empty.<br>Add your first item above.</div>'; return; }
+
+  const groups={};
+  items.forEach(i=>{ (groups[i.shop]=groups[i.shop]||[]).push(i); });
+  const order=Object.keys(groups).sort((a,b)=> a==='ANY'?1:b==='ANY'?-1:a.localeCompare(b));
+  wrap.innerHTML=order.map(shop=>{
+    const gi=groups[shop];
+    const gt=gi.reduce((s,i)=>s+i.price*i.qty,0);
+    return `<div class="shopgroup">
+      <div class="shophdr"><span class="s-name">${shop}</span><span class="s-tot">${money(gt)}</span></div>
+      ${gi.map(itemRow).join('')}
+    </div>`;
+  }).join('');
+}
+function itemRow(i){
+  const line=i.price*i.qty;
+  const meta=(i.qty>1?`×${i.qty} @ ${money(i.price)}`:money(i.price));
+  return `<div class="item ${i.done?'done':''}">
+    <button class="tick" onclick="toggle('${i.id}')">${i.done?'✓':''}</button>
+    <div class="body" onclick="openEdit('${i.id}')">
+      <div class="name">${i.name}</div>
+      <div class="meta">${meta}</div>
+    </div>
+    <div class="price">${money(line)}</div>
+    <button class="del" onclick="del('${i.id}')" title="Remove">✕</button>
+  </div>`;
+}
+
+/* ---------- VIEWS ---------- */
+function show(v){
+  $('viewList').hidden = v!=='list';
+  $('viewSpend').hidden = v!=='spend';
+  $('tabList').classList.toggle('on',v==='list');
+  $('tabSpend').classList.toggle('on',v==='spend');
+  if(v==='spend') renderSpend();
+}
+function setRange(r){ range=r; document.querySelectorAll('#rangeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.r===r)); renderSpend(); }
+function setChart(t){ chartType=t; $('cgBar').classList.toggle('on',t==='bar'); $('cgLine').classList.toggle('on',t==='line'); renderSpend(); }
+
+/* ---------- SPEND ---------- */
+function bucketKey(d,r){
+  const dt=new Date(d);
+  if(r==='year') return dt.getFullYear()+'';
+  if(r==='month') return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+  const t=new Date(dt); t.setHours(0,0,0,0);
+  const day=(t.getDay()+6)%7; t.setDate(t.getDate()-day);
+  return t.toISOString().slice(0,10);
+}
+function bucketLabel(key,r){
+  if(r==='year') return key;
+  if(r==='month'){ const [y,m]=key.split('-'); return ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][+m-1]+' '+y.slice(2); }
+  const d=new Date(key); return d.getDate()+'/'+(d.getMonth()+1);
+}
+function renderSpend(){
+  const h=state.history;
+  const map={};
+  h.forEach(e=>{ const k=bucketKey(e.date,range); map[k]=(map[k]||0)+e.total; });
+  let keys=Object.keys(map).sort();
+  const limit = range==='week'?12 : range==='month'?12 : 6;
+  keys=keys.slice(-limit);
+  const data=keys.map(k=>({key:k,label:bucketLabel(k,range),val:map[k]}));
+
+  const allTotal=h.reduce((s,e)=>s+e.total,0);
+  const nowKey=bucketKey(new Date().toISOString(),range);
+  const thisVal=map[nowKey]||0;
+  const avg=data.length?data.reduce((s,d)=>s+d.val,0)/data.length:0;
+
+  $('stThis').textContent=money0(thisVal);
+  $('stThisLbl').textContent = range==='week'?'This week':range==='month'?'This month':'This year';
+  $('stAvg').textContent=money0(avg);
+  $('stTotal').textContent=money0(allTotal);
+  $('chartTitle').textContent='Spend by '+(range==='week'?'week':range==='month'?'month':'year');
+
+  $('chart').innerHTML = data.length ? drawChart(data) : '<div class="empty"><div class="big">📊</div>No shops logged yet.<br>Tick items and press “Shop done”.</div>';
+
+  const hist=[...h].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,40);
+  $('history').innerHTML = hist.length ? hist.map(e=>{
+    const d=new Date(e.date);
+    const ds=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+    return `<div class="hist-row">
+      <div><div class="h-l">${e.shop}</div><div class="h-sub">${ds} · ${e.count} item${e.count===1?'':'s'}</div></div>
+      <b>${money(e.total)}</b>
+    </div>`;
+  }).join('') : '<div class="empty" style="padding:22px">No history yet.</div>';
+}
+
+function drawChart(data){
+  const W=Math.max(320, data.length*56), H=210, pad=30, base=H-26, top=18;
+  const max=Math.max(...data.map(d=>d.val),1);
+  const n=data.length;
+  const colW=(W-pad*2)/n;
+  const x=i=>pad+colW*i+colW/2;
+  const y=v=>base-(v/max)*(base-top);
+
+  let grid='';
+  for(let g=0;g<=3;g++){ const gy=top+(base-top)*g/3; const gv=max*(1-g/3);
+    grid+=`<line x1="${pad}" y1="${gy}" x2="${W-pad+10}" y2="${gy}" stroke="var(--line2)" stroke-width="1" stroke-dasharray="2 4"/>`+
+          `<text x="4" y="${gy+3}" class="barlbl">£${Math.round(gv)}</text>`;
+  }
+
+  let body='';
+  if(chartType==='bar'){
+    const bw=Math.min(36,colW*0.58);
+    body=data.map((d,i)=>{
+      const bh=Math.max(2,(d.val/max)*(base-top));
+      const bx=x(i)-bw/2, by=base-bh;
+      return `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="6" fill="var(--accent)"/>`+
+             `<text x="${x(i)}" y="${by-5}" text-anchor="middle" class="barval">£${Math.round(d.val)}</text>`;
+    }).join('');
+  } else {
+    const pts=data.map((d,i)=>x(i)+','+y(d.val)).join(' ');
+    const area=`${pad},${base} ${pts} ${W-pad},${base}`;
+    body=`<polygon points="${area}" fill="var(--accent)" opacity="0.10"/>`+
+         `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`+
+         data.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d.val)}" r="4" fill="var(--card)" stroke="var(--accent)" stroke-width="2.5"/>`+
+           `<text x="${x(i)}" y="${y(d.val)-10}" text-anchor="middle" class="barval">£${Math.round(d.val)}</text>`).join('');
+  }
+  const labels=data.map((d,i)=>`<text x="${x(i)}" y="${H-7}" text-anchor="middle" class="barlbl">${d.label}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${grid}${body}${labels}</svg>`;
+}
+
+function exportCSV(){
+  if(!state.history.length){ alert('No history to export.'); return; }
+  const rows=[['DATE','SHOP','ITEM','QTY','UNIT PRICE','LINE TOTAL']];
+  state.history.forEach(e=>{
+    const ds=new Date(e.date).toLocaleDateString('en-GB');
+    (e.items||[]).forEach(it=>rows.push([ds,e.shop,it.name,it.qty,it.price.toFixed(2),(it.price*it.qty).toFixed(2)]));
+  });
+  const csv=rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='shopping-history.csv';
+  a.click();
+}
+
+render();
+
+/* PWA: register service worker for offline + installability */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
