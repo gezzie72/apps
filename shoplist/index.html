@@ -204,6 +204,18 @@
   .shopchips button:hover{border-color:var(--accent); color:var(--accent-d)}
   .shopchips button.on{background:var(--accent); color:#fff; border-color:var(--accent)}
   .shopchips .none{color:var(--muted); font-size:12px; font-weight:600; padding:2px 0}
+  /* bought / set-aside items (kept for reuse, shaded) */
+  .item.bought{opacity:.62; background:var(--bg)}
+  .item.bought .name{color:var(--muted); text-decoration:none}
+  .item.bought .price{color:var(--muted)}
+  .item.bought .tick{background:transparent; border-color:var(--line2); color:var(--muted); font-size:15px; font-weight:800}
+  .item .tag{display:inline-block; font-size:9px; font-weight:800; letter-spacing:.5px; color:var(--accent-d);
+    background:var(--accent-soft); border-radius:5px; padding:1px 5px; margin-left:7px; vertical-align:middle}
+  /* editable history rows */
+  .hist-row{cursor:pointer; border-radius:8px; padding-left:8px; padding-right:8px}
+  .hist-row:hover{background:var(--bg)}
+  .hist-row .edit{color:var(--muted); font-size:13px; margin-left:10px; flex:none}
+  .hist-right{display:flex; align-items:center; gap:2px}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -279,10 +291,13 @@
   <div id="items"></div>
 
   <div class="actbar">
-    <button class="btn ghost sm" onclick="clearDone()">Clear ticked</button>
+    <button class="btn ghost sm" onclick="newTrip()">↺ New trip</button>
     <button class="btn dark sm" onclick="checkout()">✓ Shop done</button>
   </div>
-  <div class="hint">Tick items as you pick them up. <b>Shop done</b> logs the ticked total to your spend history and clears them.</div>
+  <div id="boughtBar" hidden style="text-align:center; margin-top:9px">
+    <button class="btn ghost sm" onclick="clearBought()" id="clearBoughtBtn">Remove bought</button>
+  </div>
+  <div class="hint">Tick items as you pick them up. <b>Shop done</b> logs the total to your spend history and <b>keeps the items shaded</b> for next time. <b>New trip</b> brings the whole list back.</div>
 </section>
 
 <!-- ============ SPEND VIEW ============ -->
@@ -389,6 +404,26 @@
   </div>
 </dialog>
 
+<!-- history / spend edit modal -->
+<dialog id="histDlg">
+  <div class="modal">
+    <h3>Edit shop</h3>
+    <div class="row">
+      <div><label>Shop</label><input id="hShop" autocomplete="off"></div>
+      <div class="trio" style="grid-template-columns:1fr 1fr">
+        <div><label>Date</label><input id="hDate" type="date"></div>
+        <div><label>Total £</label><input id="hTotal" type="number" step="0.01" min="0" inputmode="decimal"></div>
+      </div>
+      <div class="hint" style="text-align:left; margin:2px 0 0">Fix a mistaken entry — this updates the spend graph.</div>
+      <div class="row" style="grid-template-columns:auto 1fr 1fr; gap:8px; margin-top:6px; align-items:center">
+        <button class="btn ghost sm" onclick="delHist()" style="color:var(--danger)">Delete</button>
+        <button class="btn ghost" onclick="histDlg.close()">Cancel</button>
+        <button class="btn" onclick="saveHistEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
 <script>
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(n||0).toFixed(2);
@@ -396,7 +431,7 @@ const money0=n=>'£'+Math.round(n||0).toLocaleString();
 const uc=s=>(s||'').toString().toUpperCase().trim();
 
 let state = load();
-let range='week', chartType='bar', editId=null;
+let range='week', chartType='bar', editId=null, editHistId=null;
 
 function normalize(s){
   s = s || {};
@@ -443,11 +478,23 @@ function addItem(){
   $('fName').focus();
   render();
 }
-function toggle(id){ const it=state.items.find(i=>i.id===id); if(it){it.done=!it.done; save(); render();} }
+function toggle(id){
+  const it=state.items.find(i=>i.id===id); if(!it) return;
+  if(it.bought){ it.bought=false; it.done=false; }   // tap a shaded item -> bring it back for this trip
+  else it.done=!it.done;
+  save(); render();
+}
 function del(id){ state.items=state.items.filter(i=>i.id!==id); save(); render(); }
-function clearDone(){
-  if(!state.items.some(i=>i.done)) return;
-  state.items=state.items.filter(i=>!i.done); save(); render();
+function newTrip(){
+  if(!state.items.some(i=>i.done||i.bought)){ toast('Nothing to reset yet.'); return; }
+  state.items.forEach(i=>{ i.done=false; i.bought=false; });
+  save(); render(); toast('List ready for your next trip');
+}
+function clearBought(){
+  const n=state.items.filter(i=>i.bought).length;
+  if(!n) return;
+  if(!confirm('Permanently remove '+n+' shaded (bought) item'+(n===1?'':'s')+' from the list?')) return;
+  state.items=state.items.filter(i=>!i.bought); save(); render();
 }
 function openEdit(id){
   const it=state.items.find(i=>i.id===id); if(!it)return;
@@ -464,8 +511,29 @@ function saveEdit(){
   it.shop=uc($('eShop').value)||'ANY';
   save(); $('editDlg').close(); render();
 }
+/* ---------- edit a spend-history entry (fix graph mistakes) ---------- */
+function openHistEdit(id){
+  const e=state.history.find(x=>x.id===id); if(!e) return;
+  editHistId=id;
+  $('hShop').value=e.shop||'';
+  $('hDate').value=new Date(e.date).toISOString().slice(0,10);
+  $('hTotal').value=(e.total!=null?e.total:0);
+  $('histDlg').showModal();
+}
+function saveHistEdit(){
+  const e=state.history.find(x=>x.id===editHistId); if(!e){ $('histDlg').close(); return; }
+  e.shop=uc($('hShop').value)||e.shop||'SHOP';
+  const dv=$('hDate').value; if(dv) e.date=new Date(dv+'T12:00:00').toISOString();
+  const t=parseFloat($('hTotal').value); if(!isNaN(t)&&t>=0) e.total=t;
+  save(); $('histDlg').close(); renderSpend(); toast('Entry updated');
+}
+function delHist(){
+  if(!editHistId) return;
+  if(!confirm('Delete this shop from your spend history? This changes the graph.')) return;
+  state.history=state.history.filter(x=>x.id!==editHistId); save(); $('histDlg').close(); renderSpend(); toast('Entry deleted');
+}
 function checkout(){
-  const picked=state.items.filter(i=>i.done);
+  const picked=state.items.filter(i=>i.done && !i.bought);   // ticked this trip, not already bought
   if(!picked.length){ alert('Tick the items you bought first.'); return; }
   const total=picked.reduce((s,i)=>s+i.price*i.qty,0);
   const byShop={};
@@ -476,20 +544,23 @@ function checkout(){
     total, count:picked.length, shop,
     items:picked.map(i=>({name:i.name,price:i.price,qty:i.qty,shop:i.shop}))
   });
-  state.items=state.items.filter(i=>!i.done);
+  picked.forEach(i=>{ i.bought=true; i.done=false; });      // shade & set aside for reuse (don't delete)
   save(); render();
-  alert('Logged '+money(total)+' to spend history.');
+  toast('Logged '+money(total)+' — items shaded for next time');
 }
 
 function render(){
   renderChips('shopChips','fShop');
 
   const items=state.items;
-  const outstanding=items.filter(i=>!i.done).reduce((s,i)=>s+i.price*i.qty,0);
+  const active=items.filter(i=>!i.bought);
+  const boughtCount=items.length-active.length;
+  const outstanding=active.filter(i=>!i.done).reduce((s,i)=>s+i.price*i.qty,0);
   $('hdrTotal').textContent=money(outstanding);
-  $('hdrCount').textContent=items.length+' item'+(items.length===1?'':'s');
-  const ticked=items.filter(i=>i.done).length;
-  $('listPill').textContent=items.length?ticked+'/'+items.length+' ticked':'0 items';
+  $('hdrCount').textContent = active.length+' to buy'+(boughtCount?' · '+boughtCount+' saved':'');
+  const ticked=active.filter(i=>i.done).length;
+  $('listPill').textContent = active.length ? ticked+'/'+active.length+' ticked' : (boughtCount? boughtCount+' saved' : '0 items');
+  const bb=$('boughtBar'); if(bb){ bb.hidden=!boughtCount; const cb=$('clearBoughtBtn'); if(cb) cb.textContent='Remove '+boughtCount+' bought item'+(boughtCount===1?'':'s'); }
 
   renderBudget();
 
@@ -501,7 +572,7 @@ function render(){
   const order=Object.keys(groups).sort((a,b)=> a==='ANY'?1:b==='ANY'?-1:a.localeCompare(b));
   wrap.innerHTML=order.map(shop=>{
     const gi=groups[shop];
-    const gt=gi.reduce((s,i)=>s+i.price*i.qty,0);
+    const gt=gi.filter(i=>!i.bought).reduce((s,i)=>s+i.price*i.qty,0);
     return `<div class="shopgroup">
       <div class="shophdr"><span class="s-name">${shop}</span><span class="s-tot">${money(gt)}</span></div>
       ${gi.map(itemRow).join('')}
@@ -511,10 +582,13 @@ function render(){
 function itemRow(i){
   const line=i.price*i.qty;
   const meta=(i.qty>1?`×${i.qty} @ ${money(i.price)}`:money(i.price));
-  return `<div class="item ${i.done?'done':''}">
-    <button class="tick" onclick="toggle('${i.id}')">${i.done?'✓':''}</button>
+  const cls=i.bought?'bought':(i.done?'done':'');
+  const tick=i.bought?'↺':(i.done?'✓':'');
+  const tag=i.bought?'<span class="tag">SAVED</span>':'';
+  return `<div class="item ${cls}">
+    <button class="tick" onclick="toggle('${i.id}')" title="${i.bought?'Reuse for this trip':'Tick off'}">${tick}</button>
     <div class="body" onclick="openEdit('${i.id}')">
-      <div class="name">${i.name}</div>
+      <div class="name">${i.name}${tag}</div>
       <div class="meta">${meta}</div>
     </div>
     <div class="price">${money(line)}</div>
@@ -576,9 +650,9 @@ function renderSpend(){
   $('history').innerHTML = hist.length ? hist.map(e=>{
     const d=new Date(e.date);
     const ds=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
-    return `<div class="hist-row">
+    return `<div class="hist-row" onclick="openHistEdit('${e.id}')" title="Tap to edit or delete">
       <div><div class="h-l">${e.shop}</div><div class="h-sub">${ds} · ${e.count} item${e.count===1?'':'s'}</div></div>
-      <b>${money(e.total)}</b>
+      <span class="hist-right"><b>${money(e.total)}</b><span class="edit">✎</span></span>
     </div>`;
   }).join('') : '<div class="empty" style="padding:22px">No history yet.</div>';
 }
@@ -639,7 +713,7 @@ function renderBudget(){
   const b=state.budget||0;
   if(!b){ wrap.hidden=true; return; }
   wrap.hidden=false;
-  const total=state.items.reduce((s,i)=>s+i.price*i.qty,0);
+  const total=state.items.filter(i=>!i.bought).reduce((s,i)=>s+i.price*i.qty,0);
   const pct=Math.max(0, Math.min(100, b?total/b*100:0));
   const rem=b-total;
   const box=$('budgetBox');
