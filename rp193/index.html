@@ -47,6 +47,11 @@ h1{font-size:1.7rem; margin:.2rem 0 .1rem; display:flex; align-items:center; gap
 .gear.on{background:#0369a1; border-color:#38bdf8; color:#fff}
 .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:16px}
 .card h2{font-size:.95rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 12px}
+.card-hd{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px}
+.card-hd h2{margin:0}
+.clr{background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px;
+  padding:6px 12px; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; cursor:pointer}
+.clr:active{background:var(--bad); color:#fff; border-color:var(--bad)}
 label{display:block; font-size:.98rem; font-weight:600; color:var(--txt); margin-bottom:5px}
 .row{display:flex; gap:10px}
 .row>.field{flex:1}
@@ -262,7 +267,10 @@ select:focus{outline:none; border-color:var(--accent)}
 </div>
 
 <div class="card">
-  <h2>Frames</h2>
+  <div class="card-hd">
+    <h2>Frames</h2>
+    <button class="clr" id="clearFrames" type="button">Clear</button>
+  </div>
   <div class="op-head">
     <span class="c-qty">Qty</span>
     <span class="c-dim">Width</span>
@@ -661,6 +669,10 @@ $('pdfBtn').addEventListener('click',()=>{
 });
 
 $('addRow').addEventListener('click',()=>{ addRow(); calc(); save(); opsBox.lastChild.querySelector('.q').focus(); });
+$('clearFrames').addEventListener('click',()=>{
+  if(!confirm('Clear all frame sizes?')) return;
+  opsBox.innerHTML=''; addRow(); calc(); save();
+});
 ['bar','kerf','cost','job','prep','ordno','ordref','door','doorsQty'].forEach(id=>$(id).addEventListener('input',()=>{ calc(); save(); }));
 ['reqMonth','reqYear'].forEach(id=>$(id).addEventListener('change',()=>{ save(); }));
 
