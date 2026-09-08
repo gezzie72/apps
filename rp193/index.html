@@ -565,7 +565,7 @@ function buildReport(){
       <div><span>Qty of doors (with frames)</span><b>${doorsQty?esc(doorsQty):'—'}</b></div>
       <div><span>Required by</span><b>${reqBy?esc(reqBy):'—'}</b></div>
       <div><span>Bar (stock) length</span><b>${fmt(s.bar)} mm</b></div>
-      <div><span>No. of frames</span><b>${fmt(s.rows.length)}</b></div>
+      <div><span>No. of frames</span><b>${fmt(s.rows.reduce((a,r)=>a+r.qty,0))}</b></div>
       <div><span>Saw kerf allowance</span><b>${s.kerf>0?fmt(s.kerf)+' mm / cut':'none'}</b></div>
     </div>
 
