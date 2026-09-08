@@ -112,6 +112,11 @@ input[type=text],input[type=password]{
   border-radius:10px; padding:12px 14px; font-size:1.05rem; font-weight:600;
 }
 input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var(--accent)}
+select{width:100%; min-width:0; background:var(--card2); border:1px solid var(--line); color:var(--txt);
+  border-radius:10px; padding:12px 14px; font-size:1.05rem; font-weight:600; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394a3b8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center; padding-right:34px}
+select:focus{outline:none; border-color:var(--accent)}
 .btn{background:var(--card2); border:1px solid var(--line); color:var(--txt); border-radius:10px;
   padding:11px 15px; font-size:1rem; font-weight:700; cursor:pointer}
 .btn:active{transform:translateY(1px)}
@@ -236,7 +241,38 @@ input[type=text]:focus,input[type=password]:focus{outline:none; border-color:var
       <input id="doorsQty" type="number" inputmode="numeric" min="0" placeholder="e.g. 6">
     </div>
   </div>
+  <div class="row">
+    <div class="field">
+      <label>Month required</label>
+      <select id="reqMonth">
+        <option value="">—</option>
+        <option>January</option><option>February</option><option>March</option>
+        <option>April</option><option>May</option><option>June</option>
+        <option>July</option><option>August</option><option>September</option>
+        <option>October</option><option>November</option><option>December</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Year required</label>
+      <select id="reqYear"><option value="">—</option></select>
+    </div>
+  </div>
   <button class="btn" id="clearDetails" type="button" style="width:100%">Clear customer details</button>
+</div>
+
+<div class="card">
+  <h2>Saved jobs</h2>
+  <p class="muted" style="margin:0 0 12px">Save this job to recall it later on any device (needs sync switched on in ⚙ Setup). It's saved under the <b>Door Number</b>.</p>
+  <button class="btn primary" id="saveJobBtn" type="button" style="width:100%; margin-bottom:12px">💾 Save this job</button>
+  <div class="field" style="margin-bottom:0">
+    <label>Recall a saved job</label>
+    <select id="jobsSelect"><option value="">— none saved —</option></select>
+    <div class="syncrow" style="margin-top:10px">
+      <button class="btn primary" id="loadJobBtn" type="button">Load</button>
+      <button class="btn" id="delJobBtn" type="button">Delete</button>
+    </div>
+  </div>
+  <p class="syncmsg" id="jobsMsg"></p>
 </div>
 
 <div class="card">
@@ -374,7 +410,8 @@ function getState(){
   return { rows: readRows().map(r=>[r.qty,r.w,r.h]),
     bar:$('bar').value, kerf:$('kerf').value, cost:$('cost').value,
     job:$('job').value, prep:$('prep').value,
-    ordno:$('ordno').value, ordref:$('ordref').value, door:$('door').value, doorsQty:$('doorsQty').value };
+    ordno:$('ordno').value, ordref:$('ordref').value, door:$('door').value, doorsQty:$('doorsQty').value,
+    reqMonth:$('reqMonth').value, reqYear:$('reqYear').value };
 }
 function save(){
   const s = getState(); curUpdatedAt = Date.now(); s.updatedAt = curUpdatedAt;
@@ -391,6 +428,8 @@ function applyFields(d){
   if(d.ordref!=null) $('ordref').value=d.ordref;
   if(d.door!=null) $('door').value=d.door;
   if(d.doorsQty!=null) $('doorsQty').value=d.doorsQty;
+  if(d.reqMonth!=null) $('reqMonth').value=d.reqMonth;
+  if(d.reqYear!=null) ensureYearOption(d.reqYear), $('reqYear').value=d.reqYear;
   opsBox.innerHTML='';
   if(Array.isArray(d.rows)&&d.rows.length){ d.rows.forEach(r=>addRow(r[0],r[1],r[2])); }
   if(!opsBox.querySelector('.op')) addRow();
@@ -496,6 +535,7 @@ function buildReport(){
   const ordref = $('ordref').value.trim();
   const door = $('door').value.trim();
   const doorsQty = $('doorsQty').value.trim();
+  const reqBy = [$('reqMonth').value, $('reqYear').value].filter(Boolean).join(' ');
 
   const rowsHtml = s.rows.map((r,i)=>
     `<tr><td class="num">${i+1}</td><td>${fmt(r.w)} × ${fmt(r.h)} mm</td>`+
@@ -523,6 +563,7 @@ function buildReport(){
       <div><span>Order Ref</span><b>${ordref?esc(ordref):'—'}</b></div>
       <div><span>Door Number</span><b>${door?esc(door):'—'}</b></div>
       <div><span>Qty of doors (with frames)</span><b>${doorsQty?esc(doorsQty):'—'}</b></div>
+      <div><span>Required by</span><b>${reqBy?esc(reqBy):'—'}</b></div>
       <div><span>Bar (stock) length</span><b>${fmt(s.bar)} mm</b></div>
       <div><span>No. of frames</span><b>${fmt(s.rows.length)}</b></div>
       <div><span>Saw kerf allowance</span><b>${s.kerf>0?fmt(s.kerf)+' mm / cut':'none'}</b></div>
@@ -565,7 +606,7 @@ function buildReport(){
 }
 
 $('clearDetails').addEventListener('click',()=>{
-  ['job','ordno','ordref','door','doorsQty'].forEach(id=>{ $(id).value=''; });
+  ['job','ordno','ordref','door','doorsQty','reqMonth','reqYear'].forEach(id=>{ $(id).value=''; });
   save();
   $('job').focus();
 });
@@ -605,6 +646,56 @@ $('pdfBtn').addEventListener('click',()=>{
 
 $('addRow').addEventListener('click',()=>{ addRow(); calc(); save(); opsBox.lastChild.querySelector('.q').focus(); });
 ['bar','kerf','cost','job','prep','ordno','ordref','door','doorsQty'].forEach(id=>$(id).addEventListener('input',()=>{ calc(); save(); }));
+['reqMonth','reqYear'].forEach(id=>$(id).addEventListener('change',()=>{ save(); }));
+
+/* ---------- Required-by year options ---------- */
+function populateYears(){
+  const sel=$('reqYear'); if(sel.options.length>1) return;
+  const y=new Date().getFullYear();
+  for(let i=0;i<=4;i++){ const o=document.createElement('option'); o.textContent=String(y+i); sel.appendChild(o); }
+}
+function ensureYearOption(v){
+  if(!v) return; const sel=$('reqYear');
+  if(![...sel.options].some(o=>o.value===String(v))){ const o=document.createElement('option'); o.textContent=String(v); sel.appendChild(o); }
+}
+
+/* ---------- Saved jobs (save under Door Number, recall across devices) ---------- */
+const JOBS_STORE='rp193.jobs.v1';
+let jobs={};
+function loadJobs(){ try{ jobs=JSON.parse(localStorage.getItem(JOBS_STORE))||{}; }catch(e){ jobs={}; } }
+function persistJobs(){ try{ localStorage.setItem(JOBS_STORE, JSON.stringify(jobs)); }catch(e){} }
+function jobList(){ return Object.keys(jobs).filter(k=>jobs[k] && !jobs[k].deleted).sort((a,b)=>(jobs[b].savedAt||0)-(jobs[a].savedAt||0)); }
+function jobsMsg(m,err){ const el=$('jobsMsg'); if(el){ el.textContent=m||''; el.style.color=err?'var(--bad)':'var(--muted)'; } }
+function mergeJobs(a,b){ const out={...a}; for(const k in b){ if(!out[k] || (b[k].savedAt||0)>((out[k]&&out[k].savedAt)||0)) out[k]=b[k]; } return out; }
+function renderJobsSelect(){
+  const sel=$('jobsSelect'); if(!sel) return; const cur=sel.value; const keys=jobList();
+  sel.innerHTML = keys.length ? '<option value="">— select a job —</option>' : '<option value="">— none saved —</option>';
+  keys.forEach(k=>{ const o=document.createElement('option'); o.value=k; const jb=jobs[k].data&&jobs[k].data.job; o.textContent=k+(jb?' — '+jb:''); sel.appendChild(o); });
+  if(keys.includes(cur)) sel.value=cur;
+}
+$('saveJobBtn').addEventListener('click',()=>{
+  const key=$('door').value.trim();
+  if(!key){ jobsMsg('Enter a Door Number first — the job is saved under it.',true); $('door').focus(); return; }
+  jobs[key]={ savedAt:Date.now(), data:getState() };
+  persistJobs(); renderJobsSelect(); $('jobsSelect').value=key;
+  jobsMsg('Saved as "'+key+'".'+(GH.connected?' Synced to your other devices.':' Turn on sync in ⚙ Setup to recall on other devices.'));
+  if(GH.connected) syncPush().catch(e=>jobsMsg('Saved on this device; sync failed: '+e.message,true));
+});
+$('loadJobBtn').addEventListener('click',()=>{
+  const key=$('jobsSelect').value; if(!key){ jobsMsg('Pick a saved job first.',true); return; }
+  const e=jobs[key]; if(!e||e.deleted||!e.data){ jobsMsg('That job is not available.',true); return; }
+  applyFields(e.data); calc(); save();
+  jobsMsg('Loaded "'+key+'".');
+});
+$('delJobBtn').addEventListener('click',()=>{
+  const key=$('jobsSelect').value; if(!key){ jobsMsg('Pick a saved job first.',true); return; }
+  if(!confirm('Delete saved job "'+key+'"? This removes it on all your devices.')) return;
+  jobs[key]={ savedAt:Date.now(), deleted:true };
+  persistJobs(); renderJobsSelect(); jobsMsg('Deleted "'+key+'".');
+  if(GH.connected) syncPush().catch(()=>{});
+});
+
+populateYears(); loadJobs(); renderJobsSelect();
 
 load();
 calc();
@@ -654,7 +745,7 @@ async function syncPush(){
   if(!GH.connected) return;
   spin(true); markSync("Saving…");
   try{
-    const s=getState(); s.updatedAt=curUpdatedAt||Date.now();
+    const s=getState(); s.updatedAt=curUpdatedAt||Date.now(); s.jobs=jobs;
     await ghApi("PATCH","/gists/"+GH.gist,{files:{"rp193.json":{content:JSON.stringify(s)}}});
     setSyncTime(); markSync("Synced");
   } finally{ spin(false); }
@@ -667,6 +758,8 @@ async function syncPull(force, quiet){
     const f=g.files && g.files["rp193.json"];
     if(!f || !f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
     const remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+    // saved jobs library is merged (union, newest-per-key wins) regardless of working-state timestamp
+    if(remote.jobs){ jobs = mergeJobs(jobs, remote.jobs); persistJobs(); renderJobsSelect(); }
     if(force || (remote.updatedAt||0) > (curUpdatedAt||0)){
       applyFields(remote); calc();
       curUpdatedAt = remote.updatedAt||Date.now();
@@ -705,7 +798,7 @@ $('ghConnect').addEventListener('click', async ()=>{
     if(!gid){ gid=await findGist(); }
     if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
       if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your data."); } else markSync("Connected — using your existing sync."); }
-    else { const s=getState(); s.updatedAt=curUpdatedAt||Date.now();
+    else { const s=getState(); s.updatedAt=curUpdatedAt||Date.now(); s.jobs=jobs;
       const g=await ghApi("POST","/gists",{description:"RP193 Calc sync", public:false, files:{"rp193.json":{content:JSON.stringify(s)}}}); GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
     $('ghToken').value=""; $('ghGist').value=""; renderSync(); fetchUser();
   }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
