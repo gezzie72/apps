@@ -196,21 +196,7 @@ select:focus{outline:none; border-color:var(--accent)}
 </div>
 
 <div class="card">
-  <h2>Material</h2>
-  <div class="row">
-    <div class="field suffix" data-suffix="mm">
-      <label>Bar length</label>
-      <input id="bar" type="number" inputmode="numeric" value="6000">
-    </div>
-    <div class="field suffix" data-suffix="mm">
-      <label>Saw kerf / cut</label>
-      <input id="kerf" type="number" inputmode="numeric" value="0">
-    </div>
-  </div>
-  <div class="field suffix" data-suffix="£">
-    <label>Price per metre (optional)</label>
-    <input id="cost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 3.10">
-  </div>
+  <h2>Job details</h2>
   <div class="row">
     <div class="field">
       <label>Job / project (optional)</label>
@@ -317,6 +303,24 @@ select:focus{outline:none; border-color:var(--accent)}
 <p class="pdfhint">Opens your device's print sheet — choose <b>Save as PDF</b>, then attach it to an email. Nothing leaves your phone.</p>
 
 <div id="setup" hidden>
+<div class="card">
+  <h2>Material settings</h2>
+  <p class="muted" style="margin:0 0 12px">These rarely change job-to-job, so they live here to avoid accidental edits.</p>
+  <div class="row">
+    <div class="field suffix" data-suffix="mm">
+      <label>Bar length</label>
+      <input id="bar" type="number" inputmode="numeric" value="6000">
+    </div>
+    <div class="field suffix" data-suffix="mm">
+      <label>Saw kerf / cut</label>
+      <input id="kerf" type="number" inputmode="numeric" value="0">
+    </div>
+  </div>
+  <div class="field suffix" data-suffix="£" style="margin-bottom:0">
+    <label>Price per metre (optional)</label>
+    <input id="cost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 3.10">
+  </div>
+</div>
 <div class="card">
   <h2>Sync across devices</h2>
   <div id="syncDisconnected">
