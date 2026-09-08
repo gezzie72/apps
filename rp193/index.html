@@ -347,6 +347,18 @@ select:focus{outline:none; border-color:var(--accent)}
       <button class="btn" id="ghDisconnect" type="button">Disconnect</button>
     </div>
     <p class="muted">Last synced: <span id="syncLast">never</span></p>
+    <div class="syncrow" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--line)">
+      <span class="muted">Cloud encryption:</span> <b id="encStatus"></b>
+    </div>
+    <div class="syncrow">
+      <input type="password" id="ghPass" placeholder="Sync passphrase" autocomplete="off" spellcheck="false" style="flex:1 1 140px">
+      <button class="btn" id="ghPassShow" type="button">Show</button>
+    </div>
+    <div class="syncrow">
+      <button class="btn primary" id="ghPassSet" type="button">Encrypt cloud copy</button>
+      <button class="btn" id="ghPassClear" type="button" hidden>Remove</button>
+    </div>
+    <p class="muted" style="font-size:.82rem">Encrypts the copy stored in your GitHub gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. <b>No recovery</b> if you forget it. Your on-device data stays readable.</p>
   </div>
   <p class="syncmsg" id="syncMsg"></p>
 </div>
@@ -716,6 +728,37 @@ const GH = {
   set user(v){ try{v?localStorage.setItem("rp193.gh.user",v):localStorage.removeItem("rp193.gh.user")}catch(e){} },
   get connected(){ return !!(this.token && this.gist); }
 };
+
+/* ---------- cloud-copy encryption: PBKDF2(200k) -> AES-GCM 256 (gist only) ---------- */
+const _enc=new TextEncoder(), _dec=new TextDecoder();
+const _b64={ enc:buf=>btoa(String.fromCharCode(...new Uint8Array(buf))), dec:str=>Uint8Array.from(atob(str),c=>c.charCodeAt(0)) };
+Object.defineProperty(GH,"pass",{
+  get(){ try{return localStorage.getItem("rp193.gh.pass")||""}catch(e){return ""} },
+  set(v){ try{v?localStorage.setItem("rp193.gh.pass",v):localStorage.removeItem("rp193.gh.pass")}catch(e){} }
+});
+let SYNC_PASS = GH.pass;
+async function _deriveKey(pass, salt){
+  const base=await crypto.subtle.importKey("raw", _enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:200000, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function encodeForGist(s){
+  const plain = JSON.stringify(s);
+  if(!SYNC_PASS) return plain;
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await _deriveKey(SYNC_PASS, salt);
+  const cipher=await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, _enc.encode(plain));
+  return JSON.stringify({ __enc:1, alg:"AES-GCM-PBKDF2-200k", salt:_b64.enc(salt), iv:_b64.enc(iv), data:_b64.enc(cipher), updatedAt: s.updatedAt||Date.now() });
+}
+async function decodeEnvelope(env){
+  const key=await _deriveKey(SYNC_PASS, _b64.dec(env.salt));
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM", iv:_b64.dec(env.iv)}, key, _b64.dec(env.data));
+  return JSON.parse(_dec.decode(plain));
+}
+function renderEnc(){
+  const s=$('encStatus'); if(s){ s.textContent = SYNC_PASS ? "On 🔒" : "Off — cloud copy is plain text"; s.style.color = SYNC_PASS ? "#16a34a" : "var(--bad)"; }
+  const clr=$('ghPassClear'); if(clr) clr.hidden = !SYNC_PASS;
+  const setb=$('ghPassSet'); if(setb) setb.textContent = SYNC_PASS ? "Update passphrase" : "Encrypt cloud copy";
+}
 async function ghApi(method, path, body){
   let res;
   try{
@@ -750,8 +793,9 @@ async function syncPush(){
   spin(true); markSync("Saving…");
   try{
     const s=getState(); s.updatedAt=curUpdatedAt||Date.now(); s.jobs=jobs;
-    await ghApi("PATCH","/gists/"+GH.gist,{files:{"rp193.json":{content:JSON.stringify(s)}}});
-    setSyncTime(); markSync("Synced");
+    const content = await encodeForGist(s);
+    await ghApi("PATCH","/gists/"+GH.gist,{files:{"rp193.json":{content}}});
+    setSyncTime(); markSync(SYNC_PASS?"Synced 🔒":"Synced");
   } finally{ spin(false); }
 }
 async function syncPull(force, quiet){
@@ -761,7 +805,16 @@ async function syncPull(force, quiet){
     const g=await ghApi("GET","/gists/"+GH.gist);
     const f=g.files && g.files["rp193.json"];
     if(!f || !f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
-    const remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+    let remote, wasEnc=false;
+    try{ remote=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content); }
+    catch(e){ if(!quiet) markSync("Sync data unreadable",true); return "error"; }
+    if(remote && remote.__enc===1){
+      wasEnc=true;
+      if(!SYNC_PASS){ if(!quiet) markSync("This sync is encrypted — set your passphrase below to unlock it.",true); return "locked"; }
+      try{ remote=await decodeEnvelope(remote); }
+      catch(e){ if(!quiet) markSync("Wrong sync passphrase — your local data was kept.",true); return "badpass"; }
+    }
+    if(!wasEnc && SYNC_PASS) schedulePush();   // plaintext gist -> re-encrypt on next push
     // saved jobs library is merged (union, newest-per-key wins) regardless of working-state timestamp
     if(remote.jobs){ jobs = mergeJobs(jobs, remote.jobs); persistJobs(); renderJobsSelect(); }
     if(force || (remote.updatedAt||0) > (curUpdatedAt||0)){
@@ -789,6 +842,7 @@ function renderSync(){
     $('syncUser').textContent=GH.user||"…"; if(!GH.user) fetchUser();
     $('ghAuto').checked=GH.auto;
   }
+  renderEnc();
   updateLastSync();
 }
 async function doSyncNow(){ try{ await syncPull(false); await syncPush(); }catch(e){ markSync("Sync failed: "+e.message,true); spin(false); } }
@@ -801,9 +855,13 @@ $('ghConnect').addEventListener('click', async ()=>{
   try{
     if(!gid){ gid=await findGist(); }
     if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
-      if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist with your data."); } else markSync("Connected — using your existing sync."); }
+      if(r==="empty"){ await syncPush(); markSync(SYNC_PASS?"Connected — seeded this gist (encrypted 🔒).":"Connected — seeded this gist with your data."); }
+      else if(r==="locked"){ markSync("Connected — this sync is encrypted. Set your passphrase below to unlock it.",true); }
+      else if(r==="badpass"){ markSync("Connected, but that passphrase does not match this sync. Update it below.",true); }
+      else markSync("Connected — using your existing sync."); }
     else { const s=getState(); s.updatedAt=curUpdatedAt||Date.now(); s.jobs=jobs;
-      const g=await ghApi("POST","/gists",{description:"RP193 Calc sync", public:false, files:{"rp193.json":{content:JSON.stringify(s)}}}); GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
+      const content=await encodeForGist(s);
+      const g=await ghApi("POST","/gists",{description:"RP193 Calc sync", public:false, files:{"rp193.json":{content}}}); GH.gist=g.id; setSyncTime(); markSync(SYNC_PASS?"Connected — new encrypted sync created 🔒.":"Connected — new sync created."); }
     $('ghToken').value=""; $('ghGist').value=""; renderSync(); fetchUser();
   }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
   finally{ spin(false); }
@@ -813,6 +871,30 @@ $('ghAuto').addEventListener('change', ()=>{ GH.auto=$('ghAuto').checked; if(GH.
 $('ghCopyGist').addEventListener('click', ()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>markSync("Gist ID copied"), ()=>markSync(GH.gist)); });
 $('ghShowToken').addEventListener('click', ()=>{ const i=$('ghToken'); const show=i.type==='password'; i.type=show?'text':'password'; $('ghShowToken').textContent=show?'Hide':'Show'; });
 $('ghDisconnect').addEventListener('click', ()=>{ if(confirm("Disconnect sync on this device? Your local data stays; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); } });
+$('ghPassShow').addEventListener('click', ()=>{ const i=$('ghPass'); const show=i.type==='password'; i.type=show?'text':'password'; $('ghPassShow').textContent=show?'Hide':'Show'; });
+$('ghPassSet').addEventListener('click', async ()=>{
+  const p=$('ghPass').value;
+  if(!p){ markSync("Enter a passphrase first.",true); return; }
+  if(p.length<6){ markSync("Use at least 6 characters.",true); return; }
+  SYNC_PASS=p; GH.pass=p; $('ghPass').value=''; if($('ghPass').type==='text'){ $('ghPass').type='password'; $('ghPassShow').textContent='Show'; }
+  renderEnc();
+  if(!GH.connected){ markSync("Passphrase saved — connect sync to use it."); return; }
+  spin(true); markSync("Applying passphrase…");
+  try{ const r=await syncPull(true);
+    if(r==="badpass"){ markSync("That passphrase does not match your existing encrypted sync — local data kept. Check it and try again.",true); return; }
+    await syncPush(); markSync("Cloud copy is now encrypted 🔒"); }
+  catch(e){ markSync("Couldn't update the gist: "+e.message,true); }
+  finally{ spin(false); }
+});
+$('ghPassClear').addEventListener('click', async ()=>{
+  if(!confirm("Remove cloud encryption? On the next sync your data will be written back to the gist as PLAIN TEXT.")) return;
+  SYNC_PASS=""; GH.pass=""; renderEnc();
+  if(!GH.connected){ markSync("Passphrase removed."); return; }
+  spin(true); markSync("Removing encryption…");
+  try{ await syncPush(); markSync("Cloud encryption removed."); }
+  catch(e){ markSync("Couldn't update the gist: "+e.message,true); }
+  finally{ spin(false); }
+});
 
 /* ---------- Appearance ---------- */
 const THEME_KEY="rp193.theme";
