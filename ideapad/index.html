@@ -186,8 +186,8 @@
       <button class="btn ghost" id="openSync" title="Sync & backup">⚙</button>
     </div>
     <div class="filters" id="filters">
-      <button data-f="all" class="active">All</button>
-      <button data-f="active">Active</button>
+      <button data-f="all">All</button>
+      <button data-f="active" class="active">Active</button>
       <button data-f="done">Done</button>
     </div>
     <div class="list" id="list"></div>
@@ -349,7 +349,7 @@ try{ const _t=localStorage.getItem("ideapad.theme"); if(_t && _t!=="system") doc
 const LS_KEY = "ideapad.data";
 let state = load();
 let currentId = null;
-let filterMode = "all";       // all | active | done
+let filterMode = "active";    // all | active | done — default to Active
 let editorNoteId = null;      // which note the body rows currently reflect
 
 function normalizeNote(n){
