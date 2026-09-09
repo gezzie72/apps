@@ -261,6 +261,7 @@ const LS_CAT = "dhq.catalogue.v1";
 const LS_QUOTE = "dhq.quote.v1";
 const LS_QUOTES = "dhq.quotes.v1";
 const LS_CO = "dhq.company.v1";
+const LS_SEQ = "dhq.seq.v1";
 const $ = id => document.getElementById(id);
 const esc = s => (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const money = n => "£" + (Number(n)||0).toFixed(2);
@@ -270,6 +271,7 @@ let catalogue = [];      // hardware items you maintain
 let quote = null;        // current working quote
 let savedQuotes = [];    // your saved quote library
 let company = null;      // your company details (shown on print)
+let nextSeq = 1001;      // next auto quote number (synced by max)
 
 /* ---------- persistence ---------- */
 function loadAll(){
@@ -282,7 +284,12 @@ function loadAll(){
   if(!Array.isArray(savedQuotes)) savedQuotes = [];
   try{ company = JSON.parse(localStorage.getItem(LS_CO)); }catch{ company = null; }
   if(!company || typeof company !== "object") company = {name:"",address:"",contact:"",vatNo:""};
+  if(typeof company.quotePrefix !== "string") company.quotePrefix = "Q-";
+  let s; try{ s = parseInt(localStorage.getItem(LS_SEQ),10); }catch{ s = NaN; }
+  nextSeq = Number.isFinite(s) && s>0 ? s : 1001;
 }
+function saveSeq(){ try{ localStorage.setItem(LS_SEQ, String(nextSeq)); }catch(e){} }
+const previewRef = () => (company.quotePrefix||"") + nextSeq;
 function fixQuote(q){
   if(!Array.isArray(q.lines)) q.lines = [];
   if(typeof q.vatRate !== "number") q.vatRate = 20;
@@ -510,6 +517,12 @@ function openCompany(){
       <div class="field"><label>Address</label><textarea id="coAddr" rows="3" placeholder="Street, town, postcode">${esc(company.address)}</textarea></div>
       <div class="field"><label>Contact <span style="color:#6570a0;font-weight:400">— phone / email / web</span></label><input id="coContact" placeholder="01234 567890 · you@company.com" value="${esc(company.contact)}"></div>
       <div class="field"><label>VAT number <span style="color:#6570a0;font-weight:400">— optional</span></label><input id="coVat" placeholder="GB123456789" value="${esc(company.vatNo)}"></div>
+      <div style="border-top:1px solid var(--line);margin:4px 0 14px"></div>
+      <div class="grid2">
+        <div class="field"><label>Quote number prefix</label><input id="coPrefix" placeholder="Q-" value="${esc(company.quotePrefix||"Q-")}"></div>
+        <div class="field"><label>Next quote number</label><input id="coSeq" type="number" min="1" step="1" value="${nextSeq}"></div>
+      </div>
+      <p style="color:#6570a0;font-size:11px;margin:-6px 0 12px">New quotes auto-fill as <b id="seqPreview">${esc(previewRef())}</b> — editable per quote. The number is used up only when a quote is saved.</p>
       <div class="modal-actions">
         <button class="link" onclick="closeModal()">Cancel</button>
         <button class="primary flex1" id="coSave">Save</button>
@@ -517,9 +530,15 @@ function openCompany(){
     </div>
   </div>`;
   bindOverlayClose();
+  const refreshPreview = ()=>{ const p=$("coPrefix").value; const n=parseInt($("coSeq").value,10); $("seqPreview").textContent = (p||"") + (Number.isFinite(n)&&n>0?n:nextSeq); };
+  $("coPrefix").oninput = refreshPreview; $("coSeq").oninput = refreshPreview;
   $("coSave").onclick = ()=>{
     company = { name:$("coName").value.trim(), address:$("coAddr").value.trim(),
-                contact:$("coContact").value.trim(), vatNo:$("coVat").value.trim(), updated:Date.now() };
+                contact:$("coContact").value.trim(), vatNo:$("coVat").value.trim(),
+                quotePrefix:$("coPrefix").value.trim(), updated:Date.now() };
+    const n = parseInt($("coSeq").value,10);
+    if(Number.isFinite(n) && n>0 && n!==nextSeq){ nextSeq = n; saveSeq(); schedulePush(); }
+    // if the working quote still shows an untouched auto-ref, refresh it to the new prefix/number
     saveCo(); closeModal(); toast("Company details saved");
   };
   $("coName").focus();
@@ -541,6 +560,10 @@ const quoteName = q => (q.ref || q.customer || q.project || "Untitled quote").tr
 
 function saveCurrentQuote(){
   if(!quote.lines.length && !quote.customer && !quote.ref){ toast("Nothing to save yet"); return; }
+  // consume the auto number on first save, only if the ref is still the untouched preview
+  if(!quote.savedId && quote.ref === previewRef()){
+    nextSeq++; saveSeq(); schedulePush();
+  }
   quote.updated = Date.now();
   const snapshot = JSON.parse(JSON.stringify(quote));
   if(quote.savedId){
@@ -641,9 +664,17 @@ function newQuote(){
   if(quote.lines.length || quote.customer || quote.ref){
     if(!confirm("Start a new quote? The current one will be cleared.")) return;
   }
-  quote = blankQuote(); saveQuote();
+  quote = blankQuote();
+  quote.ref = previewRef();           // auto quote number (editable)
+  saveQuote();
   bindQuoteFields(); renderLines();
-  toast("New quote started");
+  toast("New quote started — "+quote.ref);
+}
+// On first run (or a blank untouched quote), show the next number so it's ready to go.
+function maybePrefillRef(){
+  if(!quote.savedId && !quote.ref && !quote.lines.length && !quote.customer){
+    quote.ref = previewRef(); saveQuote(); $("qRef").value = quote.ref;
+  }
 }
 
 /* ---------- print ---------- */
@@ -664,8 +695,8 @@ function doPrint(){
 
 /* ---------- backup / restore ---------- */
 function exportBackup(){
-  const payload = { app:"door-hardware-quote", version:3, exported:new Date().toISOString(),
-                    catalogue, quote, savedQuotes, company };
+  const payload = { app:"door-hardware-quote", version:4, exported:new Date().toISOString(),
+                    catalogue, quote, savedQuotes, company, seq:nextSeq };
   const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -683,7 +714,9 @@ async function handleImport(e){
   if(data.quote && typeof data.quote==="object") quote = fixQuote(data.quote);
   if(Array.isArray(data.savedQuotes)) savedQuotes = data.savedQuotes.map(fixQuote);
   if(data.company && typeof data.company==="object") company = data.company;
-  saveCat(); saveQuote(); saveQuotes(); saveCo(); bindQuoteFields(); fillCatPick(); renderLines();
+  if(typeof company.quotePrefix !== "string") company.quotePrefix = "Q-";
+  if(Number.isFinite(data.seq) && data.seq>0) nextSeq = data.seq;
+  saveSeq(); saveCat(); saveQuote(); saveQuotes(); saveCo(); bindQuoteFields(); fillCatPick(); renderLines();
   toast("Backup restored");
 }
 
@@ -724,7 +757,7 @@ async function _deriveKey(pass, salt){
   const base=await crypto.subtle.importKey("raw", _enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:200000, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
 }
-function buildSyncDoc(){ return { app:"door-hardware-quote", updatedAt:Date.now(), catalogue, savedQuotes, company }; }
+function buildSyncDoc(){ return { app:"door-hardware-quote", updatedAt:Date.now(), catalogue, savedQuotes, company, seq:nextSeq }; }
 async function encodeForGist(){
   const plain = JSON.stringify(buildSyncDoc());
   if(!SYNC_PASS) return plain;
@@ -799,7 +832,7 @@ async function syncPush(){
 }
 
 /* ---- merge remote into local (union by id; newer 'updated' wins) ---- */
-function _sig(){ return JSON.stringify([catalogue, savedQuotes, company]); }
+function _sig(){ return JSON.stringify([catalogue, savedQuotes, company, nextSeq]); }
 function mergeSync(remote){
   const before=_sig();
   const cat={}; catalogue.forEach(c=>{ if(c&&c.id) cat[c.id]=c; });
@@ -809,6 +842,7 @@ function mergeSync(remote){
   (remote.savedQuotes||[]).forEach(rq=>{ if(!rq||!rq.savedId) return; const l=sq[rq.savedId]; if(!l || (rq.updated||0)>(l.updated||0)) sq[rq.savedId]=fixQuote(rq); });
   savedQuotes = Object.values(sq);
   if(remote.company && (remote.company.updated||0) > (company.updated||0)) company = remote.company;
+  if(Number.isFinite(remote.seq) && remote.seq > nextSeq){ nextSeq = remote.seq; saveSeq(); }
   _putCat(); _putQuotes(); _putCo();
   return _sig() !== before;
 }
@@ -831,7 +865,13 @@ async function gistGet(){
   gistEtag = res.headers.get("ETag") || gistEtag;
   return { data: await res.json() };
 }
-function refreshAfterSync(){ fillCatPick(); renderLines(); }
+function refreshAfterSync(){
+  fillCatPick(); renderLines();
+  // keep a fresh, unsaved quote's auto-number in step with a synced counter/prefix
+  if(!quote.savedId && !quote.lines.length && !quote.customer && /^\D*\d+$/.test(quote.ref||"")){
+    quote.ref = previewRef(); saveQuote(); const el=$("qRef"); if(el) el.value = quote.ref;
+  }
+}
 async function syncPull(force, quiet){
   if(!GH.connected) return;
   if(pulling && quiet) return;
@@ -994,6 +1034,7 @@ function wireSyncConnected(){
 /* ---------- wire up ---------- */
 loadAll();
 bindQuoteFields();
+maybePrefillRef();
 fillCatPick();
 renderLines();
 $("stdBtn").onclick = addStandardSetup;
@@ -1014,7 +1055,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v4 · 2026-09-10 · gist sync + encryption";
+const VERSION = "v5 · 2026-09-10 · auto quote numbers";
 $("ver").textContent = "Build " + VERSION;
 
 if('serviceWorker' in navigator){
