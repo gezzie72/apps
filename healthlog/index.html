@@ -199,6 +199,33 @@
   <!-- ============ DIABETES ============ -->
   <section class="view" id="view-diabetes">
     <div class="panel">
+      <h2>HbA1c (lab result)</h2>
+      <p class="muted" style="margin-top:0">Your long-term average from a lab/clinic blood test — usually checked every few months. Enter each result manually here.</p>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld">Result
+          <input type="number" step="any" id="haVal" style="width:110px" placeholder="e.g. 48">
+        </label>
+        <label class="fld">Unit
+          <select id="haUnit">
+            <option value="mmol">mmol/mol</option>
+            <option value="pct">%</option>
+          </select>
+        </label>
+        <label class="fld">Date
+          <input type="date" id="haDate">
+        </label>
+        <label class="fld" style="flex:1; min-width:160px">Note
+          <input type="text" id="haNote" placeholder="optional — e.g. GP review">
+        </label>
+        <button class="btn primary" id="haAdd">Add result</button>
+      </div>
+      <div class="cards" id="haStats" style="margin-top:14px"></div>
+      <h3>HbA1c history</h3>
+      <div class="scrollx"><table class="hist" id="haHist"><tbody></tbody></table></div>
+      <p class="disc">General guide (IFCC): below 42 mmol/mol (6.0%) is the non-diabetes range, 42–47 (6.0–6.4%) is higher risk, and 48+ mmol/mol (6.5%+) is in the diabetes range. Personal targets vary — always follow your clinician's advice.</p>
+    </div>
+
+    <div class="panel">
       <h2>Log a blood glucose reading</h2>
       <div class="row" style="align-items:flex-end">
         <label class="fld">Reading (<span class="gunit">mmol/L</span>)
@@ -644,7 +671,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-09-07 · v8 encrypted-sync";
+const APP_VERSION = "2026-09-09 · v9 hba1c";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -672,6 +699,7 @@ function defaultState(){
     version:1, updatedAt:0,
     glucoseUnit:"mmol", measureUnit:"cm",
     glucose:[],                 // {id, dt:"YYYY-MM-DDTHH:MM", value, unit, tag, note}
+    hba1c:[],                   // {id, date:"YYYY-MM-DD", value, unit:"mmol"|"pct", note} (manual lab results)
     meds:[],                    // {id, name, dose, category:"Diabetes"|"Other"}  (reference list, no reminders)
     measureFields:[...defaultFields],
     measurements:[],            // {id, date:"YYYY-MM-DD", unit, values:{field:number}, note}
@@ -696,7 +724,7 @@ function normalize(s){
   if(!s.nebido || typeof s.nebido!=="object") s.nebido={intervalWeeks:12,history:[]};
   if(!Array.isArray(s.nebido.history)) s.nebido.history=[];
   if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
-  ["glucose","meds","measurements","bp","appts","weights","bowel","activity"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ["glucose","hba1c","meds","measurements","bp","appts","weights","bowel","activity"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   if(typeof s.bloodType!=="string") s.bloodType="";
   if(!s.bloodTestReminder || typeof s.bloodTestReminder!=="object") s.bloodTestReminder={enabled:false,weeks:12,fromDate:""};
   s.bloodTestReminder.enabled=!!s.bloodTestReminder.enabled;
@@ -860,6 +888,37 @@ function renderGlucoseUI(){
           <td><button class="btn sm danger" data-gdel="${r.id}">✕</button></td></tr>`; }).join("");
     tb.querySelectorAll("[data-gdel]").forEach(b=> b.onclick=()=>{ state.glucose=state.glucose.filter(x=>x.id!==b.dataset.gdel); save(); renderGlucoseUI(); });
   }
+}
+/* ---------- HbA1c (manual lab results) ---------- */
+function hbaUnitLabel(u){ return u==="pct" ? "%" : "mmol/mol"; }
+function hbaToMmol(value, unit){ return unit==="pct" ? (value-2.15)*10.929 : value; }   // IFCC ⇄ DCCT
+function hbaRound(value, unit){ return unit==="pct" ? Math.round(value*10)/10 : Math.round(value); }
+function hbaBand(mmol){ return mmol<42 ? "good" : mmol<48 ? "low" : "high"; }
+function hbaBandLabel(mmol){ return mmol<42 ? "Non-diabetes range" : mmol<48 ? "Higher risk" : "Diabetes range"; }
+function renderHba1cUI(){
+  const hist=[...state.hba1c].sort((a,b)=> a.date<b.date?1:-1);
+  const latest=hist[0], prev=hist[1];
+  const cards=[ card("Readings logged", String(state.hba1c.length), "all time") ];
+  if(latest){
+    const mmol=hbaToMmol(latest.value, latest.unit);
+    cards.unshift(card("Latest HbA1c",
+      `<span class="pill ${hbaBand(mmol)}">${hbaRound(latest.value,latest.unit)} ${hbaUnitLabel(latest.unit)}</span>`,
+      `${hbaBandLabel(mmol)} · ${fmtDate(latest.date)}`));
+    if(prev){
+      const d=mmol - hbaToMmol(prev.value, prev.unit);
+      const dir=Math.abs(d)<0.5 ? "flat" : d>0 ? "up" : "down";
+      const arrow=dir==="flat" ? "→" : dir==="up" ? "▲" : "▼";
+      cards.push(card("Change", `<span class="delta ${dir}">${arrow} ${Math.abs(Math.round(d))} <span class="muted" style="font-size:.6em">mmol/mol</span></span>`, "vs previous result"));
+    }
+  }
+  $("#haStats").innerHTML=cards.join("");
+  const tb=$("#haHist").querySelector("tbody");
+  if(!hist.length){ tb.innerHTML=`<tr><td class="muted">No HbA1c results yet.</td></tr>`; return; }
+  tb.innerHTML=`<tr><th>Date</th><th>Result</th><th>Note</th><th></th></tr>`+
+    hist.map(r=>{ const mmol=hbaToMmol(r.value,r.unit);
+      return `<tr><td>${fmtDate(r.date)}</td><td><span class="pill ${hbaBand(mmol)}">${hbaRound(r.value,r.unit)} ${hbaUnitLabel(r.unit)}</span></td><td>${(r.note||"").replace(/</g,"&lt;")}</td>
+        <td><button class="btn sm danger" data-hadel="${r.id}">✕</button></td></tr>`; }).join("");
+  tb.querySelectorAll("[data-hadel]").forEach(b=> b.onclick=()=>{ state.hba1c=state.hba1c.filter(x=>x.id!==b.dataset.hadel); save(); renderHba1cUI(); });
 }
 const MED_CATS=["Diabetes","Other"];
 let editMedId=null;
@@ -1396,7 +1455,7 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
   $$(".view").forEach(s=>s.classList.remove("active"));
   $("#view-"+v).classList.add("active");
   if(v==="today") renderToday();
-  if(v==="diabetes"){ renderGlucoseUI(); renderMeds(); }
+  if(v==="diabetes"){ renderHba1cUI(); renderGlucoseUI(); renderMeds(); }
   if(v==="measure") renderMeasureUI();
   if(v==="vitals") renderVitals();
   if(v==="bowel") renderBowel();
@@ -1412,6 +1471,15 @@ $("#gAdd").onclick=()=>{
   state.glucose.push({id:uid(), dt:when, value:v, unit:state.glucoseUnit, tag:$("#gTag").value, note:$("#gNote").value.trim()});
   $("#gVal").value=""; $("#gNote").value=""; $("#gWhen").value=nowLocalInput();
   save(); renderGlucoseUI(); toast("Reading added");
+};
+$("#haAdd").onclick=()=>{
+  const v=Number($("#haVal").value);
+  if(!v || v<=0){ toast("Enter a result"); return; }
+  const unit=$("#haUnit").value==="pct" ? "pct" : "mmol";
+  const date=$("#haDate").value || todayISO();
+  state.hba1c.push({id:uid(), date, value:v, unit, note:$("#haNote").value.trim()});
+  $("#haVal").value=""; $("#haNote").value=""; $("#haDate").value=todayISO();
+  save(); renderHba1cUI(); toast("HbA1c result added");
 };
 $("#mAdd").onclick=()=>{
   const name=$("#mName").value.trim(); if(!name){ toast("Name the medication"); return; }
@@ -1739,6 +1807,7 @@ applyScale(textScale); renderTextSize();
 /* ---------- Init ---------- */
 function initAll(){
   $("#gWhen").value=nowLocalInput();
+  $("#haDate").value=todayISO();
   $("#nbDate").value=todayISO();
   $("#actDate").value=todayISO();
   $("#msDate").value=todayISO();
@@ -1749,6 +1818,7 @@ function initAll(){
   editApptId=null; editResultsId=null;
   renderUnitSegs();
   renderToday();
+  renderHba1cUI();
   renderGlucoseUI();
   renderMeds();
   renderMeasureUI();
