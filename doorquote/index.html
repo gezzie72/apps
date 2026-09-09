@@ -166,7 +166,10 @@
     <button class="btn" id="stdBtn" title="Add all standard-setup items to this quote">⭐ Standard setup</button>
     <button class="btn" id="catBtn" title="Manage your hardware catalogue">🧰 Catalogue</button>
     <button class="btn" id="coBtn" title="Your company details (shown on the printed quote)">🏢 Company</button>
-    <button class="btn" id="printBtn" title="Print / save as PDF">🖨 Print</button>
+    <button class="btn" id="quotesBtn" title="Open a saved quote">📁 Quotes</button>
+    <button class="btn accent" id="saveBtn" title="Save this quote to your library">💾 Save</button>
+    <button class="btn" id="printBtn" title="Print or save as PDF">🖨 Print / PDF</button>
+    <button class="btn" id="emailBtn" title="Open your email app with this quote pre-filled">✉ Email</button>
     <button class="btn" id="exportBtn" title="Download a backup">⬇ Backup</button>
     <button class="btn" id="importBtn" title="Restore a backup">⬆ Restore</button>
     <button class="btn" id="newBtn" title="Start a fresh quote">✚ New quote</button>
@@ -191,6 +194,7 @@
     <div class="grid2">
       <div class="field"><label>Customer / Company</label><input id="qCustomer" placeholder="Customer name"></div>
       <div class="field"><label>Quote reference</label><input id="qRef" placeholder="e.g. Q-1042"></div>
+      <div class="field"><label>Customer email <span style="color:#6570a0;font-weight:400">— for the Email button</span></label><input id="qEmail" type="email" placeholder="customer@example.com"></div>
       <div class="field"><label>Project / Site</label><input id="qProject" placeholder="e.g. Door set — Level 2"></div>
       <div class="field"><label>Date</label><input id="qDate" type="date"></div>
     </div>
@@ -251,6 +255,7 @@
 ============================================================ */
 const LS_CAT = "dhq.catalogue.v1";
 const LS_QUOTE = "dhq.quote.v1";
+const LS_QUOTES = "dhq.quotes.v1";
 const LS_CO = "dhq.company.v1";
 const $ = id => document.getElementById(id);
 const esc = s => (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -259,6 +264,7 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Mat
 
 let catalogue = [];      // hardware items you maintain
 let quote = null;        // current working quote
+let savedQuotes = [];    // your saved quote library
 let company = null;      // your company details (shown on print)
 
 /* ---------- persistence ---------- */
@@ -267,28 +273,49 @@ function loadAll(){
   if(!Array.isArray(catalogue)) catalogue = [];
   try{ quote = JSON.parse(localStorage.getItem(LS_QUOTE)); }catch{ quote = null; }
   if(!quote || typeof quote !== "object") quote = blankQuote();
-  if(!Array.isArray(quote.lines)) quote.lines = [];
-  if(typeof quote.vatRate !== "number") quote.vatRate = 20;
-  if(typeof quote.vatOn !== "boolean") quote.vatOn = true;
+  fixQuote(quote);
+  try{ savedQuotes = JSON.parse(localStorage.getItem(LS_QUOTES)) || []; }catch{ savedQuotes = []; }
+  if(!Array.isArray(savedQuotes)) savedQuotes = [];
   try{ company = JSON.parse(localStorage.getItem(LS_CO)); }catch{ company = null; }
   if(!company || typeof company !== "object") company = {name:"",address:"",contact:"",vatNo:""};
 }
+function fixQuote(q){
+  if(!Array.isArray(q.lines)) q.lines = [];
+  if(typeof q.vatRate !== "number") q.vatRate = 20;
+  if(typeof q.vatOn !== "boolean") q.vatOn = true;
+  if(typeof q.email !== "string") q.email = "";
+  if(!("savedId" in q)) q.savedId = null;
+  return q;
+}
 function blankQuote(){
-  return { customer:"", ref:"", project:"", date:new Date().toISOString().slice(0,10),
-           delivery:0, vatRate:(quote?quote.vatRate:20), vatOn:(quote?quote.vatOn:true), lines:[] };
+  return { customer:"", ref:"", email:"", project:"", date:new Date().toISOString().slice(0,10),
+           delivery:0, vatRate:(quote?quote.vatRate:20), vatOn:(quote?quote.vatOn:true),
+           lines:[], savedId:null };
 }
 function saveCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue)); }catch(e){ toast("⚠ Save failed"); } }
 function saveQuote(){ try{ localStorage.setItem(LS_QUOTE, JSON.stringify(quote)); }catch(e){ toast("⚠ Save failed"); } }
+function saveQuotes(){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(savedQuotes)); }catch(e){ toast("⚠ Save failed"); } }
 function saveCo(){ try{ localStorage.setItem(LS_CO, JSON.stringify(company)); }catch(e){ toast("⚠ Save failed"); } }
+
+/* ---------- totals (reusable) ---------- */
+function computeTotals(q){
+  const sub = q.lines.reduce((a,l)=>a+(Number(l.qty)||0)*(Number(l.unit)||0),0);
+  const deliv = Number(q.delivery)||0;
+  const net = sub + deliv;
+  const rate = q.vatOn ? (Number(q.vatRate)||0) : 0;
+  const vat = net * rate / 100;
+  return { sub, deliv, net, vat, grand: net + vat };
+}
 
 /* ---------- quote fields ---------- */
 function bindQuoteFields(){
   $("qCustomer").value = quote.customer||"";
   $("qRef").value = quote.ref||"";
+  $("qEmail").value = quote.email||"";
   $("qProject").value = quote.project||"";
   $("qDate").value = quote.date||"";
   $("qDelivery").value = quote.delivery||0;
-  const map = {qCustomer:"customer",qRef:"ref",qProject:"project",qDate:"date"};
+  const map = {qCustomer:"customer",qRef:"ref",qEmail:"email",qProject:"project",qDate:"date"};
   Object.entries(map).forEach(([el,key])=>{
     $(el).oninput = e=>{ quote[key]=e.target.value; saveQuote(); };
   });
@@ -335,17 +362,13 @@ function renderLines(){
   renderTotals();
 }
 function renderTotals(){
-  const sub = quote.lines.reduce((a,l)=>a+(Number(l.qty)||0)*(Number(l.unit)||0),0);
-  const deliv = Number(quote.delivery)||0;
-  const net = sub + deliv;
-  const rate = quote.vatOn ? (Number(quote.vatRate)||0) : 0;
-  const vat = net * rate / 100;
-  $("tSub").textContent = money(sub);
-  $("tDelivPrint").textContent = money(deliv);
-  $("tVat").textContent = money(vat);
+  const t = computeTotals(quote);
+  $("tSub").textContent = money(t.sub);
+  $("tDelivPrint").textContent = money(t.deliv);
+  $("tVat").textContent = money(t.vat);
   $("vatLine").classList.toggle("vatoff", !quote.vatOn);   // hidden on print when off
   $("qVatRate").disabled = !quote.vatOn;
-  $("tGrand").textContent = money(net + vat);
+  $("tGrand").textContent = money(t.grand);
 }
 function addLine(desc="",unit=0,qty=1){
   quote.lines.push({id:uid(), qty, desc, unit});
@@ -504,6 +527,106 @@ function bindOverlayClose(){
   ov.addEventListener("click",e=>{ if(e.target===ov && downSelf) closeModal(); });
 }
 
+/* ---------- saved quotes library ---------- */
+const quoteName = q => (q.ref || q.customer || q.project || "Untitled quote").trim() || "Untitled quote";
+
+function saveCurrentQuote(){
+  if(!quote.lines.length && !quote.customer && !quote.ref){ toast("Nothing to save yet"); return; }
+  quote.updated = Date.now();
+  const snapshot = JSON.parse(JSON.stringify(quote));
+  if(quote.savedId){
+    const i = savedQuotes.findIndex(x=>x.savedId===quote.savedId);
+    if(i>=0){ savedQuotes[i] = snapshot; saveQuotes(); toast(`Updated “${quoteName(snapshot)}”`); return; }
+  }
+  snapshot.savedId = uid(); snapshot.created = Date.now();
+  quote.savedId = snapshot.savedId;
+  savedQuotes.push(snapshot); saveQuotes(); saveQuote();
+  toast(`Saved “${quoteName(snapshot)}”`);
+}
+function openQuotesList(){
+  const rows = [...savedQuotes].sort((a,b)=>(b.updated||b.created||0)-(a.updated||a.created||0));
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal" style="max-width:560px">
+      <h2>📁 Saved quotes</h2>
+      <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
+        ${rows.length ? "Open a quote to load it into the editor. Stored on this device."
+                      : "No saved quotes yet — build a quote and hit 💾 Save."}</p>
+      <div class="catlist" id="quoteListBox">
+        ${rows.map(quoteRowHtml).join("")}
+      </div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="primary flex1" onclick="closeModal()">Done</button>
+      </div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  const box = $("quoteListBox");
+  box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openSavedQuote(b.dataset.open));
+  box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=()=>duplicateSaved(b.dataset.dup));
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteSaved(b.dataset.del));
+}
+function quoteRowHtml(q){
+  const t = computeTotals(q);
+  const when = q.date ? new Date(q.date).toLocaleDateString("en-GB") : "";
+  const sub = [q.customer, q.project, when].filter(Boolean).join("  ·  ") || "—";
+  const cur = q.savedId===quote.savedId ? ' <span class="stdtag">open</span>' : "";
+  return `<div class="catrow" data-id="${q.savedId}">
+    <div class="cdesc"><div class="n">${esc(quoteName(q))}${cur}</div><div class="s">${esc(sub)}</div></div>
+    <div class="cunit">${money(t.grand)}</div>
+    <button class="icon" data-open="${q.savedId}" title="Open">📂</button>
+    <button class="icon" data-dup="${q.savedId}" title="Duplicate">⧉</button>
+    <button class="icon" data-del="${q.savedId}" title="Delete">🗑</button>
+  </div>`;
+}
+function openSavedQuote(id){
+  const q = savedQuotes.find(x=>x.savedId===id); if(!q) return;
+  quote = fixQuote(JSON.parse(JSON.stringify(q)));
+  quote.savedId = id;
+  saveQuote(); bindQuoteFields(); renderLines(); closeModal();
+  toast(`Opened “${quoteName(quote)}”`);
+}
+function duplicateSaved(id){
+  const q = savedQuotes.find(x=>x.savedId===id); if(!q) return;
+  const copy = fixQuote(JSON.parse(JSON.stringify(q)));
+  copy.savedId = uid(); copy.created = copy.updated = Date.now();
+  copy.ref = (q.ref||"") + " (copy)";
+  savedQuotes.push(copy); saveQuotes(); openQuotesList();
+  toast("Duplicated");
+}
+function deleteSaved(id){
+  const q = savedQuotes.find(x=>x.savedId===id); if(!q) return;
+  if(!confirm(`Delete “${quoteName(q)}”? This can't be undone.`)) return;
+  savedQuotes = savedQuotes.filter(x=>x.savedId!==id);
+  if(quote.savedId===id){ quote.savedId=null; saveQuote(); }
+  saveQuotes(); openQuotesList(); toast("Deleted");
+}
+window.openQuotesList = openQuotesList;
+
+/* ---------- email (opens the user's mail app; they send it) ---------- */
+function emailQuote(){
+  const t = computeTotals(quote);
+  const co = company.name || "";
+  const lines = quote.lines.length
+    ? quote.lines.map(l=>`  ${l.qty} x ${l.desc||"(item)"} @ ${money(l.unit)} = ${money((Number(l.qty)||0)*(Number(l.unit)||0))}`).join("\n")
+    : "  (no items)";
+  const body =
+`${co ? co+"\n\n" : ""}Quotation${quote.ref ? " "+quote.ref : ""}${quote.date ? " — "+new Date(quote.date).toLocaleDateString("en-GB") : ""}
+${quote.customer ? "For: "+quote.customer+"\n" : ""}${quote.project ? "Project: "+quote.project+"\n" : ""}
+Items:
+${lines}
+
+Subtotal:  ${money(t.sub)}
+Delivery:  ${money(t.deliv)}${quote.vatOn ? `\nVAT (${quote.vatRate}%):  ${money(t.vat)}` : ""}
+Total:     ${money(t.grand)}
+${company.contact ? "\n"+company.contact : ""}`;
+  const subject = `Quotation${quote.ref ? " "+quote.ref : ""}${co ? " — "+co : ""}`;
+  const to = (quote.email||"").trim();
+  const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = href;
+  toast("Opening your email app…");
+}
+
 /* ---------- new quote ---------- */
 function newQuote(){
   if(quote.lines.length || quote.customer || quote.ref){
@@ -532,8 +655,8 @@ function doPrint(){
 
 /* ---------- backup / restore ---------- */
 function exportBackup(){
-  const payload = { app:"door-hardware-quote", version:2, exported:new Date().toISOString(),
-                    catalogue, quote, company };
+  const payload = { app:"door-hardware-quote", version:3, exported:new Date().toISOString(),
+                    catalogue, quote, savedQuotes, company };
   const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -548,12 +671,10 @@ async function handleImport(e){
   catch{ toast("Couldn't read that file"); return; }
   if(data.app !== "door-hardware-quote"){ toast("Not a Door Hardware Quote backup"); return; }
   if(Array.isArray(data.catalogue)) catalogue = data.catalogue;
-  if(data.quote && typeof data.quote==="object") quote = data.quote;
-  if(!Array.isArray(quote.lines)) quote.lines = [];
-  if(typeof quote.vatRate !== "number") quote.vatRate = 20;
-  if(typeof quote.vatOn !== "boolean") quote.vatOn = true;
+  if(data.quote && typeof data.quote==="object") quote = fixQuote(data.quote);
+  if(Array.isArray(data.savedQuotes)) savedQuotes = data.savedQuotes.map(fixQuote);
   if(data.company && typeof data.company==="object") company = data.company;
-  saveCat(); saveQuote(); saveCo(); bindQuoteFields(); fillCatPick(); renderLines();
+  saveCat(); saveQuote(); saveQuotes(); saveCo(); bindQuoteFields(); fillCatPick(); renderLines();
   toast("Backup restored");
 }
 
@@ -572,6 +693,9 @@ renderLines();
 $("stdBtn").onclick = addStandardSetup;
 $("catBtn").onclick = openCatalogue;
 $("coBtn").onclick = openCompany;
+$("quotesBtn").onclick = openQuotesList;
+$("saveBtn").onclick = saveCurrentQuote;
+$("emailBtn").onclick = emailQuote;
 $("printBtn").onclick = doPrint;
 $("exportBtn").onclick = exportBackup;
 $("importBtn").onclick = ()=>{ $("importFile").value=""; $("importFile").click(); };
@@ -581,7 +705,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v2 · 2026-09-10 · company header + VAT";
+const VERSION = "v3 · 2026-09-10 · saved quotes + email";
 $("ver").textContent = "Build " + VERSION;
 
 if('serviceWorker' in navigator){
