@@ -109,6 +109,9 @@
   .link.danger:hover{color:var(--danger)}
   .cbrow{display:flex;align-items:center;gap:8px}
   .cbrow input{width:auto}
+  .pwrow{display:flex;gap:8px;align-items:stretch}
+  .tlink{color:var(--accent);text-decoration:none;font-weight:600}
+  .tlink:hover{text-decoration:underline}
   .err{color:var(--danger);font-size:13px;min-height:18px}
 
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);
@@ -166,6 +169,7 @@
     <button class="btn" id="stdBtn" title="Add all standard-setup items to this quote">⭐ Standard setup</button>
     <button class="btn" id="catBtn" title="Manage your hardware catalogue">🧰 Catalogue</button>
     <button class="btn" id="coBtn" title="Your company details (shown on the printed quote)">🏢 Company</button>
+    <button class="btn" id="syncBtn" title="Sync your catalogue & quotes across devices">☁ Sync</button>
     <button class="btn" id="quotesBtn" title="Open a saved quote">📁 Quotes</button>
     <button class="btn accent" id="saveBtn" title="Save this quote to your library">💾 Save</button>
     <button class="btn" id="printBtn" title="Print or save as PDF">🖨 Print / PDF</button>
@@ -292,10 +296,14 @@ function blankQuote(){
            delivery:0, vatRate:(quote?quote.vatRate:20), vatOn:(quote?quote.vatOn:true),
            lines:[], savedId:null };
 }
-function saveCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue)); }catch(e){ toast("⚠ Save failed"); } }
+function _putCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue)); }catch(e){ toast("⚠ Save failed"); } }
+function _putQuotes(){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(savedQuotes)); }catch(e){ toast("⚠ Save failed"); } }
+function _putCo(){ try{ localStorage.setItem(LS_CO, JSON.stringify(company)); }catch(e){ toast("⚠ Save failed"); } }
+// public savers also queue a cloud push; background merges use the _put* forms directly
+function saveCat(){ _putCat(); schedulePush(); }
 function saveQuote(){ try{ localStorage.setItem(LS_QUOTE, JSON.stringify(quote)); }catch(e){ toast("⚠ Save failed"); } }
-function saveQuotes(){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(savedQuotes)); }catch(e){ toast("⚠ Save failed"); } }
-function saveCo(){ try{ localStorage.setItem(LS_CO, JSON.stringify(company)); }catch(e){ toast("⚠ Save failed"); } }
+function saveQuotes(){ _putQuotes(); schedulePush(); }
+function saveCo(){ _putCo(); schedulePush(); }
 
 /* ---------- totals (reusable) ---------- */
 function computeTotals(q){
@@ -431,7 +439,7 @@ function openCatalogue(){
     const desc = $("ncDesc").value.trim();
     const unit = parseFloat($("ncUnit").value)||0;
     if(!desc){ $("catErr").textContent = "Enter a description."; return; }
-    catalogue.push({id:uid(), desc, unit, standard:$("ncStd").checked});
+    catalogue.push({id:uid(), desc, unit, standard:$("ncStd").checked, updated:Date.now()});
     saveCat(); fillCatPick(); openCatalogue();   // re-render list
     toast("Item added");
   };
@@ -450,7 +458,7 @@ function wireCatList(){
   const box = $("catListBox"); if(!box) return;
   box.querySelectorAll("[data-star]").forEach(b=>b.onclick=()=>{
     const c=catalogue.find(x=>x.id===b.dataset.star); if(!c) return;
-    c.standard=!c.standard; saveCat(); fillCatPick(); openCatalogue();
+    c.standard=!c.standard; c.updated=Date.now(); saveCat(); fillCatPick(); openCatalogue();
   });
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     catalogue = catalogue.filter(x=>x.id!==b.dataset.del); saveCat(); fillCatPick(); openCatalogue();
@@ -481,6 +489,7 @@ function editCatItem(id){
     c.desc = $("ecDesc").value.trim() || c.desc;
     c.unit = parseFloat($("ecUnit").value)||0;
     c.standard = $("ecStd").checked;
+    c.updated = Date.now();
     saveCat(); fillCatPick(); openCatalogue(); toast("Saved");
   };
   $("ecDel").onclick = ()=>{
@@ -510,7 +519,7 @@ function openCompany(){
   bindOverlayClose();
   $("coSave").onclick = ()=>{
     company = { name:$("coName").value.trim(), address:$("coAddr").value.trim(),
-                contact:$("coContact").value.trim(), vatNo:$("coVat").value.trim() };
+                contact:$("coContact").value.trim(), vatNo:$("coVat").value.trim(), updated:Date.now() };
     saveCo(); closeModal(); toast("Company details saved");
   };
   $("coName").focus();
@@ -685,6 +694,303 @@ function toast(msg){
   clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); t.textContent=""; },2400);
 }
 
+/* ============================================================
+   GitHub Gist sync + encrypted cloud copy  (adapted from IdeaPad)
+   Syncs the durable data: catalogue, saved quotes, company.
+   The working quote stays local. Cloud copy is encrypted with a
+   passphrase (PBKDF2 200k -> AES-GCM 256); on-device data is plain.
+============================================================ */
+const GH = {
+  get token(){ try{return localStorage.getItem("dhq.gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("dhq.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("dhq.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("dhq.gh.user")||""}catch(e){return ""} },
+  get pass(){ try{return localStorage.getItem("dhq.gh.pass")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("dhq.gh.token",v):localStorage.removeItem("dhq.gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("dhq.gh.gist",v):localStorage.removeItem("dhq.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("dhq.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("dhq.gh.user",v):localStorage.removeItem("dhq.gh.user")}catch(e){} },
+  set pass(v){ try{v?localStorage.setItem("dhq.gh.pass",v):localStorage.removeItem("dhq.gh.pass")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+const GIST_FILE = "doorquote.json";
+const GIST_DESC = "Door Hardware Quote sync";
+let SYNC_PASS = GH.pass;
+
+/* ---- crypto ---- */
+const _enc=new TextEncoder(), _dec=new TextDecoder();
+const _b64={ enc:buf=>btoa(String.fromCharCode(...new Uint8Array(buf))), dec:str=>Uint8Array.from(atob(str),c=>c.charCodeAt(0)) };
+async function _deriveKey(pass, salt){
+  const base=await crypto.subtle.importKey("raw", _enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:200000, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+function buildSyncDoc(){ return { app:"door-hardware-quote", updatedAt:Date.now(), catalogue, savedQuotes, company }; }
+async function encodeForGist(){
+  const plain = JSON.stringify(buildSyncDoc());
+  if(!SYNC_PASS) return plain;
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await _deriveKey(SYNC_PASS, salt);
+  const cipher=await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, _enc.encode(plain));
+  return JSON.stringify({ __enc:1, alg:"AES-GCM-PBKDF2-200k", salt:_b64.enc(salt), iv:_b64.enc(iv), data:_b64.enc(cipher), updatedAt:Date.now() });
+}
+async function decodeEnvelope(env){
+  const key=await _deriveKey(SYNC_PASS, _b64.dec(env.salt));
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM", iv:_b64.dec(env.iv)}, key, _b64.dec(env.data));
+  return JSON.parse(_dec.decode(plain));
+}
+
+/* ---- status text (only shown while the Sync modal is open) ---- */
+function markSync(msg, err){ const m=$("syncMsg"); if(m){ m.textContent = msg||""; m.style.color = err?"var(--danger)":"var(--muted)"; } }
+function setSyncTime(){ try{ localStorage.setItem("dhq.gh.lastSync", String(Date.now())); }catch(e){} updateLastSync(); }
+function updateLastSync(){
+  let t=0; try{ t=Number(localStorage.getItem("dhq.gh.lastSync"))||0; }catch(e){}
+  const rel = !t ? "never" : (()=>{ const s=Math.round((Date.now()-t)/1000);
+    return s<10?"just now" : s<60?s+"s ago" : s<3600?Math.round(s/60)+" min ago" : s<86400?Math.round(s/3600)+"h ago" : new Date(t).toLocaleString(); })();
+  const el=$("syncLast"); if(el) el.textContent = rel;
+  const b=$("syncBtn"); if(b) b.textContent = GH.connected ? (SYNC_PASS?"☁ Sync 🔒":"☁ Sync ✓") : "☁ Sync";
+}
+setInterval(updateLastSync, 30000);
+
+/* ---- rate-limit backoff ---- */
+let syncPausedUntil = 0, pendingPush = false;
+function syncPaused(){ return Date.now() < syncPausedUntil; }
+function retryAfterSecs(res){
+  const ra = res.headers.get("Retry-After");
+  if(ra){ const n=parseInt(ra,10); if(n>0) return Math.min(3600, Math.max(30,n)); }
+  const reset = res.headers.get("X-RateLimit-Reset");
+  if(reset){ const ms = parseInt(reset,10)*1000 - Date.now(); if(ms>0) return Math.min(3600, Math.ceil(ms/1000)); }
+  return 90;
+}
+function pauseSync(secs){ syncPausedUntil = Date.now() + secs*1000; markSync("Rate-limited — paused "+secs+"s", true); }
+
+async function ghApi(method, path, body){
+  let res;
+  try{
+    res = await fetch("https://api.github.com"+path, {
+      method,
+      headers:{ "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" },
+      body: body ? JSON.stringify(body) : undefined
+    });
+  }catch(e){ throw new Error("Can't reach GitHub — if you opened the file directly (file://), serve it over http/https instead."); }
+  if(!res.ok){
+    let detail=""; try{ detail=(await res.json()).message||""; }catch(e){}
+    if(res.status===403 || res.status===429) pauseSync(retryAfterSecs(res));
+    if(res.status===401) throw new Error("Invalid or expired token (401). Create a new classic token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited."+(detail?" "+detail:""));
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(detail?" — "+detail:""));
+  }
+  return res.json();
+}
+
+let pushTimer=null;
+function schedulePush(){
+  if(!GH.connected || !GH.auto) return;
+  if(syncPaused()){ pendingPush=true; return; }
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(()=>{ syncPush().then(()=>{ pendingPush=false; }).catch(e=>{ pendingPush=true; if(!syncPaused()) markSync("Push failed: "+e.message, true); }); }, 1500);
+}
+async function syncPush(){
+  if(!GH.connected) return;
+  markSync("Saving…");
+  const content=await encodeForGist();
+  await ghApi("PATCH","/gists/"+GH.gist, {files:{[GIST_FILE]:{content}}});
+  setSyncTime(); markSync(SYNC_PASS?"Synced 🔒":"Synced");
+}
+
+/* ---- merge remote into local (union by id; newer 'updated' wins) ---- */
+function _sig(){ return JSON.stringify([catalogue, savedQuotes, company]); }
+function mergeSync(remote){
+  const before=_sig();
+  const cat={}; catalogue.forEach(c=>{ if(c&&c.id) cat[c.id]=c; });
+  (remote.catalogue||[]).forEach(rc=>{ if(!rc||!rc.id) return; const l=cat[rc.id]; if(!l || (rc.updated||0)>(l.updated||0)) cat[rc.id]=rc; });
+  catalogue = Object.values(cat);
+  const sq={}; savedQuotes.forEach(q=>{ if(q&&q.savedId) sq[q.savedId]=q; });
+  (remote.savedQuotes||[]).forEach(rq=>{ if(!rq||!rq.savedId) return; const l=sq[rq.savedId]; if(!l || (rq.updated||0)>(l.updated||0)) sq[rq.savedId]=fixQuote(rq); });
+  savedQuotes = Object.values(sq);
+  if(remote.company && (remote.company.updated||0) > (company.updated||0)) company = remote.company;
+  _putCat(); _putQuotes(); _putCo();
+  return _sig() !== before;
+}
+
+let gistEtag=null, pulling=false;
+async function gistGet(){
+  const headers = { "Authorization":"Bearer "+GH.token, "Accept":"application/vnd.github+json" };
+  if(gistEtag) headers["If-None-Match"] = gistEtag;
+  let res;
+  try{ res = await fetch("https://api.github.com/gists/"+GH.gist, {headers, cache:"no-store"}); }
+  catch(e){ throw new Error("Can't reach GitHub (offline?)."); }
+  if(res.status===304) return {notModified:true};
+  if(!res.ok){
+    let detail=""; try{ detail=(await res.json()).message||""; }catch(e){}
+    if(res.status===403 || res.status===429) pauseSync(retryAfterSecs(res));
+    if(res.status===401) throw new Error("Invalid or expired token (401).");
+    if(res.status===404) throw new Error("Gist not found (404).");
+    throw new Error("GitHub "+res.status+(detail?" — "+detail:""));
+  }
+  gistEtag = res.headers.get("ETag") || gistEtag;
+  return { data: await res.json() };
+}
+function refreshAfterSync(){ fillCatPick(); renderLines(); }
+async function syncPull(force, quiet){
+  if(!GH.connected) return;
+  if(pulling && quiet) return;
+  pulling = true;
+  if(!quiet) markSync("Checking…");
+  try{
+    const r = await gistGet();
+    if(r.notModified){ setSyncTime(); if(!quiet) markSync("Up to date"); return "uptodate"; }
+    const f = r.data.files && r.data.files[GIST_FILE];
+    if(!f || !f.content){ if(!quiet) markSync("Connected — no data in this gist yet"); return "empty"; }
+    let remote, wasEnc=false;
+    try{ remote = JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content); }
+    catch(e){ if(!quiet) markSync("Sync data unreadable", true); return "error"; }
+    if(remote && remote.__enc===1){
+      wasEnc=true;
+      if(!SYNC_PASS){ if(!quiet) markSync("This sync is encrypted — set your passphrase below to unlock it.", true); return "locked"; }
+      try{ remote = await decodeEnvelope(remote); }
+      catch(e){ if(!quiet) markSync("Wrong passphrase — your local data was kept.", true); return "badpass"; }
+    }
+    const changed = mergeSync(remote);
+    if(!wasEnc && SYNC_PASS) schedulePush();     // plaintext gist -> re-encrypt on next push
+    if(force || changed){ refreshAfterSync(); setSyncTime(); if(changed && !quiet) markSync("Pulled latest changes"); }
+    else if(!quiet){ setSyncTime(); markSync("Up to date"); }
+    return changed ? "pulled" : "uptodate";
+  } finally { pulling=false; }
+}
+async function findQuoteGist(){
+  const list = await ghApi("GET","/gists?per_page=100");
+  const mine = (list||[]).filter(g => (g.files && g.files[GIST_FILE]) || g.description===GIST_DESC);
+  if(!mine.length) return null;
+  mine.sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
+  return mine[0].id;
+}
+async function fetchUser(){
+  try{ const u = await ghApi("GET","/user"); GH.user = u.login; const el=$("syncUser"); if(el) el.textContent = u.login; }catch(e){}
+}
+async function doSyncNow(){
+  try{ await syncPull(false); await syncPush(); updateLastSync(); toast("Synced"); }
+  catch(e){ markSync("Sync failed: "+e.message, true); toast("Sync failed"); }
+}
+function autoPull(){
+  if(!GH.connected || !GH.auto || document.hidden || syncPaused()) return;
+  syncPull(false, true).then(r=>{ if(r) updateLastSync(); if(pendingPush) schedulePush(); }).catch(()=>{});
+}
+setInterval(autoPull, 30000);
+let lastFgPull=0;
+function foregroundPull(){ const t=Date.now(); if(t-lastFgPull<8000) return; lastFgPull=t; autoPull(); }
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) foregroundPull(); });
+window.addEventListener("focus", foregroundPull);
+
+/* ---- sync modal ---- */
+function openSync(){
+  const conn = GH.connected;
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal" style="max-width:520px">
+      <h2>☁ Sync across devices</h2>
+      <div id="syncDisconnected" ${conn?'style="display:none"':''}>
+        <p style="color:var(--muted);font-size:13px;margin:-8px 0 14px;line-height:1.5">
+          Keep your catalogue and saved quotes on every device via a <b>private</b> GitHub gist.
+          Create a token with only the <b>gist</b> scope and paste it on each device — it finds your
+          shared sync automatically. Your token is stored only in this browser.</p>
+        <div class="field"><label>GitHub token <span style="color:#6570a0;font-weight:400">— classic, gist scope</span></label>
+          <div class="pwrow"><input id="ghToken" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" style="flex:1">
+          <button class="icon" type="button" id="ghShowToken" title="Show/hide">👁</button></div></div>
+        <div class="field"><label>Gist ID <span style="color:#6570a0;font-weight:400">— optional, leave blank to auto-find/create</span></label>
+          <input id="ghGist" placeholder="(auto)"></div>
+        <p style="font-size:12px;margin:0 0 14px"><a class="tlink" href="https://github.com/settings/tokens/new?scopes=gist&description=Door%20Quote%20sync" target="_blank" rel="noopener">Create a token →</a> — use a <b>classic</b> token, tick only <b>gist</b>. (Fine-grained tokens can't access gists.)</p>
+        <div class="modal-actions"><button class="link" onclick="closeModal()">Cancel</button>
+          <button class="primary flex1" id="ghConnect">Connect</button></div>
+      </div>
+      <div id="syncConnected" ${conn?'':'style="display:none"'}>
+        <div class="catrow" style="margin-bottom:12px">
+          <div class="cdesc"><div class="n">Connected as <b id="syncUser">${esc(GH.user||"…")}</b></div>
+            <div class="s">Gist <span id="syncGistId">${esc(GH.gist)}</span> · synced <span id="syncLast">—</span></div></div>
+          <button class="icon" id="ghCopyGist" title="Copy Gist ID">📋</button>
+        </div>
+        <label class="cbrow" style="margin-bottom:10px"><input type="checkbox" id="ghAuto"> <span style="color:var(--text);font-size:14px">Auto-sync in the background</span></label>
+        <div style="border-top:1px solid var(--line);margin:12px 0"></div>
+        <div style="font-size:13px;margin-bottom:8px">Cloud encryption: <b id="encStatus"></b></div>
+        <p style="color:var(--muted);font-size:12px;margin:0 0 10px;line-height:1.5">
+          Encrypts the copy stored in the gist so it can't be read without this passphrase.
+          Use the <b>same</b> passphrase on every device. <b>No recovery</b> if you forget it — keep a Backup.</p>
+        <div class="field"><div class="pwrow">
+          <input id="ghPass" type="password" placeholder="Sync passphrase" autocomplete="off" style="flex:1">
+          <button class="icon" type="button" id="ghPassShow" title="Show/hide">👁</button></div></div>
+        <div class="modal-actions" style="margin-bottom:6px">
+          <button class="btn" id="ghPassClear">Remove encryption</button>
+          <button class="btn accent flex1" id="ghPassSet">Encrypt cloud copy</button>
+        </div>
+        <div style="border-top:1px solid var(--line);margin:12px 0"></div>
+        <div class="modal-actions">
+          <button class="link danger" id="ghDisconnect">Disconnect</button>
+          <button class="link" onclick="closeModal()">Close</button>
+          <button class="primary flex1" id="ghSyncNow">Sync now</button>
+        </div>
+      </div>
+      <div class="err" id="syncMsg" style="min-height:18px;margin-top:12px"></div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  if(conn){ $("ghAuto").checked = GH.auto; renderEnc(); updateLastSync(); if(!GH.user) fetchUser(); wireSyncConnected(); }
+  else wireSyncDisconnected();
+}
+window.openSync = openSync;
+function renderEnc(){
+  const s=$("encStatus"); if(s){ s.textContent = SYNC_PASS?"On 🔒":"Off — cloud copy is plain text"; s.style.color = SYNC_PASS?"var(--accent2)":"var(--danger)"; }
+  const setb=$("ghPassSet"); if(setb) setb.textContent = SYNC_PASS?"Update passphrase":"Encrypt cloud copy";
+  const clr=$("ghPassClear"); if(clr) clr.style.display = SYNC_PASS?"":"none";
+}
+function wireSyncDisconnected(){
+  $("ghShowToken").onclick = ()=>{ const i=$("ghToken"); i.type=i.type==="password"?"text":"password"; };
+  $("ghConnect").onclick = async ()=>{
+    const t=$("ghToken").value.trim(); let gid=$("ghGist").value.trim();
+    if(!t){ markSync("Paste your GitHub token first.", true); return; }
+    GH.token=t; markSync("Connecting…");
+    try{
+      if(!gid) gid = await findQuoteGist();
+      if(gid){
+        GH.gist=gid;
+        const r = await syncPull(true);
+        if(r==="empty"){ await syncPush(); markSync(SYNC_PASS?"Connected — seeded this gist (encrypted 🔒).":"Connected — seeded this gist."); }
+        else if(r==="locked"){ markSync("Connected — this sync is encrypted. Set your passphrase below.", true); }
+        else if(r==="badpass"){ markSync("Connected, but that passphrase doesn't match. Update it below.", true); }
+        else { await syncPush(); markSync("Connected — merged with your existing sync."); }
+      } else {
+        const content = await encodeForGist();
+        const g = await ghApi("POST","/gists",{description:GIST_DESC, public:false, files:{[GIST_FILE]:{content}}});
+        GH.gist=g.id; setSyncTime(); markSync(SYNC_PASS?"Connected — new encrypted sync created 🔒.":"Connected — new sync created.");
+      }
+      fetchUser(); updateLastSync(); openSync();
+    }catch(e){ GH.token=""; GH.gist=""; GH.user=""; markSync("Couldn't connect: "+e.message, true); }
+  };
+}
+function wireSyncConnected(){
+  $("ghSyncNow").onclick = doSyncNow;
+  $("ghAuto").onchange = ()=>{ GH.auto = $("ghAuto").checked; if(GH.auto) schedulePush(); };
+  $("ghCopyGist").onclick = ()=>{ (navigator.clipboard?navigator.clipboard.writeText(GH.gist):Promise.reject()).then(()=>toast("Gist ID copied"), ()=>toast(GH.gist)); };
+  $("ghPassShow").onclick = ()=>{ const i=$("ghPass"); i.type=i.type==="password"?"text":"password"; };
+  $("ghDisconnect").onclick = ()=>{ if(confirm("Disconnect sync on this device? Your data stays here; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; toast("Disconnected"); openSync(); } };
+  $("ghPassSet").onclick = async ()=>{
+    const p=$("ghPass").value;
+    if(!p){ markSync("Enter a passphrase first.", true); return; }
+    if(p.length<6){ markSync("Use at least 6 characters.", true); return; }
+    SYNC_PASS=p; GH.pass=p; $("ghPass").value=""; renderEnc();
+    markSync("Applying passphrase…");
+    try{ const r=await syncPull(true);
+      if(r==="badpass"){ markSync("That passphrase doesn't match your existing encrypted sync — local data kept.", true); return; }
+      await syncPush(); markSync("Cloud copy is now encrypted 🔒"); toast("Cloud copy encrypted"); updateLastSync();
+    }catch(e){ markSync("Couldn't update the gist: "+e.message, true); }
+  };
+  $("ghPassClear").onclick = async ()=>{
+    if(!confirm("Remove cloud encryption? On the next sync your data is written to the gist as PLAIN TEXT.")) return;
+    SYNC_PASS=""; GH.pass=""; renderEnc();
+    try{ await syncPush(); markSync("Cloud encryption removed."); updateLastSync(); }
+    catch(e){ markSync("Couldn't update the gist: "+e.message, true); }
+  };
+}
+
 /* ---------- wire up ---------- */
 loadAll();
 bindQuoteFields();
@@ -696,6 +1002,9 @@ $("coBtn").onclick = openCompany;
 $("quotesBtn").onclick = openQuotesList;
 $("saveBtn").onclick = saveCurrentQuote;
 $("emailBtn").onclick = emailQuote;
+$("syncBtn").onclick = openSync;
+updateLastSync();
+if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 $("printBtn").onclick = doPrint;
 $("exportBtn").onclick = exportBackup;
 $("importBtn").onclick = ()=>{ $("importFile").value=""; $("importFile").click(); };
@@ -705,7 +1014,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v3 · 2026-09-10 · saved quotes + email";
+const VERSION = "v4 · 2026-09-10 · gist sync + encryption";
 $("ver").textContent = "Build " + VERSION;
 
 if('serviceWorker' in navigator){
