@@ -89,23 +89,20 @@
   .editbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:0 16px 10px; border-bottom:1px solid var(--line)}
   .tags-in{flex:1 1 150px; min-width:0; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 10px; outline:none; font-size:calc(13px * var(--tscale))}
   .tags-in:focus{border-color:var(--accent)}
+  /* Body is now an always-on checklist editor: one tick box + text field per line. */
   .body{
-    flex:1; width:100%; background:transparent; border:none; outline:none; resize:none;
-    padding:16px 18px; font-size:calc(16px * var(--tscale)); line-height:1.7; min-height:0;
+    flex:1; width:100%; overflow-y:auto; min-height:0;
+    padding:12px 16px 24px; font-size:calc(16px * var(--tscale)); line-height:1.7;
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
-  .preview{flex:1; overflow-y:auto; padding:8px 18px 24px; min-height:0; line-height:1.6; font-size:calc(15px * var(--tscale))}
-  .preview h1,.preview h2,.preview h3{margin:.7em 0 .3em; line-height:1.25}
-  .preview h1{font-size:1.5em} .preview h2{font-size:1.3em} .preview h3{font-size:1.12em}
-  .preview p{margin:.5em 0}
-  .preview ul,.preview ol{padding-left:22px; margin:.4em 0}
-  .preview pre{background:var(--panel2); padding:10px 12px; border-radius:8px; overflow-x:auto}
-  .preview code{background:var(--panel2); padding:1px 5px; border-radius:4px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.9em}
-  .preview pre code{background:none; padding:0}
-  .preview blockquote{border-left:3px solid var(--line); margin:.5em 0; padding:.2em 0 .2em 12px; color:var(--muted)}
-  .preview a{color:var(--accent)}
-  .preview hr{border:none; border-top:1px solid var(--line); margin:1em 0}
-  .preview img{max-width:100%}
+  .cl-row{display:flex; align-items:flex-start; gap:10px}
+  .cl-row .cl-box{margin:.34em 0 0; width:19px; height:19px; flex:0 0 auto; accent-color:var(--accent); cursor:pointer}
+  .cl-row.empty .cl-box{visibility:hidden}   /* blank lines keep spacing, no stray box */
+  .cl-row .cl-line{
+    flex:1; min-width:0; background:transparent; border:none; outline:none; resize:none;
+    color:inherit; font:inherit; line-height:inherit; padding:0; margin:0; overflow:hidden;
+  }
+  .cl-row.checked .cl-line{text-decoration:line-through; color:var(--muted)}
   .placeholderMain{
     flex:1; display:flex; align-items:center; justify-content:center; color:var(--muted); flex-direction:column; gap:10px; text-align:center; padding:24px;
   }
@@ -158,7 +155,6 @@
     .tag{font-size:12px}
     .titlein{font-size:calc(23px * var(--tscale))}
     .body{font-size:calc(17px * var(--tscale)); line-height:1.75}
-    .preview{font-size:calc(17px * var(--tscale)); line-height:1.7}
     .tags-in{font-size:calc(16px * var(--tscale))}
     .iconbtn{font-size:15px; padding:8px 12px}
     .in{font-size:16px}
@@ -209,11 +205,9 @@
       <button class="iconbtn" id="doneBtn" title="Mark this idea done">✓ Done</button>
       <button class="iconbtn" id="pinBtn" title="Pin to top">📌 Pin</button>
       <button class="iconbtn" id="copyBtn" title="Copy for Claude">⧉ Copy</button>
-      <button class="iconbtn" id="previewBtn" title="Toggle Markdown preview">👁 Preview</button>
       <input class="tags-in" id="tags" placeholder="tags, comma, separated" autocomplete="off" spellcheck="false">
     </div>
-    <textarea class="body" id="body" placeholder="Start typing your idea… (Markdown supported)" spellcheck="true"></textarea>
-    <div class="preview" id="preview" style="display:none"></div>
+    <div class="body" id="body"></div>
     <div class="placeholderMain" id="mainEmpty">
       <div style="font-size:34px">💡</div>
       <div>Select an idea, or create a new one.</div>
@@ -328,6 +322,26 @@ function toastAction(m, label, cb, ms){
 }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const now = () => Date.now();
+
+/* Checklist ticks live in note.checks, keyed by line text. A line's key is its
+   trimmed text. Legacy notes stored ticks inline as a leading "[x] " marker;
+   migrateChecks() lifts those into note.checks so the body text stays clean. */
+const CHECK_RE = /^(\s*(?:[-*+]\s+)?)\[[xX]\]\s?/;    // legacy inline tick marker
+const stripMarker = line => line.replace(CHECK_RE, "$1");
+const lineKey = line => line.trim();
+function migrateChecks(n){
+  const checks = new Set(Array.isArray(n.checks) ? n.checks : []);
+  const lines = (n.body||"").replace(/\r\n?/g,"\n").split("\n");
+  let changed = false;
+  const cleaned = lines.map(line=>{
+    if(CHECK_RE.test(line)){ const c = stripMarker(line); checks.add(lineKey(c)); changed = true; return c; }
+    return line;
+  });
+  if(changed) n.body = cleaned.join("\n");
+  const present = new Set(cleaned.map(lineKey).filter(Boolean));   // drop ticks for gone lines
+  n.checks = [...checks].filter(k => present.has(k));
+  return n;
+}
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ const _t=localStorage.getItem("ideapad.theme"); if(_t && _t!=="system") document.documentElement.setAttribute("data-theme", _t); }catch(e){}
 
@@ -336,12 +350,14 @@ const LS_KEY = "ideapad.data";
 let state = load();
 let currentId = null;
 let filterMode = "all";       // all | active | done
-let previewMode = false;      // markdown preview vs edit
+let editorNoteId = null;      // which note the body rows currently reflect
 
 function normalizeNote(n){
   if(n.done===undefined) n.done=false;
   if(n.pinned===undefined) n.pinned=false;
   if(!Array.isArray(n.tags)) n.tags=[];
+  if(!Array.isArray(n.checks)) n.checks=[];
+  migrateChecks(n);            // lift any legacy inline [x] markers into n.checks
   return n;
 }
 function normalizeAll(){ (state.notes||[]).forEach(normalizeNote); ensureOrderOn(state); }
@@ -449,38 +465,30 @@ function renderEditor(){
   $("#editbar").style.display = hasNote ? "" : "none";
   $("#saved").style.display = hasNote ? "" : "none";
   $("#del").style.display = hasNote ? "" : "none";
-  if(!hasNote){ $("#body").style.display="none"; $("#preview").style.display="none"; return; }
+  $("#body").style.display = hasNote ? "" : "none";
+  if(!hasNote){ $("#body").innerHTML=""; editorNoteId=null; return; }
   // Refresh a field unless the user is actively editing it (focused + unsaved).
   // Only write when the value actually differs, so background pulls don't jump the caret.
   const setIf = (el, val)=>{ if(!(document.activeElement===el && dirty) && el.value!==val) el.value = val; };
   setIf($("#title"), n.title||"");
-  setIf($("#body"), n.body||"");
   setIf($("#tags"), (n.tags||[]).join(", "));
   $("#saved").textContent = "Saved · " + relTime(n.updatedAt);
   $("#doneBtn").classList.toggle("on", !!n.done);
-  $("#doneBtn").textContent = n.done ? "✓ Done" : "✓ Done";
   $("#pinBtn").classList.toggle("on", !!n.pinned);
   $("#pinBtn").textContent = n.pinned ? "📌 Pinned" : "📌 Pin";
-  applyPreviewMode(n);
-}
-function applyPreviewMode(n){
-  n = n || noteById(currentId); if(!n) return;
-  $("#previewBtn").classList.toggle("on", previewMode);
-  $("#previewBtn").textContent = previewMode ? "✎ Edit" : "👁 Preview";
-  if(previewMode){
-    $("#preview").innerHTML = mdToHtml(n.body||"") || '<p class="muted">Nothing to preview yet.</p>';
-    $("#preview").style.display=""; $("#body").style.display="none";
-  } else {
-    $("#preview").style.display="none"; $("#body").style.display="";
-  }
+  // Build the body rows on note switch; also rebuild if a background sync changed
+  // the body while the user isn't typing — but never yank the caret mid-edit.
+  const editorFocused = $("#body").contains(document.activeElement);
+  if(editorNoteId !== n.id) buildEditor(n);
+  else if(!dirty && !editorFocused && editorBody() !== (n.body||"")) buildEditor(n);
 }
 
 function openNote(id){
   flushPending();
-  currentId = id; previewMode = false;
+  currentId = id;
   renderEditor(); renderList();
   $("#app").classList.add("editing");
-  const b=$("#body"); if(!( "ontouchstart" in window)) { setTimeout(()=>b.focus(),0); }
+  if(!("ontouchstart" in window)){ const f=$("#body").querySelector(".cl-line"); if(f) setTimeout(()=>f.focus(),0); }
 }
 function newNote(){
   const minOrder = state.notes.reduce((m,x)=> x.order!=null ? Math.min(m, x.order) : m, 0);
@@ -544,55 +552,90 @@ function fallbackCopy(text, cb){
   ta.remove();
 }
 
-/* ---------- Tiny Markdown renderer ---------- */
-function mdToHtml(src){
-  const esc = s => s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-  function inline(t){
-    t = esc(t);
-    t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
-    t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    t = t.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
-    t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-    return t;
+/* ---------- Body checklist editor ----------
+   The body is an always-on list: every line is a tick box + an editable text
+   field. Ticks are kept in note.checks (keyed by line text), not inline in the
+   body, so exports and the sidebar stay clean. Enter splits a line, Backspace
+   at the start merges with the line above. */
+function bodyLines(n){ return (n.body||"").replace(/\r\n?/g,"\n").split("\n"); }
+function autosize(ta){ ta.style.height="auto"; ta.style.height = ta.scrollHeight + "px"; }
+function editorBody(){ return [...$("#body").querySelectorAll(".cl-line")].map(t=>t.value).join("\n"); }
+function uncheckRow(row){
+  if(row.classList.contains("checked")){ row.classList.remove("checked"); row.querySelector(".cl-box").checked=false; }
+}
+function makeRow(text, checked){
+  const row = document.createElement("div");
+  row.className = "cl-row" + (checked?" checked":"") + (text.trim()?"":" empty");
+  const cb = document.createElement("input");
+  cb.type="checkbox"; cb.className="cl-box"; cb.checked=checked; cb.tabIndex=-1;
+  cb.addEventListener("change", ()=> onToggleRow(row, cb));
+  const ta = document.createElement("textarea");
+  ta.className="cl-line"; ta.rows=1; ta.value=text; ta.spellcheck=true;
+  ta.addEventListener("input", ()=>{
+    uncheckRow(row);                                  // editing an item clears its tick
+    row.classList.toggle("empty", !ta.value.trim());
+    autosize(ta); onBodyEdit();
+  });
+  ta.addEventListener("keydown", (e)=> onRowKey(e, row, ta));
+  row.appendChild(cb); row.appendChild(ta);
+  return row;
+}
+function buildEditor(n){
+  const wrap = $("#body"); wrap.innerHTML="";
+  const checks = new Set(n.checks||[]);
+  const lines = bodyLines(n);
+  const arr = lines.length ? lines : [""];
+  arr.forEach(line=>{
+    const checked = !!line.trim() && checks.has(lineKey(line));
+    wrap.appendChild(makeRow(line, checked));
+  });
+  if(!(n.body||"").trim()){                            // gentle hint on a brand-new note
+    wrap.querySelector(".cl-line").placeholder = "Start a list — each line gets its own tick box";
   }
-  const lines = (src||"").replace(/\r\n?/g,"\n").split("\n");
-  let html="", i=0, inList=false, listType="";
-  const closeList = ()=>{ if(inList){ html += listType==="ol"?"</ol>":"</ul>"; inList=false; listType=""; } };
-  while(i<lines.length){
-    const line = lines[i];
-    if(/^```/.test(line)){
-      closeList(); i++;
-      let code="";
-      while(i<lines.length && !/^```/.test(lines[i])){ code += lines[i]+"\n"; i++; }
-      i++;
-      html += "<pre><code>"+esc(code.replace(/\n$/,""))+"</code></pre>";
-      continue;
-    }
-    if(/^\s*#{1,6}\s+/.test(line)){
-      closeList();
-      const lvl = line.match(/^\s*(#{1,6})/)[1].length;
-      html += "<h"+lvl+">"+inline(line.replace(/^\s*#{1,6}\s+/,""))+"</h"+lvl+">";
-    } else if(/^\s*>\s?/.test(line)){
-      closeList();
-      html += "<blockquote>"+inline(line.replace(/^\s*>\s?/,""))+"</blockquote>";
-    } else if(/^\s*([-*_])\1{2,}\s*$/.test(line)){
-      closeList(); html += "<hr>";
-    } else if(/^\s*[-*+]\s+/.test(line)){
-      if(!inList||listType!=="ul"){ closeList(); html+="<ul>"; inList=true; listType="ul"; }
-      html += "<li>"+inline(line.replace(/^\s*[-*+]\s+/,""))+"</li>";
-    } else if(/^\s*\d+\.\s+/.test(line)){
-      if(!inList||listType!=="ol"){ closeList(); html+="<ol>"; inList=true; listType="ol"; }
-      html += "<li>"+inline(line.replace(/^\s*\d+\.\s+/,""))+"</li>";
-    } else if(/^\s*$/.test(line)){
-      closeList();
-    } else {
-      closeList();
-      html += "<p>"+inline(line)+"</p>";
-    }
-    i++;
+  editorNoteId = n.id;
+  requestAnimationFrame(()=> wrap.querySelectorAll(".cl-line").forEach(autosize));
+}
+function onToggleRow(row, cb){
+  const n = noteById(currentId); if(!n) return;
+  const key = lineKey(row.querySelector(".cl-line").value);
+  if(!key){ cb.checked=false; return; }                // can't tick a blank line
+  const set = new Set(n.checks||[]);
+  if(cb.checked) set.add(key); else set.delete(key);
+  n.checks = [...set];
+  row.classList.toggle("checked", cb.checked);
+  markDirty(); renderList();
+}
+function onBodyEdit(){
+  const n = noteById(currentId); if(!n) return;
+  n.body = editorBody();
+  if(n.checks && n.checks.length){                     // drop ticks for edited/removed lines
+    const present = new Set(bodyLines(n).map(lineKey).filter(Boolean));
+    n.checks = n.checks.filter(k => present.has(k));
   }
-  closeList();
-  return html;
+  markDirty();
+}
+function onRowKey(e, row, ta){
+  if(e.key==="Enter"){
+    e.preventDefault();
+    const pos = ta.selectionStart;
+    const before = ta.value.slice(0,pos), after = ta.value.slice(pos);
+    ta.value = before; uncheckRow(row); row.classList.toggle("empty", !before.trim()); autosize(ta);
+    const nrow = makeRow(after, false);
+    row.after(nrow);
+    onBodyEdit();
+    const nta = nrow.querySelector(".cl-line");
+    nta.focus(); nta.setSelectionRange(0,0); autosize(nta);
+  } else if(e.key==="Backspace" && ta.selectionStart===0 && ta.selectionEnd===0){
+    const prev = row.previousElementSibling;
+    if(!prev) return;                                  // first line: nothing to merge into
+    e.preventDefault();
+    const pta = prev.querySelector(".cl-line");
+    const caret = pta.value.length;
+    pta.value = pta.value + ta.value; uncheckRow(prev); prev.classList.toggle("empty", !pta.value.trim());
+    row.remove(); autosize(pta);
+    onBodyEdit();
+    pta.focus(); pta.setSelectionRange(caret, caret);
+  }
 }
 
 /* ---------- Export / import ---------- */
@@ -631,14 +674,18 @@ function importJson(file){
 
 /* ---------- Editing + autosave ---------- */
 let saveTimer=null, dirty=false;
-function onEdit(){
+function onMeta(){                                     // title / tags changed
   const n = noteById(currentId); if(!n) return;
   n.title = $("#title").value;
-  n.body = $("#body").value;
   n.tags = parseTags($("#tags").value);
-  n.updatedAt = now();
+  markDirty();
+}
+// Mark the current note edited and schedule a debounced save. The body editor
+// updates n.body/n.checks itself before calling this, so this just persists.
+function markDirty(){
+  const n = noteById(currentId); if(!n) return;
+  n.updatedAt = now(); state.updatedAt = now();
   dirty = true;
-  state.updatedAt = now();
   $("#saved").textContent = "Saving…";
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{ persist(); dirty=false; renderList(); $("#saved").textContent="Saved · just now"; schedulePush(); }, 600);
@@ -655,9 +702,8 @@ window.addEventListener("pagehide", saveOnExit);
 document.addEventListener("visibilitychange", ()=>{ if(document.hidden) saveOnExit(); });
 window.addEventListener("blur", flushPending);
 
-$("#title").addEventListener("input", onEdit);
-$("#body").addEventListener("input", onEdit);
-$("#tags").addEventListener("input", onEdit);
+$("#title").addEventListener("input", onMeta);
+$("#tags").addEventListener("input", onMeta);
 $("#search").addEventListener("input", renderList);
 $("#newNote").onclick = newNote;
 $("#newNote2").onclick = newNote;
@@ -666,7 +712,6 @@ $("#back").onclick = ()=>{ flushPending(); $("#app").classList.remove("editing")
 $("#doneBtn").onclick = ()=> toggleDone(currentId);
 $("#pinBtn").onclick = ()=> togglePin(currentId);
 $("#copyBtn").onclick = copyForClaude;
-$("#previewBtn").onclick = ()=>{ flushPending(); previewMode=!previewMode; applyPreviewMode(); };
 $("#filters").querySelectorAll("button").forEach(b=>{
   b.onclick = ()=>{
     filterMode = b.dataset.f;
