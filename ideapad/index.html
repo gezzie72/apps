@@ -324,6 +324,26 @@ function toastAction(m, label, cb, ms){
 }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const now = () => Date.now();
+
+/* Checklist ticks live in note.checks, keyed by line text. A line's key is its
+   trimmed text. Legacy notes stored ticks inline as a leading "[x] " marker;
+   migrateChecks() lifts those into note.checks so the body text stays clean. */
+const CHECK_RE = /^(\s*(?:[-*+]\s+)?)\[[xX]\]\s?/;    // legacy inline tick marker
+const stripMarker = line => line.replace(CHECK_RE, "$1");
+const lineKey = line => line.trim();
+function migrateChecks(n){
+  const checks = new Set(Array.isArray(n.checks) ? n.checks : []);
+  const lines = (n.body||"").replace(/\r\n?/g,"\n").split("\n");
+  let changed = false;
+  const cleaned = lines.map(line=>{
+    if(CHECK_RE.test(line)){ const c = stripMarker(line); checks.add(lineKey(c)); changed = true; return c; }
+    return line;
+  });
+  if(changed) n.body = cleaned.join("\n");
+  const present = new Set(cleaned.map(lineKey).filter(Boolean));   // drop ticks for gone lines
+  n.checks = [...checks].filter(k => present.has(k));
+  return n;
+}
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ const _t=localStorage.getItem("ideapad.theme"); if(_t && _t!=="system") document.documentElement.setAttribute("data-theme", _t); }catch(e){}
 
@@ -338,6 +358,8 @@ function normalizeNote(n){
   if(n.done===undefined) n.done=false;
   if(n.pinned===undefined) n.pinned=false;
   if(!Array.isArray(n.tags)) n.tags=[];
+  if(!Array.isArray(n.checks)) n.checks=[];
+  migrateChecks(n);            // lift any legacy inline [x] markers into n.checks
   return n;
 }
 function normalizeAll(){ (state.notes||[]).forEach(normalizeNote); ensureOrderOn(state); }
@@ -541,9 +563,9 @@ function fallbackCopy(text, cb){
 }
 
 /* ---------- Checklist view ----------
-   Every non-empty line becomes a tick box. A ticked line is stored in the note
-   body with a leading "[x] " marker (after any indent/bullet), so ticks persist
-   locally and sync across devices just like the rest of the text. */
+   Every non-empty line becomes a tick box. Ticks are kept in note.checks
+   (keyed by the line's text), NOT inline in the body — so the editor, exports
+   and the sidebar all show clean text. Ticks persist and sync with the note. */
 function mdInline(t){
   const esc = s => s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
   t = esc(t);
@@ -553,44 +575,33 @@ function mdInline(t){
   t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   return t;
 }
-// A leading tick marker, allowed after optional indent and an optional bullet.
-const CHECK_RE = /^(\s*(?:[-*+]\s+)?)\[[xX]\]\s?/;
-const PREFIX_RE = /^(\s*(?:[-*+]\s+)?)/;   // indent + optional bullet, kept in place
-function lineChecked(line){ return CHECK_RE.test(line); }
-function stripMarker(line){ return line.replace(CHECK_RE, "$1"); }
-function displayText(line){
-  return stripMarker(line).replace(/^\s*(?:[-*+]\s+)?/, "").replace(/^#{1,6}\s+/, "");
-}
+// Text shown for a line: drop a leading bullet or heading marker for looks.
+function displayText(line){ return line.replace(/^\s*(?:[-*+]\s+)?/, "").replace(/^#{1,6}\s+/, ""); }
 function bodyLines(n){ return (n.body||"").replace(/\r\n?/g,"\n").split("\n"); }
 function renderChecklist(n){
   const wrap = $("#preview"); wrap.innerHTML = "";
   if(!(n.body||"").trim()){ wrap.innerHTML = '<p class="muted">Nothing here yet — type some lines, then tick them off.</p>'; return; }
-  bodyLines(n).forEach((line, idx)=>{
+  const checks = new Set(n.checks||[]);
+  bodyLines(n).forEach(line=>{
     if(!line.trim()){ const s=document.createElement("div"); s.className="cl-blank"; wrap.appendChild(s); return; }
-    const checked = lineChecked(line);
+    const key = lineKey(line);
+    const checked = checks.has(key);
     const row = document.createElement("div");
     row.className = "cl-item" + (checked?" checked":"");
     const cb = document.createElement("input");
     cb.type="checkbox"; cb.className="cl-box"; cb.checked=checked;
-    cb.onclick = ()=> toggleLine(idx);
+    cb.onclick = ()=> toggleLine(key);
     const txt = document.createElement("div");
     txt.className="cl-text"; txt.innerHTML = mdInline(displayText(line)) || "&nbsp;";
     row.appendChild(cb); row.appendChild(txt);
     wrap.appendChild(row);
   });
 }
-function toggleLine(idx){
+function toggleLine(key){
   const n = noteById(currentId); if(!n) return;
-  const lines = bodyLines(n);
-  if(idx<0 || idx>=lines.length) return;
-  const line = lines[idx];
-  if(lineChecked(line)){
-    lines[idx] = stripMarker(line);                          // untick
-  } else {
-    const pfx = (line.match(PREFIX_RE)||["",""])[1];
-    lines[idx] = pfx + "[x] " + line.slice(pfx.length);      // tick
-  }
-  n.body = lines.join("\n"); n.updatedAt = now(); touch();
+  const set = new Set(n.checks||[]);
+  if(set.has(key)) set.delete(key); else set.add(key);   // tick / untick
+  n.checks = [...set]; n.updatedAt = now(); touch();
   renderChecklist(n); renderList(); schedulePush();
 }
 
@@ -635,6 +646,10 @@ function onEdit(){
   n.title = $("#title").value;
   n.body = $("#body").value;
   n.tags = parseTags($("#tags").value);
+  if(n.checks && n.checks.length){                    // drop ticks whose line was edited/removed
+    const present = new Set(bodyLines(n).map(lineKey).filter(Boolean));
+    n.checks = n.checks.filter(k => present.has(k));
+  }
   n.updatedAt = now();
   dirty = true;
   state.updatedAt = now();
