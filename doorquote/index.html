@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1220">
+<title>Door Hardware Quote</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%AA%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Door Quote">
+<style>
+  :root{
+    --bg:#0f1220; --panel:#191d31; --panel2:#212642; --line:#2c3355;
+    --text:#e8eaf6; --muted:#9aa3c7; --accent:#6c8cff; --accent2:#4cc9a0;
+    --danger:#ff6b6b; --shadow:0 12px 40px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',system-ui,Arial,sans-serif;background:
+    radial-gradient(1200px 600px at 80% -10%,#1b2140 0,transparent 60%),
+    radial-gradient(900px 500px at -10% 110%,#152033 0,transparent 55%),var(--bg);
+    color:var(--text);min-height:100vh}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px}
+  input,select,textarea{font-family:inherit;font-size:14px;color:var(--text);background:#0f1326;
+    border:1px solid var(--line);border-radius:10px;padding:11px 12px;outline:none;width:100%}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  input[type=number]{-moz-appearance:textfield}
+  .hidden{display:none!important}
+  .sr-file{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+  #app{max-width:1000px;margin:0 auto;padding:22px 18px 60px}
+  header.top{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  header.top .brand{font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px}
+  header.top .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent2)}
+  .grow{flex:1}
+  .btn{background:var(--panel2);color:var(--text);padding:10px 14px;border:1px solid var(--line);font-size:14px}
+  .btn:hover{border-color:var(--accent)}
+  .btn.accent{background:linear-gradient(135deg,var(--accent),#8b6cff);border:none;color:#fff;font-weight:600}
+  .btn.small{padding:8px 11px;font-size:13px}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
+  .panel h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .panel h2 .grow{font-size:15px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field{margin-bottom:12px}
+  .field:last-child{margin-bottom:0}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+
+  /* quote line table */
+  table.lines{width:100%;border-collapse:collapse}
+  table.lines th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+    text-align:left;padding:6px 8px;font-weight:600}
+  table.lines th.num,table.lines td.num{text-align:right}
+  table.lines td{padding:5px 6px;vertical-align:middle;border-top:1px solid var(--line)}
+  table.lines input{padding:8px 9px}
+  .qtyc{width:70px}.unitc{width:100px}
+  .linetot{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+  .rmbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);width:32px;height:32px;
+    display:flex;align-items:center;justify-content:center;font-size:14px}
+  .rmbtn:hover{color:var(--danger);border-color:var(--danger)}
+  .emptyrow td{color:var(--muted);text-align:center;padding:22px;font-size:14px}
+
+  .totals{margin-top:14px;margin-left:auto;max-width:320px}
+  .totline{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--muted)}
+  .totline.grand{border-top:1px solid var(--line);margin-top:6px;padding-top:12px;font-size:20px;font-weight:800;color:var(--text)}
+  .totline .v{font-variant-numeric:tabular-nums;color:var(--text)}
+  .delivrow{display:flex;align-items:center;gap:8px}
+  .delivrow input{width:110px}
+  .vatlbl{display:flex;align-items:center;gap:6px}
+  .vattoggle{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .vattoggle input{width:auto}
+  .vatrate{width:56px;padding:6px 8px;text-align:right}
+  .addrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .addrow select{flex:1;min-width:160px}
+
+  /* catalogue */
+  .catlist{display:flex;flex-direction:column;gap:8px}
+  .catrow{display:flex;align-items:center;gap:12px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px}
+  .catrow .cdesc{flex:1;min-width:0}
+  .catrow .cdesc .n{font-weight:600}
+  .catrow .cdesc .s{font-size:12px;color:var(--muted)}
+  .catrow .cunit{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+  .star{background:none;border:none;font-size:18px;line-height:1;padding:2px;color:#4a5280}
+  .star.on{color:#ffd43b}
+  .icon{background:var(--panel2);border:1px solid var(--line);color:var(--muted);width:32px;height:32px;
+    display:flex;align-items:center;justify-content:center;font-size:14px}
+  .icon:hover{color:var(--text);border-color:var(--accent)}
+  .empty{text-align:center;color:var(--muted);padding:30px 20px}
+  .stdtag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;
+    letter-spacing:.5px;background:rgba(255,212,59,.16);color:#ffd43b}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(6,8,18,.7);backdrop-filter:blur(3px);
+    display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);
+    border-radius:18px;padding:24px;box-shadow:var(--shadow);max-height:92vh;overflow:auto}
+  .modal h2{margin:0 0 18px;font-size:18px}
+  .modal-actions{display:flex;gap:10px;margin-top:8px}
+  .primary{background:linear-gradient(135deg,var(--accent),#8b6cff);color:#fff;padding:12px;font-size:15px;font-weight:600}
+  .primary:hover{filter:brightness(1.08)}
+  .primary.flex1{flex:1}
+  .link{background:none;color:var(--muted);padding:12px;font-size:14px}
+  .link:hover{color:var(--text)}
+  .link.danger:hover{color:var(--danger)}
+  .cbrow{display:flex;align-items:center;gap:8px}
+  .cbrow input{width:auto}
+  .err{color:var(--danger);font-size:13px;min-height:18px}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);
+    border:1px solid var(--line);padding:11px 20px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);
+    z-index:99;opacity:0;transition:.25s;pointer-events:none;display:inline-flex;align-items:center;gap:16px;
+    max-width:calc(100vw - 32px)}
+  .toast.show{opacity:1}
+  .ver{color:#4a5280;font-size:10px;text-align:center;margin-top:14px;letter-spacing:.3px}
+
+  @media (max-width:560px){
+    #app{padding:16px 12px 50px}
+    .grid2{grid-template-columns:1fr}
+    header.top{gap:8px}
+    .btn{padding:9px 11px;font-size:13px}
+    table.lines th.hidesm,table.lines td.hidesm{display:none}
+    .qtyc{width:56px}.unitc{width:84px}
+  }
+
+  /* ---------- print ---------- */
+  @media print{
+    @page{margin:16mm}
+    body{background:#fff;color:#000}
+    #app{max-width:none;padding:0}
+    .noprint{display:none!important}
+    .panel{border:none;background:none;padding:0;margin:0 0 18px}
+    #printHead{display:block!important}
+    table.lines th{color:#444;border-bottom:1px solid #999}
+    table.lines td{border-top:1px solid #ddd}
+    table.lines input{border:none;background:none;color:#000;padding:2px 0;-webkit-appearance:none;appearance:none}
+    .qtyc,.unitc{width:auto}
+    .rmbtn,.addrow{display:none!important}
+    .totline{color:#000}
+    .totline.grand{border-top:1px solid #000}
+    .totline.vatoff{display:none!important}
+    .totals{max-width:340px}
+    /* swap live inputs for static text in the totals */
+    #qDelivery{display:none!important}
+    #tDelivPrint{display:inline!important}
+    .vattoggle{display:none!important}
+    .vatlbl-print,.vatrate-print{display:inline!important}
+  }
+  #printHead{display:none;margin-bottom:20px}
+  #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+  #printHead .co{font-size:22px;font-weight:800}
+  #printHead .coaddr{font-size:12px;color:#444;margin-top:4px;white-space:pre-line;line-height:1.5}
+  #printHead .qtitle{font-size:20px;font-weight:800;letter-spacing:1px;color:#333}
+  #printHead .qt{font-size:13px;color:#444;margin-top:12px;border-top:1px solid #ccc;padding-top:10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top noprint">
+    <div class="brand"><span class="dot"></span> 🚪 Quote Builder</div>
+    <div class="grow"></div>
+    <button class="btn" id="stdBtn" title="Add all standard-setup items to this quote">⭐ Standard setup</button>
+    <button class="btn" id="catBtn" title="Manage your hardware catalogue">🧰 Catalogue</button>
+    <button class="btn" id="coBtn" title="Your company details (shown on the printed quote)">🏢 Company</button>
+    <button class="btn" id="printBtn" title="Print / save as PDF">🖨 Print</button>
+    <button class="btn" id="exportBtn" title="Download a backup">⬇ Backup</button>
+    <button class="btn" id="importBtn" title="Restore a backup">⬆ Restore</button>
+    <button class="btn" id="newBtn" title="Start a fresh quote">✚ New quote</button>
+    <input type="file" id="importFile" accept=".json,application/json" class="sr-file">
+  </header>
+
+  <!-- print header (only visible when printing) -->
+  <div id="printHead">
+    <div class="phtop">
+      <div>
+        <div class="co" id="phCo"></div>
+        <div class="coaddr" id="phAddr"></div>
+      </div>
+      <div class="qtitle">QUOTATION</div>
+    </div>
+    <div class="qt" id="phMeta"></div>
+  </div>
+
+  <!-- quote details -->
+  <div class="panel">
+    <h2>📋 Quote details</h2>
+    <div class="grid2">
+      <div class="field"><label>Customer / Company</label><input id="qCustomer" placeholder="Customer name"></div>
+      <div class="field"><label>Quote reference</label><input id="qRef" placeholder="e.g. Q-1042"></div>
+      <div class="field"><label>Project / Site</label><input id="qProject" placeholder="e.g. Door set — Level 2"></div>
+      <div class="field"><label>Date</label><input id="qDate" type="date"></div>
+    </div>
+  </div>
+
+  <!-- line items -->
+  <div class="panel">
+    <h2>🔩 Line items</h2>
+    <table class="lines">
+      <thead>
+        <tr>
+          <th class="num" style="width:70px">Qty</th>
+          <th>Description</th>
+          <th class="num" style="width:100px">Unit cost</th>
+          <th class="num" style="width:110px">Line total</th>
+          <th class="noprint" style="width:36px"></th>
+        </tr>
+      </thead>
+      <tbody id="lineBody"></tbody>
+    </table>
+
+    <div class="addrow noprint">
+      <select id="catPick"><option value="">➕ Add from catalogue…</option></select>
+      <button class="btn" id="addBlankBtn">➕ Blank line</button>
+    </div>
+
+    <div class="totals">
+      <div class="totline"><span>Subtotal</span><span class="v" id="tSub">£0.00</span></div>
+      <div class="totline">
+        <span>Delivery charge</span>
+        <span class="delivrow"><span>£</span><input id="qDelivery" type="number" min="0" step="0.01" value="0" class="noprint"><span class="v hidden" id="tDelivPrint">£0.00</span></span>
+      </div>
+      <div class="totline" id="vatLine">
+        <span class="vatlbl">
+          <label class="vattoggle noprint"><input type="checkbox" id="qVatOn" checked> VAT</label>
+          <span class="vatlbl-print hidden">VAT</span>
+          @ <input id="qVatRate" type="number" min="0" step="0.1" value="20" class="vatrate noprint"><span class="vatrate-print hidden">20</span>%
+        </span>
+        <span class="v" id="tVat">£0.00</span>
+      </div>
+      <div class="totline grand"><span>Total</span><span class="v" id="tGrand">£0.00</span></div>
+    </div>
+  </div>
+
+  <div class="ver" id="ver"></div>
+</div>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Door Hardware Quote — single-file PWA (cloned from Vault)
+   Storage: localStorage
+     dhq.catalogue.v1 = [{id,desc,unit,standard}]
+     dhq.quote.v1     = {customer,ref,project,date,delivery,lines:[{id,qty,desc,unit}]}
+============================================================ */
+const LS_CAT = "dhq.catalogue.v1";
+const LS_QUOTE = "dhq.quote.v1";
+const LS_CO = "dhq.company.v1";
+const $ = id => document.getElementById(id);
+const esc = s => (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money = n => "£" + (Number(n)||0).toFixed(2);
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random());
+
+let catalogue = [];      // hardware items you maintain
+let quote = null;        // current working quote
+let company = null;      // your company details (shown on print)
+
+/* ---------- persistence ---------- */
+function loadAll(){
+  try{ catalogue = JSON.parse(localStorage.getItem(LS_CAT)) || []; }catch{ catalogue = []; }
+  if(!Array.isArray(catalogue)) catalogue = [];
+  try{ quote = JSON.parse(localStorage.getItem(LS_QUOTE)); }catch{ quote = null; }
+  if(!quote || typeof quote !== "object") quote = blankQuote();
+  if(!Array.isArray(quote.lines)) quote.lines = [];
+  if(typeof quote.vatRate !== "number") quote.vatRate = 20;
+  if(typeof quote.vatOn !== "boolean") quote.vatOn = true;
+  try{ company = JSON.parse(localStorage.getItem(LS_CO)); }catch{ company = null; }
+  if(!company || typeof company !== "object") company = {name:"",address:"",contact:"",vatNo:""};
+}
+function blankQuote(){
+  return { customer:"", ref:"", project:"", date:new Date().toISOString().slice(0,10),
+           delivery:0, vatRate:(quote?quote.vatRate:20), vatOn:(quote?quote.vatOn:true), lines:[] };
+}
+function saveCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue)); }catch(e){ toast("⚠ Save failed"); } }
+function saveQuote(){ try{ localStorage.setItem(LS_QUOTE, JSON.stringify(quote)); }catch(e){ toast("⚠ Save failed"); } }
+function saveCo(){ try{ localStorage.setItem(LS_CO, JSON.stringify(company)); }catch(e){ toast("⚠ Save failed"); } }
+
+/* ---------- quote fields ---------- */
+function bindQuoteFields(){
+  $("qCustomer").value = quote.customer||"";
+  $("qRef").value = quote.ref||"";
+  $("qProject").value = quote.project||"";
+  $("qDate").value = quote.date||"";
+  $("qDelivery").value = quote.delivery||0;
+  const map = {qCustomer:"customer",qRef:"ref",qProject:"project",qDate:"date"};
+  Object.entries(map).forEach(([el,key])=>{
+    $(el).oninput = e=>{ quote[key]=e.target.value; saveQuote(); };
+  });
+  $("qDelivery").oninput = e=>{ quote.delivery = parseFloat(e.target.value)||0; saveQuote(); renderTotals(); };
+  $("qVatOn").checked = quote.vatOn;
+  $("qVatRate").value = quote.vatRate;
+  $("qVatOn").onchange = e=>{ quote.vatOn = e.target.checked; saveQuote(); renderTotals(); };
+  $("qVatRate").oninput = e=>{ quote.vatRate = parseFloat(e.target.value)||0; saveQuote(); renderTotals(); };
+}
+
+/* ---------- line items ---------- */
+function renderLines(){
+  const body = $("lineBody");
+  if(!quote.lines.length){
+    body.innerHTML = `<tr class="emptyrow"><td colspan="5">No items yet — add from your catalogue, click ⭐ Standard setup, or add a blank line.</td></tr>`;
+    renderTotals(); return;
+  }
+  body.innerHTML = quote.lines.map(l=>`
+    <tr data-id="${l.id}">
+      <td class="num"><input class="qtyc" type="number" min="0" step="1" value="${l.qty}" data-f="qty"></td>
+      <td><input type="text" value="${esc(l.desc)}" data-f="desc" placeholder="Description"></td>
+      <td class="num"><input class="unitc" type="number" min="0" step="0.01" value="${l.unit}" data-f="unit"></td>
+      <td class="num linetot">${money((Number(l.qty)||0)*(Number(l.unit)||0))}</td>
+      <td class="noprint"><button class="rmbtn" title="Remove" data-rm="${l.id}">✕</button></td>
+    </tr>`).join("");
+
+  body.querySelectorAll("input").forEach(inp=>{
+    inp.oninput = e=>{
+      const id = e.target.closest("tr").dataset.id;
+      const line = quote.lines.find(x=>x.id===id); if(!line) return;
+      const f = e.target.dataset.f;
+      line[f] = (f==="desc") ? e.target.value : (parseFloat(e.target.value)||0);
+      if(f!=="desc"){
+        e.target.closest("tr").querySelector(".linetot").textContent =
+          money((Number(line.qty)||0)*(Number(line.unit)||0));
+        renderTotals();
+      }
+      saveQuote();
+    };
+  });
+  body.querySelectorAll("[data-rm]").forEach(b=>{
+    b.onclick = ()=>{ quote.lines = quote.lines.filter(x=>x.id!==b.dataset.rm); saveQuote(); renderLines(); };
+  });
+  renderTotals();
+}
+function renderTotals(){
+  const sub = quote.lines.reduce((a,l)=>a+(Number(l.qty)||0)*(Number(l.unit)||0),0);
+  const deliv = Number(quote.delivery)||0;
+  const net = sub + deliv;
+  const rate = quote.vatOn ? (Number(quote.vatRate)||0) : 0;
+  const vat = net * rate / 100;
+  $("tSub").textContent = money(sub);
+  $("tDelivPrint").textContent = money(deliv);
+  $("tVat").textContent = money(vat);
+  $("vatLine").classList.toggle("vatoff", !quote.vatOn);   // hidden on print when off
+  $("qVatRate").disabled = !quote.vatOn;
+  $("tGrand").textContent = money(net + vat);
+}
+function addLine(desc="",unit=0,qty=1){
+  quote.lines.push({id:uid(), qty, desc, unit});
+  saveQuote(); renderLines();
+}
+
+/* ---------- catalogue picker (in the add row) ---------- */
+function fillCatPick(){
+  const sel = $("catPick");
+  const sorted = [...catalogue].sort((a,b)=>a.desc.localeCompare(b.desc));
+  sel.innerHTML = `<option value="">➕ Add from catalogue…</option>` +
+    sorted.map(c=>`<option value="${c.id}">${esc(c.desc)} — ${money(c.unit)}${c.standard?" ⭐":""}</option>`).join("");
+  sel.onchange = ()=>{
+    const c = catalogue.find(x=>x.id===sel.value); if(!c) return;
+    addLine(c.desc, c.unit, 1); sel.value = "";
+  };
+}
+
+/* ---------- standard setup ---------- */
+function addStandardSetup(){
+  const std = catalogue.filter(c=>c.standard);
+  if(!std.length){ toast("No standard items yet — star items in the catalogue"); openCatalogue(); return; }
+  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, unit:c.unit}));
+  saveQuote(); renderLines();
+  toast(`Added ${std.length} standard item${std.length===1?"":"s"}`);
+}
+
+/* ---------- catalogue manager (modal) ---------- */
+function openCatalogue(){
+  const rows = [...catalogue].sort((a,b)=>a.desc.localeCompare(b.desc));
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal" style="max-width:560px">
+      <h2>🧰 Hardware catalogue</h2>
+      <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
+        Your saved hardware. Star (⭐) the items that make up the <b>standard setup</b>.
+        Stored on this device.</p>
+      <div class="catlist" id="catListBox">
+        ${rows.length ? rows.map(catRowHtml).join("")
+          : `<div class="empty">No items yet. Add your first hardware item below.</div>`}
+      </div>
+      <div style="border-top:1px solid var(--line);margin:16px 0 14px"></div>
+      <div class="grid2">
+        <div class="field"><label>Description</label><input id="ncDesc" placeholder="e.g. Lever handle set (SSS)"></div>
+        <div class="field"><label>Unit cost (£)</label><input id="ncUnit" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      </div>
+      <div class="cbrow" style="margin-bottom:14px">
+        <input type="checkbox" id="ncStd"><label for="ncStd" style="margin:0;color:var(--text);font-size:14px">Part of standard setup</label>
+      </div>
+      <div class="err" id="catErr"></div>
+      <div class="modal-actions">
+        <button class="btn accent" id="ncAdd">➕ Add item</button>
+        <button class="link flex1" onclick="closeModal()" style="flex:1">Done</button>
+      </div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  wireCatList();
+  $("ncAdd").onclick = ()=>{
+    const desc = $("ncDesc").value.trim();
+    const unit = parseFloat($("ncUnit").value)||0;
+    if(!desc){ $("catErr").textContent = "Enter a description."; return; }
+    catalogue.push({id:uid(), desc, unit, standard:$("ncStd").checked});
+    saveCat(); fillCatPick(); openCatalogue();   // re-render list
+    toast("Item added");
+  };
+  $("ncDesc").focus();
+}
+function catRowHtml(c){
+  return `<div class="catrow" data-id="${c.id}">
+    <button class="star ${c.standard?"on":""}" data-star="${c.id}" title="Toggle standard setup">★</button>
+    <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div></div>
+    <div class="cunit">${money(c.unit)}</div>
+    <button class="icon" data-edit="${c.id}" title="Edit">✏️</button>
+    <button class="icon" data-del="${c.id}" title="Delete">🗑</button>
+  </div>`;
+}
+function wireCatList(){
+  const box = $("catListBox"); if(!box) return;
+  box.querySelectorAll("[data-star]").forEach(b=>b.onclick=()=>{
+    const c=catalogue.find(x=>x.id===b.dataset.star); if(!c) return;
+    c.standard=!c.standard; saveCat(); fillCatPick(); openCatalogue();
+  });
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    catalogue = catalogue.filter(x=>x.id!==b.dataset.del); saveCat(); fillCatPick(); openCatalogue();
+  });
+  box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editCatItem(b.dataset.edit));
+}
+function editCatItem(id){
+  const c = catalogue.find(x=>x.id===id); if(!c) return;
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>✏️ Edit item</h2>
+      <div class="field"><label>Description</label><input id="ecDesc" value="${esc(c.desc)}"></div>
+      <div class="field"><label>Unit cost (£)</label><input id="ecUnit" type="number" min="0" step="0.01" value="${c.unit}"></div>
+      <div class="cbrow" style="margin-bottom:14px">
+        <input type="checkbox" id="ecStd" ${c.standard?"checked":""}>
+        <label for="ecStd" style="margin:0;color:var(--text);font-size:14px">Part of standard setup</label>
+      </div>
+      <div class="modal-actions">
+        <button class="link danger" id="ecDel">Delete</button>
+        <button class="link" onclick="openCatalogue()">Cancel</button>
+        <button class="primary" id="ecSave">Save</button>
+      </div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  $("ecSave").onclick = ()=>{
+    c.desc = $("ecDesc").value.trim() || c.desc;
+    c.unit = parseFloat($("ecUnit").value)||0;
+    c.standard = $("ecStd").checked;
+    saveCat(); fillCatPick(); openCatalogue(); toast("Saved");
+  };
+  $("ecDel").onclick = ()=>{
+    catalogue = catalogue.filter(x=>x.id!==id); saveCat(); fillCatPick(); openCatalogue();
+  };
+}
+window.openCatalogue = openCatalogue;
+
+/* ---------- company details (modal) ---------- */
+function openCompany(){
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>🏢 Company details</h2>
+      <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
+        Shown as the header on your printed quotes. Stored on this device.</p>
+      <div class="field"><label>Company name</label><input id="coName" placeholder="Your company Ltd" value="${esc(company.name)}"></div>
+      <div class="field"><label>Address</label><textarea id="coAddr" rows="3" placeholder="Street, town, postcode">${esc(company.address)}</textarea></div>
+      <div class="field"><label>Contact <span style="color:#6570a0;font-weight:400">— phone / email / web</span></label><input id="coContact" placeholder="01234 567890 · you@company.com" value="${esc(company.contact)}"></div>
+      <div class="field"><label>VAT number <span style="color:#6570a0;font-weight:400">— optional</span></label><input id="coVat" placeholder="GB123456789" value="${esc(company.vatNo)}"></div>
+      <div class="modal-actions">
+        <button class="link" onclick="closeModal()">Cancel</button>
+        <button class="primary flex1" id="coSave">Save</button>
+      </div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  $("coSave").onclick = ()=>{
+    company = { name:$("coName").value.trim(), address:$("coAddr").value.trim(),
+                contact:$("coContact").value.trim(), vatNo:$("coVat").value.trim() };
+    saveCo(); closeModal(); toast("Company details saved");
+  };
+  $("coName").focus();
+}
+window.openCompany = openCompany;
+
+/* ---------- modal helpers ---------- */
+function closeModal(){ $("modalRoot").innerHTML=""; }
+window.closeModal = closeModal;
+function bindOverlayClose(){
+  const ov = $("overlay"); if(!ov) return;
+  let downSelf=false;
+  ov.addEventListener("mousedown",e=>{ downSelf=(e.target===ov); });
+  ov.addEventListener("click",e=>{ if(e.target===ov && downSelf) closeModal(); });
+}
+
+/* ---------- new quote ---------- */
+function newQuote(){
+  if(quote.lines.length || quote.customer || quote.ref){
+    if(!confirm("Start a new quote? The current one will be cleared.")) return;
+  }
+  quote = blankQuote(); saveQuote();
+  bindQuoteFields(); renderLines();
+  toast("New quote started");
+}
+
+/* ---------- print ---------- */
+function doPrint(){
+  // company header
+  $("phCo").textContent = company.name || "Quotation";
+  const coBits = [company.address, company.contact,
+                  company.vatNo && ("VAT No: "+company.vatNo)].filter(Boolean);
+  $("phAddr").textContent = coBits.join("\n");
+  // quote meta
+  const bits = [quote.ref && ("Ref: "+quote.ref), quote.customer && ("To: "+quote.customer),
+                quote.project, quote.date && new Date(quote.date).toLocaleDateString("en-GB")].filter(Boolean);
+  $("phMeta").textContent = bits.join("   ·   ");
+  // static VAT rate for print
+  document.querySelector(".vatrate-print").textContent = (Number(quote.vatRate)||0);
+  window.print();
+}
+
+/* ---------- backup / restore ---------- */
+function exportBackup(){
+  const payload = { app:"door-hardware-quote", version:2, exported:new Date().toISOString(),
+                    catalogue, quote, company };
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `door-quote-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast("Backup downloaded");
+}
+async function handleImport(e){
+  const file = e.target.files[0]; if(!file) return;
+  let data; try{ data = JSON.parse(await file.text()); }
+  catch{ toast("Couldn't read that file"); return; }
+  if(data.app !== "door-hardware-quote"){ toast("Not a Door Hardware Quote backup"); return; }
+  if(Array.isArray(data.catalogue)) catalogue = data.catalogue;
+  if(data.quote && typeof data.quote==="object") quote = data.quote;
+  if(!Array.isArray(quote.lines)) quote.lines = [];
+  if(typeof quote.vatRate !== "number") quote.vatRate = 20;
+  if(typeof quote.vatOn !== "boolean") quote.vatOn = true;
+  if(data.company && typeof data.company==="object") company = data.company;
+  saveCat(); saveQuote(); saveCo(); bindQuoteFields(); fillCatPick(); renderLines();
+  toast("Backup restored");
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); t.textContent=""; },2400);
+}
+
+/* ---------- wire up ---------- */
+loadAll();
+bindQuoteFields();
+fillCatPick();
+renderLines();
+$("stdBtn").onclick = addStandardSetup;
+$("catBtn").onclick = openCatalogue;
+$("coBtn").onclick = openCompany;
+$("printBtn").onclick = doPrint;
+$("exportBtn").onclick = exportBackup;
+$("importBtn").onclick = ()=>{ $("importFile").value=""; $("importFile").click(); };
+$("importFile").addEventListener("change", handleImport);
+$("newBtn").onclick = newQuote;
+$("addBlankBtn").onclick = ()=>addLine("",0,1);
+
+window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
+
+const VERSION = "v2 · 2026-09-10 · company header + VAT";
+$("ver").textContent = "Build " + VERSION;
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
