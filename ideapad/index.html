@@ -665,7 +665,9 @@ $("#back").onclick = ()=>{ flushPending(); $("#app").classList.remove("editing")
 $("#doneBtn").onclick = ()=> toggleDone(currentId);
 $("#pinBtn").onclick = ()=> togglePin(currentId);
 $("#copyBtn").onclick = copyForClaude;
-$("#previewBtn").onclick = ()=>{ flushPending(); previewMode=!previewMode; applyPreviewMode(); };
+// Re-render the whole editor on toggle so the textarea re-syncs from state
+// (checklist ticks live in the note body, so Edit must show the latest markers).
+$("#previewBtn").onclick = ()=>{ flushPending(); previewMode=!previewMode; renderEditor(); };
 $("#filters").querySelectorAll("button").forEach(b=>{
   b.onclick = ()=>{
     filterMode = b.dataset.f;
