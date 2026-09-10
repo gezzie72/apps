@@ -114,6 +114,12 @@
   .chip button{background:none; border:none; color:var(--danger); cursor:pointer; font-size:calc(14px * var(--tscale)); padding:0; line-height:1}
   .med{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--panel2)}
   .med .mname{font-weight:700}
+  /* goals (Today tab) */
+  .goal{display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--panel2)}
+  .goal .gchk{width:20px; height:20px; flex:0 0 auto; accent-color:var(--accent); cursor:pointer}
+  .goal .gtext{flex:1; min-width:0; overflow-wrap:anywhere}
+  .goal.done .gtext{text-decoration:line-through; color:var(--muted)}
+  .goal .gedit{flex:1; min-width:0}
   /* calendar */
   .monthbar{display:flex; align-items:center; gap:12px; margin-bottom:14px}
   .monthbar .title{font-size:calc(18px * var(--tscale)); font-weight:700; min-width:170px; text-align:center}
@@ -184,6 +190,15 @@
   <!-- ============ TODAY ============ -->
   <section class="view active" id="view-today">
     <div id="dueArea"></div>
+    <div class="panel" id="goalsPanel">
+      <h2>Goals</h2>
+      <p class="muted" style="margin-top:0">What do you want to achieve next? Add a goal, then tick it off when you get there.</p>
+      <div class="row" style="align-items:flex-end">
+        <input type="text" id="goalInput" placeholder="e.g. Get HbA1c under 48, walk 8k steps daily" style="flex:1; min-width:200px">
+        <button class="btn primary" id="goalAdd">Add goal</button>
+      </div>
+      <div id="goalList" style="margin-top:12px"></div>
+    </div>
     <div class="panel" id="insightsPanel">
       <h2>Health insights</h2>
       <div id="insightsArea"></div>
@@ -222,7 +237,7 @@
       <div class="cards" id="haStats" style="margin-top:14px"></div>
       <h3>HbA1c history</h3>
       <div class="scrollx"><table class="hist" id="haHist"><tbody></tbody></table></div>
-      <p class="disc">General guide (IFCC): below 42 mmol/mol (6.0%) is the non-diabetes range, 42–47 (6.0–6.4%) is higher risk, and 48+ mmol/mol (6.5%+) is in the diabetes range. Personal targets vary — always follow your clinician's advice.</p>
+      <p class="disc">Based on NICE/WHO diagnostic thresholds: below 42 mmol/mol (6.0%) is normal, 42–47 (6.0–6.4%) is non-diabetic hyperglycaemia ("at risk"), and 48+ mmol/mol (6.5%+) is in the diabetes range. If you already have diabetes, your personal target (often 48 or 53 mmol/mol) may differ — always follow your clinician's advice.</p>
     </div>
 
     <div class="panel">
@@ -671,7 +686,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-09-09 · v9 hba1c";
+const APP_VERSION = "2026-09-10 · v12 goals";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -714,7 +729,8 @@ function defaultState(){
     heightUnit:"cm",            // "cm" | "ftin" (display only)
     weightUnit:"kg",            // "kg" | "st" (display only; weights stored in kg)
     weights:[],                 // {id, date:"YYYY-MM-DD", kg}
-    bowel:[]                    // {id, dt:"YYYY-MM-DDTHH:MM", bristol:1-7, note}
+    bowel:[],                   // {id, dt:"YYYY-MM-DDTHH:MM", bristol:1-7, note}
+    goals:[]                    // {id, text, done, createdAt} — "what to achieve next" on the Today tab
   };
 }
 function normalize(s){
@@ -724,7 +740,7 @@ function normalize(s){
   if(!s.nebido || typeof s.nebido!=="object") s.nebido={intervalWeeks:12,history:[]};
   if(!Array.isArray(s.nebido.history)) s.nebido.history=[];
   if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
-  ["glucose","hba1c","meds","measurements","bp","appts","weights","bowel","activity"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ["glucose","hba1c","meds","measurements","bp","appts","weights","bowel","activity","goals"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   if(typeof s.bloodType!=="string") s.bloodType="";
   if(!s.bloodTestReminder || typeof s.bloodTestReminder!=="object") s.bloodTestReminder={enabled:false,weeks:12,fromDate:""};
   s.bloodTestReminder.enabled=!!s.bloodTestReminder.enabled;
@@ -861,8 +877,48 @@ function renderToday(){
     card("Last measured", lm?fmtDateShort(lm):"—", lm?`${daysBetween(lm,todayISO())} days ago`:"none yet")
   ].join("");
   renderInsights();
+  renderGoals();
 }
 function card(k,v,sub){ return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="sub">${sub||""}</div></div>`; }
+
+/* ---------- GOALS (Today tab) ---------- */
+let editGoalId=null;
+function goalRowStatic(g){
+  return `<div class="goal ${g.done?"done":""}" data-goalid="${g.id}">
+    <input type="checkbox" class="gchk" data-goalchk="${g.id}" ${g.done?"checked":""} title="Mark achieved">
+    <span class="gtext">${(g.text||"").replace(/</g,"&lt;")}</span>
+    <span class="row" style="gap:6px">
+      <button class="btn sm" data-goaledit="${g.id}">Edit</button>
+      <button class="btn sm danger" data-goaldel="${g.id}">Remove</button>
+    </span>
+  </div>`;
+}
+function goalRowEdit(g){
+  return `<div class="goal" data-goalid="${g.id}">
+    <input type="checkbox" class="gchk" ${g.done?"checked":""} disabled>
+    <input type="text" class="gedit" data-goalfield="${g.id}" value="${(g.text||"").replace(/"/g,"&quot;")}">
+    <span class="row" style="gap:6px">
+      <button class="btn sm primary" data-goalsave="${g.id}">Save</button>
+      <button class="btn sm" data-goalcancel="1">Cancel</button>
+    </span>
+  </div>`;
+}
+function renderGoals(){
+  const el=$("#goalList"); if(!el) return;
+  // active goals first, then achieved; stable by creation order within each group
+  const goals=[...state.goals].sort((a,b)=> (a.done?1:0)-(b.done?1:0) || (a.createdAt||0)-(b.createdAt||0));
+  if(!goals.length){ el.innerHTML=`<div class="empty-note">No goals yet — add what you want to achieve next.</div>`; return; }
+  el.innerHTML=goals.map(g=> g.id===editGoalId ? goalRowEdit(g) : goalRowStatic(g)).join("");
+  el.querySelectorAll("[data-goalchk]").forEach(c=> c.onchange=()=>{ const g=state.goals.find(x=>x.id===c.dataset.goalchk); if(g){ g.done=c.checked; save(); renderGoals(); } });
+  el.querySelectorAll("[data-goaledit]").forEach(b=> b.onclick=()=>{ editGoalId=b.dataset.goaledit; renderGoals();
+    const f=el.querySelector(`[data-goalfield="${b.dataset.goaledit}"]`); if(f){ f.focus(); f.setSelectionRange(f.value.length,f.value.length); } });
+  el.querySelectorAll("[data-goalcancel]").forEach(b=> b.onclick=()=>{ editGoalId=null; renderGoals(); });
+  el.querySelectorAll("[data-goalsave]").forEach(b=> b.onclick=()=>{ const g=state.goals.find(x=>x.id===b.dataset.goalsave); if(!g) return;
+    const f=el.querySelector(`[data-goalfield="${b.dataset.goalsave}"]`); const t=(f.value||"").trim();
+    if(!t){ toast("Enter goal text"); return; } g.text=t; editGoalId=null; save(); renderGoals(); toast("Goal saved"); });
+  el.querySelectorAll("[data-goaldel]").forEach(b=> b.onclick=()=>{ const g=state.goals.find(x=>x.id===b.dataset.goaldel);
+    if(g && confirm(`Remove goal "${g.text}"?`)){ state.goals=state.goals.filter(x=>x.id!==b.dataset.goaldel); if(editGoalId===b.dataset.goaldel) editGoalId=null; save(); renderGoals(); } });
+}
 /* ---------- DIABETES ---------- */
 function renderGlucoseUI(){
   $$(".gunit").forEach(e=>e.textContent=gUnitLabel());
@@ -894,7 +950,7 @@ function hbaUnitLabel(u){ return u==="pct" ? "%" : "mmol/mol"; }
 function hbaToMmol(value, unit){ return unit==="pct" ? (value-2.15)*10.929 : value; }   // IFCC ⇄ DCCT
 function hbaRound(value, unit){ return unit==="pct" ? Math.round(value*10)/10 : Math.round(value); }
 function hbaBand(mmol){ return mmol<42 ? "good" : mmol<48 ? "low" : "high"; }
-function hbaBandLabel(mmol){ return mmol<42 ? "Non-diabetes range" : mmol<48 ? "Higher risk" : "Diabetes range"; }
+function hbaBandLabel(mmol){ return mmol<42 ? "Normal" : mmol<48 ? "At risk (non-diabetic hyperglycaemia)" : "Diabetes range"; }
 function renderHba1cUI(){
   const hist=[...state.hba1c].sort((a,b)=> a.date<b.date?1:-1);
   const latest=hist[0], prev=hist[1];
@@ -1327,6 +1383,7 @@ function renderVitals(){
 let apView=new Date();
 let editApptId=null;
 let editResultsId=null;
+let editNotesId=null;
 function renderApptsUI(){
   $("#btrOn").checked=state.bloodTestReminder.enabled;
   $("#btrWeeks").value=state.bloodTestReminder.weeks;
@@ -1377,7 +1434,16 @@ function renderApptCal(){
 }
 function apItemHTML(a){
   const isBlood=a.type==="Blood test";
-  const meta=[a.time?("🕑 "+a.time):"", a.loc?("📍 "+a.loc):"", a.notes?("📝 "+a.notes):""].filter(Boolean).map(s=>s.replace(/</g,"&lt;")).join(" &nbsp;·&nbsp; ");
+  const meta=[a.time?("🕑 "+a.time):"", a.loc?("📍 "+a.loc):""].filter(Boolean).map(s=>s.replace(/</g,"&lt;")).join(" &nbsp;·&nbsp; ");
+  // Notes — visible on every appointment, added/edited inline (like blood-test results).
+  let notesBlock="";
+  if(a.id===editNotesId){
+    notesBlock=`<div style="margin-top:8px"><textarea data-notearea rows="3" placeholder="Add a note — reason, what to bring, how it went…">${(a.notes||"").replace(/</g,"&lt;")}</textarea>
+      <div class="row" style="margin-top:6px"><button class="btn sm primary" data-notesave="${a.id}">Save note</button><button class="btn sm" data-notecancel="1">Cancel</button></div></div>`;
+  } else if(a.notes){
+    notesBlock=`<div class="aresults">📝 ${a.notes.replace(/</g,"&lt;")}</div>`;
+  }
+  const noteBtn = a.id===editNotesId ? "" : `<button class="btn sm" data-noteedit="${a.id}">${a.notes?"Edit note":"Add note"}</button>`;
   let results="";
   if(isBlood){
     if(a.id===editResultsId){
@@ -1397,11 +1463,13 @@ function apItemHTML(a){
         ${meta?`<div class="ameta">${meta}</div>`:""}
       </div>
       <span class="row" style="gap:6px">
+        ${noteBtn}
         ${resBtn}
         <button class="btn sm" data-apedit="${a.id}">Edit</button>
         <button class="btn sm danger" data-apdel="${a.id}">Remove</button>
       </span>
     </div>
+    ${notesBlock}
     ${results}
   </div>`;
 }
@@ -1421,6 +1489,11 @@ function wireApptItems(){
   $$("[data-rescancel]").forEach(b=> b.onclick=()=>{ editResultsId=null; renderApptLists(); });
   $$("[data-ressave]").forEach(b=> b.onclick=()=>{ const a=state.appts.find(x=>x.id===b.dataset.ressave); if(!a) return;
     const wrap=b.closest(".appt-item"); a.results=wrap.querySelector("[data-resarea]").value.trim(); editResultsId=null; save(); renderApptLists(); toast("Results saved"); });
+  $$("[data-noteedit]").forEach(b=> b.onclick=()=>{ editNotesId=b.dataset.noteedit; renderApptLists();
+    const ta=$(`.appt-item[data-apid="${b.dataset.noteedit}"] [data-notearea]`); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } });
+  $$("[data-notecancel]").forEach(b=> b.onclick=()=>{ editNotesId=null; renderApptLists(); });
+  $$("[data-notesave]").forEach(b=> b.onclick=()=>{ const a=state.appts.find(x=>x.id===b.dataset.notesave); if(!a) return;
+    const wrap=b.closest(".appt-item"); a.notes=wrap.querySelector("[data-notearea]").value.trim(); editNotesId=null; save(); renderApptLists(); toast("Note saved"); });
 }
 function startAddAppt(dateISO){
   editApptId=null;
@@ -1481,6 +1554,12 @@ $("#haAdd").onclick=()=>{
   $("#haVal").value=""; $("#haNote").value=""; $("#haDate").value=todayISO();
   save(); renderHba1cUI(); toast("HbA1c result added");
 };
+$("#goalAdd").onclick=()=>{
+  const t=$("#goalInput").value.trim(); if(!t){ toast("Enter a goal"); return; }
+  state.goals.push({id:uid(), text:t, done:false, createdAt:Date.now()});
+  $("#goalInput").value=""; save(); renderGoals(); toast("Goal added");
+};
+$("#goalInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#goalAdd").click(); } });
 $("#mAdd").onclick=()=>{
   const name=$("#mName").value.trim(); if(!name){ toast("Name the medication"); return; }
   state.meds.push({id:uid(), name, dose:$("#mDose").value.trim(), category:$("#mCat").value||"Other"});
