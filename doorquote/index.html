@@ -1275,11 +1275,24 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v14 · 2026-09-11";
+const VERSION = "v15 · 2026-09-11";
 $("ver").textContent = VERSION;
 
+/* PWA service worker — auto-update: when a new version activates, reload once
+   so installed apps refresh themselves instead of showing a stale cached copy. */
 if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  const hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(!hadController || refreshing) return;   // ignore the first-ever install; only reload on updates
+    refreshing = true; window.location.reload();
+  });
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      reg.update();
+      setInterval(()=>reg.update(), 60*60*1000);   // check hourly while open
+    }).catch(()=>{});
+  });
 }
 </script>
 </body>
