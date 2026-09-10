@@ -62,6 +62,8 @@
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
 
   /* quote line table */
+  .linewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .rmtext{display:none}
   table.lines{width:100%;border-collapse:collapse}
   table.lines th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
     text-align:left;padding:6px 8px;font-weight:600}
@@ -149,14 +151,33 @@
     .grid2{grid-template-columns:1fr}
     header.top{gap:8px}
     .btn{padding:9px 11px;font-size:13px}
-    table.lines th.hidesm,table.lines td.hidesm{display:none}
-    .qtyc{width:56px}.unitc{width:84px}
+    /* line items become stacked, labelled cards so nothing runs off-screen */
+    table.lines,table.lines tbody{display:block;width:100%}
+    table.lines thead{display:none}
+    table.lines tr{display:block;background:var(--panel2);border:1px solid var(--line);
+      border-radius:12px;padding:8px 12px;margin-bottom:12px}
+    table.lines td{display:flex;align-items:center;gap:10px;width:auto;padding:6px 0;border:none;text-align:left}
+    table.lines td::before{content:attr(data-label);flex:0 0 80px;font-size:11px;font-weight:600;
+      color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+    table.lines td.num{text-align:left}
+    table.lines input,table.lines select{width:auto;flex:1}
+    .qtyc,.unitc,.codec,.stocksel,.leadin{width:auto}
+    td.linetot{font-size:16px;font-weight:700;padding-top:8px}
+    /* In stock: the Lead time box drops onto its own line, aligned under the dropdown */
+    td.stockcell{flex-wrap:wrap}
+    td.stockcell .leadin{flex:1 1 100%;margin:6px 0 0 90px}
+    /* Remove: full-width button, no label column */
+    td.rmcell{padding-top:8px}
+    td.rmcell::before{display:none}
+    .rmcell .rmbtn{width:100%;height:auto;padding:10px;color:var(--danger)}
+    .rmtext{display:inline}
   }
 
   /* ---------- print ---------- */
   @media print{
     @page{margin:14mm}
     html{zoom:1!important}                     /* text-size control never affects the PDF */
+    .linewrap{overflow:visible!important}      /* let the table flow normally on paper */
     body{background:#fff!important;color:#000!important;font-size:12px}
     #app{max-width:none;padding:0}
     .noprint{display:none!important}
@@ -284,6 +305,7 @@
   <!-- line items -->
   <div class="panel">
     <h2>🔩 Line items</h2>
+    <div class="linewrap">
     <table class="lines">
       <thead>
         <tr>
@@ -298,6 +320,7 @@
       </thead>
       <tbody id="lineBody"></tbody>
     </table>
+    </div>
 
     <div class="addrow noprint">
       <select id="catPick"><option value="">➕ Add from catalogue…</option></select>
@@ -448,10 +471,10 @@ function renderLines(){
   }
   body.innerHTML = quote.lines.map(l=>`
     <tr data-id="${l.id}">
-      <td class="num"><input class="qtyc" type="number" min="0" step="1" value="${l.qty}" data-f="qty"></td>
-      <td class="codecol noprint"><input class="codec" type="text" value="${esc(l.code||'')}" data-f="code" placeholder="Code"></td>
-      <td class="desccol"><input type="text" value="${esc(l.desc)}" data-f="desc" placeholder="Description"><span class="desc-print">${esc(l.desc)}</span></td>
-      <td class="stockcell">${(()=>{
+      <td class="num" data-label="Qty"><input class="qtyc" type="number" min="0" step="1" value="${l.qty}" data-f="qty"></td>
+      <td class="codecol noprint" data-label="Code"><input class="codec" type="text" value="${esc(l.code||'')}" data-f="code" placeholder="Code"></td>
+      <td class="desccol" data-label="Description"><input type="text" value="${esc(l.desc)}" data-f="desc" placeholder="Description"><span class="desc-print">${esc(l.desc)}</span></td>
+      <td class="stockcell" data-label="In stock">${(()=>{
         const st=(l.stock==='no')?'no':'yes';
         const lead=esc(l.lead||'');
         const printVal = st==='yes' ? 'Yes' : (l.lead ? lead : 'No');
@@ -459,9 +482,9 @@ function renderLines(){
           `<input class="leadin noprint" type="text" data-f="lead" placeholder="Lead time" value="${lead}"${st==='no'?'':' style="display:none"'}>`+
           `<span class="stock-print">${printVal}</span>`;
       })()}</td>
-      <td class="num"><input class="unitc" type="number" min="0" step="0.01" value="${l.unit}" data-f="unit"><span class="unit-print">${money(l.unit)}</span></td>
-      <td class="num linetot">${money((Number(l.qty)||0)*(Number(l.unit)||0))}</td>
-      <td class="noprint"><button class="rmbtn" title="Remove" data-rm="${l.id}">✕</button></td>
+      <td class="num" data-label="Unit cost"><input class="unitc" type="number" min="0" step="0.01" value="${l.unit}" data-f="unit"><span class="unit-print">${money(l.unit)}</span></td>
+      <td class="num linetot" data-label="Line total">${money((Number(l.qty)||0)*(Number(l.unit)||0))}</td>
+      <td class="noprint rmcell"><button class="rmbtn" title="Remove" data-rm="${l.id}">✕<span class="rmtext"> Remove line</span></button></td>
     </tr>`).join("");
 
   body.querySelectorAll("input,select").forEach(inp=>{
@@ -1275,7 +1298,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v15 · 2026-09-11";
+const VERSION = "v16 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
