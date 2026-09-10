@@ -68,7 +68,8 @@
   table.lines th.num,table.lines td.num{text-align:right}
   table.lines td{padding:5px 6px;vertical-align:middle;border-top:1px solid var(--line)}
   table.lines input{padding:8px 9px}
-  .qtyc{width:70px}.unitc{width:100px}
+  .qtyc{width:64px}.unitc{width:100px}.codec{width:90px}.stocksel{width:74px;padding:8px 6px}
+  .stock-print{display:none}
   .linetot{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
   .unit-print{display:none;font-variant-numeric:tabular-nums}
   .rmbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);width:32px;height:32px;
@@ -165,6 +166,8 @@
     table.lines tr{page-break-inside:avoid}
     table.lines input{border:none;background:none;color:#000;padding:0;-webkit-appearance:none;appearance:none}
     td.num input{text-align:right}
+    .stocksel{display:none!important}
+    .stock-print{display:inline!important}
     .qtyc,.unitc{width:auto}
     .unitc{display:none!important}             /* show the formatted £ value instead */
     .unit-print{display:inline!important}
@@ -182,6 +185,7 @@
     .vattoggle{display:none!important}
     .vatlbl-print,.vatrate-print{display:inline!important}
     #printFoot{display:block!important}
+    #printTerms{display:block!important}
   }
   #printHead{display:none;margin-bottom:22px;color:#111}
   #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
@@ -198,7 +202,12 @@
   #printHead .qnums > div{margin-bottom:6px}
   #printHead .qnums .lbl{display:block}
   #printHead .qnums b{font-size:15px}
-  #printFoot{display:none;margin-top:26px;padding-top:12px;border-top:1px solid #ddd;
+  #printTerms{display:none;margin-top:24px;padding-top:12px;border-top:1px solid #ddd;
+    font-size:9.5px;color:#555;line-height:1.5;page-break-inside:avoid}
+  #printTerms h4{margin:0 0 6px;font-size:10.5px;color:#1f4e79;text-transform:uppercase;letter-spacing:.5px}
+  #printTerms ul{margin:0;padding-left:15px}
+  #printTerms li{margin-bottom:3px}
+  #printFoot{display:none;margin-top:18px;padding-top:12px;border-top:1px solid #ddd;
     font-size:10.5px;color:#777;line-height:1.6;text-align:center}
 </style>
 </head>
@@ -268,8 +277,10 @@
     <table class="lines">
       <thead>
         <tr>
-          <th class="num" style="width:70px">Qty</th>
+          <th class="num" style="width:64px">Qty</th>
+          <th class="noprint" style="width:96px">Code</th>
           <th>Description</th>
+          <th style="width:82px">In stock</th>
           <th class="num" style="width:100px">Unit cost</th>
           <th class="num" style="width:110px">Line total</th>
           <th class="noprint" style="width:36px"></th>
@@ -300,6 +311,7 @@
       <div class="totline grand"><span>Total</span><span class="v" id="tGrand">£0.00</span></div>
     </div>
 
+    <div id="printTerms"></div>
     <div id="printFoot"></div>
   </div>
 
@@ -326,6 +338,17 @@ const $ = id => document.getElementById(id);
 const esc = s => (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const money = n => "£" + (Number(n)||0).toFixed(2);
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random());
+
+// Terms & conditions shown at the bottom of the printed quote and the email.
+const TERMS = [
+  "Prices exclude VAT.",
+  "Lead times are based on current stock levels, subject to availability at the time of quotation.",
+  "We accept no responsibility for late deliveries, for inaccurate delivery addresses supplied by yourselves, or for the courier failing to make contact with the recipient or to leave packages/cards.",
+  "Missing or damaged items must be reported within 5 days of delivery.",
+  "To proceed, please send us an official purchase order.",
+  "Please note: if your account is on a proforma basis, we will require payment before the parts can be sent out or placed on order with our supplier.",
+  "Once your purchase order has been received, we will send you instructions on how to pay."
+];
 
 let catalogue = [];      // hardware items you maintain
 let quote = null;        // current working quote
@@ -413,19 +436,22 @@ function renderLines(){
   body.innerHTML = quote.lines.map(l=>`
     <tr data-id="${l.id}">
       <td class="num"><input class="qtyc" type="number" min="0" step="1" value="${l.qty}" data-f="qty"></td>
+      <td class="codecol noprint"><input class="codec" type="text" value="${esc(l.code||'')}" data-f="code" placeholder="Code"></td>
       <td><input type="text" value="${esc(l.desc)}" data-f="desc" placeholder="Description"></td>
+      <td>${(()=>{const st=(l.stock==='no')?'no':'yes';return `<select class="stocksel noprint" data-f="stock"><option value="yes"${st==='yes'?' selected':''}>Yes</option><option value="no"${st==='no'?' selected':''}>No</option></select><span class="stock-print">${st==='no'?'No':'Yes'}</span>`;})()}</td>
       <td class="num"><input class="unitc" type="number" min="0" step="0.01" value="${l.unit}" data-f="unit"><span class="unit-print">${money(l.unit)}</span></td>
       <td class="num linetot">${money((Number(l.qty)||0)*(Number(l.unit)||0))}</td>
       <td class="noprint"><button class="rmbtn" title="Remove" data-rm="${l.id}">✕</button></td>
     </tr>`).join("");
 
-  body.querySelectorAll("input").forEach(inp=>{
+  body.querySelectorAll("input,select").forEach(inp=>{
     inp.oninput = e=>{
       const id = e.target.closest("tr").dataset.id;
       const line = quote.lines.find(x=>x.id===id); if(!line) return;
       const f = e.target.dataset.f;
-      line[f] = (f==="desc") ? e.target.value : (parseFloat(e.target.value)||0);
-      if(f!=="desc"){
+      const isText = (f==="desc" || f==="code" || f==="stock");
+      line[f] = isText ? e.target.value : (parseFloat(e.target.value)||0);
+      if(!isText){
         e.target.closest("tr").querySelector(".linetot").textContent =
           money((Number(line.qty)||0)*(Number(line.unit)||0));
         renderTotals();
@@ -447,8 +473,8 @@ function renderTotals(){
   $("qVatRate").disabled = !quote.vatOn;
   $("tGrand").textContent = money(t.grand);
 }
-function addLine(desc="",unit=0,qty=1){
-  quote.lines.push({id:uid(), qty, desc, unit});
+function addLine(desc="",unit=0,qty=1,code=""){
+  quote.lines.push({id:uid(), qty, desc, unit, code, stock:"yes"});
   saveQuote(); renderLines();
 }
 
@@ -460,7 +486,7 @@ function fillCatPick(){
     sorted.map(c=>`<option value="${c.id}">${esc(c.desc)} — ${money(c.unit)}${c.standard?" ⭐":""}</option>`).join("");
   sel.onchange = ()=>{
     const c = catalogue.find(x=>x.id===sel.value); if(!c) return;
-    addLine(c.desc, c.unit, 1); sel.value = "";
+    addLine(c.desc, c.unit, 1, c.code||""); sel.value = "";
   };
 }
 
@@ -468,7 +494,7 @@ function fillCatPick(){
 function addStandardSetup(){
   const std = catalogue.filter(c=>c.standard);
   if(!std.length){ toast("No standard items yet — star items in the catalogue"); openCatalogue(); return; }
-  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, unit:c.unit}));
+  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, unit:c.unit, code:c.code||"", stock:"yes"}));
   saveQuote(); renderLines();
   toast(`Added ${std.length} standard item${std.length===1?"":"s"}`);
 }
@@ -488,8 +514,9 @@ function openCatalogue(){
           : `<div class="empty">No items yet. Add your first hardware item below.</div>`}
       </div>
       <div style="border-top:1px solid var(--line);margin:16px 0 14px"></div>
+      <div class="field"><label>Description</label><input id="ncDesc" placeholder="e.g. Lever handle set (SSS)"></div>
       <div class="grid2">
-        <div class="field"><label>Description</label><input id="ncDesc" placeholder="e.g. Lever handle set (SSS)"></div>
+        <div class="field"><label>Stock code <span style="color:var(--faint);font-weight:400">— optional</span></label><input id="ncCode" placeholder="e.g. LH-SSS-01"></div>
         <div class="field"><label>Unit cost (£)</label><input id="ncUnit" type="number" min="0" step="0.01" placeholder="0.00"></div>
       </div>
       <div class="cbrow" style="margin-bottom:14px">
@@ -508,7 +535,7 @@ function openCatalogue(){
     const desc = $("ncDesc").value.trim();
     const unit = parseFloat($("ncUnit").value)||0;
     if(!desc){ $("catErr").textContent = "Enter a description."; return; }
-    catalogue.push({id:uid(), desc, unit, standard:$("ncStd").checked, updated:Date.now()});
+    catalogue.push({id:uid(), desc, code:$("ncCode").value.trim(), unit, standard:$("ncStd").checked, updated:Date.now()});
     saveCat(); fillCatPick(); openCatalogue();   // re-render list
     toast("Item added");
   };
@@ -517,7 +544,7 @@ function openCatalogue(){
 function catRowHtml(c){
   return `<div class="catrow" data-id="${c.id}">
     <button class="star ${c.standard?"on":""}" data-star="${c.id}" title="Toggle standard setup">★</button>
-    <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div></div>
+    <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div>${c.code?`<div class="s">${esc(c.code)}</div>`:''}</div>
     <div class="cunit">${money(c.unit)}</div>
     <button class="icon" data-edit="${c.id}" title="Edit">✏️</button>
     <button class="icon" data-del="${c.id}" title="Delete">🗑</button>
@@ -541,7 +568,10 @@ function editCatItem(id){
     <div class="modal">
       <h2>✏️ Edit item</h2>
       <div class="field"><label>Description</label><input id="ecDesc" value="${esc(c.desc)}"></div>
-      <div class="field"><label>Unit cost (£)</label><input id="ecUnit" type="number" min="0" step="0.01" value="${c.unit}"></div>
+      <div class="grid2">
+        <div class="field"><label>Stock code</label><input id="ecCode" value="${esc(c.code||'')}" placeholder="e.g. LH-SSS-01"></div>
+        <div class="field"><label>Unit cost (£)</label><input id="ecUnit" type="number" min="0" step="0.01" value="${c.unit}"></div>
+      </div>
       <div class="cbrow" style="margin-bottom:14px">
         <input type="checkbox" id="ecStd" ${c.standard?"checked":""}>
         <label for="ecStd" style="margin:0;color:var(--text);font-size:14px">Part of standard setup</label>
@@ -556,6 +586,7 @@ function editCatItem(id){
   bindOverlayClose();
   $("ecSave").onclick = ()=>{
     c.desc = $("ecDesc").value.trim() || c.desc;
+    c.code = $("ecCode").value.trim();
     c.unit = parseFloat($("ecUnit").value)||0;
     c.standard = $("ecStd").checked;
     c.updated = Date.now();
@@ -750,7 +781,7 @@ function emailQuote(){
   const t = computeTotals(quote);
   const co = company.name || "";
   const lines = quote.lines.length
-    ? quote.lines.map(l=>`  ${l.qty} x ${l.desc||"(item)"} @ ${money(l.unit)} = ${money((Number(l.qty)||0)*(Number(l.unit)||0))}`).join("\n")
+    ? quote.lines.map(l=>`  ${l.qty} x ${l.desc||"(item)"} @ ${money(l.unit)} = ${money((Number(l.qty)||0)*(Number(l.unit)||0))}  [In stock: ${l.stock==="no"?"No":"Yes"}]`).join("\n")
     : "  (no items)";
   const body =
 `${co ? co+"\n\n" : ""}Quotation${quote.ref ? " "+quote.ref : ""}${quote.date ? " — "+new Date(quote.date).toLocaleDateString("en-GB") : ""}
@@ -761,7 +792,9 @@ ${lines}
 Subtotal:  ${money(t.sub)}
 Delivery:  ${money(t.deliv)}${quote.vatOn ? `\nVAT (${quote.vatRate}%):  ${money(t.vat)}` : ""}
 Total:     ${money(t.grand)}
-${company.contact ? "\n"+company.contact : ""}`;
+${company.contact ? "\n"+company.contact+"\n" : ""}
+Terms & Conditions:
+${TERMS.map(t=>"- "+t).join("\n")}`;
   const subject = `Quotation${quote.ref ? " "+quote.ref : ""}${co ? " — "+co : ""}`;
   const to = (quote.email||"").trim();
   const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -803,6 +836,9 @@ function doPrint(){
   $("phCustEmail").textContent = quote.email || "";
   $("phRef").textContent = quote.ref || "—";
   $("phDate").textContent = quote.date ? new Date(quote.date).toLocaleDateString("en-GB") : "";
+  // terms & conditions block
+  $("printTerms").innerHTML = "<h4>Terms &amp; Conditions</h4><ul>" +
+    TERMS.map(t=>"<li>"+esc(t)+"</li>").join("") + "</ul>";
   // footer: company contact line + a standard validity note
   const foot = [company.name, company.contact].filter(Boolean).join("  ·  ");
   $("printFoot").innerHTML = (foot ? esc(foot)+"<br>" : "") +
@@ -1209,7 +1245,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v8 · 2026-09-10 · £30 delivery, theme, text size";
+const VERSION = "v9 · 2026-09-10 · stock code, in-stock, terms";
 $("ver").textContent = "Build " + VERSION;
 
 if('serviceWorker' in navigator){
