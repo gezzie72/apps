@@ -167,7 +167,7 @@
     table.lines th:first-child,table.lines td:first-child{text-align:left;width:44px;padding-left:0}
     table.lines td:first-child input{text-align:left!important}
     .desccol input{display:none!important}
-    .desc-print{display:inline!important;white-space:normal;word-break:break-word}
+    .desc-print{display:inline!important;white-space:normal;overflow-wrap:break-word;word-break:normal}
     table.lines td{border-top:1px solid #e2e2e2;padding:7px 8px}
     table.lines tr{page-break-inside:avoid}
     table.lines input{border:none;background:none;color:#000;padding:0;-webkit-appearance:none;appearance:none}
@@ -304,7 +304,7 @@
       <div class="totline"><span>Subtotal</span><span class="v" id="tSub">£0.00</span></div>
       <div class="totline">
         <span>Delivery charge</span>
-        <span class="delivrow"><span>£</span><input id="qDelivery" type="number" min="0" step="0.01" value="0" class="noprint"><span class="v hidden" id="tDelivPrint">£0.00</span></span>
+        <span class="delivrow"><span class="noprint">£</span><input id="qDelivery" type="number" min="0" step="0.01" value="0" class="noprint"><span class="v hidden" id="tDelivPrint">£0.00</span></span>
       </div>
       <div class="totline" id="vatLine">
         <span class="vatlbl">
@@ -1251,7 +1251,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v10 · 2026-09-10 · quote table: qty left, wrap desc";
+const VERSION = "v11 · 2026-09-10 · fix double £ on delivery";
 $("ver").textContent = "Build " + VERSION;
 
 if('serviceWorker' in navigator){
