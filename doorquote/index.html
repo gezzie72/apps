@@ -68,7 +68,10 @@
   table.lines th.num,table.lines td.num{text-align:right}
   table.lines td{padding:5px 6px;vertical-align:middle;border-top:1px solid var(--line)}
   table.lines input{padding:8px 9px}
-  .qtyc{width:64px}.unitc{width:100px}.codec{width:90px}.stocksel{width:74px;padding:8px 6px}
+  .qtyc{width:64px}.unitc{width:100px}.codec{width:90px}
+  .stockcell{white-space:normal}
+  .stocksel{width:88px;padding:8px 6px}
+  .leadin{width:88px;margin-top:5px;padding:7px 8px;font-size:12px}
   .stock-print{display:none}
   .linetot{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
   .unit-print{display:none;font-variant-numeric:tabular-nums}
@@ -286,7 +289,7 @@
           <th class="num" style="width:64px">Qty</th>
           <th class="noprint" style="width:96px">Code</th>
           <th>Description</th>
-          <th style="width:82px">In stock</th>
+          <th style="width:100px">In stock</th>
           <th class="num" style="width:100px">Unit cost</th>
           <th class="num" style="width:110px">Line total</th>
           <th class="noprint" style="width:36px"></th>
@@ -444,7 +447,14 @@ function renderLines(){
       <td class="num"><input class="qtyc" type="number" min="0" step="1" value="${l.qty}" data-f="qty"></td>
       <td class="codecol noprint"><input class="codec" type="text" value="${esc(l.code||'')}" data-f="code" placeholder="Code"></td>
       <td class="desccol"><input type="text" value="${esc(l.desc)}" data-f="desc" placeholder="Description"><span class="desc-print">${esc(l.desc)}</span></td>
-      <td>${(()=>{const st=(l.stock==='no')?'no':'yes';return `<select class="stocksel noprint" data-f="stock"><option value="yes"${st==='yes'?' selected':''}>Yes</option><option value="no"${st==='no'?' selected':''}>No</option></select><span class="stock-print">${st==='no'?'No':'Yes'}</span>`;})()}</td>
+      <td class="stockcell">${(()=>{
+        const st=(l.stock==='no')?'no':'yes';
+        const lead=esc(l.lead||'');
+        const printVal = st==='yes' ? 'Yes' : (l.lead ? lead : 'No');
+        return `<select class="stocksel noprint" data-f="stock"><option value="yes"${st==='yes'?' selected':''}>Yes</option><option value="no"${st==='no'?' selected':''}>No</option></select>`+
+          `<input class="leadin noprint" type="text" data-f="lead" placeholder="Lead time" value="${lead}"${st==='no'?'':' style="display:none"'}>`+
+          `<span class="stock-print">${printVal}</span>`;
+      })()}</td>
       <td class="num"><input class="unitc" type="number" min="0" step="0.01" value="${l.unit}" data-f="unit"><span class="unit-print">${money(l.unit)}</span></td>
       <td class="num linetot">${money((Number(l.qty)||0)*(Number(l.unit)||0))}</td>
       <td class="noprint"><button class="rmbtn" title="Remove" data-rm="${l.id}">✕</button></td>
@@ -455,8 +465,12 @@ function renderLines(){
       const id = e.target.closest("tr").dataset.id;
       const line = quote.lines.find(x=>x.id===id); if(!line) return;
       const f = e.target.dataset.f;
-      const isText = (f==="desc" || f==="code" || f==="stock");
+      const isText = (f==="desc" || f==="code" || f==="stock" || f==="lead");
       line[f] = isText ? e.target.value : (parseFloat(e.target.value)||0);
+      if(f==="stock"){                    // reveal/hide the Lead time box for this line
+        const leadEl = e.target.closest("td").querySelector(".leadin");
+        if(leadEl) leadEl.style.display = (line.stock==="no") ? "" : "none";
+      }
       if(!isText){
         e.target.closest("tr").querySelector(".linetot").textContent =
           money((Number(line.qty)||0)*(Number(line.unit)||0));
@@ -480,7 +494,7 @@ function renderTotals(){
   $("tGrand").textContent = money(t.grand);
 }
 function addLine(desc="",unit=0,qty=1,code=""){
-  quote.lines.push({id:uid(), qty, desc, unit, code, stock:"yes"});
+  quote.lines.push({id:uid(), qty, desc, unit, code, stock:"yes", lead:""});
   saveQuote(); renderLines();
 }
 
@@ -500,7 +514,7 @@ function fillCatPick(){
 function addStandardSetup(){
   const std = catalogue.filter(c=>c.standard);
   if(!std.length){ toast("No standard items yet — star items in the catalogue"); openCatalogue(); return; }
-  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, unit:c.unit, code:c.code||"", stock:"yes"}));
+  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, unit:c.unit, code:c.code||"", stock:"yes", lead:""}));
   saveQuote(); renderLines();
   toast(`Added ${std.length} standard item${std.length===1?"":"s"}`);
 }
@@ -787,7 +801,10 @@ function emailQuote(){
   const t = computeTotals(quote);
   const co = company.name || "";
   const lines = quote.lines.length
-    ? quote.lines.map(l=>`  ${l.qty} x ${l.desc||"(item)"} @ ${money(l.unit)} = ${money((Number(l.qty)||0)*(Number(l.unit)||0))}  [In stock: ${l.stock==="no"?"No":"Yes"}]`).join("\n")
+    ? quote.lines.map(l=>{
+        const avail = l.stock==="no" ? (l.lead ? "Lead time: "+l.lead : "In stock: No") : "In stock: Yes";
+        return `  ${l.qty} x ${l.desc||"(item)"} @ ${money(l.unit)} = ${money((Number(l.qty)||0)*(Number(l.unit)||0))}  [${avail}]`;
+      }).join("\n")
     : "  (no items)";
   const body =
 `${co ? co+"\n\n" : ""}Quotation${quote.ref ? " "+quote.ref : ""}${quote.date ? " — "+new Date(quote.date).toLocaleDateString("en-GB") : ""}
@@ -1251,7 +1268,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v11 · 2026-09-10 · fix double £ on delivery";
+const VERSION = "v12 · 2026-09-10 · per-line lead time when out of stock";
 $("ver").textContent = "Build " + VERSION;
 
 if('serviceWorker' in navigator){
