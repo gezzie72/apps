@@ -59,6 +59,7 @@
   table.lines input{padding:8px 9px}
   .qtyc{width:70px}.unitc{width:100px}
   .linetot{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+  .unit-print{display:none;font-variant-numeric:tabular-nums}
   .rmbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);width:32px;height:32px;
     display:flex;align-items:center;justify-content:center;font-size:14px}
   .rmbtn:hover{color:var(--danger);border-color:var(--danger)}
@@ -138,34 +139,55 @@
 
   /* ---------- print ---------- */
   @media print{
-    @page{margin:16mm}
-    body{background:#fff;color:#000}
+    @page{margin:14mm}
+    body{background:#fff;color:#000;font-size:12px}
     #app{max-width:none;padding:0}
     .noprint{display:none!important}
-    .panel{border:none;background:none;padding:0;margin:0 0 18px}
+    .panel{border:none;background:none;padding:0;margin:0 0 16px}
+    .panel h2{display:none!important}          /* drop the emoji section headings */
+    .ver{display:none!important}               /* drop the build-version footer */
     #printHead{display:block!important}
-    table.lines th{color:#444;border-bottom:1px solid #999}
-    table.lines td{border-top:1px solid #ddd}
-    table.lines input{border:none;background:none;color:#000;padding:2px 0;-webkit-appearance:none;appearance:none}
+    table.lines{border-collapse:collapse}
+    table.lines th{color:#555;border-bottom:1.5px solid #1f4e79;padding:4px 8px;font-size:9.5px}
+    table.lines td{border-top:1px solid #e2e2e2;padding:7px 8px}
+    table.lines tr{page-break-inside:avoid}
+    table.lines input{border:none;background:none;color:#000;padding:0;-webkit-appearance:none;appearance:none}
+    td.num input{text-align:right}
     .qtyc,.unitc{width:auto}
+    .unitc{display:none!important}             /* show the formatted £ value instead */
+    .unit-print{display:inline!important}
     .rmbtn,.addrow{display:none!important}
-    .totline{color:#000}
-    .totline.grand{border-top:1px solid #000}
+    .linetot{font-weight:600}
+    .totals{max-width:300px;margin-top:10px}
+    .totline{color:#000;padding:5px 0}
+    .totline .v{color:#000!important}
+    .totline.grand{border-top:2px solid #1f4e79;color:#000;font-size:17px}
+    .totline.grand .v{color:#1f4e79!important}
     .totline.vatoff{display:none!important}
-    .totals{max-width:340px}
     /* swap live inputs for static text in the totals */
     #qDelivery{display:none!important}
     #tDelivPrint{display:inline!important}
     .vattoggle{display:none!important}
     .vatlbl-print,.vatrate-print{display:inline!important}
+    #printFoot{display:block!important}
   }
-  #printHead{display:none;margin-bottom:20px}
+  #printHead{display:none;margin-bottom:22px;color:#111}
   #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
-  #printHead .col-logo{max-height:70px;max-width:220px;margin-bottom:10px;display:block}
-  #printHead .co{font-size:22px;font-weight:800}
-  #printHead .coaddr{font-size:12px;color:#444;margin-top:4px;white-space:pre-line;line-height:1.5}
-  #printHead .qtitle{font-size:20px;font-weight:800;letter-spacing:1px;color:#333}
-  #printHead .qt{font-size:13px;color:#444;margin-top:12px;border-top:1px solid #ccc;padding-top:10px}
+  #printHead .col-logo{max-height:64px;max-width:200px;margin-bottom:10px;display:block}
+  #printHead .co{font-size:20px;font-weight:800}
+  #printHead .coaddr{font-size:11.5px;color:#555;margin-top:4px;white-space:pre-line;line-height:1.55}
+  #printHead .qtitle{font-size:24px;font-weight:800;letter-spacing:2px;color:#1f4e79}
+  #printHead .qmeta{display:flex;justify-content:space-between;gap:24px;margin-top:16px;
+    border-top:2px solid #1f4e79;padding-top:12px}
+  #printHead .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:#888;font-weight:700}
+  #printHead .qfor .cust{font-size:15px;font-weight:700;margin-top:2px}
+  #printHead .qfor .proj{font-size:12px;color:#555;margin-top:2px}
+  #printHead .qnums{text-align:right;white-space:nowrap}
+  #printHead .qnums > div{margin-bottom:6px}
+  #printHead .qnums .lbl{display:block}
+  #printHead .qnums b{font-size:15px}
+  #printFoot{display:none;margin-top:26px;padding-top:12px;border-top:1px solid #ddd;
+    font-size:10.5px;color:#777;line-height:1.6;text-align:center}
 </style>
 </head>
 <body>
@@ -197,11 +219,22 @@
       </div>
       <div class="qtitle">QUOTATION</div>
     </div>
-    <div class="qt" id="phMeta"></div>
+    <div class="qmeta">
+      <div class="qfor">
+        <div class="lbl">Quote for</div>
+        <div class="cust" id="phCust"></div>
+        <div class="proj" id="phProj"></div>
+        <div class="proj" id="phCustEmail"></div>
+      </div>
+      <div class="qnums">
+        <div><span class="lbl">Quote No</span><b id="phRef"></b></div>
+        <div><span class="lbl">Date</span><b id="phDate"></b></div>
+      </div>
+    </div>
   </div>
 
-  <!-- quote details -->
-  <div class="panel">
+  <!-- quote details (screen only; the printed quote uses the header block above) -->
+  <div class="panel noprint">
     <h2>📋 Quote details</h2>
     <div class="grid2">
       <div class="field"><label>Customer / Company</label><input id="qCustomer" placeholder="Customer name"></div>
@@ -249,6 +282,8 @@
       </div>
       <div class="totline grand"><span>Total</span><span class="v" id="tGrand">£0.00</span></div>
     </div>
+
+    <div id="printFoot"></div>
   </div>
 
   <div class="ver" id="ver"></div>
@@ -360,7 +395,7 @@ function renderLines(){
     <tr data-id="${l.id}">
       <td class="num"><input class="qtyc" type="number" min="0" step="1" value="${l.qty}" data-f="qty"></td>
       <td><input type="text" value="${esc(l.desc)}" data-f="desc" placeholder="Description"></td>
-      <td class="num"><input class="unitc" type="number" min="0" step="0.01" value="${l.unit}" data-f="unit"></td>
+      <td class="num"><input class="unitc" type="number" min="0" step="0.01" value="${l.unit}" data-f="unit"><span class="unit-print">${money(l.unit)}</span></td>
       <td class="num linetot">${money((Number(l.qty)||0)*(Number(l.unit)||0))}</td>
       <td class="noprint"><button class="rmbtn" title="Remove" data-rm="${l.id}">✕</button></td>
     </tr>`).join("");
@@ -740,12 +775,19 @@ function doPrint(){
   const coBits = [company.address, company.contact,
                   company.vatNo && ("VAT No: "+company.vatNo)].filter(Boolean);
   $("phAddr").textContent = coBits.join("\n");
-  // quote meta
-  const bits = [quote.ref && ("Ref: "+quote.ref), quote.customer && ("To: "+quote.customer),
-                quote.project, quote.date && new Date(quote.date).toLocaleDateString("en-GB")].filter(Boolean);
-  $("phMeta").textContent = bits.join("   ·   ");
-  // static VAT rate for print
+  // quote meta — "Quote for" on the left, number/date on the right
+  $("phCust").textContent = quote.customer || "—";
+  $("phProj").textContent = quote.project || "";
+  $("phCustEmail").textContent = quote.email || "";
+  $("phRef").textContent = quote.ref || "—";
+  $("phDate").textContent = quote.date ? new Date(quote.date).toLocaleDateString("en-GB") : "";
+  // footer: company contact line + a standard validity note
+  const foot = [company.name, company.contact].filter(Boolean).join("  ·  ");
+  $("printFoot").innerHTML = (foot ? esc(foot)+"<br>" : "") +
+    "This quotation is valid for 30 days from the date above. Prices in GBP. E&amp;OE.";
+  // static VAT rate for print + refresh rows so unit prices show formatted £ values
   document.querySelector(".vatrate-print").textContent = (Number(quote.vatRate)||0);
+  renderLines();
   window.print();
 }
 
@@ -1111,7 +1153,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v6 · 2026-09-10 · company logo on print";
+const VERSION = "v7 · 2026-09-10 · tidier printed quote";
 $("ver").textContent = "Build " + VERSION;
 
 if('serviceWorker' in navigator){
