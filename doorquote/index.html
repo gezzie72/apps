@@ -216,6 +216,7 @@
   #printTerms h4{margin:0 0 6px;font-size:10.5px;color:#1f4e79;text-transform:uppercase;letter-spacing:.5px}
   #printTerms ul{margin:0;padding-left:15px}
   #printTerms li{margin-bottom:3px}
+  #printTerms .terms-pay{margin-top:10px;font-style:italic}
   #printFoot{display:none;margin-top:18px;padding-top:12px;border-top:1px solid #ddd;
     font-size:10.5px;color:#777;line-height:1.6;text-align:center}
 </style>
@@ -354,7 +355,10 @@ const TERMS = [
   "Lead times are based on current stock levels, subject to availability at the time of quotation.",
   "We accept no responsibility for late deliveries, for inaccurate delivery addresses supplied by yourselves, or for the courier failing to make contact with the recipient or to leave packages/cards.",
   "Missing or damaged items must be reported within 5 days of delivery.",
-  "To proceed, please send us an official purchase order.",
+  "To proceed, please send us an official purchase order."
+];
+// Payment note — set apart with a gap, shown in italics on the doc.
+const TERMS_PAYMENT = [
   "Please note: if your account is on a proforma basis, we will require payment before the parts can be sent out or placed on order with our supplier.",
   "Once your purchase order has been received, we will send you instructions on how to pay."
 ];
@@ -817,7 +821,9 @@ Delivery:  ${money(t.deliv)}${quote.vatOn ? `\nVAT (${quote.vatRate}%):  ${money
 Total:     ${money(t.grand)}
 ${company.contact ? "\n"+company.contact+"\n" : ""}
 Terms & Conditions:
-${TERMS.map(t=>"- "+t).join("\n")}`;
+${TERMS.map(t=>"- "+t).join("\n")}
+
+${TERMS_PAYMENT.map(t=>"- "+t).join("\n")}`;
   const subject = `Quotation${quote.ref ? " "+quote.ref : ""}${co ? " — "+co : ""}`;
   const to = (quote.email||"").trim();
   const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -861,7 +867,8 @@ function doPrint(){
   $("phDate").textContent = quote.date ? new Date(quote.date).toLocaleDateString("en-GB") : "";
   // terms & conditions block
   $("printTerms").innerHTML = "<h4>Terms &amp; Conditions</h4><ul>" +
-    TERMS.map(t=>"<li>"+esc(t)+"</li>").join("") + "</ul>";
+    TERMS.map(t=>"<li>"+esc(t)+"</li>").join("") + "</ul>" +
+    "<ul class=\"terms-pay\">" + TERMS_PAYMENT.map(t=>"<li>"+esc(t)+"</li>").join("") + "</ul>";
   // footer: company contact line + a standard validity note
   const foot = [company.name, company.contact].filter(Boolean).join("  ·  ");
   $("printFoot").innerHTML = (foot ? esc(foot)+"<br>" : "") +
@@ -1268,7 +1275,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v12 · 2026-09-10 · per-line lead time when out of stock";
+const VERSION = "v13 · 2026-09-10 · terms: gap + italic payment note";
 $("ver").textContent = "Build " + VERSION;
 
 if('serviceWorker' in navigator){
