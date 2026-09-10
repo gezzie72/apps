@@ -222,7 +222,7 @@
       <div class="cards" id="haStats" style="margin-top:14px"></div>
       <h3>HbA1c history</h3>
       <div class="scrollx"><table class="hist" id="haHist"><tbody></tbody></table></div>
-      <p class="disc">General guide (IFCC): below 42 mmol/mol (6.0%) is the non-diabetes range, 42–47 (6.0–6.4%) is higher risk, and 48+ mmol/mol (6.5%+) is in the diabetes range. Personal targets vary — always follow your clinician's advice.</p>
+      <p class="disc">Based on NICE/WHO diagnostic thresholds: below 42 mmol/mol (6.0%) is normal, 42–47 (6.0–6.4%) is non-diabetic hyperglycaemia ("at risk"), and 48+ mmol/mol (6.5%+) is in the diabetes range. If you already have diabetes, your personal target (often 48 or 53 mmol/mol) may differ — always follow your clinician's advice.</p>
     </div>
 
     <div class="panel">
@@ -671,7 +671,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-09-09 · v9 hba1c";
+const APP_VERSION = "2026-09-10 · v10 hba1c-nice";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -894,7 +894,7 @@ function hbaUnitLabel(u){ return u==="pct" ? "%" : "mmol/mol"; }
 function hbaToMmol(value, unit){ return unit==="pct" ? (value-2.15)*10.929 : value; }   // IFCC ⇄ DCCT
 function hbaRound(value, unit){ return unit==="pct" ? Math.round(value*10)/10 : Math.round(value); }
 function hbaBand(mmol){ return mmol<42 ? "good" : mmol<48 ? "low" : "high"; }
-function hbaBandLabel(mmol){ return mmol<42 ? "Non-diabetes range" : mmol<48 ? "Higher risk" : "Diabetes range"; }
+function hbaBandLabel(mmol){ return mmol<42 ? "Normal" : mmol<48 ? "At risk (non-diabetic hyperglycaemia)" : "Diabetes range"; }
 function renderHba1cUI(){
   const hist=[...state.hba1c].sort((a,b)=> a.date<b.date?1:-1);
   const latest=hist[0], prev=hist[1];
