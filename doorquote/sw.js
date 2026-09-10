@@ -1,5 +1,5 @@
 /* Door Hardware Quote service worker - offline app shell, network-first so updates land. */
-const CACHE = "doorquote-v12";
+const CACHE = "doorquote-v13";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

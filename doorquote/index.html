@@ -1275,8 +1275,8 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v13 · 2026-09-10 · terms: gap + italic payment note";
-$("ver").textContent = "Build " + VERSION;
+const VERSION = "v14 · 2026-09-11";
+$("ver").textContent = VERSION;
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
