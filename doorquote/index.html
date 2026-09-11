@@ -67,6 +67,17 @@
   .spendbar{background:var(--inbg);border-radius:6px;height:16px;overflow:hidden}
   .spendbar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
   .spendval{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;white-space:nowrap}
+  /* won/lost chart bar colours + saved-quote status controls */
+  .spendbar i.wl-won{background:#16a34a}
+  .spendbar i.wl-lost{background:var(--danger)}
+  .spendbar i.wl-open{background:var(--muted)}
+  .qrow{flex-wrap:wrap}
+  .stbadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
+  .stbadge.won{background:rgba(22,163,74,.18);color:#4ade80}
+  .stbadge.lost{background:rgba(255,107,107,.18);color:#ff9b9b}
+  .statussel{width:auto;flex-shrink:0;padding:7px 8px;font-size:12px;font-weight:600}
+  .statussel.st-won{border-color:#16a34a;color:#4ade80}
+  .statussel.st-lost{border-color:var(--danger);color:#ff9b9b}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
   .panel h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -851,6 +862,7 @@ function openQuotesList(){
       <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
         ${rows.length ? "Open a quote to load it into the editor. Stored on this device."
                       : "No saved quotes yet — build a quote and hit 💾 Save."}</p>
+      ${salesSummaryHtml()}
       ${spendChartHtml()}
       <div class="catlist" id="quoteListBox">
         ${rows.map(quoteRowHtml).join("")}
@@ -866,7 +878,42 @@ function openQuotesList(){
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openSavedQuote(b.dataset.open));
   box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=()=>duplicateSaved(b.dataset.dup));
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteSaved(b.dataset.del));
+  box.querySelectorAll("[data-status]").forEach(s=>s.onchange=()=>setQuoteStatus(s.dataset.status, s.value));
 }
+/* sales outcome per saved quote: open (default) | won | lost */
+const qStatus = q => (q && (q.status==="won" || q.status==="lost")) ? q.status : "open";
+function setQuoteStatus(id, status){
+  const q = savedQuotes.find(x=>x.savedId===id); if(!q) return;
+  q.status = (status==="won"||status==="lost") ? status : "open";
+  q.updated = Date.now(); saveQuotes(); openQuotesList();
+}
+window.setQuoteStatus = setQuoteStatus;
+function salesSummary(){
+  let won=0,lost=0,open=0,wonN=0,lostN=0,openN=0;
+  savedQuotes.forEach(q=>{ const v=computeTotals(q).sub, s=qStatus(q);
+    if(s==="won"){won+=v;wonN++;} else if(s==="lost"){lost+=v;lostN++;} else {open+=v;openN++;} });
+  const decided=wonN+lostN;
+  return {won,lost,open,wonN,lostN,openN,rate:decided?Math.round(wonN/decided*100):null};
+}
+function salesSummaryHtml(){
+  if(!savedQuotes.length) return "";
+  const s = salesSummary();
+  const max = Math.max(s.won, s.lost, s.open, 1);
+  const row = (cls,lab,val,n)=>`<div class="spendrow">
+    <div class="spendname">${lab} · ${n}</div>
+    <div class="spendbar"><i class="wl-${cls}" style="width:${Math.max(3,Math.round(val/max*100))}%"></i></div>
+    <div class="spendval">${money(val)}</div></div>`;
+  return `<div class="spendchart">
+    <div class="spendhead">
+      <span class="sh-title">Sales — won / lost</span>
+      <span class="sh-sub">— win rate ${s.rate==null?"—":s.rate+"%"} · goods excl. delivery &amp; VAT</span>
+    </div>
+    ${row("won","Won",s.won,s.wonN)}
+    ${row("lost","Lost",s.lost,s.lostN)}
+    ${row("open","Open",s.open,s.openN)}
+  </div>`;
+}
+
 /* spend per customer — goods only (excludes delivery & VAT) */
 function spendByCustomer(){
   const map = {};
@@ -928,9 +975,17 @@ function quoteRowHtml(q){
   const t = computeTotals(q);
   const when = q.date ? new Date(q.date).toLocaleDateString("en-GB") : "";
   const sub = [q.customer, q.project, when].filter(Boolean).join("  ·  ") || "—";
-  const cur = q.savedId===quote.savedId ? ' <span class="stdtag">open</span>' : "";
-  return `<div class="catrow" data-id="${q.savedId}">
-    <div class="cdesc"><div class="n">${esc(quoteName(q))}${cur}</div><div class="s">${esc(sub)}</div></div>
+  const cur = q.savedId===quote.savedId ? ' <span class="stdtag">loaded</span>' : "";
+  const st = qStatus(q);
+  const badge = st==="won" ? ' <span class="stbadge won">Won</span>'
+              : st==="lost" ? ' <span class="stbadge lost">Lost</span>' : "";
+  return `<div class="catrow qrow" data-id="${q.savedId}">
+    <div class="cdesc"><div class="n">${esc(quoteName(q))}${cur}${badge}</div><div class="s">${esc(sub)}</div></div>
+    <select class="statussel st-${st}" data-status="${q.savedId}" title="Mark this quote won or lost">
+      <option value="open"${st==="open"?" selected":""}>Open</option>
+      <option value="won"${st==="won"?" selected":""}>Won</option>
+      <option value="lost"${st==="lost"?" selected":""}>Lost</option>
+    </select>
     <div class="cunit">${money(t.grand)}</div>
     <button class="icon" data-open="${q.savedId}" title="Open">📂</button>
     <button class="icon" data-dup="${q.savedId}" title="Duplicate">⧉</button>
@@ -1488,7 +1543,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v22 · 2026-09-11";
+const VERSION = "v23 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
