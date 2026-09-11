@@ -372,19 +372,20 @@ const esc = s => (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;
 const money = n => "£" + (Number(n)||0).toFixed(2);
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random());
 
-// Terms & conditions shown at the bottom of the printed quote and the email.
-const TERMS = [
-  "Prices exclude VAT.",
+// Default terms & conditions (editable in the Company panel; stored on company.terms so they sync/back up).
+const DEFAULT_TERMS_GENERAL = [
   "Lead times are based on current stock levels, subject to availability at the time of quotation.",
   "We accept no responsibility for late deliveries, for inaccurate delivery addresses supplied by yourselves, or for the courier failing to make contact with the recipient or to leave packages/cards.",
   "Missing or damaged items must be reported within 5 days of delivery.",
   "To proceed, please send us an official purchase order."
 ];
 // Payment note — set apart with a gap, shown in italics on the doc.
-const TERMS_PAYMENT = [
+const DEFAULT_TERMS_PAYMENT = [
   "Please note: if your account is on a proforma basis, we will require payment before the parts can be sent out or placed on order with our supplier.",
   "Once your purchase order has been received, we will send you instructions on how to pay."
 ];
+const termsGeneral = () => (company.terms && Array.isArray(company.terms.general)) ? company.terms.general : DEFAULT_TERMS_GENERAL;
+const termsPayment = () => (company.terms && Array.isArray(company.terms.payment)) ? company.terms.payment : DEFAULT_TERMS_PAYMENT;
 
 let catalogue = [];      // hardware items you maintain
 let quote = null;        // current working quote
@@ -696,6 +697,15 @@ function openCompany(){
         <div class="field"><label>Standard delivery charge (£)</label><input id="coDeliv" type="number" min="0" step="0.01" value="${Number.isFinite(company.defaultDelivery)?company.defaultDelivery:30}"></div>
       </div>
       <p style="color:var(--faint);font-size:11px;margin:-6px 0 12px">New quotes auto-fill as <b id="seqPreview">${esc(previewRef())}</b> — editable per quote. The number is used up only when a quote is saved.</p>
+      <div style="border-top:1px solid var(--line);margin:4px 0 14px"></div>
+      <div class="field">
+        <label>Terms &amp; Conditions <span style="color:var(--faint);font-weight:400">— one per line, shown at the bottom of the quote</span></label>
+        <textarea id="coTerms" rows="5" placeholder="One clause per line…">${esc(termsGeneral().join("\n"))}</textarea>
+      </div>
+      <div class="field">
+        <label>Payment note <span style="color:var(--faint);font-weight:400">— set apart &amp; italic on the quote</span></label>
+        <textarea id="coTermsPay" rows="3" placeholder="One clause per line…">${esc(termsPayment().join("\n"))}</textarea>
+      </div>
       <div class="modal-actions">
         <button class="link" onclick="closeModal()">Cancel</button>
         <button class="primary flex1" id="coSave">Save</button>
@@ -720,9 +730,11 @@ function openCompany(){
   };
   $("coSave").onclick = ()=>{
     const dv = parseFloat($("coDeliv").value);
+    const toLines = v => v.split("\n").map(s=>s.trim()).filter(Boolean);
     company = { name:$("coName").value.trim(), address:$("coAddr").value.trim(),
                 contact:$("coContact").value.trim(), vatNo:$("coVat").value.trim(),
                 quotePrefix:$("coPrefix").value.trim(), logo:coLogo,
+                terms:{ general: toLines($("coTerms").value), payment: toLines($("coTermsPay").value) },
                 defaultDelivery: Number.isFinite(dv)&&dv>=0 ? dv : 30, updated:Date.now() };
     const n = parseInt($("coSeq").value,10);
     if(Number.isFinite(n) && n>0 && n!==nextSeq){ nextSeq = n; saveSeq(); schedulePush(); }
@@ -842,11 +854,13 @@ ${lines}
 Subtotal:  ${money(t.sub)}
 Delivery:  ${money(t.deliv)}${quote.vatOn ? `\nVAT (${quote.vatRate}%):  ${money(t.vat)}` : ""}
 Total:     ${money(t.grand)}
-${company.contact ? "\n"+company.contact+"\n" : ""}
-Terms & Conditions:
-${TERMS.map(t=>"- "+t).join("\n")}
-
-${TERMS_PAYMENT.map(t=>"- "+t).join("\n")}`;
+${company.contact ? "\n"+company.contact : ""}${(()=>{
+    const tg=termsGeneral(), tp=termsPayment();
+    if(!tg.length && !tp.length) return "";
+    let s = "\n\nTerms & Conditions:\n" + tg.map(t=>"- "+t).join("\n");
+    if(tp.length) s += (tg.length?"\n\n":"") + tp.map(t=>"- "+t).join("\n");
+    return s;
+  })()}`;
   const subject = `Quotation${quote.ref ? " "+quote.ref : ""}${co ? " — "+co : ""}`;
   const to = (quote.email||"").trim();
   const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -889,9 +903,12 @@ function doPrint(){
   $("phRef").textContent = quote.ref || "—";
   $("phDate").textContent = quote.date ? new Date(quote.date).toLocaleDateString("en-GB") : "";
   // terms & conditions block
-  $("printTerms").innerHTML = "<h4>Terms &amp; Conditions</h4><ul>" +
-    TERMS.map(t=>"<li>"+esc(t)+"</li>").join("") + "</ul>" +
-    "<ul class=\"terms-pay\">" + TERMS_PAYMENT.map(t=>"<li>"+esc(t)+"</li>").join("") + "</ul>";
+  const tg = termsGeneral(), tp = termsPayment();
+  $("printTerms").innerHTML = (tg.length || tp.length)
+    ? "<h4>Terms &amp; Conditions</h4>" +
+      (tg.length ? "<ul>" + tg.map(t=>"<li>"+esc(t)+"</li>").join("") + "</ul>" : "") +
+      (tp.length ? "<ul class=\"terms-pay\">" + tp.map(t=>"<li>"+esc(t)+"</li>").join("") + "</ul>" : "")
+    : "";
   // footer: company contact line + a standard validity note
   const foot = [company.name, company.contact].filter(Boolean).join("  ·  ");
   $("printFoot").innerHTML = (foot ? esc(foot)+"<br>" : "") +
@@ -1298,7 +1315,7 @@ $("addBlankBtn").onclick = ()=>addLine("",0,1);
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v16 · 2026-09-11";
+const VERSION = "v17 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
