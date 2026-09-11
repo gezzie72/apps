@@ -16,8 +16,10 @@
     --bg:#0f1220; --panel:#191d31; --panel2:#212642; --line:#2c3355;
     --text:#e8eaf6; --muted:#9aa3c7; --accent:#6c8cff; --accent2:#4cc9a0;
     --danger:#ff6b6b; --shadow:0 12px 40px rgba(0,0,0,.45);
-    --inbg:#0f1326; --faint:var(--faint); --glow1:#1b2140; --glow2:#152033;
+    --inbg:#0f1326; --faint:#6570a0; --glow1:#1b2140; --glow2:#152033;
     --scale:1;
+    /* Design & Supply brand palette (used on the printed quote & spend report) */
+    --teal:#006B5B; --cyan:#15C7E0; --tint:#F1F7F6; --brandgrey:#4A4A4A;
   }
   :root[data-theme="light"]{
     --bg:#eef0f6; --panel:#ffffff; --panel2:#f3f5fb; --line:#d7dcea;
@@ -192,7 +194,8 @@
     @page{margin:14mm}
     html{zoom:1!important}                     /* text-size control never affects the PDF */
     .linewrap{overflow:visible!important}      /* let the table flow normally on paper */
-    body{background:#fff!important;color:#000!important;font-size:12px}
+    body{background:#fff!important;color:#222!important;font-size:12px;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact}
     #app{max-width:none;padding:0}
     .noprint{display:none!important}
     .panel{border:none;background:none;padding:0;margin:0 0 16px}
@@ -200,9 +203,11 @@
     .ver{display:none!important}               /* drop the build-version footer */
     #printHead{display:block!important}
     table.lines{border-collapse:collapse;table-layout:fixed;width:100%}
-    table.lines th{color:#555;border-bottom:1.5px solid #1f4e79;padding:4px 8px;font-size:9.5px}
+    table.lines th{background:var(--teal);color:#fff;padding:6px 8px;font-size:9.5px;font-weight:700}
+    table.lines tbody tr:nth-child(even){background:var(--tint)}
     /* Qty flush-left next to the description; description wraps instead of clipping */
-    table.lines th:first-child,table.lines td:first-child{text-align:left;width:44px;padding-left:0}
+    table.lines th:first-child,table.lines td:first-child{text-align:left;width:44px}
+    table.lines th:first-child{padding-left:8px} table.lines td:first-child{padding-left:8px}
     table.lines td:first-child input{text-align:left!important}
     .desccol input{display:none!important}
     .desc-print{display:inline!important;white-space:normal;overflow-wrap:break-word;word-break:normal}
@@ -218,10 +223,10 @@
     .rmbtn,.addrow{display:none!important}
     .linetot{font-weight:600}
     .totals{max-width:300px;margin-top:10px}
-    .totline{color:#000;padding:5px 0}
-    .totline .v{color:#000!important}
-    .totline.grand{border-top:2px solid #1f4e79;color:#000;font-size:17px}
-    .totline.grand .v{color:#1f4e79!important}
+    .totline{color:#222;padding:5px 0}
+    .totline .v{color:#222!important}
+    .totline.grand{border-top:2px solid var(--teal);color:var(--teal);font-size:17px}
+    .totline.grand .v{color:var(--teal)!important}
     .totline.vatoff{display:none!important}
     /* swap live inputs for static text in the totals */
     #qDelivery{display:none!important}
@@ -236,43 +241,44 @@
     body.spendmode #spendReport{display:block!important}
   }
   /* spend report layout (only visible when printing in spendmode) */
-  #spendReport{display:none;color:#111}
-  #spendReport .sr-head{border-bottom:2px solid #1f4e79;padding-bottom:10px;margin-bottom:16px}
+  #spendReport{display:none;color:#222}
+  #spendReport .sr-head{border-bottom:3px solid var(--cyan);padding-bottom:10px;margin-bottom:16px}
   #spendReport .sr-logo{max-height:56px;max-width:200px;display:block;margin-bottom:10px}
-  #spendReport .sr-title{font-size:22px;font-weight:800;letter-spacing:1px;color:#1f4e79}
-  #spendReport .sr-sub{font-size:11px;color:#555;margin-top:4px}
+  #spendReport .sr-title{font-size:22px;font-weight:800;letter-spacing:1px;color:var(--teal)}
+  #spendReport .sr-sub{font-size:11px;color:var(--brandgrey);margin-top:4px}
   #spendReport .sr-table{width:100%;border-collapse:collapse;font-size:12px}
-  #spendReport .sr-table th{text-align:left;color:#555;font-size:9.5px;text-transform:uppercase;
-    letter-spacing:.5px;border-bottom:1.5px solid #1f4e79;padding:6px 8px}
+  #spendReport .sr-table th{text-align:left;background:var(--teal);color:#fff;font-size:9.5px;text-transform:uppercase;
+    letter-spacing:.5px;padding:6px 8px;font-weight:700}
   #spendReport .sr-table th.num,#spendReport .sr-table td.num{text-align:right;white-space:nowrap}
+  #spendReport .sr-table tbody tr:nth-child(even){background:var(--tint)}
   #spendReport .sr-table td{border-top:1px solid #e2e2e2;padding:8px}
   #spendReport .sr-barcol,#spendReport .sr-barcell{width:46%}
   #spendReport .sr-bar{display:inline-block;height:11px;min-width:3px;border-radius:3px;
-    background:linear-gradient(90deg,#1f4e79,#2aa79b)}
-  #spendReport .sr-total td{border-top:2px solid #1f4e79;font-weight:800;font-size:14px;color:#1f4e79}
+    background:linear-gradient(90deg,var(--teal),var(--cyan))}
+  #spendReport .sr-total td{border-top:2px solid var(--teal);font-weight:800;font-size:14px;color:var(--teal)}
   #printHead{display:none;margin-bottom:22px;color:#111}
   #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
   #printHead .col-logo{max-height:64px;max-width:200px;margin-bottom:10px;display:block}
-  #printHead .co{font-size:20px;font-weight:800}
-  #printHead .coaddr{font-size:11.5px;color:#555;margin-top:4px;white-space:pre-line;line-height:1.55}
-  #printHead .qtitle{font-size:24px;font-weight:800;letter-spacing:2px;color:#1f4e79}
+  #printHead .co{font-size:20px;font-weight:800;color:var(--teal)}
+  #printHead .coaddr{font-size:11.5px;color:var(--brandgrey);margin-top:4px;white-space:pre-line;line-height:1.55}
+  #printHead .qtitle{font-size:24px;font-weight:800;letter-spacing:2px;color:var(--teal)}
   #printHead .qmeta{display:flex;justify-content:space-between;gap:24px;margin-top:16px;
-    border-top:2px solid #1f4e79;padding-top:12px}
-  #printHead .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:#888;font-weight:700}
+    border-top:3px solid var(--cyan);padding-top:12px}
+  #printHead .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--teal);font-weight:700}
   #printHead .qfor .cust{font-size:15px;font-weight:700;margin-top:2px}
-  #printHead .qfor .proj{font-size:12px;color:#555;margin-top:2px}
+  #printHead .qfor .proj{font-size:12px;color:var(--brandgrey);margin-top:2px}
   #printHead .qnums{text-align:right;white-space:nowrap}
   #printHead .qnums > div{margin-bottom:6px}
   #printHead .qnums .lbl{display:block}
   #printHead .qnums b{font-size:15px}
-  #printTerms{display:none;margin-top:24px;padding-top:12px;border-top:1px solid #ddd;
-    font-size:9.5px;color:#555;line-height:1.5;page-break-inside:avoid}
-  #printTerms h4{margin:0 0 6px;font-size:10.5px;color:#1f4e79;text-transform:uppercase;letter-spacing:.5px}
+  #printTerms{display:none;margin-top:24px;padding-top:12px;border-top:2px solid var(--cyan);
+    font-size:9.5px;color:var(--brandgrey);line-height:1.5;page-break-inside:avoid}
+  #printTerms h4{margin:0 0 6px;font-size:10.5px;color:var(--teal);text-transform:uppercase;letter-spacing:.5px}
   #printTerms ul{margin:0;padding-left:15px}
   #printTerms li{margin-bottom:3px}
   #printTerms .terms-pay{margin-top:10px;font-style:italic}
-  #printFoot{display:none;margin-top:18px;padding-top:12px;border-top:1px solid #ddd;
-    font-size:10.5px;color:#777;line-height:1.6;text-align:center}
+  #printFoot{display:none;margin-top:18px;padding-top:12px;border-top:2px solid var(--cyan);
+    font-size:10.5px;color:var(--brandgrey);line-height:1.6;text-align:center}
 </style>
 </head>
 <body>
@@ -1482,7 +1488,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v21 · 2026-09-11";
+const VERSION = "v22 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
