@@ -49,8 +49,10 @@
   .btn:hover{border-color:var(--accent)}
   .btn.accent{background:linear-gradient(135deg,var(--accent),#8b6cff);border:none;color:#fff;font-weight:600}
   .btn.small{padding:8px 11px;font-size:13px}
-  .viewgroup{display:inline-flex;gap:6px}
   .btn.iconbtn{padding:9px 11px;min-width:40px;font-weight:600}
+  .seg2{display:flex;align-items:center;gap:8px}
+  .setupbtns{display:flex;flex-direction:column;gap:8px}
+  .setupbtns .btn{width:100%;text-align:left}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
   .panel h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -250,19 +252,12 @@
     <button class="btn" id="stdBtn" title="Add all standard-setup items to this quote">⭐ Standard setup</button>
     <button class="btn" id="catBtn" title="Manage your hardware catalogue">🧰 Catalogue</button>
     <button class="btn" id="coBtn" title="Your company details (shown on the printed quote)">🏢 Company</button>
-    <button class="btn" id="syncBtn" title="Sync your catalogue & quotes across devices">☁ Sync</button>
     <button class="btn" id="quotesBtn" title="Open a saved quote">📁 Quotes</button>
     <button class="btn accent" id="saveBtn" title="Save this quote to your library">💾 Save</button>
     <button class="btn" id="printBtn" title="Print or save as PDF">🖨 Print / PDF</button>
     <button class="btn" id="emailBtn" title="Open your email app with this quote pre-filled">✉ Email</button>
-    <button class="btn" id="exportBtn" title="Download a backup">⬇ Backup</button>
-    <button class="btn" id="importBtn" title="Restore a backup">⬆ Restore</button>
     <button class="btn" id="newBtn" title="Start a fresh quote">✚ New quote</button>
-    <span class="viewgroup">
-      <button class="btn iconbtn" id="tsDown" title="Smaller text">A−</button>
-      <button class="btn iconbtn" id="tsUp" title="Larger text">A+</button>
-      <button class="btn iconbtn" id="themeBtn" title="Light / dark theme">🌙</button>
-    </span>
+    <button class="btn" id="setupBtn" title="Sync, backup, theme & text size">⚙ Setup</button>
     <input type="file" id="importFile" accept=".json,application/json" class="sr-file">
   </header>
 
@@ -987,6 +982,47 @@ function stepScale(dir){
   applyScale();
 }
 
+/* ---------- setup menu (sync, backup, restore, theme, text size) ---------- */
+function openSetup(){
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal" style="max-width:420px">
+      <h2>⚙ Setup</h2>
+      <div class="field">
+        <label>Appearance</label>
+        <div class="seg2" style="margin-bottom:8px">
+          <span style="flex:1;color:var(--text);font-size:14px">Theme</span>
+          <button class="btn iconbtn" type="button" id="themeBtn">🌙</button>
+        </div>
+        <div class="seg2">
+          <span style="flex:1;color:var(--text);font-size:14px">Text size</span>
+          <button class="btn iconbtn" type="button" id="tsDown">A−</button>
+          <button class="btn iconbtn" type="button" id="tsUp">A+</button>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--line);margin:6px 0 14px"></div>
+      <div class="field">
+        <label>Sync &amp; data</label>
+        <div class="setupbtns">
+          <button class="btn" type="button" id="suSync">☁ Sync across devices</button>
+          <button class="btn" type="button" id="suBackup">⬇ Download backup</button>
+          <button class="btn" type="button" id="suRestore">⬆ Restore backup</button>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="primary flex1" onclick="closeModal()">Done</button></div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  applyTheme(); applyScale();                    // set the theme icon + text-size button states
+  $("themeBtn").onclick = toggleTheme;
+  $("tsDown").onclick = ()=>stepScale(-1);
+  $("tsUp").onclick = ()=>stepScale(1);
+  $("suSync").onclick = openSync;                // opens the sync dialog
+  $("suBackup").onclick = exportBackup;
+  $("suRestore").onclick = ()=>{ $("importFile").value=""; $("importFile").click(); };
+}
+window.openSetup = openSetup;
+
 /* ============================================================
    GitHub Gist sync + encrypted cloud copy  (adapted from IdeaPad)
    Syncs the durable data: catalogue, saved quotes, company.
@@ -1300,28 +1336,23 @@ bindQuoteFields();
 maybePrefillRef();
 fillCatPick();
 renderLines();
-$("themeBtn").onclick = toggleTheme;
-$("tsDown").onclick = ()=>stepScale(-1);
-$("tsUp").onclick = ()=>stepScale(1);
 $("stdBtn").onclick = addStandardSetup;
 $("catBtn").onclick = openCatalogue;
 $("coBtn").onclick = openCompany;
 $("quotesBtn").onclick = openQuotesList;
 $("saveBtn").onclick = saveCurrentQuote;
 $("emailBtn").onclick = emailQuote;
-$("syncBtn").onclick = openSync;
-updateLastSync();
-if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 $("printBtn").onclick = doPrint;
-$("exportBtn").onclick = exportBackup;
-$("importBtn").onclick = ()=>{ $("importFile").value=""; $("importFile").click(); };
+$("setupBtn").onclick = openSetup;              // Sync, Backup, Restore, theme & text size live here
 $("importFile").addEventListener("change", handleImport);
 $("newBtn").onclick = newQuote;
 $("addBlankBtn").onclick = ()=>addLine("",0,1);
+updateLastSync();
+if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v18 · 2026-09-11";
+const VERSION = "v19 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
