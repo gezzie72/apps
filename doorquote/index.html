@@ -67,6 +67,8 @@
   .spendbar{background:var(--inbg);border-radius:6px;height:16px;overflow:hidden}
   .spendbar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
   .spendval{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;white-space:nowrap}
+  .spendfoot{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
+  .spendfoot b{color:var(--accent2)}
   /* won/lost chart bar colours + saved-quote status controls */
   .spendbar i.wl-won{background:#16a34a}
   .spendbar i.wl-lost{background:var(--danger)}
@@ -114,6 +116,9 @@
   .totals{margin-top:14px;margin-left:auto;max-width:320px}
   .totline{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:var(--muted)}
   .totline.grand{border-top:1px solid var(--line);margin-top:6px;padding-top:12px;font-size:20px;font-weight:800;color:var(--text)}
+  .totline.internal{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;font-size:13px;color:var(--muted)}
+  .intlabel{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--faint);
+    border:1px solid var(--line);border-radius:20px;padding:1px 6px;margin-left:4px}
   .totline .v{font-variant-numeric:tabular-nums;color:var(--text)}
   .delivrow{display:flex;align-items:center;gap:8px}
   .delivrow input{width:110px}
@@ -274,6 +279,9 @@
   #spendReport .sr-bar.sr-won{background:#16a34a}
   #spendReport .sr-bar.sr-lost{background:#d64545}
   #spendReport .sr-bar.sr-open{background:#9aa3b2}
+  #spendReport .sr-profit{margin-top:8px;font-size:11px;color:#222}
+  #spendReport .sr-profit b{color:var(--teal)}
+  #spendReport .sr-profit span{color:var(--brandgrey)}
   #printHead{display:none;margin-bottom:22px;color:#111}
   #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
   #printHead .col-logo{max-height:64px;max-width:200px;margin-bottom:10px;display:block}
@@ -392,6 +400,8 @@
         <span class="v" id="tVat">£0.00</span>
       </div>
       <div class="totline grand"><span>Total</span><span class="v" id="tGrand">£0.00</span></div>
+      <div class="totline internal noprint" id="profitLine" title="Sale price minus cost, goods only — not shown on the customer quote">
+        <span>Profit <span class="intlabel">internal</span></span><span class="v" id="tProfit">£0.00</span></div>
     </div>
 
     <div id="printTerms"></div>
@@ -514,11 +524,13 @@ function fillCustomerList(){
 /* ---------- totals (reusable) ---------- */
 function computeTotals(q){
   const sub = q.lines.reduce((a,l)=>a+(Number(l.qty)||0)*(Number(l.unit)||0),0);
+  const cost = q.lines.reduce((a,l)=>a+(Number(l.qty)||0)*(Number(l.cost)||0),0);
   const deliv = Number(q.delivery)||0;
   const net = sub + deliv;
   const rate = q.vatOn ? (Number(q.vatRate)||0) : 0;
   const vat = net * rate / 100;
-  return { sub, deliv, net, vat, grand: net + vat };
+  const profit = sub - cost;
+  return { sub, cost, profit, margin: sub>0 ? profit/sub*100 : 0, deliv, net, vat, grand: net + vat };
 }
 
 /* ---------- quote fields ---------- */
@@ -604,9 +616,16 @@ function renderTotals(){
   $("vatLine").classList.toggle("vatoff", !quote.vatOn);   // hidden on print when off
   $("qVatRate").disabled = !quote.vatOn;
   $("tGrand").textContent = money(t.grand);
+  // internal profit line (screen only) — only meaningful once some line has a cost
+  const pl = $("profitLine");
+  if(pl){
+    pl.classList.toggle("hidden", t.cost<=0);
+    $("tProfit").textContent = `${money(t.profit)} · ${t.margin.toFixed(0)}% margin`;
+    $("tProfit").style.color = t.profit<0 ? "var(--danger)" : "var(--accent2)";
+  }
 }
-function addLine(desc="",unit=0,qty=1,code=""){
-  quote.lines.push({id:uid(), qty, desc, unit, code, stock:"yes", lead:""});
+function addLine(desc="",unit=0,qty=1,code="",cost=0){
+  quote.lines.push({id:uid(), qty, desc, unit, cost, code, stock:"yes", lead:""});
   saveQuote(); renderLines();
 }
 
@@ -618,7 +637,7 @@ function fillCatPick(){
     sorted.map(c=>`<option value="${c.id}">${esc(c.desc)} — ${money(c.unit)}${c.standard?" ⭐":""}</option>`).join("");
   sel.onchange = ()=>{
     const c = catalogue.find(x=>x.id===sel.value); if(!c) return;
-    addLine(c.desc, c.unit, 1, c.code||""); sel.value = "";
+    addLine(c.desc, c.unit, 1, c.code||"", c.cost||0); sel.value = "";
   };
 }
 
@@ -626,7 +645,7 @@ function fillCatPick(){
 function addStandardSetup(){
   const std = catalogue.filter(c=>c.standard);
   if(!std.length){ toast("No standard items yet — star items in the catalogue"); openCatalogue(); return; }
-  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, unit:c.unit, code:c.code||"", stock:"yes", lead:""}));
+  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, unit:c.unit, cost:c.cost||0, code:c.code||"", stock:"yes", lead:""}));
   saveQuote(); renderLines();
   toast(`Added ${std.length} standard item${std.length===1?"":"s"}`);
 }
@@ -918,11 +937,13 @@ function setQuoteStatus(id, status){
 }
 window.setQuoteStatus = setQuoteStatus;
 function salesSummary(){
-  let won=0,lost=0,open=0,wonN=0,lostN=0,openN=0;
-  savedQuotes.forEach(q=>{ const v=computeTotals(q).sub, s=qStatus(q);
-    if(s==="won"){won+=v;wonN++;} else if(s==="lost"){lost+=v;lostN++;} else {open+=v;openN++;} });
+  let won=0,lost=0,open=0,wonN=0,lostN=0,openN=0,wonCost=0;
+  savedQuotes.forEach(q=>{ const t=computeTotals(q), v=t.sub, s=qStatus(q);
+    if(s==="won"){won+=v;wonCost+=t.cost;wonN++;} else if(s==="lost"){lost+=v;lostN++;} else {open+=v;openN++;} });
   const decided=wonN+lostN;
-  return {won,lost,open,wonN,lostN,openN,rate:decided?Math.round(wonN/decided*100):null};
+  const wonProfit=won-wonCost;
+  return {won,lost,open,wonN,lostN,openN,rate:decided?Math.round(wonN/decided*100):null,
+          wonCost,wonProfit,wonMargin: won>0 ? wonProfit/won*100 : 0};
 }
 function salesSummaryHtml(){
   if(!savedQuotes.length) return "";
@@ -940,6 +961,7 @@ function salesSummaryHtml(){
     ${row("won","Won",s.won,s.wonN)}
     ${row("lost","Lost",s.lost,s.lostN)}
     ${row("open","Open",s.open,s.openN)}
+    ${s.wonCost>0 ? `<div class="spendfoot">Profit on won business: <b>${money(s.wonProfit)}</b> · ${s.wonMargin.toFixed(0)}% margin <span class="intlabel">internal</span></div>` : ""}
   </div>`;
 }
 
@@ -1000,6 +1022,7 @@ function printSpend(){
         ${wlRow("open","Open",ss.open,ss.openN)}
       </tbody>
     </table>
+    ${ss.wonCost>0 ? `<div class="sr-profit">Profit on won business: <b>${money(ss.wonProfit)}</b> · ${ss.wonMargin.toFixed(0)}% margin <span>(revenue ${money(ss.won)} − cost ${money(ss.wonCost)})</span></div>` : ""}
     <h2 class="sr-h2">Spend by customer</h2>
     <table class="sr-table">
       <thead><tr><th>Customer</th><th class="sr-barcol">Share</th><th class="num">Spend</th></tr></thead>
@@ -1590,7 +1613,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v24 · 2026-09-11";
+const VERSION = "v25 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
