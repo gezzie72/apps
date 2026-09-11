@@ -55,8 +55,10 @@
   .setupbtns .btn{width:100%;text-align:left}
   /* spend-by-customer chart */
   .spendchart{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:16px}
-  .spendhead{font-size:12px;color:var(--text);font-weight:700;margin-bottom:10px}
-  .spendhead span{color:var(--muted);font-weight:400}
+  .spendhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .spendhead .sh-title{font-size:12px;color:var(--text);font-weight:700;white-space:nowrap}
+  .spendhead .sh-sub{font-size:12px;color:var(--muted);flex:1;min-width:0}
+  .spendhead .btn{flex-shrink:0}
   .spendrow{display:grid;grid-template-columns:118px 1fr auto;align-items:center;gap:10px;margin-bottom:7px}
   .spendrow:last-child{margin-bottom:0}
   .spendname{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -228,7 +230,26 @@
     .vatlbl-print,.vatrate-print{display:inline!important}
     #printFoot{display:block!important}
     #printTerms{display:block!important}
+    /* spend-by-customer report prints on its own (hide the quote app + any open modal) */
+    #modalRoot,#toast{display:none!important}
+    body.spendmode #app{display:none!important}
+    body.spendmode #spendReport{display:block!important}
   }
+  /* spend report layout (only visible when printing in spendmode) */
+  #spendReport{display:none;color:#111}
+  #spendReport .sr-head{border-bottom:2px solid #1f4e79;padding-bottom:10px;margin-bottom:16px}
+  #spendReport .sr-logo{max-height:56px;max-width:200px;display:block;margin-bottom:10px}
+  #spendReport .sr-title{font-size:22px;font-weight:800;letter-spacing:1px;color:#1f4e79}
+  #spendReport .sr-sub{font-size:11px;color:#555;margin-top:4px}
+  #spendReport .sr-table{width:100%;border-collapse:collapse;font-size:12px}
+  #spendReport .sr-table th{text-align:left;color:#555;font-size:9.5px;text-transform:uppercase;
+    letter-spacing:.5px;border-bottom:1.5px solid #1f4e79;padding:6px 8px}
+  #spendReport .sr-table th.num,#spendReport .sr-table td.num{text-align:right;white-space:nowrap}
+  #spendReport .sr-table td{border-top:1px solid #e2e2e2;padding:8px}
+  #spendReport .sr-barcol,#spendReport .sr-barcell{width:46%}
+  #spendReport .sr-bar{display:inline-block;height:11px;min-width:3px;border-radius:3px;
+    background:linear-gradient(90deg,#1f4e79,#2aa79b)}
+  #spendReport .sr-total td{border-top:2px solid #1f4e79;font-weight:800;font-size:14px;color:#1f4e79}
   #printHead{display:none;margin-bottom:22px;color:#111}
   #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
   #printHead .col-logo{max-height:64px;max-width:200px;margin-bottom:10px;display:block}
@@ -357,6 +378,7 @@
 </div>
 
 <div id="modalRoot"></div>
+<div id="spendReport"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -833,6 +855,7 @@ function openQuotesList(){
     </div>
   </div>`;
   bindOverlayClose();
+  const pb = $("spendPrintBtn"); if(pb) pb.onclick = printSpend;
   const box = $("quoteListBox");
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openSavedQuote(b.dataset.open));
   box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=()=>duplicateSaved(b.dataset.dup));
@@ -853,13 +876,47 @@ function spendChartHtml(){
   const max = Math.max(...data.map(d=>d.total), 1);
   const grand = data.reduce((a,d)=>a+d.total,0);
   return `<div class="spendchart">
-    <div class="spendhead">Spend by customer <span>— goods only, excl. delivery &amp; VAT · total ${money(grand)}</span></div>
+    <div class="spendhead">
+      <span class="sh-title">Spend by customer</span>
+      <span class="sh-sub">— goods only, excl. delivery &amp; VAT · total ${money(grand)}</span>
+      <button class="btn small" type="button" id="spendPrintBtn" title="Print / save this as a PDF report">🖨 Print</button>
+    </div>
     ${data.map(d=>`<div class="spendrow">
       <div class="spendname" title="${esc(d.name)}">${esc(d.name)}</div>
       <div class="spendbar"><i style="width:${Math.max(3,Math.round(d.total/max*100))}%"></i></div>
       <div class="spendval">${money(d.total)}</div>
     </div>`).join("")}
   </div>`;
+}
+function printSpend(){
+  const data = spendByCustomer();
+  if(!data.length || data.every(d=>d.total===0)){ toast("No saved quotes to report"); return; }
+  const max = Math.max(...data.map(d=>d.total), 1);
+  const grand = data.reduce((a,d)=>a+d.total,0);
+  const logo = effectiveLogo();
+  const when = new Date().toLocaleDateString("en-GB");
+  const co = company.name || "";
+  $("spendReport").innerHTML = `
+    <div class="sr-head">
+      ${logo ? `<img class="sr-logo" src="${logo}" alt="">` : ""}
+      <div class="sr-title">Spend by customer</div>
+      <div class="sr-sub">${co ? esc(co)+" · " : ""}Goods only — excludes delivery &amp; VAT · ${data.length} customer${data.length===1?"":"s"} · generated ${when}</div>
+    </div>
+    <table class="sr-table">
+      <thead><tr><th>Customer</th><th class="sr-barcol">Share</th><th class="num">Spend</th></tr></thead>
+      <tbody>
+        ${data.map(d=>`<tr>
+          <td>${esc(d.name)}</td>
+          <td class="sr-barcell"><span class="sr-bar" style="width:${Math.max(3,Math.round(d.total/max*100))}%"></span></td>
+          <td class="num">${money(d.total)}</td></tr>`).join("")}
+        <tr class="sr-total"><td>Total</td><td></td><td class="num">${money(grand)}</td></tr>
+      </tbody>
+    </table>`;
+  document.body.classList.add("spendmode");
+  const cleanup = ()=>{ document.body.classList.remove("spendmode"); window.removeEventListener("afterprint", cleanup); };
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+  setTimeout(cleanup, 20000);   // fallback if afterprint never fires (harmless on screen)
 }
 function quoteRowHtml(q){
   const t = computeTotals(q);
@@ -951,6 +1008,7 @@ function maybePrefillRef(){
 
 /* ---------- print ---------- */
 function doPrint(){
+  document.body.classList.remove("spendmode");   // ensure the quote prints, not the spend report
   // company header
   const logo = $("phLogo");
   const lg = effectiveLogo();
@@ -1424,7 +1482,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v20 · 2026-09-11";
+const VERSION = "v21 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
