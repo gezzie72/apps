@@ -53,6 +53,16 @@
   .seg2{display:flex;align-items:center;gap:8px}
   .setupbtns{display:flex;flex-direction:column;gap:8px}
   .setupbtns .btn{width:100%;text-align:left}
+  /* spend-by-customer chart */
+  .spendchart{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+  .spendhead{font-size:12px;color:var(--text);font-weight:700;margin-bottom:10px}
+  .spendhead span{color:var(--muted);font-weight:400}
+  .spendrow{display:grid;grid-template-columns:118px 1fr auto;align-items:center;gap:10px;margin-bottom:7px}
+  .spendrow:last-child{margin-bottom:0}
+  .spendname{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .spendbar{background:var(--inbg);border-radius:6px;height:16px;overflow:hidden}
+  .spendbar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .spendval{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;white-space:nowrap}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
   .panel h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -289,7 +299,7 @@
   <div class="panel noprint">
     <h2>📋 Quote details</h2>
     <div class="grid2">
-      <div class="field"><label>Customer / Company</label><input id="qCustomer" placeholder="Customer name"></div>
+      <div class="field"><label>Customer / Company</label><input id="qCustomer" placeholder="Customer name" list="custList" autocomplete="off"><datalist id="custList"></datalist></div>
       <div class="field"><label>Quote reference</label><input id="qRef" placeholder="e.g. Q-1042"></div>
       <div class="field"><label>Customer email <span style="color:var(--faint);font-weight:400">— for the Email button</span></label><input id="qEmail" type="email" placeholder="customer@example.com"></div>
       <div class="field"><label>Project / Site</label><input id="qProject" placeholder="e.g. Door set — Level 2"></div>
@@ -362,6 +372,7 @@ const LS_QUOTE = "dhq.quote.v1";
 const LS_QUOTES = "dhq.quotes.v1";
 const LS_CO = "dhq.company.v1";
 const LS_SEQ = "dhq.seq.v1";
+const LS_CUST = "dhq.customers.v1";
 const $ = id => document.getElementById(id);
 const esc = s => (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const money = n => "£" + (Number(n)||0).toFixed(2);
@@ -389,6 +400,7 @@ const termsPayment = () => (company.terms && Array.isArray(company.terms.payment
 let catalogue = [];      // hardware items you maintain
 let quote = null;        // current working quote
 let savedQuotes = [];    // your saved quote library
+let customers = {};      // directory: lowercase name -> {name, email, updated}
 let company = null;      // your company details (shown on print)
 let nextSeq = 1001;      // next auto quote number (synced by max)
 
@@ -401,6 +413,8 @@ function loadAll(){
   fixQuote(quote);
   try{ savedQuotes = JSON.parse(localStorage.getItem(LS_QUOTES)) || []; }catch{ savedQuotes = []; }
   if(!Array.isArray(savedQuotes)) savedQuotes = [];
+  try{ customers = JSON.parse(localStorage.getItem(LS_CUST)) || {}; }catch{ customers = {}; }
+  if(!customers || typeof customers !== "object" || Array.isArray(customers)) customers = {};
   try{ company = JSON.parse(localStorage.getItem(LS_CO)); }catch{ company = null; }
   if(!company || typeof company !== "object") company = {name:"",address:"",contact:"",vatNo:""};
   if(typeof company.quotePrefix !== "string") company.quotePrefix = "Q-";
@@ -427,11 +441,28 @@ function blankQuote(){
 function _putCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue)); }catch(e){ toast("⚠ Save failed"); } }
 function _putQuotes(){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(savedQuotes)); }catch(e){ toast("⚠ Save failed"); } }
 function _putCo(){ try{ localStorage.setItem(LS_CO, JSON.stringify(company)); }catch(e){ toast("⚠ Save failed"); } }
+function _putCust(){ try{ localStorage.setItem(LS_CUST, JSON.stringify(customers)); }catch(e){ toast("⚠ Save failed"); } }
 // public savers also queue a cloud push; background merges use the _put* forms directly
 function saveCat(){ _putCat(); schedulePush(); }
 function saveQuote(){ try{ localStorage.setItem(LS_QUOTE, JSON.stringify(quote)); }catch(e){ toast("⚠ Save failed"); } }
 function saveQuotes(){ _putQuotes(); schedulePush(); }
 function saveCo(){ _putCo(); schedulePush(); }
+function saveCustomers(){ _putCust(); schedulePush(); }
+
+/* customer directory helpers */
+const custKey = n => (n||"").trim().toLowerCase();
+function rememberCustomer(name, email){
+  const nm=(name||"").trim(), em=(email||"").trim();
+  if(!nm || !em) return;
+  customers[custKey(nm)] = { name:nm, email:em, updated:Date.now() };
+  saveCustomers(); fillCustomerList();
+}
+function fillCustomerList(){
+  const dl=$("custList"); if(!dl) return;
+  dl.innerHTML = Object.values(customers)
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .map(c=>`<option value="${esc(c.name)}">${esc(c.email)}</option>`).join("");
+}
 
 /* ---------- totals (reusable) ---------- */
 function computeTotals(q){
@@ -451,10 +482,17 @@ function bindQuoteFields(){
   $("qProject").value = quote.project||"";
   $("qDate").value = quote.date||"";
   $("qDelivery").value = quote.delivery||0;
-  const map = {qCustomer:"customer",qRef:"ref",qEmail:"email",qProject:"project",qDate:"date"};
+  const map = {qRef:"ref",qEmail:"email",qProject:"project",qDate:"date"};
   Object.entries(map).forEach(([el,key])=>{
     $(el).oninput = e=>{ quote[key]=e.target.value; saveQuote(); };
   });
+  // customer field: set the value AND auto-fill the email from the directory for a known name
+  $("qCustomer").oninput = e=>{
+    quote.customer = e.target.value;
+    const rec = customers[custKey(e.target.value)];
+    if(rec && !($("qEmail").value||"").trim()){ $("qEmail").value = rec.email; quote.email = rec.email; }
+    saveQuote();
+  };
   $("qDelivery").oninput = e=>{ quote.delivery = parseFloat(e.target.value)||0; saveQuote(); renderTotals(); };
   $("qVatOn").checked = quote.vatOn;
   $("qVatRate").value = quote.vatRate;
@@ -764,6 +802,7 @@ function saveCurrentQuote(){
   if(!quote.savedId && quote.ref === previewRef()){
     nextSeq++; saveSeq(); schedulePush();
   }
+  rememberCustomer(quote.customer, quote.email);   // build the customer directory
   quote.updated = Date.now();
   const snapshot = JSON.parse(JSON.stringify(quote));
   if(quote.savedId){
@@ -784,6 +823,7 @@ function openQuotesList(){
       <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
         ${rows.length ? "Open a quote to load it into the editor. Stored on this device."
                       : "No saved quotes yet — build a quote and hit 💾 Save."}</p>
+      ${spendChartHtml()}
       <div class="catlist" id="quoteListBox">
         ${rows.map(quoteRowHtml).join("")}
       </div>
@@ -797,6 +837,29 @@ function openQuotesList(){
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openSavedQuote(b.dataset.open));
   box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=()=>duplicateSaved(b.dataset.dup));
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteSaved(b.dataset.del));
+}
+/* spend per customer — goods only (excludes delivery & VAT) */
+function spendByCustomer(){
+  const map = {};
+  savedQuotes.forEach(q=>{
+    const nm = (q.customer||"").trim() || "—";
+    map[nm] = (map[nm]||0) + computeTotals(q).sub;
+  });
+  return Object.entries(map).map(([name,total])=>({name,total})).sort((a,b)=>b.total-a.total);
+}
+function spendChartHtml(){
+  const data = spendByCustomer();
+  if(!data.length || data.every(d=>d.total===0)) return "";
+  const max = Math.max(...data.map(d=>d.total), 1);
+  const grand = data.reduce((a,d)=>a+d.total,0);
+  return `<div class="spendchart">
+    <div class="spendhead">Spend by customer <span>— goods only, excl. delivery &amp; VAT · total ${money(grand)}</span></div>
+    ${data.map(d=>`<div class="spendrow">
+      <div class="spendname" title="${esc(d.name)}">${esc(d.name)}</div>
+      <div class="spendbar"><i style="width:${Math.max(3,Math.round(d.total/max*100))}%"></i></div>
+      <div class="spendval">${money(d.total)}</div>
+    </div>`).join("")}
+  </div>`;
 }
 function quoteRowHtml(q){
   const t = computeTotals(q);
@@ -922,8 +985,8 @@ function doPrint(){
 
 /* ---------- backup / restore ---------- */
 function exportBackup(){
-  const payload = { app:"door-hardware-quote", version:4, exported:new Date().toISOString(),
-                    catalogue, quote, savedQuotes, company, seq:nextSeq };
+  const payload = { app:"door-hardware-quote", version:5, exported:new Date().toISOString(),
+                    catalogue, quote, savedQuotes, customers, company, seq:nextSeq };
   const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -940,11 +1003,12 @@ async function handleImport(e){
   if(Array.isArray(data.catalogue)) catalogue = data.catalogue;
   if(data.quote && typeof data.quote==="object") quote = fixQuote(data.quote);
   if(Array.isArray(data.savedQuotes)) savedQuotes = data.savedQuotes.map(fixQuote);
+  if(data.customers && typeof data.customers==="object" && !Array.isArray(data.customers)) customers = data.customers;
   if(data.company && typeof data.company==="object") company = data.company;
   if(typeof company.quotePrefix !== "string") company.quotePrefix = "Q-";
   if(typeof company.defaultDelivery !== "number") company.defaultDelivery = 30;
   if(Number.isFinite(data.seq) && data.seq>0) nextSeq = data.seq;
-  saveSeq(); saveCat(); saveQuote(); saveQuotes(); saveCo(); bindQuoteFields(); fillCatPick(); renderLines();
+  saveSeq(); saveCat(); saveQuote(); saveQuotes(); saveCustomers(); saveCo(); bindQuoteFields(); fillCatPick(); fillCustomerList(); renderLines();
   toast("Backup restored");
 }
 
@@ -1053,7 +1117,7 @@ async function _deriveKey(pass, salt){
   const base=await crypto.subtle.importKey("raw", _enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:200000, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
 }
-function buildSyncDoc(){ return { app:"door-hardware-quote", updatedAt:Date.now(), catalogue, savedQuotes, company, seq:nextSeq }; }
+function buildSyncDoc(){ return { app:"door-hardware-quote", updatedAt:Date.now(), catalogue, savedQuotes, customers, company, seq:nextSeq }; }
 async function encodeForGist(){
   const plain = JSON.stringify(buildSyncDoc());
   if(!SYNC_PASS) return plain;
@@ -1128,7 +1192,7 @@ async function syncPush(){
 }
 
 /* ---- merge remote into local (union by id; newer 'updated' wins) ---- */
-function _sig(){ return JSON.stringify([catalogue, savedQuotes, company, nextSeq]); }
+function _sig(){ return JSON.stringify([catalogue, savedQuotes, customers, company, nextSeq]); }
 function mergeSync(remote){
   const before=_sig();
   const cat={}; catalogue.forEach(c=>{ if(c&&c.id) cat[c.id]=c; });
@@ -1139,7 +1203,14 @@ function mergeSync(remote){
   savedQuotes = Object.values(sq);
   if(remote.company && (remote.company.updated||0) > (company.updated||0)) company = remote.company;
   if(Number.isFinite(remote.seq) && remote.seq > nextSeq){ nextSeq = remote.seq; saveSeq(); }
-  _putCat(); _putQuotes(); _putCo();
+  // customers: merge by key, newer 'updated' wins
+  if(remote.customers && typeof remote.customers==="object"){
+    Object.entries(remote.customers).forEach(([k,rc])=>{
+      if(!rc) return; const l=customers[k];
+      if(!l || (rc.updated||0)>(l.updated||0)) customers[k]=rc;
+    });
+  }
+  _putCat(); _putQuotes(); _putCust(); _putCo();
   return _sig() !== before;
 }
 
@@ -1162,7 +1233,7 @@ async function gistGet(){
   return { data: await res.json() };
 }
 function refreshAfterSync(){
-  fillCatPick(); renderLines();
+  fillCatPick(); fillCustomerList(); renderLines();
   // keep a fresh, unsaved quote's auto-number in step with a synced counter/prefix
   if(!quote.savedId && !quote.lines.length && !quote.customer && /^\D*\d+$/.test(quote.ref||"")){
     quote.ref = previewRef(); saveQuote(); const el=$("qRef"); if(el) el.value = quote.ref;
@@ -1335,6 +1406,7 @@ loadAll();
 bindQuoteFields();
 maybePrefillRef();
 fillCatPick();
+fillCustomerList();
 renderLines();
 $("stdBtn").onclick = addStandardSetup;
 $("catBtn").onclick = openCatalogue;
@@ -1352,7 +1424,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v19 · 2026-09-11";
+const VERSION = "v20 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
