@@ -84,6 +84,7 @@
   .panel h2 .grow{font-size:15px}
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
   .field{margin-bottom:12px}
   .field:last-child{margin-bottom:0}
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
@@ -175,7 +176,7 @@
 
   @media (max-width:560px){
     #app{padding:16px 12px 50px}
-    .grid2{grid-template-columns:1fr}
+    .grid2,.grid3{grid-template-columns:1fr}
     header.top{gap:8px}
     .btn{padding:9px 11px;font-size:13px}
     /* line items become stacked, labelled cards so nothing runs off-screen */
@@ -267,6 +268,12 @@
   #spendReport .sr-bar{display:inline-block;height:11px;min-width:3px;border-radius:3px;
     background:linear-gradient(90deg,var(--teal),var(--cyan))}
   #spendReport .sr-total td{border-top:2px solid var(--teal);font-weight:800;font-size:14px;color:var(--teal)}
+  #spendReport .sr-h2{font-size:13px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:.5px;
+    margin:20px 0 8px;padding-bottom:4px;border-bottom:1.5px solid var(--cyan)}
+  #spendReport .sr-h2:first-of-type{margin-top:4px}
+  #spendReport .sr-bar.sr-won{background:#16a34a}
+  #spendReport .sr-bar.sr-lost{background:#d64545}
+  #spendReport .sr-bar.sr-open{background:#9aa3b2}
   #printHead{display:none;margin-bottom:22px;color:#111}
   #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
   #printHead .col-logo{max-height:64px;max-width:200px;margin-bottom:10px;display:block}
@@ -458,6 +465,7 @@ function loadAll(){
   if(!company || typeof company !== "object") company = {name:"",address:"",contact:"",vatNo:""};
   if(typeof company.quotePrefix !== "string") company.quotePrefix = "Q-";
   if(typeof company.defaultDelivery !== "number") company.defaultDelivery = 30;
+  if(typeof company.defaultMarkup !== "number") company.defaultMarkup = 0;
   let s; try{ s = parseInt(localStorage.getItem(LS_SEQ),10); }catch{ s = NaN; }
   nextSeq = Number.isFinite(s) && s>0 ? s : 1001;
 }
@@ -639,9 +647,11 @@ function openCatalogue(){
       </div>
       <div style="border-top:1px solid var(--line);margin:16px 0 14px"></div>
       <div class="field"><label>Description</label><input id="ncDesc" placeholder="e.g. Lever handle set (SSS)"></div>
-      <div class="grid2">
-        <div class="field"><label>Stock code <span style="color:var(--faint);font-weight:400">— optional</span></label><input id="ncCode" placeholder="e.g. LH-SSS-01"></div>
-        <div class="field"><label>Unit cost (£)</label><input id="ncUnit" type="number" min="0" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>Stock code <span style="color:var(--faint);font-weight:400">— optional</span></label><input id="ncCode" placeholder="e.g. LH-SSS-01"></div>
+      <div class="grid3">
+        <div class="field"><label>Cost (£)</label><input id="ncCost" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="field"><label>Markup (%)</label><input id="ncMarkup" type="number" min="0" step="0.1" value="${Number.isFinite(company.defaultMarkup)?company.defaultMarkup:0}"></div>
+        <div class="field"><label>Sale price (£)</label><input id="ncUnit" type="number" min="0" step="0.01" placeholder="0.00"></div>
       </div>
       <div class="cbrow" style="margin-bottom:14px">
         <input type="checkbox" id="ncStd"><label for="ncStd" style="margin:0;color:var(--text);font-size:14px">Part of standard setup</label>
@@ -655,20 +665,32 @@ function openCatalogue(){
   </div>`;
   bindOverlayClose();
   wireCatList();
+  linkCostMarkupSale("ncCost","ncMarkup","ncUnit");
   $("ncAdd").onclick = ()=>{
     const desc = $("ncDesc").value.trim();
     const unit = parseFloat($("ncUnit").value)||0;
+    const cost = parseFloat($("ncCost").value)||0;
     if(!desc){ $("catErr").textContent = "Enter a description."; return; }
-    catalogue.push({id:uid(), desc, code:$("ncCode").value.trim(), unit, standard:$("ncStd").checked, updated:Date.now()});
+    catalogue.push({id:uid(), desc, code:$("ncCode").value.trim(), cost, unit, standard:$("ncStd").checked, updated:Date.now()});
     saveCat(); fillCatPick(); openCatalogue();   // re-render list
     toast("Item added");
   };
   $("ncDesc").focus();
 }
+/* keep cost ↔ markup ↔ sale price in sync in the catalogue forms */
+function linkCostMarkupSale(costId, mkId, saleId){
+  const cost=$(costId), mk=$(mkId), sale=$(saleId);
+  if(!cost||!mk||!sale) return;
+  const num = el => parseFloat(el.value)||0;
+  const fromCostMk = ()=>{ sale.value = (num(cost)*(1+num(mk)/100)).toFixed(2); };
+  cost.oninput = fromCostMk;
+  mk.oninput   = fromCostMk;
+  sale.oninput = ()=>{ const c=num(cost); mk.value = c>0 ? (((num(sale)/c)-1)*100).toFixed(1) : ""; };
+}
 function catRowHtml(c){
   return `<div class="catrow" data-id="${c.id}">
     <button class="star ${c.standard?"on":""}" data-star="${c.id}" title="Toggle standard setup">★</button>
-    <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div>${c.code?`<div class="s">${esc(c.code)}</div>`:''}</div>
+    <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div><div class="s">${c.code?esc(c.code)+' · ':''}cost ${money(c.cost||0)}</div></div>
     <div class="cunit">${money(c.unit)}</div>
     <button class="icon" data-edit="${c.id}" title="Edit">✏️</button>
     <button class="icon" data-del="${c.id}" title="Delete">🗑</button>
@@ -692,9 +714,11 @@ function editCatItem(id){
     <div class="modal">
       <h2>✏️ Edit item</h2>
       <div class="field"><label>Description</label><input id="ecDesc" value="${esc(c.desc)}"></div>
-      <div class="grid2">
-        <div class="field"><label>Stock code</label><input id="ecCode" value="${esc(c.code||'')}" placeholder="e.g. LH-SSS-01"></div>
-        <div class="field"><label>Unit cost (£)</label><input id="ecUnit" type="number" min="0" step="0.01" value="${c.unit}"></div>
+      <div class="field"><label>Stock code</label><input id="ecCode" value="${esc(c.code||'')}" placeholder="e.g. LH-SSS-01"></div>
+      <div class="grid3">
+        <div class="field"><label>Cost (£)</label><input id="ecCost" type="number" min="0" step="0.01" value="${Number.isFinite(c.cost)?c.cost:''}"></div>
+        <div class="field"><label>Markup (%)</label><input id="ecMarkup" type="number" min="0" step="0.1" value="${(Number.isFinite(c.cost)&&c.cost>0)?(((c.unit/c.cost)-1)*100).toFixed(1):''}"></div>
+        <div class="field"><label>Sale price (£)</label><input id="ecUnit" type="number" min="0" step="0.01" value="${c.unit}"></div>
       </div>
       <div class="cbrow" style="margin-bottom:14px">
         <input type="checkbox" id="ecStd" ${c.standard?"checked":""}>
@@ -708,9 +732,11 @@ function editCatItem(id){
     </div>
   </div>`;
   bindOverlayClose();
+  linkCostMarkupSale("ecCost","ecMarkup","ecUnit");
   $("ecSave").onclick = ()=>{
     c.desc = $("ecDesc").value.trim() || c.desc;
     c.code = $("ecCode").value.trim();
+    c.cost = parseFloat($("ecCost").value)||0;
     c.unit = parseFloat($("ecUnit").value)||0;
     c.standard = $("ecStd").checked;
     c.updated = Date.now();
@@ -771,6 +797,7 @@ function openCompany(){
         <div class="field"><label>Quote number prefix</label><input id="coPrefix" placeholder="Q-" value="${esc(company.quotePrefix||"Q-")}"></div>
         <div class="field"><label>Next quote number</label><input id="coSeq" type="number" min="1" step="1" value="${nextSeq}"></div>
         <div class="field"><label>Standard delivery charge (£)</label><input id="coDeliv" type="number" min="0" step="0.01" value="${Number.isFinite(company.defaultDelivery)?company.defaultDelivery:30}"></div>
+        <div class="field"><label>Default markup (%)</label><input id="coMarkup" type="number" min="0" step="0.1" value="${Number.isFinite(company.defaultMarkup)?company.defaultMarkup:0}"></div>
       </div>
       <p style="color:var(--faint);font-size:11px;margin:-6px 0 12px">New quotes auto-fill as <b id="seqPreview">${esc(previewRef())}</b> — editable per quote. The number is used up only when a quote is saved.</p>
       <div style="border-top:1px solid var(--line);margin:4px 0 14px"></div>
@@ -807,12 +834,14 @@ function openCompany(){
   };
   $("coSave").onclick = ()=>{
     const dv = parseFloat($("coDeliv").value);
+    const mk = parseFloat($("coMarkup").value);
     const toLines = v => v.split("\n").map(s=>s.trim()).filter(Boolean);
     company = { name:$("coName").value.trim(), address:$("coAddr").value.trim(),
                 contact:$("coContact").value.trim(), vatNo:$("coVat").value.trim(),
                 quotePrefix:$("coPrefix").value.trim(), logo:coLogo,
                 terms:{ general: toLines($("coTerms").value), payment: toLines($("coTermsPay").value) },
-                defaultDelivery: Number.isFinite(dv)&&dv>=0 ? dv : 30, updated:Date.now() };
+                defaultDelivery: Number.isFinite(dv)&&dv>=0 ? dv : 30,
+                defaultMarkup: Number.isFinite(mk)&&mk>=0 ? mk : 0, updated:Date.now() };
     const n = parseInt($("coSeq").value,10);
     if(Number.isFinite(n) && n>0 && n!==nextSeq){ nextSeq = n; saveSeq(); schedulePush(); }
     // if the working quote still shows an untouched auto-ref, refresh it to the new prefix/number
@@ -946,15 +975,32 @@ function printSpend(){
   if(!data.length || data.every(d=>d.total===0)){ toast("No saved quotes to report"); return; }
   const max = Math.max(...data.map(d=>d.total), 1);
   const grand = data.reduce((a,d)=>a+d.total,0);
+  const ss = salesSummary();
+  const wlMax = Math.max(ss.won, ss.lost, ss.open, 1);
   const logo = effectiveLogo();
   const when = new Date().toLocaleDateString("en-GB");
   const co = company.name || "";
+  const wlRow = (cls,lab,val,n)=>`<tr>
+    <td>${lab}</td>
+    <td class="sr-barcell"><span class="sr-bar sr-${cls}" style="width:${Math.max(3,Math.round(val/wlMax*100))}%"></span></td>
+    <td class="num">${n}</td>
+    <td class="num">${money(val)}</td></tr>`;
   $("spendReport").innerHTML = `
     <div class="sr-head">
       ${logo ? `<img class="sr-logo" src="${logo}" alt="">` : ""}
-      <div class="sr-title">Spend by customer</div>
-      <div class="sr-sub">${co ? esc(co)+" · " : ""}Goods only — excludes delivery &amp; VAT · ${data.length} customer${data.length===1?"":"s"} · generated ${when}</div>
+      <div class="sr-title">Sales report</div>
+      <div class="sr-sub">${co ? esc(co)+" · " : ""}Goods only — excludes delivery &amp; VAT · generated ${when}</div>
     </div>
+    <h2 class="sr-h2">Won / lost${ss.rate==null?"":" · win rate "+ss.rate+"%"}</h2>
+    <table class="sr-table">
+      <thead><tr><th>Outcome</th><th class="sr-barcol">Share</th><th class="num">Qty</th><th class="num">Value</th></tr></thead>
+      <tbody>
+        ${wlRow("won","Won",ss.won,ss.wonN)}
+        ${wlRow("lost","Lost",ss.lost,ss.lostN)}
+        ${wlRow("open","Open",ss.open,ss.openN)}
+      </tbody>
+    </table>
+    <h2 class="sr-h2">Spend by customer</h2>
     <table class="sr-table">
       <thead><tr><th>Customer</th><th class="sr-barcol">Share</th><th class="num">Spend</th></tr></thead>
       <tbody>
@@ -1126,6 +1172,7 @@ async function handleImport(e){
   if(data.company && typeof data.company==="object") company = data.company;
   if(typeof company.quotePrefix !== "string") company.quotePrefix = "Q-";
   if(typeof company.defaultDelivery !== "number") company.defaultDelivery = 30;
+  if(typeof company.defaultMarkup !== "number") company.defaultMarkup = 0;
   if(Number.isFinite(data.seq) && data.seq>0) nextSeq = data.seq;
   saveSeq(); saveCat(); saveQuote(); saveQuotes(); saveCustomers(); saveCo(); bindQuoteFields(); fillCatPick(); fillCustomerList(); renderLines();
   toast("Backup restored");
@@ -1543,7 +1590,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v23 · 2026-09-11";
+const VERSION = "v24 · 2026-09-11";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
