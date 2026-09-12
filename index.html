@@ -4,43 +4,152 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f1115">
-<title>Apps</title>
+<meta name="description" content="Launcher for all my apps, with GitHub sync status.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>My Apps</title>
 <style>
-  :root{ --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --text:#e7e9ee; --muted:#98a0ae; }
-  @media (prefers-color-scheme:light){ :root{ --bg:#f4f5f8; --panel:#fff; --line:#dfe3ea; --text:#1b1f27; --muted:#5a6473; } }
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d222c; --line:#2a2f3a; --text:#e7e9ee; --muted:#98a0ae;
+    --accent:#6ea8fe; --good:#4bd07f; --warn:#f5a623; --danger:#e5484d;
+  }
+  @media (prefers-color-scheme:light){
+    :root{ --bg:#f4f5f8; --panel:#fff; --panel2:#f0f2f6; --line:#dfe3ea; --text:#1b1f27; --muted:#5a6473; }
+  }
   *{box-sizing:border-box}
   body{margin:0; min-height:100dvh; background:var(--bg); color:var(--text);
     font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; padding:28px}
-  h1{margin:0; font-size:22px; letter-spacing:.3px}
-  p{margin:0; color:var(--muted); text-align:center; max-width:340px}
-  .apps{display:flex; flex-wrap:wrap; gap:16px; justify-content:center}
-  a.card{display:flex; flex-direction:column; align-items:center; gap:10px; text-decoration:none; color:var(--text);
-    background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:22px 26px; width:150px}
-  a.card:hover{border-color:#6ea8fe}
-  .ic{width:72px; height:72px; border-radius:18px}
-  .name{font-weight:600}
+    display:flex; flex-direction:column; align-items:center; gap:22px; padding:28px 20px 48px}
+  header{display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:6px}
+  h1{margin:0; font-size:24px; letter-spacing:.3px}
+  .sub{color:var(--muted); font-size:13px}
+
+  /* Status card */
+  .status{width:100%; max-width:680px; background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:16px 18px; display:flex; flex-direction:column; gap:10px}
+  .srow{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .dot{width:11px; height:11px; border-radius:50%; flex:none; background:var(--muted)}
+  .dot.good{background:var(--good)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--danger)}
+  .stitle{font-weight:700; font-size:15px}
+  .smeta{color:var(--muted); font-size:13px}
+  .snote{color:var(--muted); font-size:12.5px; line-height:1.45; border-top:1px solid var(--line); padding-top:10px; margin-top:2px}
+  .pill{font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:999px}
+  .pill.good{color:#08301b; background:var(--good)} .pill.bad{color:#3a0d0f; background:var(--danger)}
+  @media (prefers-color-scheme:dark){ .pill.good{color:#04120a} .pill.bad{color:#1c0506} }
+
+  /* App grid */
+  .apps{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:14px; width:100%; max-width:680px}
+  a.card{position:relative; display:flex; flex-direction:column; align-items:center; gap:10px; text-decoration:none;
+    color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:20px 14px}
+  a.card:hover{border-color:var(--accent)}
+  a.card:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .ic{width:64px; height:64px; border-radius:16px}
+  .name{font-weight:600; font-size:14px; text-align:center; line-height:1.25}
+  .cdot{position:absolute; top:10px; right:10px; width:10px; height:10px; border-radius:50%; background:var(--muted); opacity:.0}
+  .cdot.show{opacity:1}
+  .cdot.good{background:var(--good)} .cdot.bad{background:var(--danger)}
+
+  .hint{color:var(--muted); font-size:13px; text-align:center; max-width:420px}
+  .hint b{color:var(--text)}
 </style>
 </head>
 <body>
-  <h1>My Apps</h1>
-  <div class="apps">
-    <a class="card" href="financemanager/"><img class="ic" src="financemanager/icon-192.png" alt="Finance Manager"><span class="name">Finance Manager</span></a>
-    <a class="card" href="ideapad/"><img class="ic" src="ideapad/icon-192.png" alt="IdeaPad"><span class="name">IdeaPad</span></a>
-    <a class="card" href="fitplan/"><img class="ic" src="fitplan/icon-192.png" alt="FitPlan"><span class="name">FitPlan</span></a>
-    <a class="card" href="fitcoach/"><img class="ic" src="fitcoach/icon-192.png" alt="MyFitCoach"><span class="name">MyFitCoach</span></a>
-    <a class="card" href="healthlog/"><img class="ic" src="healthlog/icon-192.png" alt="HealthLog"><span class="name">HealthLog</span></a>
-    <a class="card" href="vault/"><img class="ic" src="vault/icon-192.png" alt="Vault"><span class="name">Vault</span></a>
-    <a class="card" href="recipebox/"><img class="ic" src="recipebox/icon-192.png" alt="RecipeBox"><span class="name">RecipeBox</span></a>
-    <a class="card" href="shoplist/"><img class="ic" src="shoplist/icon-192.png" alt="Shop List"><span class="name">Shop List</span></a>
-    <a class="card" href="officereport/"><img class="ic" src="officereport/icon-192.png" alt="Office Report"><span class="name">Office Report</span></a>
-    <a class="card" href="shopfloorreport/"><img class="ic" src="shopfloorreport/icon-192.png" alt="Shopfloor Report"><span class="name">Shopfloor Report</span></a>
-    <a class="card" href="masticcalc/"><img class="ic" src="masticcalc/icon-192.png" alt="Mastic Calc"><span class="name">Mastic Calc</span></a>
-    <a class="card" href="qualityreport/"><img class="ic" src="qualityreport/icon-192.png" alt="Quality Report"><span class="name">Quality Report</span></a>
-    <a class="card" href="rp193/"><img class="ic" src="rp193/icon-192.png" alt="RP193 Calc"><span class="name">RP193 Calc</span></a>
-    <a class="card" href="doorquote/"><img class="ic" src="doorquote/icon-192.png" alt="Door Hardware Quote"><span class="name">Door Quote</span></a>
-    <a class="card" href="sealcoverage/"><img class="ic" src="sealcoverage/icon-192.png" alt="Seal Coverage"><span class="name">Seal Coverage</span></a>
-  </div>
-  <p>Open an app, then use your browser menu → <b>Install app</b> / <b>Add to Home screen</b>.</p>
+  <header>
+    <img src="icon-192.png" alt="" width="56" height="56" style="border-radius:14px">
+    <h1>My Apps</h1>
+    <div class="sub">Your apps in one place</div>
+  </header>
+
+  <section class="status" id="status" aria-live="polite">
+    <div class="srow">
+      <span class="dot" id="stDot"></span>
+      <span class="stitle" id="stTitle">Checking sync…</span>
+      <span class="pill" id="stPill" hidden></span>
+    </div>
+    <div class="smeta" id="stMeta"></div>
+    <div class="snote" id="stNote">💾 Keep a copy of your GitHub token somewhere safe (e.g. your password manager). GitHub shows it only once, and clearing browser data removes it here — you’ll need it to reconnect your apps.</div>
+  </section>
+
+  <nav class="apps" id="apps"></nav>
+
+  <p class="hint">Tip: use your browser menu → <b>Install app</b> / <b>Add to Home screen</b> to keep this launcher on your desktop or phone.</p>
+
+  <noscript><p class="hint">Enable JavaScript to see your apps, or open a folder directly, e.g. <code>ideapad/</code>.</p></noscript>
+
+<script>
+/* App registry: [folder, display name, gist localStorage key or null if no sync] */
+var APPS = [
+  ["ideapad","IdeaPad","ideapad.gh.gist"],
+  ["shoplist","Shop List","shoplist.gh.gist"],
+  ["doorquote","Door Quote","dhq.gh.gist"],
+  ["financemanager","Finance Manager","finance.gh.gist"],
+  ["recipebox","RecipeBox","recipebox.gh.gist"],
+  ["fitcoach","MyFitCoach","fitcoach.gh.gist"],
+  ["fitplan","FitPlan","fitplan.gh.gist"],
+  ["healthlog","HealthLog","healthlog.gh.gist"],
+  ["vault","Vault","vault.gh.gist"],
+  ["qualityreport","Quality Report","qualityreport.gh.gist"],
+  ["shopfloorreport","Shopfloor Report","shopfloorreport.gh.gist"],
+  ["officereport","Office Report","officereport.gh.gist"],
+  ["rp193","RP193 Calc","rp193.gh.gist"],
+  ["sealcoverage","Seal Coverage","tfpseal.gh.gist"],
+  ["masticcalc","Mastic Calc",null]
+];
+
+function ls(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }
+
+function render(){
+  var token = ls("gh.token");
+  var wrap = document.getElementById("apps");
+  wrap.textContent = "";
+  var synced=0, connected=0;
+
+  APPS.forEach(function(a){
+    var folder=a[0], name=a[1], gistKey=a[2];
+    var card=document.createElement("a");
+    card.className="card"; card.href=folder+"/";
+    var dot=document.createElement("span"); dot.className="cdot";
+    if(gistKey){
+      synced++;
+      var isConn = !!token && !!ls(gistKey);
+      if(isConn){ connected++; dot.className="cdot show good"; dot.title="Connected on this device"; }
+      else { dot.className="cdot show bad"; dot.title="Not connected on this device"; }
+    }
+    var img=document.createElement("img"); img.className="ic"; img.src=folder+"/icon-192.png"; img.alt="";
+    var nm=document.createElement("span"); nm.className="name"; nm.textContent=name;
+    card.appendChild(dot); card.appendChild(img); card.appendChild(nm);
+    wrap.appendChild(card);
+  });
+
+  // Status summary
+  var dotEl=document.getElementById("stDot"), title=document.getElementById("stTitle"),
+      meta=document.getElementById("stMeta"), pill=document.getElementById("stPill");
+  if(!token){
+    dotEl.className="dot bad";
+    title.textContent="Not connected on this device";
+    meta.textContent="No GitHub token stored here. Open any synced app and paste your token — it reconnects them all.";
+    pill.hidden=false; pill.className="pill bad"; pill.textContent="Sync off";
+  } else if(connected===synced){
+    dotEl.className="dot good";
+    title.textContent="Sync connected";
+    meta.textContent="Token stored · all "+synced+" synced apps linked on this device.";
+    pill.hidden=false; pill.className="pill good"; pill.textContent="Sync on";
+  } else {
+    dotEl.className="dot warn";
+    title.textContent="Sync connected";
+    meta.textContent="Token stored · "+connected+" of "+synced+" synced apps linked here"+(connected<synced?" (green = linked, red = not yet)":"")+".";
+    pill.hidden=false; pill.className="pill good"; pill.textContent="Sync on";
+  }
+}
+
+render();
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) render(); });
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+}
+</script>
 </body>
 </html>
