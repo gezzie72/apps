@@ -936,11 +936,11 @@ window.regenReplace = regenReplace;
    GitHub gist sync (stores only the ENCRYPTED blob)
 ============================================================ */
 const GH = {
-  get token(){ try{return localStorage.getItem("vault.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("vault.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("vault.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("vault.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("vault.gh.token",v):localStorage.removeItem("vault.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("vault.gh.gist",v):localStorage.removeItem("vault.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("vault.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("vault.gh.user",v):localStorage.removeItem("vault.gh.user")}catch(e){} },

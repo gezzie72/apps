@@ -1,5 +1,5 @@
 /* RP193 Calc service worker - offline app shell, network-first so updates land. */
-const CACHE = "rp193-v12";
+const CACHE = "rp193-v13";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

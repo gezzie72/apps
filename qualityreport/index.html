@@ -890,11 +890,11 @@ function renderAppearance(){
 
 /* ================= GitHub Gist sync ================= */
 const GH = {
-  get token(){ try{return localStorage.getItem("qualityreport.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("qualityreport.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("qualityreport.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("qualityreport.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("qualityreport.gh.token",v):localStorage.removeItem("qualityreport.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("qualityreport.gh.gist",v):localStorage.removeItem("qualityreport.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("qualityreport.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("qualityreport.gh.user",v):localStorage.removeItem("qualityreport.gh.user")}catch(e){} },

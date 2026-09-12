@@ -1462,11 +1462,11 @@ $("#resetBtn").onclick=()=>{
 
 /* ---------- GitHub Gist sync ---------- */
 const GH = {
-  get token(){ try{return localStorage.getItem("fitplan.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("fitplan.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("fitplan.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("fitplan.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("fitplan.gh.token",v):localStorage.removeItem("fitplan.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("fitplan.gh.gist",v):localStorage.removeItem("fitplan.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("fitplan.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("fitplan.gh.user",v):localStorage.removeItem("fitplan.gh.user")}catch(e){} },

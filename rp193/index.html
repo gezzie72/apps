@@ -730,11 +730,11 @@ calc();
 
 /* ---------- Sync (GitHub Gist) ---------- */
 const GH = {
-  get token(){ try{return localStorage.getItem("rp193.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("rp193.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("rp193.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("rp193.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("rp193.gh.token",v):localStorage.removeItem("rp193.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("rp193.gh.gist",v):localStorage.removeItem("rp193.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("rp193.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("rp193.gh.user",v):localStorage.removeItem("rp193.gh.user")}catch(e){} },

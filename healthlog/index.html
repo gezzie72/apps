@@ -655,7 +655,7 @@
           <button class="btn primary sm" id="ghPassSet">Encrypt cloud copy</button>
           <button class="btn sm" id="ghPassClear" style="display:none">Remove</button>
         </div>
-        <div class="muted" style="margin-top:6px; font-size:calc(12px * var(--tscale))">Encrypts the copy stored in your GitHub gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. There's <b>no recovery</b> if you forget it — keep an <b>Export JSON</b> backup (below). Your on-device data stays readable regardless.</div>
+        <div class="muted" style="margin-top:6px; font-size:calc(12px * var(--tscale))">Encrypts the copy stored in your GitHub gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. There's <b>no recovery</b> if you forget it — keep an <b>Export JSON</b> backup (below). Your on-device data stays readable regardless. <b>Sensitive app</b> — keep this the same for HealthLog &amp; Finance Manager, separate from your everyday apps.</div>
       </div>
       <div id="syncMsg" class="muted" style="margin-top:12px; min-height:1.2em"></div>
     </div>
@@ -1678,11 +1678,11 @@ $("#resetBtn").onclick=()=>{ if(confirm("Delete ALL HealthLog data on this devic
 
 /* ---------- Sync (GitHub Gist) ---------- */
 const GH = {
-  get token(){ try{return localStorage.getItem("healthlog.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("healthlog.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("healthlog.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("healthlog.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("healthlog.gh.token",v):localStorage.removeItem("healthlog.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("healthlog.gh.gist",v):localStorage.removeItem("healthlog.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("healthlog.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("healthlog.gh.user",v):localStorage.removeItem("healthlog.gh.user")}catch(e){} },

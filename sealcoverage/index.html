@@ -426,11 +426,11 @@
   var GH_DESC = "TFP Seal Coverage sync";
   function $(id) { return document.getElementById(id); }
   var GH = {
-    get token(){ try { return localStorage.getItem("tfpseal.gh.token") || ""; } catch(e){ return ""; } },
+    get token(){ try { return localStorage.getItem("gh.token") || ""; } catch(e){ return ""; } },
     get gist(){  try { return localStorage.getItem("tfpseal.gh.gist")  || ""; } catch(e){ return ""; } },
     get auto(){  try { return localStorage.getItem("tfpseal.gh.auto") !== "0"; } catch(e){ return true; } },
     get user(){  try { return localStorage.getItem("tfpseal.gh.user")  || ""; } catch(e){ return ""; } },
-    set token(v){ try { v ? localStorage.setItem("tfpseal.gh.token",v) : localStorage.removeItem("tfpseal.gh.token"); } catch(e){} },
+    set token(v){ try { v ? localStorage.setItem("gh.token",v) : localStorage.removeItem("gh.token"); } catch(e){} },
     set gist(v){  try { v ? localStorage.setItem("tfpseal.gh.gist",v)  : localStorage.removeItem("tfpseal.gh.gist"); } catch(e){} },
     set auto(v){  try { localStorage.setItem("tfpseal.gh.auto", v ? "1" : "0"); } catch(e){} },
     set user(v){  try { v ? localStorage.setItem("tfpseal.gh.user",v)  : localStorage.removeItem("tfpseal.gh.user"); } catch(e){} },

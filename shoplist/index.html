@@ -1074,11 +1074,11 @@ function toast(msg){
 /* ---------- SYNC (private gist, whole-document last-write-wins) ---------- */
 const GIST_FILE="shoplist.json";
 const GH={
-  get token(){ try{return localStorage.getItem("shoplist.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("shoplist.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("shoplist.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("shoplist.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("shoplist.gh.token",v):localStorage.removeItem("shoplist.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("shoplist.gh.gist",v):localStorage.removeItem("shoplist.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("shoplist.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("shoplist.gh.user",v):localStorage.removeItem("shoplist.gh.user")}catch(e){} },

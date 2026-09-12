@@ -1424,12 +1424,12 @@ function editCustomer(key){
    passphrase (PBKDF2 200k -> AES-GCM 256); on-device data is plain.
 ============================================================ */
 const GH = {
-  get token(){ try{return localStorage.getItem("dhq.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("dhq.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("dhq.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("dhq.gh.user")||""}catch(e){return ""} },
   get pass(){ try{return localStorage.getItem("dhq.gh.pass")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("dhq.gh.token",v):localStorage.removeItem("dhq.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("dhq.gh.gist",v):localStorage.removeItem("dhq.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("dhq.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("dhq.gh.user",v):localStorage.removeItem("dhq.gh.user")}catch(e){} },

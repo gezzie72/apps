@@ -1651,11 +1651,11 @@ $("#resetBtn").onclick=()=>{
 
 /* ================= GitHub Gist sync (adapted from IdeaPad, per-recipe LWW) ================= */
 const GH = {
-  get token(){ try{return localStorage.getItem("recipebox.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("recipebox.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("recipebox.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("recipebox.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("recipebox.gh.token",v):localStorage.removeItem("recipebox.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("recipebox.gh.gist",v):localStorage.removeItem("recipebox.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("recipebox.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("recipebox.gh.user",v):localStorage.removeItem("recipebox.gh.user")}catch(e){} },

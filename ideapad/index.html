@@ -767,11 +767,11 @@ $("#importFile").onchange = (e)=>{ const f=e.target.files[0]; if(f) importJson(f
 
 /* ---------- GitHub Gist sync ---------- */
 const GH = {
-  get token(){ try{return localStorage.getItem("ideapad.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("ideapad.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("ideapad.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("ideapad.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("ideapad.gh.token",v):localStorage.removeItem("ideapad.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("ideapad.gh.gist",v):localStorage.removeItem("ideapad.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("ideapad.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("ideapad.gh.user",v):localStorage.removeItem("ideapad.gh.user")}catch(e){} },

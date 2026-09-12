@@ -434,7 +434,7 @@
         <button class="btn primary" id="ghPassSet">Encrypt cloud copy</button>
         <button class="btn ghost" id="ghPassClear" style="display:none">Remove</button>
       </div>
-      <p class="muted" style="font-size:12px; margin-top:6px">Encrypts the copy stored in your GitHub gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. <b>No recovery</b> if you forget it - keep an Export JSON backup. On-device data stays readable.</p>
+      <p class="muted" style="font-size:12px; margin-top:6px">Encrypts the copy stored in your GitHub gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. <b>No recovery</b> if you forget it - keep an Export JSON backup. On-device data stays readable. <b>Sensitive app</b> — keep this the same for Finance Manager &amp; HealthLog, separate from your everyday apps.</p>
     </div>
 
     <hr class="sep">
@@ -1204,11 +1204,11 @@ $$("#textSize button").forEach(b=> b.onclick=()=>setScale(b.dataset.s));
 
 /* ============ GitHub Gist sync (top-level last-write-wins) ============ */
 const GH = {
-  get token(){ try{return localStorage.getItem("finance.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("finance.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("finance.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("finance.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("finance.gh.token",v):localStorage.removeItem("finance.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("finance.gh.gist",v):localStorage.removeItem("finance.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("finance.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("finance.gh.user",v):localStorage.removeItem("finance.gh.user")}catch(e){} },

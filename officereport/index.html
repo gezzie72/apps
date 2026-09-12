@@ -873,11 +873,11 @@ function renderAppearance(){
 
 /* ================= GitHub Gist sync ================= */
 const GH = {
-  get token(){ try{return localStorage.getItem("officereport.gh.token")||""}catch(e){return ""} },
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
   get gist(){ try{return localStorage.getItem("officereport.gh.gist")||""}catch(e){return ""} },
   get auto(){ try{return localStorage.getItem("officereport.gh.auto")!=="0"}catch(e){return true} },
   get user(){ try{return localStorage.getItem("officereport.gh.user")||""}catch(e){return ""} },
-  set token(v){ try{v?localStorage.setItem("officereport.gh.token",v):localStorage.removeItem("officereport.gh.token")}catch(e){} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
   set gist(v){ try{v?localStorage.setItem("officereport.gh.gist",v):localStorage.removeItem("officereport.gh.gist")}catch(e){} },
   set auto(v){ try{localStorage.setItem("officereport.gh.auto",v?"1":"0")}catch(e){} },
   set user(v){ try{v?localStorage.setItem("officereport.gh.user",v):localStorage.removeItem("officereport.gh.user")}catch(e){} },
