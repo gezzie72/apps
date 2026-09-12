@@ -82,6 +82,11 @@
   .statussel{width:auto;flex-shrink:0;padding:7px 8px;font-size:12px;font-weight:600}
   .statussel.st-won{border-color:#16a34a;color:#4ade80}
   .statussel.st-lost{border-color:var(--danger);color:#ff9b9b}
+  /* INV / TRK allocation indicators on won quotes */
+  .ind{font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:5px;white-space:nowrap}
+  .ind.on{background:rgba(22,163,74,.2);color:#4ade80}
+  .ind.off{background:rgba(255,255,255,.04);color:var(--faint);border:1px dashed var(--line)}
+  .ind.inv.off{background:rgba(255,183,77,.16);color:#ffb74d;border:1px solid rgba(255,183,77,.45)}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
   .panel h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -1100,8 +1105,14 @@ function quoteRowHtml(q){
   const st = qStatus(q);
   const badge = st==="won" ? ' <span class="stbadge won">Won</span>'
               : st==="lost" ? ' <span class="stbadge lost">Lost</span>' : "";
+  let inds = "";
+  if(st==="won"){
+    const inv=(q.invoiceNo||"").trim(), trk=(q.trackingNo||"").trim();
+    inds = ` <span class="ind inv ${inv?"on":"off"}" title="${inv?"Invoice "+esc(inv)+" allocated — goods can be sent from suppliers":"No invoice yet — goods can&#39;t be sent from suppliers"}">INV${inv?" ✓":""}</span>`
+         + ` <span class="ind trk ${trk?"on":"off"}" title="${trk?"Tracking "+esc(trk):"No tracking number yet"}">TRK${trk?" ✓":""}</span>`;
+  }
   return `<div class="catrow qrow" data-id="${q.savedId}">
-    <div class="cdesc"><div class="n">${esc(quoteName(q))}${cur}${badge}</div><div class="s">${esc(sub)}</div></div>
+    <div class="cdesc"><div class="n">${esc(quoteName(q))}${cur}${badge}${inds}</div><div class="s">${esc(sub)}</div></div>
     <select class="statussel st-${st}" data-status="${q.savedId}" title="Mark this quote won or lost">
       <option value="open"${st==="open"?" selected":""}>Open</option>
       <option value="won"${st==="won"?" selected":""}>Won</option>
@@ -1744,7 +1755,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v27 · 2026-09-12";
+const VERSION = "v28 · 2026-09-12";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
