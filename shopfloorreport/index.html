@@ -1132,7 +1132,7 @@ function bind(){
   $("#ghConnect").onclick=async()=>{
     const t=$("#ghToken").value.trim(); let gid=$("#ghGist").value.trim();
     if(!t){ markSync("Paste your GitHub token first.",true); return; }
-    GH.token=t; markSync("Connecting…");
+    const _prevTok=GH.token; GH.token=t; markSync("Connecting…");
     try{
       if(!gid) gid=await findGist();
       if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
@@ -1143,13 +1143,13 @@ function bind(){
       else { const content=await encodeForGist(); const g=await ghApi("POST","/gists",{description:"ShopfloorReport sync",public:false,files:{[GISTFILE]:{content}}});
         GH.gist=g.id; setSyncTime(); markSync(SYNC_PASS?"Connected - new encrypted sync created 🔒.":"Connected — new sync created."); }
       $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
-    }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
+    }catch(e){ GH.token=_prevTok||""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
   };
   $("#ghShowToken").onclick=()=>{ const i=$("#ghToken"), show=i.type==="password"; i.type=show?"text":"password"; $("#ghShowToken").textContent=show?"Hide":"Show"; };
   $("#ghSyncNow").onclick=doSyncNow; $("#ghSyncTop").onclick=doSyncNow;
   $("#ghAuto").onchange=()=>{ GH.auto=$("#ghAuto").checked; if(GH.auto) schedulePush(); };
   $("#ghCopyGist").onclick=()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>toast("Gist ID copied"),()=>toast(GH.gist)); };
-  $("#ghDisconnect").onclick=()=>{ if(confirm("Disconnect sync on this device? Local data stays; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+  $("#ghDisconnect").onclick=()=>{ if(confirm("Disconnect sync on this device? Local data stays; the gist is untouched. Other apps stay connected.")){ GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
   $("#ghPassShow").onclick=()=>{ const i=$("#ghPass"); const show=i.type==="password"; i.type=show?"text":"password"; $("#ghPassShow").textContent=show?"Hide":"Show"; };
   $("#ghPassSet").onclick=async()=>{
     const p=$("#ghPass").value;

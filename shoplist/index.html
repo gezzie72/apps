@@ -1196,7 +1196,7 @@ function toggleAuto(){ GH.auto=$('ghAuto').checked; if(GH.auto) schedulePush(); 
 async function ghConnect(){
   const t=$('ghToken').value.trim(); let gid=$('ghGist').value.trim();
   if(!t){ syncMsg("Paste your GitHub token first.",true); return; }
-  GH.token=t; syncMsg("Connecting…");
+  const _prevTok=GH.token; GH.token=t; syncMsg("Connecting…");
   try{
     if(!gid) gid=await findGist();
     if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
@@ -1206,9 +1206,9 @@ async function ghConnect(){
       else syncMsg("Connected — using your existing sync."); }
     else { const content=await encodeForGist(); const g=await ghApi("POST","/gists",{description:"ShopList sync",public:false,files:{[GIST_FILE]:{content}}}); GH.gist=g.id; setSyncTime(); syncMsg(SYNC_PASS?"Connected — new encrypted sync created 🔒.":"Connected — new sync created."); }
     $('ghToken').value=''; $('ghGist').value=''; renderSync(); fetchUser();
-  }catch(e){ GH.token=''; GH.gist=''; GH.user=''; renderSync(); syncMsg("Couldn't connect: "+e.message,true); }
+  }catch(e){ GH.token=_prevTok||''; GH.gist=''; GH.user=''; renderSync(); syncMsg("Couldn't connect: "+e.message,true); }
 }
-function ghDisconnect(){ if(confirm("Disconnect sync on this device? Your list stays here; the gist is untouched.")){ GH.token=''; GH.gist=''; GH.user=''; renderSync(); syncMsg(''); toast("Disconnected"); } }
+function ghDisconnect(){ if(confirm("Disconnect sync on this device? Your list stays here; the gist is untouched. Other apps stay connected.")){ GH.gist=''; GH.user=''; renderSync(); syncMsg(''); toast("Disconnected"); } }
 async function doSyncNow(){ try{ await syncPull(false); await syncPush(); toast("Synced"); }catch(e){ syncMsg("Sync failed: "+e.message,true); } }
 setInterval(()=>{ if(GH.connected&&GH.auto&&!document.hidden) syncPull(false,true).catch(()=>{}); }, 45000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden&&GH.connected&&GH.auto) syncPull(false,true).catch(()=>{}); });

@@ -1671,19 +1671,19 @@ $("#syncTop").onclick=()=>{ if(GH.connected) doSyncNow(); else { setTab("setup")
 $("#ghConnect").onclick=async ()=>{
   const t=$("#ghToken").value.trim(); let gid=$("#ghGist").value.trim();
   if(!t){ markSync("Paste your GitHub token first.",true); return; }
-  GH.token=t; spin(true); markSync("Connecting…");
+  const _prevTok=GH.token; GH.token=t; spin(true); markSync("Connecting…");
   try{
     if(!gid) gid=await findGist();
     if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true); if(r==="empty"){ await syncPush(); markSync("Connected — seeded this gist."); } else markSync("Connected — using your existing sync."); }
     else { const g=await ghApi("POST","/gists",{description:"FitCoach sync",public:false,files:{[GIST_FILE]:{content:JSON.stringify(state)}}}); GH.gist=g.id; setSyncTime(); markSync("Connected — new sync created."); }
     $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
-  }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
+  }catch(e){ GH.token=_prevTok||""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message,true); }
   finally{ spin(false); }
 };
 $("#ghSyncNow").onclick=doSyncNow;
 $("#ghAuto").onchange=()=>{ GH.auto=$("#ghAuto").checked; if(GH.auto) schedulePush(); };
 $("#ghCopyGist").onclick=()=>{ navigator.clipboard?.writeText(GH.gist).then(()=>toast("Gist ID copied"),()=>toast(GH.gist)); };
-$("#ghDisconnect").onclick=()=>{ if(confirm("Disconnect sync on this device? Your data stays here; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+$("#ghDisconnect").onclick=()=>{ if(confirm("Disconnect sync on this device? Your data stays here; the gist is untouched. Other apps stay connected.")){ GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
 
 /* ============================ search ============================ */
 $("#search").addEventListener("input", e=>{ searchQ=e.target.value.trim(); renderGrid(); });

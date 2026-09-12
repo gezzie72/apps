@@ -1684,7 +1684,7 @@ function wireSyncDisconnected(){
   $("ghConnect").onclick = async ()=>{
     const t=$("ghToken").value.trim(); let gid=$("ghGist").value.trim();
     if(!t){ markSync("Paste your GitHub token first.", true); return; }
-    GH.token=t; markSync("Connecting…");
+    const _prevTok=GH.token; GH.token=t; markSync("Connecting…");
     try{
       if(!gid) gid = await findQuoteGist();
       if(gid){
@@ -1700,7 +1700,7 @@ function wireSyncDisconnected(){
         GH.gist=g.id; setSyncTime(); markSync(SYNC_PASS?"Connected — new encrypted sync created 🔒.":"Connected — new sync created.");
       }
       fetchUser(); updateLastSync(); openSync();
-    }catch(e){ GH.token=""; GH.gist=""; GH.user=""; markSync("Couldn't connect: "+e.message, true); }
+    }catch(e){ GH.token=_prevTok||""; GH.gist=""; GH.user=""; markSync("Couldn't connect: "+e.message, true); }
   };
 }
 function wireSyncConnected(){
@@ -1708,7 +1708,7 @@ function wireSyncConnected(){
   $("ghAuto").onchange = ()=>{ GH.auto = $("ghAuto").checked; if(GH.auto) schedulePush(); };
   $("ghCopyGist").onclick = ()=>{ (navigator.clipboard?navigator.clipboard.writeText(GH.gist):Promise.reject()).then(()=>toast("Gist ID copied"), ()=>toast(GH.gist)); };
   $("ghPassShow").onclick = ()=>{ const i=$("ghPass"); i.type=i.type==="password"?"text":"password"; };
-  $("ghDisconnect").onclick = ()=>{ if(confirm("Disconnect sync on this device? Your data stays here; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; toast("Disconnected"); openSync(); } };
+  $("ghDisconnect").onclick = ()=>{ if(confirm("Disconnect sync on this device? Your data stays here; the gist is untouched. Other apps stay connected.")){ GH.gist=""; GH.user=""; toast("Disconnected"); openSync(); } };
   $("ghPassSet").onclick = async ()=>{
     const p=$("ghPass").value;
     if(!p){ markSync("Enter a passphrase first.", true); return; }

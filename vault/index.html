@@ -1066,7 +1066,7 @@ async function ghConnect(){
   const t=$("ghToken").value.trim();
   if(!t){ markSync("Paste your GitHub token first.",true); return; }
   if(!CRYPTO_KEY){ markSync("Unlock the vault first.",true); return; }
-  GH.token=t; spin(true); markSync("Connecting…");
+  const _prevTok=GH.token; GH.token=t; spin(true); markSync("Connecting…");
   try{
     let gid=await findGist();
     if(gid){
@@ -1082,11 +1082,11 @@ async function ghConnect(){
       GH.gist=g.id; setSyncTime(); markSync("Connected — new encrypted sync created.");
     }
     $("ghToken").value=""; fetchUser(); renderSyncModal(); updateSyncDot();
-  }catch(e){ GH.token=""; GH.gist=""; markSync("Couldn't connect: "+e.message,true); renderSyncModal(); }
+  }catch(e){ GH.token=_prevTok||""; GH.gist=""; markSync("Couldn't connect: "+e.message,true); renderSyncModal(); }
   finally{ spin(false); }
 }
 function ghDisconnect(){
-  GH.token=""; GH.gist=""; GH.user="";
+  GH.gist=""; GH.user="";
   updateSyncDot(); toast("Disconnected — local vault kept, gist untouched"); renderSyncModal();
 }
 async function doSyncNow(){ try{ await syncPull(false); await syncPush(); }catch(e){ markSync("Sync failed: "+e.message,true); spin(false); } }
@@ -1193,13 +1193,13 @@ function openSyncRestore(){
 async function srFind(){
   const t=$("srToken").value.trim();
   if(!t){ srMsg("Paste your GitHub token first.",true); return; }
-  SR_TOKEN=t; GH.token=t; srMsg("Looking for your vault…");
+  const _prevTok=GH.token; SR_TOKEN=t; GH.token=t; srMsg("Looking for your vault…");
   try{
     const gid=await findGist();
-    if(!gid){ srMsg("No Vault sync found for this token. Check the token, or use 'Create vault' + ⚙ Sync.",true); GH.token=""; return; }
+    if(!gid){ srMsg("No Vault sync found for this token. Check the token, or use 'Create vault' + ⚙ Sync.",true); GH.token=_prevTok||""; return; }
     const g=await ghApi("GET","/gists/"+gid);
     const f=g.files && g.files["vault.json"];
-    if(!f || !f.content){ srMsg("Found the gist but it has no vault data yet.",true); GH.token=""; return; }
+    if(!f || !f.content){ srMsg("Found the gist but it has no vault data yet.",true); GH.token=_prevTok||""; return; }
     SR_OUTER=JSON.parse(f.truncated && f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
     SR_GIST=gid;
     $("srStep2").classList.remove("hidden");
@@ -1207,7 +1207,7 @@ async function srFind(){
     $("srPass").addEventListener("keydown",e=>{ if(e.key==="Enter") srRestore(); });
     srMsg("Found your vault. Enter your master password to unlock it here.");
     $("srPass").focus();
-  }catch(e){ srMsg(e.message,true); GH.token=""; }
+  }catch(e){ srMsg(e.message,true); GH.token=_prevTok||""; }
 }
 async function srRestore(){
   const pw=$("srPass").value; if(!pw){ srMsg("Enter your master password.",true); return; }

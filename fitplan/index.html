@@ -1590,7 +1590,7 @@ document.addEventListener("visibilitychange", ()=>{
 $("#ghConnect").onclick = async ()=>{
   const t=$("#ghToken").value.trim(); let gid=$("#ghGist").value.trim();
   if(!t){ markSync("Paste your GitHub token first.", true); return; }
-  GH.token = t; spin(true); markSync("Connecting…");
+  const _prevTok=GH.token; GH.token = t; spin(true); markSync("Connecting…");
   try{
     if(!gid){ gid = await findFitplanGist(); }   // reuse an existing FitPlan gist across all devices
     if(gid){                       // adopt the shared gist's data
@@ -1603,7 +1603,7 @@ $("#ghConnect").onclick = async ()=>{
       GH.gist = g.id; setSyncTime(); markSync("Connected — new sync created.");
     }
     $("#ghToken").value=""; $("#ghGist").value=""; renderSync(); fetchUser();
-  }catch(e){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message, true); }
+  }catch(e){ GH.token=_prevTok||""; GH.gist=""; GH.user=""; renderSync(); markSync("Couldn't connect: "+e.message, true); }
   finally{ spin(false); }
 };
 $("#ghSyncNow").onclick = doSyncNow;
@@ -1616,7 +1616,7 @@ $("#ghShowToken").onclick = ()=>{
   const t=i.value.trim();
   if(show && t) markSync(`Token check: ${t.length} chars, starts "${t.slice(0,4)}" — classic tokens start "ghp_" (~40 chars); a space or line break means a bad paste.`);
 };
-$("#ghDisconnect").onclick = ()=>{ if(confirm("Disconnect sync on this device? Your local data stays; the gist is untouched.")){ GH.token=""; GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
+$("#ghDisconnect").onclick = ()=>{ if(confirm("Disconnect sync on this device? Your local data stays; the gist is untouched. Other apps stay connected.")){ GH.gist=""; GH.user=""; renderSync(); markSync(""); toast("Disconnected"); } };
 
 /* ---------- Appearance / theme (per-device preference) ---------- */
 const THEME_KEY = "fitplan.theme";
