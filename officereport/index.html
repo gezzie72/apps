@@ -1113,10 +1113,13 @@ document.addEventListener("DOMContentLoaded",bind);
 </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <script>
-/* Token backup reminder on the sync screen (added 2026-09-12) */
+/* Sync screen helpers (2026-09-12): token backup reminder + auto-fill the token
+   field from the shared, already-stored token so a new device needs one paste,
+   then a single Connect per app. */
 (function(){
   var MSG = "💾 Back up this token (e.g. in your password manager). GitHub shows it only once, and clearing browser data removes it here — you'll need it to reconnect.";
-  function ensure(){
+  function ls(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }
+  function ensureNote(){
     var ti = document.getElementById("ghToken");
     if(!ti || document.getElementById("tokenBackupNote")) return;
     var n = document.createElement("div");
@@ -1126,9 +1129,16 @@ document.addEventListener("DOMContentLoaded",bind);
     n.textContent = MSG;
     (ti.closest("label") || ti.parentElement || ti).insertAdjacentElement("afterend", n);
   }
+  function prefillToken(){
+    var ti = document.getElementById("ghToken");
+    if(!ti || ti.dataset.tkpref) return;      // don't fight the user after the first fill
+    var tok = ls("gh.token");
+    if(tok && !ti.value){ ti.value = tok; ti.dataset.tkpref = "1"; }
+  }
+  function run(){ ensureNote(); prefillToken(); }
   function boot(){
-    ensure();
-    try{ new MutationObserver(ensure).observe(document.body, {childList:true, subtree:true}); }catch(e){}
+    run();
+    try{ new MutationObserver(run).observe(document.body, {childList:true, subtree:true}); }catch(e){}
   }
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
