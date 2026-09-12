@@ -51,6 +51,8 @@
   .btn:hover{border-color:var(--accent)}
   .btn.accent{background:linear-gradient(135deg,var(--accent),#8b6cff);border:none;color:#fff;font-weight:600}
   .btn.small{padding:8px 11px;font-size:13px}
+  .btn.danger-btn{background:transparent;border-color:var(--danger);color:var(--danger)}
+  .btn.danger-btn:hover{background:var(--danger);color:#fff}
   .btn.iconbtn{padding:9px 11px;min-width:40px;font-weight:600}
   .seg2{display:flex;align-items:center;gap:8px}
   .setupbtns{display:flex;flex-direction:column;gap:8px}
@@ -350,13 +352,22 @@
 
   <!-- quote details (screen only; the printed quote uses the header block above) -->
   <div class="panel noprint">
-    <h2>📋 Quote details</h2>
+    <h2>📋 Quote details <span class="grow"></span><button class="btn danger-btn small" id="clearCustBtn" title="Clear the customer name, email and project">🧹 Clear customer</button></h2>
     <div class="grid2">
       <div class="field"><label>Customer / Company</label><input id="qCustomer" placeholder="Customer name" list="custList" autocomplete="off"><datalist id="custList"></datalist></div>
       <div class="field"><label>Quote reference</label><input id="qRef" placeholder="e.g. Q-1042"></div>
       <div class="field"><label>Customer email <span style="color:var(--faint);font-weight:400">— for the Email button</span></label><input id="qEmail" type="email" placeholder="customer@example.com"></div>
       <div class="field"><label>Project / Site</label><input id="qProject" placeholder="e.g. Door set — Level 2"></div>
       <div class="field"><label>Date</label><input id="qDate" type="date"></div>
+    </div>
+  </div>
+
+  <!-- office use only (never shown on the customer quote/email) -->
+  <div class="panel noprint">
+    <h2>🔒 Office use only <span class="grow"></span><span class="intlabel">not on quote</span></h2>
+    <div class="grid2">
+      <div class="field"><label>Invoice number</label><input id="qInvoice" placeholder="e.g. INV-2043"></div>
+      <div class="field"><label>Tracking number</label><input id="qTracking" placeholder="e.g. courier ref"></div>
     </div>
   </div>
 
@@ -486,6 +497,8 @@ function fixQuote(q){
   if(typeof q.vatRate !== "number") q.vatRate = 20;
   if(typeof q.vatOn !== "boolean") q.vatOn = true;
   if(typeof q.email !== "string") q.email = "";
+  if(typeof q.invoiceNo !== "string") q.invoiceNo = "";
+  if(typeof q.trackingNo !== "string") q.trackingNo = "";
   if(!("savedId" in q)) q.savedId = null;
   return q;
 }
@@ -493,7 +506,7 @@ function blankQuote(){
   const deliv = (company && Number.isFinite(company.defaultDelivery)) ? company.defaultDelivery : 30;
   return { customer:"", ref:"", email:"", project:"", date:new Date().toISOString().slice(0,10),
            delivery:deliv, vatRate:(quote?quote.vatRate:20), vatOn:(quote?quote.vatOn:true),
-           lines:[], savedId:null };
+           invoiceNo:"", trackingNo:"", lines:[], savedId:null };
 }
 function _putCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue)); }catch(e){ toast("⚠ Save failed"); } }
 function _putQuotes(){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(savedQuotes)); }catch(e){ toast("⚠ Save failed"); } }
@@ -540,8 +553,10 @@ function bindQuoteFields(){
   $("qEmail").value = quote.email||"";
   $("qProject").value = quote.project||"";
   $("qDate").value = quote.date||"";
+  $("qInvoice").value = quote.invoiceNo||"";
+  $("qTracking").value = quote.trackingNo||"";
   $("qDelivery").value = quote.delivery||0;
-  const map = {qRef:"ref",qEmail:"email",qProject:"project",qDate:"date"};
+  const map = {qRef:"ref",qEmail:"email",qProject:"project",qDate:"date",qInvoice:"invoiceNo",qTracking:"trackingNo"};
   Object.entries(map).forEach(([el,key])=>{
     $(el).oninput = e=>{ quote[key]=e.target.value; saveQuote(); };
   });
@@ -557,6 +572,11 @@ function bindQuoteFields(){
   $("qVatRate").value = quote.vatRate;
   $("qVatOn").onchange = e=>{ quote.vatOn = e.target.checked; saveQuote(); renderTotals(); };
   $("qVatRate").oninput = e=>{ quote.vatRate = parseFloat(e.target.value)||0; saveQuote(); renderTotals(); };
+}
+function clearCustomer(){
+  quote.customer = ""; quote.email = ""; quote.project = "";
+  ["qCustomer","qEmail","qProject"].forEach(id=>{ const el=$(id); if(el) el.value=""; });
+  saveQuote(); toast("Customer details cleared");
 }
 
 /* ---------- line items ---------- */
@@ -965,6 +985,18 @@ function salesSummaryHtml(){
   </div>`;
 }
 
+/* most-sold items across all saved quotes (by quantity) */
+function topItems(){
+  const map = {};
+  savedQuotes.forEach(q=> (q.lines||[]).forEach(l=>{
+    const name = (l.desc||"").trim(); if(!name) return;
+    const qty = Number(l.qty)||0, val = qty*(Number(l.unit)||0);
+    if(!map[name]) map[name] = {name, qty:0, value:0};
+    map[name].qty += qty; map[name].value += val;
+  }));
+  return Object.values(map).filter(i=>i.qty>0).sort((a,b)=>b.qty-a.qty);
+}
+
 /* spend per customer — goods only (excludes delivery & VAT) */
 function spendByCustomer(){
   const map = {};
@@ -1033,7 +1065,20 @@ function printSpend(){
           <td class="num">${money(d.total)}</td></tr>`).join("")}
         <tr class="sr-total"><td>Total</td><td></td><td class="num">${money(grand)}</td></tr>
       </tbody>
-    </table>`;
+    </table>
+    ${(()=>{ const items=topItems().slice(0,10); if(!items.length) return "";
+      const imax=Math.max(...items.map(i=>i.qty),1);
+      return `<h2 class="sr-h2">Most sold items</h2>
+      <table class="sr-table">
+        <thead><tr><th>Item</th><th class="sr-barcol">Qty sold</th><th class="num">Qty</th><th class="num">Value</th></tr></thead>
+        <tbody>
+          ${items.map(i=>`<tr>
+            <td>${esc(i.name)}</td>
+            <td class="sr-barcell"><span class="sr-bar" style="width:${Math.max(3,Math.round(i.qty/imax*100))}%"></span></td>
+            <td class="num">${i.qty}</td>
+            <td class="num">${money(i.value)}</td></tr>`).join("")}
+        </tbody>
+      </table>`; })()}`;
   document.body.classList.add("spendmode");
   const cleanup = ()=>{ document.body.classList.remove("spendmode"); window.removeEventListener("afterprint", cleanup); };
   window.addEventListener("afterprint", cleanup);
@@ -1257,6 +1302,7 @@ function openSetup(){
       <div class="field">
         <label>Sync &amp; data</label>
         <div class="setupbtns">
+          <button class="btn" type="button" id="suCustomers">👥 Customers</button>
           <button class="btn" type="button" id="suSync">☁ Sync across devices</button>
           <button class="btn" type="button" id="suBackup">⬇ Download backup</button>
           <button class="btn" type="button" id="suRestore">⬆ Restore backup</button>
@@ -1270,11 +1316,88 @@ function openSetup(){
   $("themeBtn").onclick = toggleTheme;
   $("tsDown").onclick = ()=>stepScale(-1);
   $("tsUp").onclick = ()=>stepScale(1);
+  $("suCustomers").onclick = openCustomers;
   $("suSync").onclick = openSync;                // opens the sync dialog
   $("suBackup").onclick = exportBackup;
   $("suRestore").onclick = ()=>{ $("importFile").value=""; $("importFile").click(); };
 }
 window.openSetup = openSetup;
+
+/* ---------- customer directory manager (edit name / email) ---------- */
+function openCustomers(){
+  const rows = Object.values(customers).sort((a,b)=>a.name.localeCompare(b.name));
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal" style="max-width:520px">
+      <h2>👥 Customers</h2>
+      <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
+        Saved from your quotes. Edit a name or email, or remove one — used to auto-fill the email when you enter a customer.</p>
+      <div class="catlist" id="custMgrBox">
+        ${rows.length ? rows.map(custRowHtml).join("") : '<div class="empty">No customers yet.</div>'}
+      </div>
+      <div style="border-top:1px solid var(--line);margin:16px 0 14px"></div>
+      <div class="grid2">
+        <div class="field"><label>Name</label><input id="ncustName" placeholder="Customer / company"></div>
+        <div class="field"><label>Email</label><input id="ncustEmail" type="email" placeholder="name@example.com"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn accent" id="ncustAdd">➕ Add customer</button>
+        <button class="link flex1" onclick="closeModal()">Done</button>
+      </div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  wireCustMgr();
+  $("ncustAdd").onclick = ()=>{
+    const n=$("ncustName").value.trim(), em=$("ncustEmail").value.trim();
+    if(!n){ toast("Enter a name"); return; }
+    customers[custKey(n)] = { name:n, email:em, updated:Date.now() };
+    saveCustomers(); fillCustomerList(); openCustomers();
+  };
+}
+window.openCustomers = openCustomers;
+function custRowHtml(c){
+  const k = custKey(c.name);
+  return `<div class="catrow" data-k="${esc(k)}">
+    <div class="cdesc"><div class="n">${esc(c.name)}</div><div class="s">${esc(c.email||"—")}</div></div>
+    <button class="icon" data-cedit="${esc(k)}" title="Edit">✏️</button>
+    <button class="icon" data-cdel="${esc(k)}" title="Delete">🗑</button>
+  </div>`;
+}
+function wireCustMgr(){
+  const box = $("custMgrBox"); if(!box) return;
+  box.querySelectorAll("[data-cedit]").forEach(b=>b.onclick=()=>editCustomer(b.dataset.cedit));
+  box.querySelectorAll("[data-cdel]").forEach(b=>b.onclick=()=>{
+    const c=customers[b.dataset.cdel];
+    if(c && confirm(`Delete “${c.name}” from your customers?`)){ delete customers[b.dataset.cdel]; saveCustomers(); fillCustomerList(); openCustomers(); }
+  });
+}
+function editCustomer(key){
+  const c = customers[key]; if(!c) return;
+  $("modalRoot").innerHTML = `
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>✏️ Edit customer</h2>
+      <div class="field"><label>Name</label><input id="ecustName" value="${esc(c.name)}"></div>
+      <div class="field"><label>Email</label><input id="ecustEmail" type="email" value="${esc(c.email||"")}"></div>
+      <div class="modal-actions">
+        <button class="link danger" id="ecustDel">Delete</button>
+        <button class="link" onclick="openCustomers()">Cancel</button>
+        <button class="primary" id="ecustSave">Save</button>
+      </div>
+    </div>
+  </div>`;
+  bindOverlayClose();
+  $("ecustSave").onclick = ()=>{
+    const n=$("ecustName").value.trim()||c.name, em=$("ecustEmail").value.trim();
+    const nk=custKey(n);
+    if(nk!==key) delete customers[key];       // renamed — drop the old key
+    customers[nk] = { name:n, email:em, updated:Date.now() };
+    saveCustomers(); fillCustomerList(); openCustomers(); toast("Customer saved");
+  };
+  $("ecustDel").onclick = ()=>{ delete customers[key]; saveCustomers(); fillCustomerList(); openCustomers(); };
+  $("ecustName").focus();
+}
 
 /* ============================================================
    GitHub Gist sync + encrypted cloud copy  (adapted from IdeaPad)
@@ -1605,6 +1728,7 @@ $("saveBtn").onclick = saveCurrentQuote;
 $("emailBtn").onclick = emailQuote;
 $("printBtn").onclick = doPrint;
 $("setupBtn").onclick = openSetup;              // Sync, Backup, Restore, theme & text size live here
+$("clearCustBtn").onclick = clearCustomer;
 $("importFile").addEventListener("change", handleImport);
 $("newBtn").onclick = newQuote;
 $("addBlankBtn").onclick = ()=>addLine("",0,1);
@@ -1613,7 +1737,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v25 · 2026-09-11";
+const VERSION = "v26 · 2026-09-12";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
