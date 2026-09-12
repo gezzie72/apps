@@ -1354,5 +1354,27 @@ showInstallUI(true);   // reveal the Install hint unless already running install
 
 if("serviceWorker" in navigator){ window.addEventListener("load", ()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
 </script>
+<script>
+/* Token backup reminder on the sync screen (added 2026-09-12) */
+(function(){
+  var MSG = "💾 Back up this token (e.g. in your password manager). GitHub shows it only once, and clearing browser data removes it here — you'll need it to reconnect.";
+  function ensure(){
+    var ti = document.getElementById("ghToken");
+    if(!ti || document.getElementById("tokenBackupNote")) return;
+    var n = document.createElement("div");
+    n.id = "tokenBackupNote";
+    n.className = "muted";
+    n.style.cssText = "font-size:12px;line-height:1.4;margin-top:6px;opacity:.8";
+    n.textContent = MSG;
+    (ti.closest("label") || ti.parentElement || ti).insertAdjacentElement("afterend", n);
+  }
+  function boot(){
+    ensure();
+    try{ new MutationObserver(ensure).observe(document.body, {childList:true, subtree:true}); }catch(e){}
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
+</script>
 </body>
 </html>
