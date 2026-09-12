@@ -985,15 +985,18 @@ function salesSummaryHtml(){
   </div>`;
 }
 
-/* most-sold items across all saved quotes (by quantity) */
-function topItems(){
+/* top items by quantity — across all saved quotes, or only WON quotes */
+function topItems(onlyWon){
   const map = {};
-  savedQuotes.forEach(q=> (q.lines||[]).forEach(l=>{
-    const name = (l.desc||"").trim(); if(!name) return;
-    const qty = Number(l.qty)||0, val = qty*(Number(l.unit)||0);
-    if(!map[name]) map[name] = {name, qty:0, value:0};
-    map[name].qty += qty; map[name].value += val;
-  }));
+  savedQuotes.forEach(q=>{
+    if(onlyWon && qStatus(q)!=="won") return;
+    (q.lines||[]).forEach(l=>{
+      const name = (l.desc||"").trim(); if(!name) return;
+      const qty = Number(l.qty)||0, val = qty*(Number(l.unit)||0);
+      if(!map[name]) map[name] = {name, qty:0, value:0};
+      map[name].qty += qty; map[name].value += val;
+    });
+  });
   return Object.values(map).filter(i=>i.qty>0).sort((a,b)=>b.qty-a.qty);
 }
 
@@ -1039,6 +1042,21 @@ function printSpend(){
     <td class="sr-barcell"><span class="sr-bar sr-${cls}" style="width:${Math.max(3,Math.round(val/wlMax*100))}%"></span></td>
     <td class="num">${n}</td>
     <td class="num">${money(val)}</td></tr>`;
+  const itemsTable = (title, items)=>{
+    items = items.slice(0,10); if(!items.length) return "";
+    const imax = Math.max(...items.map(i=>i.qty),1);
+    return `<h2 class="sr-h2">${title}</h2>
+      <table class="sr-table">
+        <thead><tr><th>Item</th><th class="sr-barcol">Qty</th><th class="num">Qty</th><th class="num">Value</th></tr></thead>
+        <tbody>
+          ${items.map(i=>`<tr>
+            <td>${esc(i.name)}</td>
+            <td class="sr-barcell"><span class="sr-bar" style="width:${Math.max(3,Math.round(i.qty/imax*100))}%"></span></td>
+            <td class="num">${i.qty}</td>
+            <td class="num">${money(i.value)}</td></tr>`).join("")}
+        </tbody>
+      </table>`;
+  };
   $("spendReport").innerHTML = `
     <div class="sr-head">
       ${logo ? `<img class="sr-logo" src="${logo}" alt="">` : ""}
@@ -1066,19 +1084,8 @@ function printSpend(){
         <tr class="sr-total"><td>Total</td><td></td><td class="num">${money(grand)}</td></tr>
       </tbody>
     </table>
-    ${(()=>{ const items=topItems().slice(0,10); if(!items.length) return "";
-      const imax=Math.max(...items.map(i=>i.qty),1);
-      return `<h2 class="sr-h2">Most sold items</h2>
-      <table class="sr-table">
-        <thead><tr><th>Item</th><th class="sr-barcol">Qty sold</th><th class="num">Qty</th><th class="num">Value</th></tr></thead>
-        <tbody>
-          ${items.map(i=>`<tr>
-            <td>${esc(i.name)}</td>
-            <td class="sr-barcell"><span class="sr-bar" style="width:${Math.max(3,Math.round(i.qty/imax*100))}%"></span></td>
-            <td class="num">${i.qty}</td>
-            <td class="num">${money(i.value)}</td></tr>`).join("")}
-        </tbody>
-      </table>`; })()}`;
+    ${itemsTable("Most quoted items", topItems(false))}
+    ${itemsTable("Most items won", topItems(true))}`;
   document.body.classList.add("spendmode");
   const cleanup = ()=>{ document.body.classList.remove("spendmode"); window.removeEventListener("afterprint", cleanup); };
   window.addEventListener("afterprint", cleanup);
@@ -1737,7 +1744,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v26 · 2026-09-12";
+const VERSION = "v27 · 2026-09-12";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
