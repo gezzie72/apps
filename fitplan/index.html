@@ -362,18 +362,6 @@
   <!-- SETTINGS -->
   <section class="view" id="view-settings">
     <div class="panel">
-      <h2>Default routine template</h2>
-      <p class="muted">Your saved go-to routine — cardio and weight-machine exercises with target sets &amp; reps.</p>
-      <div id="templateList"></div>
-      <div class="row" style="margin-top:10px">
-        <input type="text" id="tName" placeholder="Exercise name (e.g. Leg Press)">
-        <select id="tType"><option value="weight">Weight machine</option><option value="cardio">Cardio</option></select>
-        <input type="number" id="tSets" placeholder="Sets" value="3" style="width:64px">
-        <input type="number" id="tReps" placeholder="Reps" value="10" style="width:64px">
-        <button class="btn primary" id="tAdd">Add</button>
-      </div>
-    </div>
-    <div class="panel">
       <h2>Exercise dropdown (gym machines)</h2>
       <p class="muted">These machines appear in the “Add exercise” dropdown on each day. Add your own gym’s equipment or remove what you don’t use. Anything in the <b>Cardio</b> group logs minutes; everything else logs reps &amp; weight.</p>
       <div id="machineEditor"></div>
@@ -538,7 +526,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-09-06 · copy-day-to-days";
+const APP_VERSION = "2026-09-13 · remove-dead-template";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -553,17 +541,6 @@ const defaultMachines = {
 };
 
 /* ---------- State ---------- */
-const defaultTemplate = [
-  {name:"Treadmill", type:"cardio", sets:1, reps:20},
-  {name:"Leg Press", type:"weight", sets:3, reps:10},
-  {name:"Chest Press", type:"weight", sets:3, reps:10},
-  {name:"Lat Pulldown", type:"weight", sets:3, reps:10},
-  {name:"Seated Row", type:"weight", sets:3, reps:12},
-  {name:"Shoulder Press", type:"weight", sets:3, reps:10},
-  {name:"Walking", type:"cardio", sets:1, reps:30},
-  {name:"Hiking", type:"cardio", sets:1, reps:60},
-  {name:"Outdoor Cycling", type:"cardio", sets:1, reps:45},
-];
 // Exercises that log custom metrics instead of the default cardio/weight columns.
 const SPECIAL_METRICS = {
   "Treadmill":       [["distance","Distance"],["mins","Duration (min)"]],
@@ -584,10 +561,8 @@ function load(){
     const s = JSON.parse(localStorage.getItem(LS_KEY));
     if(s && s.version){
       if(!s.machines) s.machines = JSON.parse(JSON.stringify(defaultMachines));  // migrate older saves
-      if(!s.migratedOutdoor){   // one-time: add Walking / Hiking / Outdoor Cycling
-        const mins = {"Walking":30,"Hiking":60,"Outdoor Cycling":45};
+      if(!s.migratedOutdoor){   // one-time: add Walking / Hiking / Outdoor Cycling to the machine dropdown
         ["Walking","Hiking","Outdoor Cycling"].forEach(nm=>{
-          if(!s.template.some(t=>t.name===nm)) s.template.push({name:nm, type:"cardio", sets:1, reps:mins[nm]});
           if(s.machines.Cardio && !s.machines.Cardio.includes(nm)) s.machines.Cardio.push(nm);
         });
         s.migratedOutdoor = true;
@@ -613,7 +588,6 @@ function load(){
     stepGoal:null,                // daily step goal
     capsNotes:true,               // auto-capitalise notes by default
     machines:JSON.parse(JSON.stringify(defaultMachines)),   // editable dropdown source
-    template:JSON.parse(JSON.stringify(defaultTemplate)),
     sessions:{},                  // "YYYY-MM-DD": {rest:bool, done:bool, exercises:[{name,type,sets:[{reps,weight,mins,done}]}]}
     weights:{},                   // "YYYY-MM-DD": kg
     steps:{}                      // "YYYY-MM-DD": standalone daily step count
@@ -677,7 +651,7 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
   $("#view-"+t.dataset.view).classList.add("active");
   if(t.dataset.view==="progress") renderProgress();
   if(t.dataset.view==="weight") renderWeight();
-  if(t.dataset.view==="settings"){ renderTemplate(); renderMachines(); }
+  if(t.dataset.view==="settings"){ renderSettings(); renderMachines(); }
 }));
 
 /* ---------- Weekday rest toggles ---------- */
@@ -778,26 +752,6 @@ function scrollAgendaToToday(smooth){
   if(el) el.scrollIntoView({behavior: smooth?"smooth":"auto", block:"center"});
 }
 
-function fillMonth(){
-  const y=viewDate.getFullYear(), m=viewDate.getMonth();
-  const days = new Date(y,m+1,0).getDate();
-  let filled=0;
-  for(let d=1;d<=days;d++){
-    const dateISO = iso(new Date(y,m,d));
-    if(isRestWeekday(dateISO)){
-      if(!state.sessions[dateISO]) state.sessions[dateISO]={rest:true,done:false,exercises:[]};
-      continue;
-    }
-    let s = state.sessions[dateISO];
-    if(!s){ s={rest:false,done:false,exercises:[]}; state.sessions[dateISO]=s; }
-    if(!s.rest && s.exercises.length===0){
-      s.exercises = state.template.map(makeExercise);
-      filled++;
-    }
-  }
-  save(); renderCalendar();
-  toast(filled?`Filled ${filled} training day(s)`:"Nothing to fill");
-}
 
 /* ---------- Day modal ---------- */
 let openDate = null;
@@ -1344,30 +1298,14 @@ function renderWeight(){
 }
 
 /* ---------- Template / settings ---------- */
-function renderTemplate(){
+function renderSettings(){
   $("#unitSel").value=state.unit;
   $("#distSel").value=distUnit();
   $("#restSecsInp").value = restSecsPref();
   $("#restAutoChk").checked = state.restAuto!==false;
   $("#verLine").textContent = "FitPlan · " + APP_VERSION;
-  const c=$("#templateList"); c.innerHTML="";
-  if(!state.template.length){ c.innerHTML=`<p class="muted">No exercises in template.</p>`; }
-  state.template.forEach((t,i)=>{
-    const row=document.createElement("div"); row.className="row"; row.style.padding="6px 0"; row.style.borderBottom="1px solid var(--line)";
-    row.innerHTML = `<span class="pill ${t.type}">${t.type==="cardio"?"Cardio":"Weights"}</span>
-      <b style="min-width:150px">${t.name}</b>
-      <span class="muted">${t.sets} × ${t.reps} ${t.type==="cardio"?"min":"reps"}</span>
-      <button class="btn sm danger" data-tdel="${i}" style="margin-left:auto">Remove</button>`;
-    c.appendChild(row);
-  });
-  c.querySelectorAll("[data-tdel]").forEach(b=> b.onclick=()=>{ state.template.splice(Number(b.dataset.tdel),1); save(); renderTemplate(); });
 }
-$("#tAdd").onclick=()=>{
-  const name=$("#tName").value.trim(); if(!name){ toast("Enter a name"); return; }
-  state.template.push({name, type:$("#tType").value, sets:Number($("#tSets").value)||3, reps:Number($("#tReps").value)||10});
-  $("#tName").value=""; save(); renderTemplate();
-};
-$("#unitSel").onchange=()=>{ state.unit=$("#unitSel").value; save(); renderWeight(); renderTemplate(); };
+$("#unitSel").onchange=()=>{ state.unit=$("#unitSel").value; save(); renderWeight(); renderSettings(); };
 $("#distSel").onchange=()=>{
   const from=distUnit(), to=$("#distSel").value;
   const factor = (from==="km"&&to==="mi") ? 0.621371 : (from==="mi"&&to==="km") ? 1.609344 : 1;
@@ -1730,7 +1668,7 @@ $("#restAutoChk").onchange = ()=>{ state.restAuto=$("#restAutoChk").checked; sav
 function initAll(){
   renderWeekdayToggles();
   renderCalendar();
-  renderTemplate();
+  renderSettings();
   renderMachines();
   renderSync();
 }
