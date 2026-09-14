@@ -88,6 +88,12 @@
   .ind.off{background:rgba(255,255,255,.04);color:var(--faint);border:1px dashed var(--line)}
   .ind.inv.off{background:rgba(255,183,77,.16);color:#ffb74d;border:1px solid rgba(255,183,77,.45)}
   .catrow .cdesc .inds{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+  /* backup reminder banner */
+  .backupbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:rgba(255,183,77,.12);border:1px solid rgba(255,183,77,.45);
+    border-radius:12px;padding:10px 14px;margin-bottom:14px}
+  .backupbar .bkmsg{font-size:13px;color:#ffb74d;font-weight:600}
+  .backupbar .btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
   .panel h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -331,6 +337,13 @@
     <button class="btn" id="setupBtn" title="Sync, backup, theme & text size">⚙ Setup</button>
     <input type="file" id="importFile" accept=".json,application/json" class="sr-file">
   </header>
+
+  <div id="backupReminder" class="backupbar noprint hidden">
+    <span class="bkmsg" id="bkMsg"></span>
+    <span class="grow"></span>
+    <button class="btn" type="button" id="bkNow">⬇ Back up now</button>
+    <button class="btn ghost" type="button" id="bkLater">Later</button>
+  </div>
 
   <!-- print header (only visible when printing) -->
   <div id="printHead">
@@ -1245,7 +1258,32 @@ function exportBackup(){
   a.href = url; a.download = `door-quote-backup-${new Date().toISOString().slice(0,10)}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+  try{ localStorage.setItem(LS_LASTBACKUP, String(Date.now())); }catch(e){}
+  try{ localStorage.removeItem(LS_BACKUP_SNOOZE); }catch(e){}
+  checkBackupReminder();
   toast("Backup downloaded");
+}
+/* ---------- backup reminder (nudge to download a local backup file) ---------- */
+const LS_LASTBACKUP = "dhq.lastBackup", LS_BACKUP_SNOOZE = "dhq.backupSnooze";
+const BACKUP_REMIND_DAYS = 14, BACKUP_SNOOZE_DAYS = 3, DAY_MS = 86400000;
+function checkBackupReminder(){
+  const bar = $("backupReminder"); if(!bar) return;
+  const num = k => { try{ return Number(localStorage.getItem(k))||0; }catch(e){ return 0; } };
+  const hide = () => bar.classList.add("hidden");
+  if(!savedQuotes.length){ hide(); return; }              // nothing worth backing up yet
+  const now = Date.now();
+  if(now < num(LS_BACKUP_SNOOZE)){ hide(); return; }      // snoozed
+  const last = num(LS_LASTBACKUP);
+  const days = last ? Math.floor((now-last)/DAY_MS) : Infinity;
+  if(days < BACKUP_REMIND_DAYS){ hide(); return; }
+  $("bkMsg").textContent = last
+    ? `Your last backup file was ${days} day${days===1?"":"s"} ago — download a fresh one to keep it safe.`
+    : "You haven't downloaded a backup file yet — save one to keep your quotes safe.";
+  bar.classList.remove("hidden");
+}
+function snoozeBackupReminder(){
+  try{ localStorage.setItem(LS_BACKUP_SNOOZE, String(Date.now()+BACKUP_SNOOZE_DAYS*DAY_MS)); }catch(e){}
+  checkBackupReminder();
 }
 async function handleImport(e){
   const file = e.target.files[0]; if(!file) return;
@@ -1262,6 +1300,7 @@ async function handleImport(e){
   if(typeof company.defaultMarkup !== "number") company.defaultMarkup = 0;
   if(Number.isFinite(data.seq) && data.seq>0) nextSeq = data.seq;
   saveSeq(); saveCat(); saveQuote(); saveQuotes(); saveCustomers(); saveCo(); bindQuoteFields(); fillCatPick(); fillCustomerList(); renderLines();
+  checkBackupReminder();
   toast("Backup restored");
 }
 
@@ -1752,12 +1791,15 @@ $("clearCustBtn").onclick = clearCustomer;
 $("importFile").addEventListener("change", handleImport);
 $("newBtn").onclick = newQuote;
 $("addBlankBtn").onclick = ()=>addLine("",0,1);
+$("bkNow").onclick = exportBackup;
+$("bkLater").onclick = snoozeBackupReminder;
+checkBackupReminder();
 updateLastSync();
 if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v28 · 2026-09-12";
+const VERSION = "v29 · 2026-09-15";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
