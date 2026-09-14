@@ -526,7 +526,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-09-14 · treadmill-speed-incline";
+const APP_VERSION = "2026-09-14 · treadmill-distance-from-speed";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -1056,6 +1056,7 @@ function sessionDistance(sess){
   sess.exercises.forEach(ex=> ex.sets.forEach(st=>{
     d += Number(st.distance)||0;
     d += metersToUnit(Number(st.meters)||0);
+    d += (Number(st.speed)||0)*(Number(st.mins)||0)/60;   // treadmill: distance = speed × duration
   }));
   return d;
 }
@@ -1315,6 +1316,7 @@ $("#distSel").onchange=()=>{
   if(factor!==1){   // convert every logged distance so the numbers stay physically the same
     Object.values(state.sessions).forEach(sess=> (sess.exercises||[]).forEach(ex=> ex.sets.forEach(st=>{
       if(typeof st.distance==="number" && !isNaN(st.distance)) st.distance = +(st.distance*factor).toFixed(2);
+      if(typeof st.speed==="number" && !isNaN(st.speed)) st.speed = +(st.speed*factor).toFixed(2);   // km/h <-> mph
     })));
   }
   state.distUnit=to; save(); renderCalendar(); toast("Distances converted to "+to);
