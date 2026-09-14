@@ -87,6 +87,7 @@
   .ind.on{background:rgba(22,163,74,.2);color:#4ade80}
   .ind.off{background:rgba(255,255,255,.04);color:var(--faint);border:1px dashed var(--line)}
   .ind.inv.off{background:rgba(255,183,77,.16);color:#ffb74d;border:1px solid rgba(255,183,77,.45)}
+  .catrow .cdesc .inds{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:16px}
   .panel h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -1112,7 +1113,7 @@ function quoteRowHtml(q){
          + ` <span class="ind trk ${trk?"on":"off"}" title="${trk?"Tracking "+esc(trk):"No tracking number yet"}">TRK${trk?" ✓":""}</span>`;
   }
   return `<div class="catrow qrow" data-id="${q.savedId}">
-    <div class="cdesc"><div class="n">${esc(quoteName(q))}${cur}${badge}${inds}</div><div class="s">${esc(sub)}</div></div>
+    <div class="cdesc"><div class="n">${esc(quoteName(q))}${cur}${badge}</div>${inds?`<div class="inds">${inds}</div>`:""}<div class="s">${esc(sub)}</div></div>
     <select class="statussel st-${st}" data-status="${q.savedId}" title="Mark this quote won or lost">
       <option value="open"${st==="open"?" selected":""}>Open</option>
       <option value="won"${st==="won"?" selected":""}>Won</option>
