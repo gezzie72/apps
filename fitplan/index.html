@@ -526,7 +526,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-09-13 · remove-dead-template";
+const APP_VERSION = "2026-09-14 · treadmill-speed-incline";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -543,7 +543,7 @@ const defaultMachines = {
 /* ---------- State ---------- */
 // Exercises that log custom metrics instead of the default cardio/weight columns.
 const SPECIAL_METRICS = {
-  "Treadmill":       [["distance","Distance"],["mins","Duration (min)"]],
+  "Treadmill":       [["mins","Duration (min)"],["speed","Speed",0.1],["incline","Incline (%)",0.5]],
   "Exercise Bike":   [["distance","Distance"],["mins","Duration (min)"]],
   "Rowing Machine":  [["meters","Distance (m)"],["mins","Duration (min)"]],
   "Ski Erg":         [["meters","Distance (m)"],["mins","Duration (min)"]],
@@ -618,14 +618,17 @@ function wFmt(kg){ return wDisp(kg).toFixed(bodyDp()) + " " + bodyUnit(); }
 // Which numeric fields an exercise logs: explicit metrics > known special > by type.
 function metricsFor(ex){
   let mets;
-  if(ex.metrics && ex.metrics.length) mets = ex.metrics.map(m=>Array.isArray(m)?{key:m[0],label:m[1]}:{key:m.key,label:m.label});
-  else if(SPECIAL_METRICS[ex.name]) mets = SPECIAL_METRICS[ex.name].map(m=>({key:m[0],label:m[1]}));
+  // SPECIAL_METRICS is authoritative for named exercises, so edits here apply to
+  // existing entries too (their baked ex.metrics is only used for custom exercises).
+  if(SPECIAL_METRICS[ex.name]) mets = SPECIAL_METRICS[ex.name].map(m=>({key:m[0],label:m[1],step:m[2]}));
+  else if(ex.metrics && ex.metrics.length) mets = ex.metrics.map(m=>Array.isArray(m)?{key:m[0],label:m[1],step:m[2]}:{key:m.key,label:m.label,step:m.step});
   else if(ex.type==="cardio") mets = [{key:"mins",label:"Minutes"},{key:"reps",label:"Notes (reps/dist)"}];
   else mets = [{key:"reps",label:"Reps"},{key:"weight",label:"Weight ("+state.unit+")"}];
   // keep unit-bearing labels in sync with current preferences
   return mets.map(m=>{
-    if(m.key==="distance") return {key:"distance", label:"Distance ("+distUnit()+")"};
-    if(m.key==="weight")   return {key:"weight",   label:"Weight ("+state.unit+")"};
+    if(m.key==="distance") return {key:"distance", label:"Distance ("+distUnit()+")", step:m.step};
+    if(m.key==="weight")   return {key:"weight",   label:"Weight ("+state.unit+")", step:m.step};
+    if(m.key==="speed")    return {key:"speed",    label:"Speed ("+(distUnit()==="mi"?"mph":"km/h")+")", step:m.step};
     return m;
   });
 }
@@ -784,7 +787,7 @@ function renderDayBody(){
     let cols = `<tr><th>Set</th>${mets.map(m=>`<th>${m.label}</th>`).join("")}<th>Done</th><th></th></tr>`;
     let rows = ex.sets.map((st,si)=>`<tr>
         <td>${si+1}</td>
-        ${mets.map(m=>`<td><input type="number" step="any" data-e="${ei}" data-s="${si}" data-f="${m.key}" value="${st[m.key]??""}"></td>`).join("")}
+        ${mets.map(m=>`<td><input type="number" step="${m.step||'any'}" data-e="${ei}" data-s="${si}" data-f="${m.key}" value="${st[m.key]??""}"></td>`).join("")}
         <td><input type="checkbox" class="set-done" data-e="${ei}" data-s="${si}" ${st.done?"checked":""}></td>
         <td>${ex.sets.length>1?`<button class="btn sm danger set-del" data-e="${ei}" data-s="${si}" title="Remove this set">✕</button>`:``}</td>
       </tr>`).join("");
