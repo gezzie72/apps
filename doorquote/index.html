@@ -266,6 +266,8 @@
     .vatlbl-print,.vatrate-print{display:inline!important}
     #printFoot{display:block!important}
     #printTerms{display:block!important}
+    #printNotes{display:block!important}
+    #printNotes:empty{display:none!important}   /* no stray heading/line when there are no notes */
     /* spend-by-customer report prints on its own (hide the quote app + any open modal) */
     #modalRoot,#toast{display:none!important}
     body.spendmode #app{display:none!important}
@@ -319,6 +321,9 @@
   #printTerms .terms-pay{margin-top:10px;font-style:italic}
   #printFoot{display:none;margin-top:18px;padding-top:12px;border-top:2px solid var(--cyan);
     font-size:10.5px;color:var(--brandgrey);line-height:1.6;text-align:center}
+  #printNotes{display:none;margin-top:16px;padding-top:10px;border-top:1px solid var(--brandgrey);
+    font-size:10px;color:var(--brandgrey);line-height:1.5;white-space:pre-wrap;page-break-inside:avoid}
+  #printNotes h4{margin:0 0 6px;font-size:10.5px;color:var(--teal);text-transform:uppercase;letter-spacing:.5px}
 </style>
 </head>
 <body>
@@ -434,6 +439,12 @@
         <span>Profit <span class="intlabel">internal</span></span><span class="v" id="tProfit">£0.00</span></div>
     </div>
 
+    <div class="field notes-field noprint">
+      <label>📝 Notes <span style="color:var(--faint);font-weight:400">— shown on the quote / PDF</span></label>
+      <textarea id="qNotes" rows="2" placeholder="Optional notes for this quote — e.g. lead times, exclusions, special arrangements"></textarea>
+    </div>
+
+    <div id="printNotes"></div>
     <div id="printTerms"></div>
     <div id="printFoot"></div>
   </div>
@@ -518,6 +529,7 @@ function fixQuote(q){
   if(typeof q.email !== "string") q.email = "";
   if(typeof q.invoiceNo !== "string") q.invoiceNo = "";
   if(typeof q.trackingNo !== "string") q.trackingNo = "";
+  if(typeof q.notes !== "string") q.notes = "";
   if(!("savedId" in q)) q.savedId = null;
   return q;
 }
@@ -525,7 +537,7 @@ function blankQuote(){
   const deliv = (company && Number.isFinite(company.defaultDelivery)) ? company.defaultDelivery : 30;
   return { customer:"", ref:"", email:"", project:"", date:new Date().toISOString().slice(0,10),
            delivery:deliv, vatRate:(quote?quote.vatRate:20), vatOn:(quote?quote.vatOn:true),
-           invoiceNo:"", trackingNo:"", lines:[], savedId:null };
+           invoiceNo:"", trackingNo:"", notes:"", lines:[], savedId:null };
 }
 function _putCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue)); }catch(e){ toast("⚠ Save failed"); } }
 function _putQuotes(){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(savedQuotes)); }catch(e){ toast("⚠ Save failed"); } }
@@ -575,7 +587,8 @@ function bindQuoteFields(){
   $("qInvoice").value = quote.invoiceNo||"";
   $("qTracking").value = quote.trackingNo||"";
   $("qDelivery").value = quote.delivery||0;
-  const map = {qRef:"ref",qEmail:"email",qProject:"project",qDate:"date",qInvoice:"invoiceNo",qTracking:"trackingNo"};
+  $("qNotes").value = quote.notes||"";
+  const map = {qRef:"ref",qEmail:"email",qProject:"project",qDate:"date",qInvoice:"invoiceNo",qTracking:"trackingNo",qNotes:"notes"};
   Object.entries(map).forEach(([el,key])=>{
     $(el).oninput = e=>{ quote[key]=e.target.value; saveQuote(); };
   });
@@ -1231,6 +1244,9 @@ function doPrint(){
   $("phCustEmail").textContent = quote.email || "";
   $("phRef").textContent = quote.ref || "—";
   $("phDate").textContent = quote.date ? new Date(quote.date).toLocaleDateString("en-GB") : "";
+  // per-quote notes block (only when the user has entered something)
+  const notes = (quote.notes||"").trim();
+  $("printNotes").innerHTML = notes ? "<h4>Notes</h4>"+esc(notes) : "";
   // terms & conditions block
   const tg = termsGeneral(), tp = termsPayment();
   $("printTerms").innerHTML = (tg.length || tp.length)
@@ -1799,7 +1815,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v29 · 2026-09-15";
+const VERSION = "v30 · 2026-09-15";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
