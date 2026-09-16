@@ -1160,7 +1160,7 @@ function printSpend(){
   document.body.classList.add("spendmode");
   const cleanup = ()=>{ document.body.classList.remove("spendmode"); window.removeEventListener("afterprint", cleanup); };
   window.addEventListener("afterprint", cleanup);
-  window.print();
+  imgsReady($("spendReport")).then(()=> window.print());   // wait for the logo to decode first
   setTimeout(cleanup, 20000);   // fallback if afterprint never fires (harmless on screen)
 }
 function quoteRowHtml(q){
@@ -1266,6 +1266,20 @@ function maybePrefillRef(){
 }
 
 /* ---------- print ---------- */
+// Wait for images inside `root` to finish decoding before printing, so the logo
+// isn't missing on the first attempt (it used to print before the image loaded).
+function oneImgReady(im){
+  if(im.complete && im.naturalWidth>0) return Promise.resolve();
+  return new Promise(res=>{
+    let done=false; const fin=()=>{ if(!done){ done=true; res(); } };
+    im.addEventListener("load", fin, {once:true});
+    im.addEventListener("error", fin, {once:true});
+    if(im.decode) im.decode().then(fin).catch(fin);
+    setTimeout(fin, 2000);   // safety: never hang the print
+  });
+}
+function imgsReady(root){ return Promise.all([...root.querySelectorAll("img[src]")].map(oneImgReady)); }
+
 function doPrint(){
   document.body.classList.remove("spendmode");   // ensure the quote prints, not the spend report
   // company header
@@ -1300,7 +1314,7 @@ function doPrint(){
   // static VAT rate for print + refresh rows so unit prices show formatted £ values
   document.querySelector(".vatrate-print").textContent = (Number(quote.vatRate)||0);
   renderLines();
-  window.print();
+  imgsReady($("printHead")).then(()=> window.print());   // wait for the logo to decode first
 }
 
 /* ---------- backup / restore ---------- */
@@ -1854,7 +1868,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v39 · 2026-09-16";
+const VERSION = "v40 · 2026-09-16";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
