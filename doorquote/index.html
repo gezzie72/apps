@@ -717,11 +717,12 @@ function openCatalogue(){
       <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
         Your saved hardware. Star (⭐) the items that make up the <b>standard setup</b>.
         Stored on this device.</p>
-      <div class="field"><input id="catSearchIn" placeholder="🔍 Search description or code…" value="${esc(catSearch)}" autocomplete="off"></div>
+      <div class="field"><input id="catSearchIn" placeholder="🔍 Search description, code or finish…" value="${esc(catSearch)}" autocomplete="off"></div>
       <div class="catlist" id="catListBox"></div>
       <div style="border-top:1px solid var(--line);margin:16px 0 14px"></div>
       <div class="field"><label>Description</label><input id="ncDesc" placeholder="e.g. Lever handle set (SSS)"></div>
       <div class="field"><label>Stock code <span style="color:var(--faint);font-weight:400">— optional</span></label><input id="ncCode" placeholder="e.g. LH-SSS-01"></div>
+      <div class="field"><label>Colour / finish <span style="color:var(--faint);font-weight:400">— optional</span></label><input id="ncFinish" placeholder="e.g. Satin stainless steel"></div>
       <div class="grid3">
         <div class="field"><label>Cost (£)</label><input id="ncCost" type="number" min="0" step="0.01" placeholder="0.00"></div>
         <div class="field"><label>Markup (%)</label><input id="ncMarkup" type="number" min="0" step="0.1" value="${Number.isFinite(company.defaultMarkup)?company.defaultMarkup:0}"></div>
@@ -746,7 +747,7 @@ function openCatalogue(){
     const unit = parseFloat($("ncUnit").value)||0;
     const cost = parseFloat($("ncCost").value)||0;
     if(!desc){ $("catErr").textContent = "Enter a description."; return; }
-    catalogue.push({id:uid(), desc, code:$("ncCode").value.trim(), cost, unit, standard:$("ncStd").checked, updated:Date.now()});
+    catalogue.push({id:uid(), desc, code:$("ncCode").value.trim(), finish:$("ncFinish").value.trim(), cost, unit, standard:$("ncStd").checked, updated:Date.now()});
     saveCat(); fillCatPick(); openCatalogue();   // re-render list
     toast("Item added");
   };
@@ -765,7 +766,7 @@ function linkCostMarkupSale(costId, mkId, saleId){
 function catRowHtml(c){
   return `<div class="catrow" data-id="${c.id}">
     <button class="star ${c.standard?"on":""}" data-star="${c.id}" title="Toggle standard setup">★</button>
-    <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div><div class="s">${c.code?esc(c.code)+' · ':''}cost ${money(c.cost||0)}</div></div>
+    <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div><div class="s">${c.code?esc(c.code)+' · ':''}${c.finish?esc(c.finish)+' · ':''}cost ${money(c.cost||0)}</div></div>
     <div class="cunit">${money(c.unit)}</div>
     <button class="icon" data-copy="${c.id}" title="Duplicate">📋</button>
     <button class="icon" data-edit="${c.id}" title="Edit">✏️</button>
@@ -778,7 +779,7 @@ function renderCatListBox(){
   const box = $("catListBox"); if(!box) return;
   const q = catSearch.trim().toLowerCase();
   let rows = [...catalogue].sort((a,b)=>a.desc.localeCompare(b.desc));
-  if(q) rows = rows.filter(c => ((c.desc||"")+" "+(c.code||"")).toLowerCase().includes(q));
+  if(q) rows = rows.filter(c => ((c.desc||"")+" "+(c.code||"")+" "+(c.finish||"")).toLowerCase().includes(q));
   box.innerHTML = rows.length ? rows.map(catRowHtml).join("")
     : `<div class="empty">${q ? "No items match your search." : "No items yet. Add your first hardware item below."}</div>`;
   wireCatList();
@@ -791,7 +792,7 @@ function wireCatList(){
   });
   box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
     const c=catalogue.find(x=>x.id===b.dataset.copy); if(!c) return;
-    catalogue.push({id:uid(), desc:(c.desc||"")+" (copy)", code:c.code||"", cost:c.cost||0, unit:c.unit||0, standard:false, updated:Date.now()});
+    catalogue.push({id:uid(), desc:(c.desc||"")+" (copy)", code:c.code||"", finish:c.finish||"", cost:c.cost||0, unit:c.unit||0, standard:false, updated:Date.now()});
     saveCat(); fillCatPick(); renderCatListBox(); toast("Item duplicated");
   });
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
@@ -807,6 +808,7 @@ function editCatItem(id){
       <h2>✏️ Edit item</h2>
       <div class="field"><label>Description</label><input id="ecDesc" value="${esc(c.desc)}"></div>
       <div class="field"><label>Stock code</label><input id="ecCode" value="${esc(c.code||'')}" placeholder="e.g. LH-SSS-01"></div>
+      <div class="field"><label>Colour / finish</label><input id="ecFinish" value="${esc(c.finish||'')}" placeholder="e.g. Satin stainless steel"></div>
       <div class="grid3">
         <div class="field"><label>Cost (£)</label><input id="ecCost" type="number" min="0" step="0.01" value="${Number.isFinite(c.cost)?c.cost:''}"></div>
         <div class="field"><label>Markup (%)</label><input id="ecMarkup" type="number" min="0" step="0.1" value="${(Number.isFinite(c.cost)&&c.cost>0)?(((c.unit/c.cost)-1)*100).toFixed(1):''}"></div>
@@ -828,6 +830,7 @@ function editCatItem(id){
   $("ecSave").onclick = ()=>{
     c.desc = $("ecDesc").value.trim() || c.desc;
     c.code = $("ecCode").value.trim();
+    c.finish = $("ecFinish").value.trim();
     c.cost = parseFloat($("ecCost").value)||0;
     c.unit = parseFloat($("ecUnit").value)||0;
     c.standard = $("ecStd").checked;
@@ -1836,7 +1839,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v32 · 2026-09-16";
+const VERSION = "v33 · 2026-09-16";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
