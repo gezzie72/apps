@@ -708,8 +708,8 @@ function addStandardSetup(){
 }
 
 /* ---------- catalogue manager (modal) ---------- */
+let catSearch = "";
 function openCatalogue(){
-  const rows = [...catalogue].sort((a,b)=>a.desc.localeCompare(b.desc));
   $("modalRoot").innerHTML = `
   <div class="overlay" id="overlay">
     <div class="modal" style="max-width:560px">
@@ -717,10 +717,8 @@ function openCatalogue(){
       <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
         Your saved hardware. Star (⭐) the items that make up the <b>standard setup</b>.
         Stored on this device.</p>
-      <div class="catlist" id="catListBox">
-        ${rows.length ? rows.map(catRowHtml).join("")
-          : `<div class="empty">No items yet. Add your first hardware item below.</div>`}
-      </div>
+      <div class="field"><input id="catSearchIn" placeholder="🔍 Search description or code…" value="${esc(catSearch)}" autocomplete="off"></div>
+      <div class="catlist" id="catListBox"></div>
       <div style="border-top:1px solid var(--line);margin:16px 0 14px"></div>
       <div class="field"><label>Description</label><input id="ncDesc" placeholder="e.g. Lever handle set (SSS)"></div>
       <div class="field"><label>Stock code <span style="color:var(--faint);font-weight:400">— optional</span></label><input id="ncCode" placeholder="e.g. LH-SSS-01"></div>
@@ -740,7 +738,8 @@ function openCatalogue(){
     </div>
   </div>`;
   bindOverlayClose();
-  wireCatList();
+  renderCatListBox();
+  const si = $("catSearchIn"); if(si) si.oninput = e=>{ catSearch = e.target.value; renderCatListBox(); };
   linkCostMarkupSale("ncCost","ncMarkup","ncUnit");
   $("ncAdd").onclick = ()=>{
     const desc = $("ncDesc").value.trim();
@@ -768,18 +767,35 @@ function catRowHtml(c){
     <button class="star ${c.standard?"on":""}" data-star="${c.id}" title="Toggle standard setup">★</button>
     <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div><div class="s">${c.code?esc(c.code)+' · ':''}cost ${money(c.cost||0)}</div></div>
     <div class="cunit">${money(c.unit)}</div>
+    <button class="icon" data-copy="${c.id}" title="Duplicate">📋</button>
     <button class="icon" data-edit="${c.id}" title="Edit">✏️</button>
     <button class="icon" data-del="${c.id}" title="Delete">🗑</button>
   </div>`;
+}
+// Render only the list box, honouring the current search — keeps the search
+// field focused and avoids rebuilding the whole modal on each change.
+function renderCatListBox(){
+  const box = $("catListBox"); if(!box) return;
+  const q = catSearch.trim().toLowerCase();
+  let rows = [...catalogue].sort((a,b)=>a.desc.localeCompare(b.desc));
+  if(q) rows = rows.filter(c => ((c.desc||"")+" "+(c.code||"")).toLowerCase().includes(q));
+  box.innerHTML = rows.length ? rows.map(catRowHtml).join("")
+    : `<div class="empty">${q ? "No items match your search." : "No items yet. Add your first hardware item below."}</div>`;
+  wireCatList();
 }
 function wireCatList(){
   const box = $("catListBox"); if(!box) return;
   box.querySelectorAll("[data-star]").forEach(b=>b.onclick=()=>{
     const c=catalogue.find(x=>x.id===b.dataset.star); if(!c) return;
-    c.standard=!c.standard; c.updated=Date.now(); saveCat(); fillCatPick(); openCatalogue();
+    c.standard=!c.standard; c.updated=Date.now(); saveCat(); fillCatPick(); renderCatListBox();
+  });
+  box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
+    const c=catalogue.find(x=>x.id===b.dataset.copy); if(!c) return;
+    catalogue.push({id:uid(), desc:(c.desc||"")+" (copy)", code:c.code||"", cost:c.cost||0, unit:c.unit||0, standard:false, updated:Date.now()});
+    saveCat(); fillCatPick(); renderCatListBox(); toast("Item duplicated");
   });
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
-    catalogue = catalogue.filter(x=>x.id!==b.dataset.del); saveCat(); fillCatPick(); openCatalogue();
+    catalogue = catalogue.filter(x=>x.id!==b.dataset.del); saveCat(); fillCatPick(); renderCatListBox();
   });
   box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editCatItem(b.dataset.edit));
 }
@@ -1820,7 +1836,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v31 · 2026-09-15";
+const VERSION = "v32 · 2026-09-16";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
