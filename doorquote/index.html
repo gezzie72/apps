@@ -122,6 +122,7 @@
   .linetot{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
   .unit-print{display:none;font-variant-numeric:tabular-nums}
   .desc-print{display:none}
+  .desccol .finishc{margin-top:5px;width:100%;font-size:12px;color:var(--muted)}
   .rmbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);width:32px;height:32px;
     display:flex;align-items:center;justify-content:center;font-size:14px}
   .rmbtn:hover{color:var(--danger);border-color:var(--danger)}
@@ -152,8 +153,10 @@
   .catrow{display:flex;align-items:center;gap:12px;background:var(--panel2);border:1px solid var(--line);
     border-radius:10px;padding:10px 12px}
   .catrow .cdesc{flex:1;min-width:0}
-  .catrow .cdesc .n{font-weight:600}
-  .catrow .cdesc .s{font-size:12px;color:var(--muted)}
+  .catrow .cdesc .nrow{display:flex;align-items:baseline;gap:8px}
+  .catrow .cdesc .n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0}
+  .catrow .cdesc .price{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;flex:0 0 auto}
+  .catrow .cdesc .s{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .catrow .cunit{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
   .star{background:none;border:none;font-size:18px;line-height:1;padding:2px;color:var(--faint)}
   .star.on{color:#ffd43b}
@@ -627,7 +630,7 @@ function renderLines(){
     <tr data-id="${l.id}">
       <td class="num" data-label="Qty"><input class="qtyc" type="number" min="0" step="1" value="${l.qty}" data-f="qty"></td>
       <td class="codecol noprint" data-label="Code"><input class="codec" type="text" value="${esc(l.code||'')}" data-f="code" placeholder="Code"></td>
-      <td class="desccol" data-label="Description"><input type="text" value="${esc(l.desc)}" data-f="desc" placeholder="Description"><span class="desc-print">${esc(l.desc)}</span></td>
+      <td class="desccol" data-label="Description"><input type="text" value="${esc(l.desc)}" data-f="desc" placeholder="Description"><input type="text" class="finishc noprint" value="${esc(l.finish||'')}" data-f="finish" placeholder="Colour / finish"><span class="desc-print">${esc(l.desc)}${l.finish?` — ${esc(l.finish)}`:''}</span></td>
       <td class="stockcell" data-label="In stock">${(()=>{
         const st=(l.stock==='no')?'no':'yes';
         const lead=esc(l.lead||'');
@@ -646,7 +649,7 @@ function renderLines(){
       const id = e.target.closest("tr").dataset.id;
       const line = quote.lines.find(x=>x.id===id); if(!line) return;
       const f = e.target.dataset.f;
-      const isText = (f==="desc" || f==="code" || f==="stock" || f==="lead");
+      const isText = (f==="desc" || f==="finish" || f==="code" || f==="stock" || f==="lead");
       line[f] = isText ? e.target.value : (parseFloat(e.target.value)||0);
       if(f==="stock"){                    // reveal/hide the Lead time box for this line
         const leadEl = e.target.closest("td").querySelector(".leadin");
@@ -681,8 +684,8 @@ function renderTotals(){
     $("tProfit").style.color = t.profit<0 ? "var(--danger)" : "var(--accent2)";
   }
 }
-function addLine(desc="",unit=0,qty=1,code="",cost=0){
-  quote.lines.push({id:uid(), qty, desc, unit, cost, code, stock:"yes", lead:""});
+function addLine(desc="",unit=0,qty=1,code="",cost=0,finish=""){
+  quote.lines.push({id:uid(), qty, desc, finish, unit, cost, code, stock:"yes", lead:""});
   saveQuote(); renderLines();
 }
 
@@ -694,7 +697,7 @@ function fillCatPick(){
     sorted.map(c=>`<option value="${c.id}">${esc(c.desc)} — ${money(c.unit)}${c.standard?" ⭐":""}</option>`).join("");
   sel.onchange = ()=>{
     const c = catalogue.find(x=>x.id===sel.value); if(!c) return;
-    addLine(c.desc, c.unit, 1, c.code||"", c.cost||0); sel.value = "";
+    addLine(c.desc, c.unit, 1, c.code||"", c.cost||0, c.finish||""); sel.value = "";
   };
 }
 
@@ -702,7 +705,7 @@ function fillCatPick(){
 function addStandardSetup(){
   const std = catalogue.filter(c=>c.standard);
   if(!std.length){ toast("No standard items yet — star items in the catalogue"); openCatalogue(); return; }
-  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, unit:c.unit, cost:c.cost||0, code:c.code||"", stock:"yes", lead:""}));
+  std.forEach(c=>quote.lines.push({id:uid(), qty:1, desc:c.desc, finish:c.finish||"", unit:c.unit, cost:c.cost||0, code:c.code||"", stock:"yes", lead:""}));
   saveQuote(); renderLines();
   toast(`Added ${std.length} standard item${std.length===1?"":"s"}`);
 }
@@ -766,8 +769,10 @@ function linkCostMarkupSale(costId, mkId, saleId){
 function catRowHtml(c){
   return `<div class="catrow" data-id="${c.id}">
     <button class="star ${c.standard?"on":""}" data-star="${c.id}" title="Toggle standard setup">★</button>
-    <div class="cdesc"><div class="n">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div><div class="s">${c.code?esc(c.code)+' · ':''}${c.finish?esc(c.finish)+' · ':''}cost ${money(c.cost||0)}</div></div>
-    <div class="cunit">${money(c.unit)}</div>
+    <div class="cdesc">
+      <div class="nrow"><span class="n" title="${esc(c.desc)}">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</span><span class="price">${money(c.unit)}</span></div>
+      <div class="s" title="${esc([c.code,c.finish,'cost '+money(c.cost||0)].filter(Boolean).join(' · '))}">${c.code?esc(c.code)+' · ':''}${c.finish?esc(c.finish)+' · ':''}cost ${money(c.cost||0)}</div>
+    </div>
     <button class="icon" data-copy="${c.id}" title="Duplicate">📋</button>
     <button class="icon" data-edit="${c.id}" title="Edit">✏️</button>
     <button class="icon" data-del="${c.id}" title="Delete">🗑</button>
@@ -1206,7 +1211,7 @@ function emailQuote(){
   const lines = quote.lines.length
     ? quote.lines.map(l=>{
         const avail = l.stock==="no" ? (l.lead ? "Lead time: "+l.lead : "In stock: No") : "In stock: Yes";
-        return `  ${l.qty} x ${l.desc||"(item)"} @ ${money(l.unit)} = ${money((Number(l.qty)||0)*(Number(l.unit)||0))}  [${avail}]`;
+        return `  ${l.qty} x ${l.desc||"(item)"}${l.finish?" — "+l.finish:""} @ ${money(l.unit)} = ${money((Number(l.qty)||0)*(Number(l.unit)||0))}  [${avail}]`;
       }).join("\n")
     : "  (no items)";
   const body =
@@ -1839,7 +1844,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v33 · 2026-09-16";
+const VERSION = "v35 · 2026-09-16";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
