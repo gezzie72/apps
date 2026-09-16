@@ -75,7 +75,10 @@
   .spendbar i.wl-won{background:#16a34a}
   .spendbar i.wl-lost{background:var(--danger)}
   .spendbar i.wl-open{background:var(--muted)}
-  .qrow{flex-wrap:wrap}
+  .qrow{flex-wrap:wrap;align-items:center}
+  /* saved-quote rows reuse .catrow; give the name/details their own full-width
+     line so the status/price/buttons wrap beneath instead of crushing it. */
+  .catrow.qrow .cdesc{flex:1 1 100%}
   .stbadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
   .stbadge.won{background:rgba(22,163,74,.18);color:#4ade80}
   .stbadge.lost{background:rgba(255,107,107,.18);color:#ff9b9b}
@@ -1851,7 +1854,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v38 · 2026-09-16";
+const VERSION = "v39 · 2026-09-16";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
