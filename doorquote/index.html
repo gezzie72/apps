@@ -484,6 +484,7 @@ const LS_QUOTES = "dhq.quotes.v1";
 const LS_CO = "dhq.company.v1";
 const LS_SEQ = "dhq.seq.v1";
 const LS_CUST = "dhq.customers.v1";
+const LS_DEL = "dhq.deleted.v1";
 const $ = id => document.getElementById(id);
 const esc = s => (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const money = n => "£" + (Number(n)||0).toFixed(2);
@@ -514,6 +515,7 @@ let savedQuotes = [];    // your saved quote library
 let customers = {};      // directory: lowercase name -> {name, email, updated}
 let company = null;      // your company details (shown on print)
 let nextSeq = 1001;      // next auto quote number (synced by max)
+let tombs = {cat:{}, quote:{}, cust:{}};   // tombstones: id -> deletedAt (synced so deletes stick)
 
 /* ---------- persistence ---------- */
 function loadAll(){
@@ -526,6 +528,9 @@ function loadAll(){
   if(!Array.isArray(savedQuotes)) savedQuotes = [];
   try{ customers = JSON.parse(localStorage.getItem(LS_CUST)) || {}; }catch{ customers = {}; }
   if(!customers || typeof customers !== "object" || Array.isArray(customers)) customers = {};
+  try{ tombs = JSON.parse(localStorage.getItem(LS_DEL)) || {}; }catch{ tombs = {}; }
+  if(!tombs || typeof tombs !== "object" || Array.isArray(tombs)) tombs = {};
+  ["cat","quote","cust"].forEach(k=>{ if(!tombs[k] || typeof tombs[k] !== "object") tombs[k] = {}; });
   try{ company = JSON.parse(localStorage.getItem(LS_CO)); }catch{ company = null; }
   if(!company || typeof company !== "object") company = {name:"",address:"",contact:"",vatNo:""};
   if(typeof company.quotePrefix !== "string") company.quotePrefix = "Q-";
@@ -557,6 +562,9 @@ function _putCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue))
 function _putQuotes(){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(savedQuotes)); }catch(e){ toast("⚠ Save failed"); } }
 function _putCo(){ try{ localStorage.setItem(LS_CO, JSON.stringify(company)); }catch(e){ toast("⚠ Save failed"); } }
 function _putCust(){ try{ localStorage.setItem(LS_CUST, JSON.stringify(customers)); }catch(e){ toast("⚠ Save failed"); } }
+function _putDel(){ try{ localStorage.setItem(LS_DEL, JSON.stringify(tombs)); }catch(e){} }
+// Record a deletion so it survives sync (otherwise other devices push the item back).
+function tombstone(kind, id){ if(!id) return; (tombs[kind] || (tombs[kind]={}))[id] = Date.now(); _putDel(); }
 // public savers also queue a cloud push; background merges use the _put* forms directly
 function saveCat(){ _putCat(); schedulePush(); }
 function saveQuote(){ try{ localStorage.setItem(LS_QUOTE, JSON.stringify(quote)); }catch(e){ toast("⚠ Save failed"); } }
@@ -812,7 +820,7 @@ function wireCatList(){
     saveCat(); fillCatPick(); renderCatListBox(); toast("Item duplicated");
   });
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
-    catalogue = catalogue.filter(x=>x.id!==b.dataset.del); saveCat(); fillCatPick(); renderCatListBox();
+    tombstone("cat", b.dataset.del); catalogue = catalogue.filter(x=>x.id!==b.dataset.del); saveCat(); fillCatPick(); renderCatListBox();
   });
   box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editCatItem(b.dataset.edit));
 }
@@ -854,7 +862,7 @@ function editCatItem(id){
     saveCat(); fillCatPick(); openCatalogue(); toast("Saved");
   };
   $("ecDel").onclick = ()=>{
-    catalogue = catalogue.filter(x=>x.id!==id); saveCat(); fillCatPick(); openCatalogue();
+    tombstone("cat", id); catalogue = catalogue.filter(x=>x.id!==id); saveCat(); fillCatPick(); openCatalogue();
   };
 }
 window.openCatalogue = openCatalogue;
@@ -1209,6 +1217,7 @@ function duplicateSaved(id){
 function deleteSaved(id){
   const q = savedQuotes.find(x=>x.savedId===id); if(!q) return;
   if(!confirm(`Delete “${quoteName(q)}”? This can't be undone.`)) return;
+  tombstone("quote", id);
   savedQuotes = savedQuotes.filter(x=>x.savedId!==id);
   if(quote.savedId===id){ quote.savedId=null; saveQuote(); }
   saveQuotes(); openQuotesList(); toast("Deleted");
@@ -1498,7 +1507,7 @@ function wireCustMgr(){
   box.querySelectorAll("[data-cedit]").forEach(b=>b.onclick=()=>editCustomer(b.dataset.cedit));
   box.querySelectorAll("[data-cdel]").forEach(b=>b.onclick=()=>{
     const c=customers[b.dataset.cdel];
-    if(c && confirm(`Delete “${c.name}” from your customers?`)){ delete customers[b.dataset.cdel]; saveCustomers(); fillCustomerList(); openCustomers(); }
+    if(c && confirm(`Delete “${c.name}” from your customers?`)){ tombstone("cust", b.dataset.cdel); delete customers[b.dataset.cdel]; saveCustomers(); fillCustomerList(); openCustomers(); }
   });
 }
 function editCustomer(key){
@@ -1520,11 +1529,11 @@ function editCustomer(key){
   $("ecustSave").onclick = ()=>{
     const n=$("ecustName").value.trim()||c.name, em=$("ecustEmail").value.trim();
     const nk=custKey(n);
-    if(nk!==key) delete customers[key];       // renamed — drop the old key
+    if(nk!==key){ tombstone("cust", key); delete customers[key]; }   // renamed — drop & tombstone the old key
     customers[nk] = { name:n, email:em, updated:Date.now() };
     saveCustomers(); fillCustomerList(); openCustomers(); toast("Customer saved");
   };
-  $("ecustDel").onclick = ()=>{ delete customers[key]; saveCustomers(); fillCustomerList(); openCustomers(); };
+  $("ecustDel").onclick = ()=>{ tombstone("cust", key); delete customers[key]; saveCustomers(); fillCustomerList(); openCustomers(); };
   $("ecustName").focus();
 }
 
@@ -1558,7 +1567,7 @@ async function _deriveKey(pass, salt){
   const base=await crypto.subtle.importKey("raw", _enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:200000, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
 }
-function buildSyncDoc(){ return { app:"door-hardware-quote", updatedAt:Date.now(), catalogue, savedQuotes, customers, company, seq:nextSeq }; }
+function buildSyncDoc(){ return { app:"door-hardware-quote", updatedAt:Date.now(), catalogue, savedQuotes, customers, company, seq:nextSeq, deleted:tombs }; }
 async function encodeForGist(){
   const plain = JSON.stringify(buildSyncDoc());
   if(!SYNC_PASS) return plain;
@@ -1636,12 +1645,33 @@ async function syncPush(){
 function _sig(){ return JSON.stringify([catalogue, savedQuotes, customers, company, nextSeq]); }
 function mergeSync(remote){
   const before=_sig();
+  const now=Date.now();
+  // 1) merge tombstones first (union, newest deletedAt wins) so deletes propagate
+  const rdel = (remote && remote.deleted && typeof remote.deleted==="object") ? remote.deleted : {};
+  ["cat","quote","cust"].forEach(kind=>{
+    const rm = rdel[kind]||{}, lm = tombs[kind]||(tombs[kind]={});
+    Object.entries(rm).forEach(([id,t])=>{ if(!lm[id] || (t||0)>lm[id]) lm[id]=t||0; });
+  });
+  const dCat=tombs.cat, dQuote=tombs.quote, dCust=tombs.cust;
+  // A tombstone removes an item unless the item was edited AFTER it was deleted
+  // (in which case it resurrects and we drop the stale tombstone).
+  const applyTomb = (map, del, getId, getUpd)=>{
+    Object.keys(map).forEach(id=>{
+      const key=getId(id, map[id]); const d=del[key]||0; if(!d) return;
+      if(d >= (getUpd(map[id])||0)) delete map[id]; else delete del[key];
+    });
+  };
+
   const cat={}; catalogue.forEach(c=>{ if(c&&c.id) cat[c.id]=c; });
   (remote.catalogue||[]).forEach(rc=>{ if(!rc||!rc.id) return; const l=cat[rc.id]; if(!l || (rc.updated||0)>(l.updated||0)) cat[rc.id]=rc; });
+  applyTomb(cat, dCat, id=>id, c=>c.updated);
   catalogue = Object.values(cat);
+
   const sq={}; savedQuotes.forEach(q=>{ if(q&&q.savedId) sq[q.savedId]=q; });
   (remote.savedQuotes||[]).forEach(rq=>{ if(!rq||!rq.savedId) return; const l=sq[rq.savedId]; if(!l || (rq.updated||0)>(l.updated||0)) sq[rq.savedId]=fixQuote(rq); });
+  applyTomb(sq, dQuote, id=>id, q=>q.updated);
   savedQuotes = Object.values(sq);
+
   if(remote.company && (remote.company.updated||0) > (company.updated||0)) company = remote.company;
   if(Number.isFinite(remote.seq) && remote.seq > nextSeq){ nextSeq = remote.seq; saveSeq(); }
   // customers: merge by key, newer 'updated' wins
@@ -1651,7 +1681,11 @@ function mergeSync(remote){
       if(!l || (rc.updated||0)>(l.updated||0)) customers[k]=rc;
     });
   }
-  _putCat(); _putQuotes(); _putCust(); _putCo();
+  applyTomb(customers, dCust, k=>k, c=>c&&c.updated);
+  // prune tombstones older than 60 days so the map can't grow forever
+  const cutoff = now - 60*86400*1000;
+  ["cat","quote","cust"].forEach(kind=>{ const m=tombs[kind]; Object.keys(m).forEach(id=>{ if((m[id]||0)<cutoff) delete m[id]; }); });
+  _putCat(); _putQuotes(); _putCust(); _putCo(); _putDel();
   return _sig() !== before;
 }
 
@@ -1869,7 +1903,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v42 · 2026-09-17";
+const VERSION = "v43 · 2026-09-17";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
