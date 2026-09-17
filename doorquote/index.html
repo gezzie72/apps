@@ -160,6 +160,7 @@
   .catrow .cdesc .n{font-weight:600;overflow-wrap:anywhere}
   .catrow .cdesc .srow{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
   .catrow .cdesc .price{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+  .catrow .cdesc .price.zero{color:var(--danger)}   /* flag items with no sale price set */
   .catrow .cdesc .s{font-size:12px;color:var(--muted);overflow-wrap:anywhere;min-width:0}
   .catrow .acts{flex:0 0 auto;display:flex;gap:6px;margin-top:2px}
   .catrow .cunit{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
@@ -777,7 +778,7 @@ function catRowHtml(c){
     <div class="cdesc">
       <div class="n" title="${esc(c.desc)}">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div>
       <div class="srow">
-        <span class="price">${money(c.unit)}</span>
+        <span class="price${(Number(c.unit)||0)<=0?' zero':''}">${money(c.unit)}</span>
         <span class="s">${c.code?esc(c.code)+' · ':''}${c.finish?esc(c.finish)+' · ':''}cost ${money(c.cost||0)}</span>
       </div>
     </div>
@@ -1868,7 +1869,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v40 · 2026-09-16";
+const VERSION = "v41 · 2026-09-17";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
