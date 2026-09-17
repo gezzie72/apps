@@ -350,6 +350,7 @@
     <button class="btn" id="quotesBtn" title="Open a saved quote">📁 Quotes</button>
     <button class="btn accent" id="saveBtn" title="Save this quote to your library">💾 Save</button>
     <button class="btn" id="printBtn" title="Print or save as PDF">🖨 Print / PDF</button>
+    <button class="btn" id="savePdfBtn" title="Save this quote as a PDF file (works even with no printer)">⤓ Save as PDF</button>
     <button class="btn" id="emailBtn" title="Open your email app with this quote pre-filled">✉ Email</button>
     <button class="btn" id="newBtn" title="Start a fresh quote">✚ New quote</button>
     <button class="btn" id="setupBtn" title="Sync, backup, theme & text size">⚙ Setup</button>
@@ -1290,6 +1291,17 @@ function oneImgReady(im){
 }
 function imgsReady(root){ return Promise.all([...root.querySelectorAll("img[src]")].map(oneImgReady)); }
 
+// A tidy default filename for the browser's "Save as PDF" (it uses document.title).
+function pdfFileName(){
+  const bits = ["Door", (quote.ref||"Quote"), (quote.customer||"")].filter(Boolean).join(" ");
+  return bits.replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim() || "Door Quote";
+}
+// Explicit "Save as PDF" — same native sheet as Print, but nudges the user to
+// pick the Save-as-PDF / Save-to-Files destination (works with no printer found).
+function saveAsPdf(){
+  toast("Choose ‘Save as PDF’ / ‘Save to Files’ as the destination");
+  doPrint();
+}
 function doPrint(){
   document.body.classList.remove("spendmode");   // ensure the quote prints, not the spend report
   // company header
@@ -1324,6 +1336,12 @@ function doPrint(){
   // static VAT rate for print + refresh rows so unit prices show formatted £ values
   document.querySelector(".vatrate-print").textContent = (Number(quote.vatRate)||0);
   renderLines();
+  // Set a good default PDF filename (browsers use document.title), restored after.
+  const prevTitle = document.title;
+  document.title = pdfFileName();
+  const restore = ()=>{ document.title = prevTitle; window.removeEventListener("afterprint", restore); };
+  window.addEventListener("afterprint", restore);
+  setTimeout(restore, 60000);   // fallback if afterprint never fires
   imgsReady($("printHead")).then(()=> window.print());   // wait for the logo to decode first
 }
 
@@ -1890,6 +1908,7 @@ $("quotesBtn").onclick = openQuotesList;
 $("saveBtn").onclick = saveCurrentQuote;
 $("emailBtn").onclick = emailQuote;
 $("printBtn").onclick = doPrint;
+$("savePdfBtn").onclick = saveAsPdf;
 $("setupBtn").onclick = openSetup;              // Sync, Backup, Restore, theme & text size live here
 $("clearCustBtn").onclick = clearCustomer;
 $("importFile").addEventListener("change", handleImport);
@@ -1903,7 +1922,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v43 · 2026-09-17";
+const VERSION = "v44 · 2026-09-17";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
