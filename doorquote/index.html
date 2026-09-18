@@ -339,6 +339,7 @@
   #printNotes{display:none;margin-top:16px;padding-top:10px;border-top:1px solid var(--brandgrey);
     font-size:10px;color:var(--brandgrey);line-height:1.5;white-space:pre-wrap;page-break-inside:avoid}
   #printNotes h4{margin:0 0 6px;font-size:10.5px;color:var(--teal);text-transform:uppercase;letter-spacing:.5px}
+  #printNotes .pf-note{font-size:14px;font-weight:800;color:var(--teal)}   /* proforma note — stands out on the quote */
 </style>
 </head>
 <body>
@@ -1324,7 +1325,9 @@ function doPrint(){
   $("phDate").textContent = quote.date ? new Date(quote.date).toLocaleDateString("en-GB") : "";
   // per-quote notes block (only when the user has entered something)
   const notes = (quote.notes||"").trim();
-  $("printNotes").innerHTML = notes ? "<h4>Notes</h4>"+esc(notes) : "";
+  $("printNotes").innerHTML = notes
+    ? "<h4>Notes</h4>"+notes.split("\n").map(ln=> ln.trim()===PROFORMA_NOTE ? `<span class="pf-note">${esc(ln)}</span>` : esc(ln)).join("\n")
+    : "";
   // terms & conditions block
   const tg = termsGeneral(), tp = termsPayment();
   $("printTerms").innerHTML = (tg.length || tp.length)
@@ -1933,7 +1936,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v46 · 2026-09-18";
+const VERSION = "v47 · 2026-09-18";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
