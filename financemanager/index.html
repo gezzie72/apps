@@ -474,7 +474,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const APP_VERSION = "v1.6";
+const APP_VERSION = "v1.7";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
 function toastAction(m,label,cb,ms){ const t=$("#toast"); t.innerHTML=""; const s=document.createElement("span"); s.textContent=m; const b=document.createElement("button"); b.className="toast-btn"; b.textContent=label; t.appendChild(s); t.appendChild(b); t.classList.add("show"); clearTimeout(t._t); const close=()=>t.classList.remove("show"); b.onclick=()=>{clearTimeout(t._t); close(); cb&&cb();}; t._t=setTimeout(close, ms||6000); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -588,9 +588,11 @@ function migrate(s){
   s.categories.forEach(c=>{ c.id=c.id||uid(); c.name=c.name||"Category"; if(!Array.isArray(c.items)) c.items=[];
     c.items.forEach(it=>{ it.id=it.id||uid(); it.name=it.name||""; it.actual=+it.actual||0; if(it.projected==null) it.projected=it.actual; it.projected=+it.projected||0; if(it.recurring===undefined) it.recurring=true; it.day=Math.max(0,Math.min(31,Math.floor(+it.day||0))); }); });
   if(!Array.isArray(s.goals)) s.goals=[];
-  s.goals.forEach(g=>{ g.id=g.id||uid(); g.name=g.name||""; g.target=+g.target||0; g.saved=+g.saved||0; g.monthly=+g.monthly||0; if(typeof g.targetDate!=="string") g.targetDate=""; });
+  s.goals.forEach(g=>{ g.id=g.id||uid(); g.name=g.name||""; g.target=+g.target||0; g.saved=+g.saved||0; g.monthly=+g.monthly||0; if(typeof g.targetDate!=="string") g.targetDate="";
+    g.autoAmt=+g.autoAmt||0; g.autoDay=Number.isInteger(g.autoDay)?g.autoDay:4; if(typeof g.lastAuto!=="string") g.lastAuto=""; });
   if(!Array.isArray(s.debts)) s.debts=[];
-  s.debts.forEach(d=>{ d.id=d.id||uid(); d.name=d.name||""; d.balance=+d.balance||0; d.apr=+d.apr||0; d.payment=+d.payment||0; });
+  s.debts.forEach(d=>{ d.id=d.id||uid(); d.name=d.name||""; d.balance=+d.balance||0; d.apr=+d.apr||0; d.payment=+d.payment||0;
+    d.autopay=!!d.autopay; d.dueDay=Math.max(0,Math.min(31,Math.floor(+d.dueDay||0))); if(typeof d.lastAuto!=="string") d.lastAuto=""; });
   if(!s.updatedAt) s.updatedAt=now();
   return s;
 }
@@ -834,6 +836,10 @@ function goalEl(g){
           <button class="btn sm addm" data-a="100">+£100</button>
         </div>
       </div>
+      <div class="row" style="margin-top:10px; align-items:flex-end; gap:8px; flex-wrap:wrap">
+        <label class="f" style="margin:0; flex:1 1 140px"><span>Auto add each week (£)</span><input class="in num autoamt" type="number" step="1" inputmode="decimal" value="${g.autoAmt||""}" placeholder="e.g. 50"></label>
+        <label class="f" style="margin:0; flex:1 1 140px"><span>On</span><select class="in autoday">${WEEKDAYS.map((w,i)=>`<option value="${i}"${((Number.isInteger(g.autoDay)?g.autoDay:4)===i)?" selected":""}>${w}</option>`).join("")}</select></label>
+      </div>
       <p class="hint ${proj.cls}" style="margin-top:10px">${proj.txt}</p>
     </div>`;
   const nameEl=el.querySelector(".cname");
@@ -849,6 +855,10 @@ function goalEl(g){
   el.querySelectorAll(".addm").forEach(b=>{
     b.onclick=()=>{ g.saved=(+g.saved||0)+(+b.dataset.a); touch(); renderGoals(); refreshSummaryLite(); schedulePush(); };
   });
+  const amtEl=el.querySelector(".autoamt"), dayEl=el.querySelector(".autoday");
+  const seedGoal=()=>{ if(+g.autoAmt>0 && !g.lastAuto) g.lastAuto=_iso(lastWeekdayOnOrBefore(Number.isInteger(g.autoDay)?g.autoDay:4, _sod(new Date()))); };
+  amtEl.oninput=()=>{ g.autoAmt=+amtEl.value||0; seedGoal(); touchLite(); schedulePush(); };
+  dayEl.onchange=()=>{ g.autoDay=+dayEl.value; seedGoal(); touchLite(); schedulePush(); };
   return el;
 }
 function refreshGoalCard(el,g){
@@ -928,6 +938,11 @@ function debtEl(d){
         <button class="btn sm payx" data-a="25">+£25/mo</button>
         <button class="btn sm payx" data-a="50">+£50/mo</button>
       </div>
+      <div class="grid3" style="margin-top:10px">
+        <label class="f" style="margin:0"><span>Auto-pay monthly</span><select class="in autopaysel"><option value="off"${d.autopay?"":" selected"}>Off</option><option value="on"${d.autopay?" selected":""}>On</option></select></label>
+        <label class="f" style="margin:0"><span>Due day (1–31)</span><input class="in num duedy" type="number" min="1" max="31" inputmode="numeric" value="${d.dueDay||""}"></label>
+        <div></div>
+      </div>
       <p class="hint ${line.cls}" style="margin-top:10px">${line.txt}</p>
     </div>`;
   const nameEl=el.querySelector(".cname");
@@ -943,6 +958,10 @@ function debtEl(d){
   el.querySelectorAll(".payx").forEach(b=>{
     b.onclick=()=>{ d.payment=(+d.payment||0)+(+b.dataset.a); touch(); renderDebts(); refreshSummaryLite(); schedulePush(); };
   });
+  const autoSel=el.querySelector(".autopaysel"), dueEl=el.querySelector(".duedy");
+  const seedDebt=()=>{ if(d.autopay && +d.dueDay>=1 && +d.dueDay<=31 && !d.lastAuto) d.lastAuto=_iso(lastDueOnOrBefore(+d.dueDay, _sod(new Date()))); };
+  autoSel.onchange=()=>{ d.autopay=(autoSel.value==="on"); seedDebt(); touchLite(); schedulePush(); };
+  dueEl.oninput=()=>{ d.dueDay=Math.max(0,Math.min(31,Math.floor(+dueEl.value||0))); seedDebt(); touchLite(); schedulePush(); };
   return el;
 }
 function refreshDebtCard(el,d){
@@ -1385,9 +1404,50 @@ $("#ghPassClear").onclick = async ()=>{
   finally{ spin(false); }
 };
 
+/* ============ Auto payments & contributions ============
+   No background process in a PWA, so we "catch up" on open: apply any monthly
+   debt payments / weekly goal top-ups whose dates have passed since last time,
+   tracked per item via lastAuto so nothing is ever applied twice. */
+const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+function _sod(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+function _iso(d){ const x=_sod(d); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }
+function _parseD(s){ const p=String(s).split("-").map(Number); return _sod(new Date(p[0],(p[1]||1)-1,p[2]||1)); }
+function _dueDate(y,m,dueDay){ const dim=new Date(y,m+1,0).getDate(); return _sod(new Date(y,m,Math.min(dueDay,dim))); }
+function lastDueOnOrBefore(dueDay, ref){ let y=ref.getFullYear(), m=ref.getMonth(); let dt=_dueDate(y,m,dueDay); if(dt>ref){ m--; if(m<0){m=11;y--;} dt=_dueDate(y,m,dueDay); } return dt; }
+function lastWeekdayOnOrBefore(w, ref){ const d=_sod(ref); d.setDate(d.getDate()-((d.getDay()-w+7)%7)); return d; }
+function applyDebtAuto(d, today){
+  if(!d.autopay || !(+d.dueDay>=1 && +d.dueDay<=31) || !(+d.payment>0)) return 0;
+  const dueDay=+d.dueDay;
+  if(!d.lastAuto){ d.lastAuto=_iso(lastDueOnOrBefore(dueDay, today)); return 0; }   // seed — never back-pay
+  let last=_parseD(d.lastAuto), y=last.getFullYear(), m=last.getMonth(), applied=0;
+  for(let i=0;i<1200;i++){
+    m++; if(m>11){m=0;y++;}
+    const dt=_dueDate(y,m,dueDay); if(dt>today) break;
+    const bal=+d.balance||0; if(bal>0){ const pay=Math.min(+d.payment||0, bal); d.balance=Math.round((bal-pay)*100)/100; applied+=pay; }
+    d.lastAuto=_iso(dt);
+  }
+  return applied;
+}
+function applyGoalAuto(g, today){
+  if(!(+g.autoAmt>0)) return 0;
+  const w=Number.isInteger(g.autoDay)?g.autoDay:4;
+  if(!g.lastAuto){ g.lastAuto=_iso(lastWeekdayOnOrBefore(w, today)); return 0; }      // seed — start next week
+  let cur=_parseD(g.lastAuto), added=0;
+  cur.setDate(cur.getDate() + (((w-cur.getDay()+7)%7)||7));   // first matching weekday strictly after lastAuto
+  while(cur<=today){ g.saved=Math.round(((+g.saved||0)+(+g.autoAmt))*100)/100; added+=(+g.autoAmt); g.lastAuto=_iso(cur); cur.setDate(cur.getDate()+7); }
+  return added;
+}
+function runAutomations(){
+  const today=_sod(new Date()), before=JSON.stringify(state), notes=[];
+  (state.debts||[]).forEach(d=>{ const a=applyDebtAuto(d,today); if(a>0) notes.push(`−${money(a)} ${d.name||"debt"}`); });
+  (state.goals||[]).forEach(g=>{ const a=applyGoalAuto(g,today); if(a>0) notes.push(`+${money(a)} ${g.name||"goal"}`); });
+  if(JSON.stringify(state)!==before){ touch(); schedulePush(); if(notes.length) setTimeout(()=>toast("Auto-updated: "+notes.join(" · ")), 500); }
+}
+
 /* ============ Init ============ */
 applyTheme(theme); renderTheme(); applyScale(textScale); renderTextSize();
 $("#verLine").textContent = "Finance Manager " + APP_VERSION;
+runAutomations();
 setTab("summary");
 renderSync();
 if(GH.connected && GH.auto) syncPull(false).catch(e=>{ spin(false); markSync("Pull failed: "+e.message,true); });
