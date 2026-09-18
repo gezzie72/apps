@@ -709,7 +709,7 @@ function fillCatPick(){
   const sel = $("catPick");
   const sorted = [...catalogue].sort((a,b)=>a.desc.localeCompare(b.desc));
   sel.innerHTML = `<option value="">➕ Add from catalogue…</option>` +
-    sorted.map(c=>`<option value="${c.id}">${esc(c.desc)} — ${money(c.unit)}${c.standard?" ⭐":""}</option>`).join("");
+    sorted.map(c=>`<option value="${c.id}">${esc(c.desc)}${c.finish?" · "+esc(c.finish):""} — ${money(c.unit)}${c.standard?" ⭐":""}</option>`).join("");
   sel.onchange = ()=>{
     const c = catalogue.find(x=>x.id===sel.value); if(!c) return;
     addLine(c.desc, c.unit, 1, c.code||"", c.cost||0, c.finish||""); sel.value = "";
@@ -1922,7 +1922,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v44 · 2026-09-17";
+const VERSION = "v45 · 2026-09-18";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
