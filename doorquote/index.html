@@ -1551,7 +1551,7 @@ function custRowHtml(c){
   const pf = !!c.proforma;
   return `<div class="catrow" data-k="${esc(k)}">
     <div class="cdesc"><div class="n">${esc(c.name)}${pf?'<span class="pftag">PROFORMA</span>':''}</div><div class="s">${esc(c.email||"—")}</div></div>
-    <button class="pfbtn${pf?' on':''}" data-cpf="${esc(k)}" title="${pf?'Account approved — remove proforma status':'Mark this account as proforma'}">${pf?'Proforma ✓':'Proforma'}</button>
+    <button class="pfbtn${pf?' on':''}" data-cpf="${esc(k)}" title="${pf?'Account approved — remove proforma status':'Mark this account as proforma'}">${pf?'Proforma ✓':'Proforma?'}</button>
     <button class="icon" data-cedit="${esc(k)}" title="Edit">✏️</button>
     <button class="icon" data-cdel="${esc(k)}" title="Delete">🗑</button>
   </div>`;
@@ -1974,7 +1974,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v49 · 2026-09-18";
+const VERSION = "v50 · 2026-09-18";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
