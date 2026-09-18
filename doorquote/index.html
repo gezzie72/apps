@@ -50,6 +50,8 @@
   .btn{background:var(--panel2);color:var(--text);padding:10px 14px;border:1px solid var(--line);font-size:14px}
   .btn:hover{border-color:var(--accent)}
   .btn.accent{background:linear-gradient(135deg,var(--accent),#8b6cff);border:none;color:#fff;font-weight:600}
+  .btn.proforma{background:#f5c518;border-color:#f5c518;color:#1a1a1a;font-weight:700}
+  .btn.proforma:hover{filter:brightness(1.05)}
   .btn.small{padding:8px 11px;font-size:13px}
   .btn.danger-btn{background:transparent;border-color:var(--danger);color:var(--danger)}
   .btn.danger-btn:hover{background:var(--danger);color:#fff}
@@ -345,6 +347,7 @@
     <div class="brand"><span class="dot"></span> 🚪 Quote Builder</div>
     <div class="grow"></div>
     <button class="btn" id="stdBtn" title="Add all standard-setup items to this quote">⭐ Standard setup</button>
+    <button class="btn proforma" id="proformaBtn" title="Add a proforma note to this quote">Proforma</button>
     <button class="btn" id="catBtn" title="Manage your hardware catalogue">🧰 Catalogue</button>
     <button class="btn" id="coBtn" title="Your company details (shown on the printed quote)">🏢 Company</button>
     <button class="btn" id="quotesBtn" title="Open a saved quote">📁 Quotes</button>
@@ -1902,6 +1905,14 @@ fillCatPick();
 fillCustomerList();
 renderLines();
 $("stdBtn").onclick = addStandardSetup;
+const PROFORMA_NOTE = "Your account is proforma - please see our Terms and Conditions";
+$("proformaBtn").onclick = ()=>{
+  const cur = (quote.notes||"").trim();
+  if(cur.includes(PROFORMA_NOTE)){ toast("Proforma note already added"); return; }
+  quote.notes = cur ? cur+"\n"+PROFORMA_NOTE : PROFORMA_NOTE;
+  const el=$("qNotes"); if(el) el.value = quote.notes;
+  saveQuote(); toast("Proforma note added");
+};
 $("catBtn").onclick = openCatalogue;
 $("coBtn").onclick = openCompany;
 $("quotesBtn").onclick = openQuotesList;
@@ -1922,7 +1933,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v45 · 2026-09-18";
+const VERSION = "v46 · 2026-09-18";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
