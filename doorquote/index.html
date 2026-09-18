@@ -52,6 +52,13 @@
   .btn.accent{background:linear-gradient(135deg,var(--accent),#8b6cff);border:none;color:#fff;font-weight:600}
   .btn.proforma{background:#f5c518;border-color:#f5c518;color:#1a1a1a;font-weight:700}
   .btn.proforma:hover{filter:brightness(1.05)}
+  /* per-customer proforma toggle on the Customers screen */
+  .pfbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:12px;
+         padding:0 10px;height:32px;border-radius:8px;cursor:pointer;white-space:nowrap;flex:0 0 auto}
+  .pfbtn:hover{filter:brightness(1.05)}
+  .pfbtn.on{background:#f5c518;border-color:#f5c518;color:#1a1a1a}
+  .pftag{display:inline-block;background:#f5c518;color:#1a1a1a;font-weight:800;font-size:10px;letter-spacing:.04em;
+         padding:2px 7px;border-radius:5px;margin-left:8px;vertical-align:middle}
   .btn.small{padding:8px 11px;font-size:13px}
   .btn.danger-btn{background:transparent;border-color:var(--danger);color:var(--danger)}
   .btn.danger-btn:hover{background:var(--danger);color:#fff}
@@ -585,7 +592,8 @@ const custKey = n => (n||"").trim().toLowerCase();
 function rememberCustomer(name, email){
   const nm=(name||"").trim(), em=(email||"").trim();
   if(!nm || !em) return;
-  customers[custKey(nm)] = { name:nm, email:em, updated:Date.now() };
+  const k=custKey(nm), prev=customers[k]||{};
+  customers[k] = { name:nm, email:em, proforma:!!prev.proforma, updated:Date.now() };
   saveCustomers(); fillCustomerList();
 }
 function fillCustomerList(){
@@ -637,6 +645,7 @@ function bindQuoteFields(){
     quote.customer = e.target.value;
     const rec = customers[custKey(e.target.value)];
     if(rec && !($("qEmail").value||"").trim()){ $("qEmail").value = rec.email; quote.email = rec.email; }
+    if(rec && rec.proforma && addProformaNote(true)){ toast("Proforma account — note added"); }
     saveQuote();
   };
   $("qDelivery").oninput = e=>{ quote.delivery = parseFloat(e.target.value)||0; saveQuote(); renderTotals(); };
@@ -1531,21 +1540,30 @@ function openCustomers(){
   $("ncustAdd").onclick = ()=>{
     const n=$("ncustName").value.trim(), em=$("ncustEmail").value.trim();
     if(!n){ toast("Enter a name"); return; }
-    customers[custKey(n)] = { name:n, email:em, updated:Date.now() };
+    const ak=custKey(n), aprev=customers[ak]||{};
+    customers[ak] = { name:n, email:em, proforma:!!aprev.proforma, updated:Date.now() };
     saveCustomers(); fillCustomerList(); openCustomers();
   };
 }
 window.openCustomers = openCustomers;
 function custRowHtml(c){
   const k = custKey(c.name);
+  const pf = !!c.proforma;
   return `<div class="catrow" data-k="${esc(k)}">
-    <div class="cdesc"><div class="n">${esc(c.name)}</div><div class="s">${esc(c.email||"—")}</div></div>
+    <div class="cdesc"><div class="n">${esc(c.name)}${pf?'<span class="pftag">PROFORMA</span>':''}</div><div class="s">${esc(c.email||"—")}</div></div>
+    <button class="pfbtn${pf?' on':''}" data-cpf="${esc(k)}" title="${pf?'Account approved — remove proforma status':'Mark this account as proforma'}">${pf?'Proforma ✓':'Proforma'}</button>
     <button class="icon" data-cedit="${esc(k)}" title="Edit">✏️</button>
     <button class="icon" data-cdel="${esc(k)}" title="Delete">🗑</button>
   </div>`;
 }
 function wireCustMgr(){
   const box = $("custMgrBox"); if(!box) return;
+  box.querySelectorAll("[data-cpf]").forEach(b=>b.onclick=()=>{
+    const c=customers[b.dataset.cpf]; if(!c) return;
+    c.proforma = !c.proforma; c.updated = Date.now();
+    saveCustomers(); openCustomers();
+    toast(c.proforma ? "Marked proforma" : "Proforma removed — account approved");
+  });
   box.querySelectorAll("[data-cedit]").forEach(b=>b.onclick=()=>editCustomer(b.dataset.cedit));
   box.querySelectorAll("[data-cdel]").forEach(b=>b.onclick=()=>{
     const c=customers[b.dataset.cdel];
@@ -1570,9 +1588,9 @@ function editCustomer(key){
   bindOverlayClose();
   $("ecustSave").onclick = ()=>{
     const n=$("ecustName").value.trim()||c.name, em=$("ecustEmail").value.trim();
-    const nk=custKey(n);
+    const nk=custKey(n), wasPf=!!c.proforma;
     if(nk!==key){ tombstone("cust", key); delete customers[key]; }   // renamed — drop & tombstone the old key
-    customers[nk] = { name:n, email:em, updated:Date.now() };
+    customers[nk] = { name:n, email:em, proforma:wasPf, updated:Date.now() };
     saveCustomers(); fillCustomerList(); openCustomers(); toast("Customer saved");
   };
   $("ecustDel").onclick = ()=>{ tombstone("cust", key); delete customers[key]; saveCustomers(); fillCustomerList(); openCustomers(); };
@@ -1927,13 +1945,15 @@ fillCustomerList();
 renderLines();
 $("stdBtn").onclick = addStandardSetup;
 const PROFORMA_NOTE = "Your account is proforma - please see our Terms and Conditions";
-$("proformaBtn").onclick = ()=>{
+function addProformaNote(silent){
   const cur = (quote.notes||"").trim();
-  if(cur.includes(PROFORMA_NOTE)){ toast("Proforma note already added"); return; }
+  if(cur.includes(PROFORMA_NOTE)){ if(!silent) toast("Proforma note already added"); return false; }
   quote.notes = cur ? cur+"\n"+PROFORMA_NOTE : PROFORMA_NOTE;
   const el=$("qNotes"); if(el) el.value = quote.notes;
-  saveQuote(); toast("Proforma note added");
-};
+  saveQuote(); if(!silent) toast("Proforma note added");
+  return true;
+}
+$("proformaBtn").onclick = ()=>addProformaNote(false);
 $("catBtn").onclick = openCatalogue;
 $("coBtn").onclick = openCompany;
 $("quotesBtn").onclick = openQuotesList;
@@ -1954,7 +1974,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v48 · 2026-09-18";
+const VERSION = "v49 · 2026-09-18";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
