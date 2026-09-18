@@ -146,6 +146,9 @@
   .totline .v{font-variant-numeric:tabular-nums;color:var(--text)}
   .delivrow{display:flex;align-items:center;gap:8px}
   .delivrow input{width:110px}
+  .delivtbc{padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--faint);font-weight:700;font-size:12px;cursor:pointer}
+  .delivtbc.on{background:var(--teal);border-color:var(--teal);color:#fff}
+  .delivrow.tbc input,.delivrow.tbc #delivPound{display:none}
   .vatlbl{display:flex;align-items:center;gap:6px}
   .vattoggle{display:flex;align-items:center;gap:6px;cursor:pointer}
   .vattoggle input{width:auto}
@@ -447,7 +450,7 @@
       <div class="totline"><span>Subtotal</span><span class="v" id="tSub">£0.00</span></div>
       <div class="totline">
         <span>Delivery charge</span>
-        <span class="delivrow"><span class="noprint">£</span><input id="qDelivery" type="number" min="0" step="0.01" value="0" class="noprint"><span class="v hidden" id="tDelivPrint">£0.00</span></span>
+        <span class="delivrow"><span class="noprint" id="delivPound">£</span><input id="qDelivery" type="number" min="0" step="0.01" value="0" class="noprint"><button type="button" id="delivTbcBtn" class="delivtbc noprint" title="Set delivery to TBC">TBC</button><span class="v hidden" id="tDelivPrint">£0.00</span></span>
       </div>
       <div class="totline" id="vatLine">
         <span class="vatlbl">
@@ -596,15 +599,23 @@ function fillCustomerList(){
 function computeTotals(q){
   const sub = q.lines.reduce((a,l)=>a+(Number(l.qty)||0)*(Number(l.unit)||0),0);
   const cost = q.lines.reduce((a,l)=>a+(Number(l.qty)||0)*(Number(l.cost)||0),0);
-  const deliv = Number(q.delivery)||0;
+  const delivTBC = String(q.delivery).toUpperCase()==="TBC";
+  const deliv = delivTBC ? 0 : (Number(q.delivery)||0);   // TBC excluded from the maths
   const net = sub + deliv;
   const rate = q.vatOn ? (Number(q.vatRate)||0) : 0;
   const vat = net * rate / 100;
   const profit = sub - cost;
-  return { sub, cost, profit, margin: sub>0 ? profit/sub*100 : 0, deliv, net, vat, grand: net + vat };
+  return { sub, cost, profit, margin: sub>0 ? profit/sub*100 : 0, deliv, delivTBC, net, vat, grand: net + vat };
 }
 
 /* ---------- quote fields ---------- */
+function syncDelivUI(){
+  const on = String(quote.delivery).toUpperCase()==="TBC";
+  const row = document.querySelector(".delivrow");
+  if(row) row.classList.toggle("tbc", on);
+  const btn = $("delivTbcBtn");
+  if(btn){ btn.classList.toggle("on", on); btn.textContent = on ? "TBC ✓" : "TBC"; btn.title = on ? "Delivery is TBC — click to enter a price" : "Set delivery to TBC"; }
+}
 function bindQuoteFields(){
   $("qCustomer").value = quote.customer||"";
   $("qRef").value = quote.ref||"";
@@ -613,7 +624,9 @@ function bindQuoteFields(){
   $("qDate").value = quote.date||"";
   $("qInvoice").value = quote.invoiceNo||"";
   $("qTracking").value = quote.trackingNo||"";
-  $("qDelivery").value = quote.delivery||0;
+  const delivIsTBC = String(quote.delivery).toUpperCase()==="TBC";
+  $("qDelivery").value = delivIsTBC ? 0 : (quote.delivery||0);
+  syncDelivUI();
   $("qNotes").value = quote.notes||"";
   const map = {qRef:"ref",qEmail:"email",qProject:"project",qDate:"date",qInvoice:"invoiceNo",qTracking:"trackingNo",qNotes:"notes"};
   Object.entries(map).forEach(([el,key])=>{
@@ -627,6 +640,11 @@ function bindQuoteFields(){
     saveQuote();
   };
   $("qDelivery").oninput = e=>{ quote.delivery = parseFloat(e.target.value)||0; saveQuote(); renderTotals(); };
+  $("delivTbcBtn").onclick = ()=>{
+    if(String(quote.delivery).toUpperCase()==="TBC"){ quote.delivery = parseFloat($("qDelivery").value)||0; }
+    else { quote.delivery = "TBC"; }
+    syncDelivUI(); saveQuote(); renderTotals();
+  };
   $("qVatOn").checked = quote.vatOn;
   $("qVatRate").value = quote.vatRate;
   $("qVatOn").onchange = e=>{ quote.vatOn = e.target.checked; saveQuote(); renderTotals(); };
@@ -690,7 +708,7 @@ function renderLines(){
 function renderTotals(){
   const t = computeTotals(quote);
   $("tSub").textContent = money(t.sub);
-  $("tDelivPrint").textContent = money(t.deliv);
+  $("tDelivPrint").textContent = t.delivTBC ? "TBC" : money(t.deliv);
   $("tVat").textContent = money(t.vat);
   $("vatLine").classList.toggle("vatoff", !quote.vatOn);   // hidden on print when off
   $("qVatRate").disabled = !quote.vatOn;
@@ -1246,7 +1264,7 @@ Items:
 ${lines}
 
 Subtotal:  ${money(t.sub)}
-Delivery:  ${money(t.deliv)}${quote.vatOn ? `\nVAT (${quote.vatRate}%):  ${money(t.vat)}` : ""}
+Delivery:  ${t.delivTBC ? "TBC" : money(t.deliv)}${quote.vatOn ? `\nVAT (${quote.vatRate}%):  ${money(t.vat)}` : ""}
 Total:     ${money(t.grand)}
 ${company.contact ? "\n"+company.contact : ""}${(()=>{
     const tg=termsGeneral(), tp=termsPayment();
@@ -1936,7 +1954,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v47 · 2026-09-18";
+const VERSION = "v48 · 2026-09-18";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
