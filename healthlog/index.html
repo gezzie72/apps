@@ -1941,5 +1941,61 @@ setInterval(refreshDue, 60000);
   else boot();
 })();
 </script>
+<!-- ===== Universal backup widget (self-contained) ===== -->
+<style>
+#bk-btn{position:fixed;left:14px;bottom:14px;z-index:99990;width:44px;height:44px;border-radius:50%;border:1px solid rgba(128,128,128,.35);background:#2a2f3a;color:#fff;font-size:18px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;opacity:.82}
+#bk-btn:hover{opacity:1}
+#bk-panel{position:fixed;left:14px;bottom:66px;z-index:99991;width:252px;max-width:calc(100vw - 28px);background:#171a21;color:#e7e9ee;border:1px solid #2a2f3a;border-radius:14px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.45);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+@media (prefers-color-scheme:light){#bk-panel{background:#fff;color:#1b1f27;border-color:#dfe3ea}#bk-btn{background:#e9edf3;color:#1b1f27}}
+#bk-panel h4{margin:0 0 6px;font-size:14px}
+#bk-panel p{margin:0 0 10px;color:#98a0ae;font-size:12.5px}
+#bk-panel button{display:block;width:100%;margin:6px 0;padding:9px 10px;border-radius:9px;border:1px solid transparent;font-size:13px;font-weight:600;cursor:pointer}
+#bk-save{background:#4bd07f;color:#04120a;border:none}
+#bk-restore{background:transparent;color:inherit;border:1px solid rgba(128,128,128,.4)}
+#bk-close{background:transparent;color:#98a0ae;border:none;font-weight:500}
+#bk-last{color:#98a0ae;font-size:12px;margin:8px 0 2px}
+</style>
+<button id="bk-btn" title="Back up this app" aria-label="Back up this app">&#x2B07;</button>
+<div id="bk-panel" hidden>
+  <h4>Backup</h4>
+  <p>Save a copy of HealthLog data to a file on this device.</p>
+  <button id="bk-save">&#x2B07; Back up my data</button>
+  <button id="bk-restore">Restore from file&#8230;</button>
+  <input id="bk-file" type="file" accept="application/json,.json" hidden>
+  <div id="bk-last"></div>
+  <button id="bk-close">Close</button>
+</div>
+<script>
+(function(){
+  var PREFIX="healthlog", NAME="HealthLog";
+  function g(id){return document.getElementById(id);}
+  function last(){ var el=g('bk-last'); if(!el)return; var t=''; try{t=localStorage.getItem(PREFIX+'.lastBackup')||'';}catch(e){}
+    if(!t){el.textContent='No backup saved yet on this device.';return;}
+    var d=Math.floor((Date.now()-new Date(t).getTime())/86400000);
+    el.innerHTML='Last backup: <b>'+(d<=0?'today':(d===1?'yesterday':d+' days ago'))+'</b>'; }
+  function save(){ try{ var data={}; for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i); if(k&&k.indexOf(PREFIX)===0)data[k]=localStorage.getItem(k);}
+      var now=new Date(), pad=function(n){return(n<10?'0':'')+n;};
+      var payload={app:PREFIX,version:1,exported:now.toISOString(),data:data};
+      var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+      a.download=PREFIX+'-backup-'+now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'.json'; a.click();
+      try{localStorage.setItem(PREFIX+'.lastBackup',now.toISOString());}catch(e){} last();
+    }catch(e){ alert('Backup failed: '+(e&&e.message?e.message:e)); } }
+  function restore(file){ if(!file)return; var r=new FileReader();
+    r.onload=function(){ try{ var p=JSON.parse(r.result);
+      if(!p||!p.data||p.app!==PREFIX){ alert('That file is not a '+NAME+' backup.'); return; }
+      var when=p.exported?new Date(p.exported).toLocaleString('en-GB'):'unknown date';
+      if(!confirm('Restore backup from '+when+'?\n\nThis replaces '+NAME+' current data on this device.')) return;
+      Object.keys(p.data).forEach(function(k){try{localStorage.setItem(k,p.data[k]);}catch(e){}});
+      alert('Restored. Reloading.'); location.reload();
+    }catch(e){ alert('Could not read that file: '+(e&&e.message?e.message:e)); } };
+    r.readAsText(file); }
+  var b=g('bk-btn'); if(!b) return;
+  b.onclick=function(){ var p=g('bk-panel'); p.hidden=!p.hidden; if(!p.hidden)last(); };
+  g('bk-save').onclick=save;
+  g('bk-restore').onclick=function(){ g('bk-file').click(); };
+  g('bk-file').onchange=function(){ restore(this.files[0]); this.value=''; };
+  g('bk-close').onclick=function(){ g('bk-panel').hidden=true; };
+})();
+</script>
 </body>
 </html>

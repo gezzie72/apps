@@ -53,6 +53,17 @@
 
   .hint{color:var(--muted); font-size:13px; text-align:center; max-width:420px}
   .hint b{color:var(--text)}
+
+  /* Backup card */
+  .bk{width:100%; max-width:680px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 18px; display:flex; flex-direction:column; gap:12px}
+  .bk.warn{border-color:var(--warn)}
+  .bktitle{font-weight:700; font-size:15px; display:flex; align-items:center; gap:8px}
+  .bkmeta{color:var(--muted); font-size:13px; line-height:1.45}
+  .bkmeta b{color:var(--text)}
+  .bkrow{display:flex; gap:10px; flex-wrap:wrap}
+  .bkbtn{appearance:none; border:1px solid var(--line); background:var(--panel2); color:var(--text); font:inherit; font-weight:600; font-size:13px; padding:9px 14px; border-radius:10px; cursor:pointer}
+  .bkbtn.primary{background:var(--good); color:#04120a; border-color:transparent}
+  .bkbtn:hover{border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -70,6 +81,16 @@
     </div>
     <div class="smeta" id="stMeta"></div>
     <div class="snote" id="stNote">💾 Keep a copy of your GitHub token somewhere safe (e.g. your password manager). GitHub shows it only once, and clearing browser data removes it here — you’ll need it to reconnect your apps.</div>
+  </section>
+
+  <section class="bk" id="bkCard">
+    <div class="bktitle"><span id="bkIcon">💾</span> Backup</div>
+    <div class="bkmeta" id="bkMeta">Back up all your apps to one file on this device.</div>
+    <div class="bkrow">
+      <button class="bkbtn primary" onclick="backupAll()">⬇ Back up everything</button>
+      <button class="bkbtn" onclick="document.getElementById('bkFile').click()">Restore…</button>
+      <input id="bkFile" type="file" accept="application/json,.json" hidden onchange="restoreAll(this.files[0]); this.value='';">
+    </div>
   </section>
 
   <nav class="apps" id="apps"></nav>
@@ -100,7 +121,44 @@ var APPS = [
 
 function ls(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }
 
+function backupAll(){
+  try{
+    var data={};
+    for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k && k!=="gh.token") data[k]=localStorage.getItem(k); }
+    var now=new Date(), pad=function(n){return (n<10?"0":"")+n;};
+    var payload={app:"__hub_all__", version:1, exported:now.toISOString(), data:data};
+    var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}));
+    a.download="my-apps-backup-"+now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate())+".json"; a.click();
+    try{ localStorage.setItem("hub.lastBackupAll", now.toISOString()); }catch(e){}
+    renderBackupBanner();
+  }catch(e){ alert("Backup failed: "+(e&&e.message?e.message:e)); }
+}
+function restoreAll(file){
+  if(!file) return;
+  var r=new FileReader();
+  r.onload=function(){ try{
+    var p=JSON.parse(r.result);
+    if(!p||!p.data||p.app!=="__hub_all__"){ alert("That isn't a full “My Apps” backup file. For a single app, use that app's own Restore."); return; }
+    var when=p.exported?new Date(p.exported).toLocaleString("en-GB"):"unknown date";
+    if(!confirm("Restore EVERYTHING from "+when+"?\n\nThis replaces the saved data for all your apps on this device.")) return;
+    Object.keys(p.data).forEach(function(k){ try{ localStorage.setItem(k,p.data[k]); }catch(e){} });
+    alert("All apps restored on this device.");
+    render();
+  }catch(e){ alert("Could not read that file: "+(e&&e.message?e.message:e)); } };
+  r.readAsText(file);
+}
+function renderBackupBanner(){
+  var card=document.getElementById("bkCard"), meta=document.getElementById("bkMeta"), icon=document.getElementById("bkIcon");
+  if(!card) return;
+  var t=""; try{ t=localStorage.getItem("hub.lastBackupAll")||""; }catch(e){}
+  if(!t){ card.className="bk warn"; icon.textContent="⚠️"; meta.innerHTML="You haven't made a full backup yet. Tap <b>Back up everything</b> to save all your apps to one file."; return; }
+  var days=Math.floor((Date.now()-new Date(t).getTime())/86400000), dateStr=new Date(t).toLocaleDateString("en-GB");
+  if(days>=7){ card.className="bk warn"; icon.textContent="⚠️"; meta.innerHTML="It's been <b>"+days+" days</b> since your last full backup ("+dateStr+"). Worth doing another."; }
+  else { card.className="bk"; icon.textContent="💾"; meta.innerHTML="Last full backup: <b>"+(days<=0?"today":(days===1?"yesterday":days+" days ago"))+"</b> ("+dateStr+")."; }
+}
+
 function render(){
+  renderBackupBanner();
   var token = ls("gh.token");
   var wrap = document.getElementById("apps");
   wrap.textContent = "";

@@ -432,6 +432,17 @@
     <div class="listhead" style="margin:0 0 8px"><span class="ttl">Cross-device sync</span></div>
     <div class="hint" style="text-align:left; margin:0">Sync now lives on the <b>⟳ button, top-right</b>. Tap it to connect a device, sync your list, or set an encryption passphrase.</div>
   </div>
+
+  <div class="card">
+    <div class="listhead" style="margin:0 0 8px"><span class="ttl">Backup</span></div>
+    <div class="hint" style="text-align:left; margin:0 0 12px">Save a copy of everything in this app to a file on your device — a safety net that doesn't depend on GitHub. Keep it somewhere safe; you can restore from it anytime.</div>
+    <div class="syncrow">
+      <button class="btn" onclick="backupData()">⬇ Back up my data</button>
+      <button class="btn ghost sm" onclick="document.getElementById('restoreFile').click()">Restore from file…</button>
+      <input id="restoreFile" type="file" accept="application/json,.json" hidden onchange="restoreData(this.files[0]); this.value='';">
+    </div>
+    <div class="hint" id="lastBackupHint" style="text-align:left; margin-top:10px"></div>
+  </div>
 </section>
 
 <div class="foot">Syncs to your private GitHub gist · works offline</div>
@@ -972,6 +983,52 @@ function exportCSV(){
   a.download='shopping-history.csv';
   a.click();
 }
+
+/* ---------- BACKUP / RESTORE ---------- */
+var BACKUP_PREFIX='shoplist';
+function backupData(){
+  try{
+    var data={};
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k && k.indexOf(BACKUP_PREFIX)===0) data[k]=localStorage.getItem(k);
+    }
+    var now=new Date();
+    var payload={app:BACKUP_PREFIX, version:1, exported:now.toISOString(), data:data};
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    var pad=function(n){return (n<10?'0':'')+n;};
+    var stamp=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=BACKUP_PREFIX+'-backup-'+stamp+'.json'; a.click();
+    try{ localStorage.setItem(BACKUP_PREFIX+'.lastBackup', now.toISOString()); }catch(e){}
+    renderLastBackup();
+    toast('Backup saved');
+  }catch(e){ alert('Backup failed: '+(e&&e.message?e.message:e)); }
+}
+function restoreData(file){
+  if(!file) return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var p=JSON.parse(r.result);
+      if(!p||!p.data||p.app!==BACKUP_PREFIX){ alert('That doesn’t look like a '+BACKUP_PREFIX+' backup file.'); return; }
+      var when=p.exported?new Date(p.exported).toLocaleString('en-GB'):'unknown date';
+      if(!confirm('Restore this backup from '+when+'?\n\nThis replaces the current data in this app on this device.')) return;
+      Object.keys(p.data).forEach(function(k){ try{ localStorage.setItem(k,p.data[k]); }catch(e){} });
+      alert('Backup restored. The app will now reload.');
+      location.reload();
+    }catch(e){ alert('Could not read that file: '+(e&&e.message?e.message:e)); }
+  };
+  r.readAsText(file);
+}
+function renderLastBackup(){
+  var el=document.getElementById('lastBackupHint'); if(!el) return;
+  var t=''; try{ t=localStorage.getItem(BACKUP_PREFIX+'.lastBackup')||''; }catch(e){}
+  if(!t){ el.textContent='No backup saved yet on this device.'; return; }
+  var days=Math.floor((Date.now()-new Date(t).getTime())/86400000);
+  var ago=days<=0?'today':(days===1?'yesterday':days+' days ago');
+  el.innerHTML='Last backup on this device: <b>'+ago+'</b> ('+new Date(t).toLocaleDateString('en-GB')+').';
+}
+renderLastBackup();
 
 /* ---------- BUDGET ---------- */
 function renderBudget(){
