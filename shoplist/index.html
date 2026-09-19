@@ -3,37 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#101317">
+<meta name="theme-color" content="#f4f7fb">
 <title>SHOP LIST</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%AC%3C/text%3E%3C/svg%3E">
 <style>
   :root{
-    --bg:#f6f5f1; --card:#ffffff; --ink:#14171c; --muted:#8b909a;
-    --line:#eceae3; --line2:#e3e1d8;
-    --accent:#4a9375; --accent-d:#3c7a61; --accent-soft:#eaf2ed;
-    --chrome:#14171c; --chrome-ink:#f6f5f1;
+    --bg:#f4f7fb; --card:#ffffff; --ink:#1a2230; --muted:#7c8aa0;
+    --line:#e4ebf3; --line2:#d6e0ec;
+    --accent:#3b82c4; --accent-d:#2f6aa3; --accent-soft:#e6eef7;
+    --chrome:#1a2230; --chrome-ink:#f4f7fb;
     --danger:#e5484d; --amber:#f59e0b;
-    --shadow:0 1px 2px rgba(20,23,28,.04), 0 6px 20px -12px rgba(20,23,28,.18);
+    --shadow:0 1px 2px rgba(26,34,48,.05), 0 6px 20px -12px rgba(26,34,48,.16);
     --radius:18px; --tscale:1;
   }
-  /* dark palette — used for system-dark (unless the user forced light) and for a forced dark choice */
+  /* dark palette — a soft slate (not near-black), used for system-dark (unless the user forced light) and a forced dark choice */
   @media (prefers-color-scheme:dark){
     :root:not([data-theme="light"]){
-      --bg:#0d0f12; --card:#171a1f; --ink:#eaecef; --muted:#868d97;
-      --line:#242830; --line2:#2c313a;
-      --accent:#5aa588; --accent-d:#4c9075; --accent-soft:#18271f;
-      --chrome:#171a1f; --chrome-ink:#eaecef;
+      --bg:#1c2430; --card:#26313f; --ink:#e7edf5; --muted:#95a4b8;
+      --line:#33404f; --line2:#3d4b5c;
+      --accent:#5aa0da; --accent-d:#4a8ec9; --accent-soft:#22303f;
+      --chrome:#26313f; --chrome-ink:#e7edf5;
       --danger:#ff6369; --amber:#fbbf24;
-      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
+      --shadow:0 1px 2px rgba(0,0,0,.25), 0 8px 24px -14px rgba(0,0,0,.55);
     }
   }
   :root[data-theme="dark"]{
-    --bg:#0d0f12; --card:#171a1f; --ink:#eaecef; --muted:#868d97;
-    --line:#242830; --line2:#2c313a;
-    --accent:#5aa588; --accent-d:#4c9075; --accent-soft:#18271f;
-    --chrome:#171a1f; --chrome-ink:#eaecef;
+    --bg:#1c2430; --card:#26313f; --ink:#e7edf5; --muted:#95a4b8;
+    --line:#33404f; --line2:#3d4b5c;
+    --accent:#5aa0da; --accent-d:#4a8ec9; --accent-soft:#22303f;
+    --chrome:#26313f; --chrome-ink:#e7edf5;
     --danger:#ff6369; --amber:#fbbf24;
-    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
+    --shadow:0 1px 2px rgba(0,0,0,.25), 0 8px 24px -14px rgba(0,0,0,.55);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0}
@@ -328,7 +328,7 @@
   <div id="boughtBar" hidden style="text-align:center; margin-top:9px">
     <button class="btn ghost sm" onclick="clearBought()" id="clearBoughtBtn">Remove bought</button>
   </div>
-  <div class="hint">Tick items as you pick them up. <b>Shop done</b> keeps them <b>shaded</b> for next time; <b>New trip</b> brings the whole list back.</div>
+  <div class="hint">Tick items as you pick them up, then <b>Shop done</b>. The <b>⊘</b> hides an item for next time — find it under <b>saved</b> and tap <b>↺</b> to bring it back. <b>New trip</b> restores everything.</div>
 </section>
 
 <!-- ============ SETUP VIEW ============ -->
@@ -501,7 +501,12 @@ function toggle(id){
   else it.done=!it.done;
   save(); render();
 }
-function del(id){ state.items=state.items.filter(i=>i.id!==id); save(); render(); }
+function del(id){
+  const it=state.items.find(i=>i.id===id); if(!it) return;
+  if(it.bought){ state.items=state.items.filter(x=>x.id!==id); save(); render(); return; }  // already hidden -> delete for good
+  it.bought=true; it.done=false; save(); render();
+  toast("Hidden — it's in your saved items below");
+}
 function newTrip(){
   if(!state.items.some(i=>i.done||i.bought)){ toast('Nothing to reset yet.'); return; }
   state.items.forEach(i=>{ i.done=false; i.bought=false; });
@@ -510,7 +515,7 @@ function newTrip(){
 function clearBought(){
   const n=state.items.filter(i=>i.bought).length;
   if(!n) return;
-  if(!confirm('Permanently remove '+n+' shaded (bought) item'+(n===1?'':'s')+' from the list?')) return;
+  if(!confirm('Permanently delete '+n+' saved item'+(n===1?'':'s')+' from the list?')) return;
   state.items=state.items.filter(i=>!i.bought); save(); render();
 }
 function openEdit(id){
@@ -547,7 +552,7 @@ function render(){
     ? (toBuy+' to buy'+(ticked?' · '+ticked+' ticked':'')+(boughtCount?' · '+boughtCount+' saved':''))
     : 'Your grocery list';
   $('listPill').textContent = active.length ? ticked+'/'+active.length+' ticked' : (boughtCount? boughtCount+' saved' : '0 items');
-  const bb=$('boughtBar'); if(bb){ bb.hidden=!boughtCount; const cb=$('clearBoughtBtn'); if(cb) cb.textContent='Remove '+boughtCount+' shaded item'+(boughtCount===1?'':'s'); }
+  const bb=$('boughtBar'); if(bb){ bb.hidden=!boughtCount; const cb=$('clearBoughtBtn'); if(cb) cb.textContent='Delete '+boughtCount+' saved item'+(boughtCount===1?'':'s'); }
 
   const wrap=$('items');
   if(!items.length){ wrap.innerHTML='<div class="empty"><div class="big">🛒</div>Your list is empty.<br>Add your first item above.</div>'; return; }
@@ -569,14 +574,16 @@ function itemRow(i){
   const tick=i.bought?'↺':(i.done?'✓':'');
   const tag=i.bought?'<span class="tag">SAVED</span>':'';
   const meta=i.qty>1?('×'+i.qty):'';
+  const delGlyph=i.bought?'✕':'⊘';
+  const delTitle=i.bought?'Delete permanently':'Hide for next time';
   return `<div class="item ${cls}" data-id="${i.id}">
-    <button class="tick" onclick="toggle('${i.id}')" title="${i.bought?'Reuse for this trip':'Tick off'}">${tick}</button>
+    <button class="tick" onclick="toggle('${i.id}')" title="${i.bought?'Bring back for this trip':'Tick off'}">${tick}</button>
     <div class="body" onclick="openEdit('${i.id}')">
       <div class="name">${i.name}${tag}</div>
       ${meta?`<div class="meta">${meta}</div>`:''}
     </div>
     <span class="grip" title="Drag to reorder">⠿</span>
-    <button class="del" onclick="del('${i.id}')" title="Remove">✕</button>
+    <button class="del" onclick="del('${i.id}')" title="${delTitle}">${delGlyph}</button>
   </div>`;
 }
 
