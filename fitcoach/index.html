@@ -37,10 +37,11 @@
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
   html,body{margin:0}
-  body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:calc(15px*var(--tscale)); line-height:1.45; padding-bottom:80px; -webkit-text-size-adjust:100%}
+  body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:calc(15px*var(--tscale)); line-height:1.45; padding-bottom:calc(env(safe-area-inset-bottom) + 24px); -webkit-text-size-adjust:100%}
   a{color:var(--accent)}
   .wrap{max-width:900px; margin:0 auto; padding:0 14px}
-  header{position:sticky; top:0; z-index:20; background:linear-gradient(120deg,var(--headerA),var(--headerB)); color:#fff; box-shadow:0 2px 14px rgba(0,0,0,.25)}
+  .topbar{position:sticky; top:0; z-index:30; box-shadow:0 2px 14px rgba(0,0,0,.25)}
+  header{background:linear-gradient(120deg,var(--headerA),var(--headerB)); color:#fff}
   .hrow{max-width:900px; margin:0 auto; padding:calc(env(safe-area-inset-top) + 10px) 14px 10px; display:flex; align-items:center; gap:10px}
   .brand{font-weight:800; font-size:calc(21px*var(--tscale)); letter-spacing:.3px; display:flex; align-items:center; gap:8px}
   .brand .fit{opacity:.85}
@@ -53,8 +54,8 @@
   .synclabel{font-size:calc(11px*var(--tscale)); opacity:.9}
   .synclabel.flash{color:#d6ffe9; font-weight:700; opacity:1}
 
-  /* bottom nav */
-  nav.tabs{position:fixed; bottom:0; left:0; right:0; z-index:30; background:var(--panel); border-top:1px solid var(--line); display:flex; padding:6px 6px calc(env(safe-area-inset-bottom) + 6px)}
+  /* top nav (sits under the title bar) */
+  nav.tabs{background:var(--panel); border-bottom:1px solid var(--line); display:flex; padding:6px 6px}
   nav.tabs button{flex:1; background:none; border:0; color:var(--muted); font-size:calc(11px*var(--tscale)); display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; cursor:pointer; font-weight:600}
   nav.tabs button svg{width:23px;height:23px}
   nav.tabs button.active{color:var(--accent)}
@@ -252,6 +253,7 @@
   <linearGradient id="warm" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#ffe0c2"/><stop offset="1" stop-color="#f0b483"/></linearGradient>
   <radialGradient id="headg" cx="0.42" cy="0.38" r="0.75"><stop offset="0" stop-color="#e4e8ed"/><stop offset="1" stop-color="#a9b1bc"/></radialGradient>
 </defs></svg>
+<div class="topbar" id="topbar">
 <header>
   <div class="hrow">
     <div class="brand"><span class="fit">MY</span><b>FIT</b>COACH</div>
@@ -263,6 +265,14 @@
     </div>
   </div>
 </header>
+<nav class="tabs" id="nav">
+  <button data-tab="library" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Library</button>
+  <button data-tab="favs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>Saved</button>
+  <button data-tab="muscles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.4"/><path d="M12 7.5v6M7 10l5 1 5-1M8.5 20l3.5-6 3.5 6"/></svg>Muscles</button>
+  <button data-tab="session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3v10H4zM17 7h3v10h-3zM7 12h10M2 9v6M22 9v6"/></svg>Session</button>
+  <button data-tab="setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>Setup</button>
+</nav>
+</div>
 
 <main class="wrap">
   <!-- LIBRARY -->
@@ -428,14 +438,6 @@
   </div>
 </div>
 
-<nav class="tabs" id="nav">
-  <button data-tab="library" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Library</button>
-  <button data-tab="favs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>Saved</button>
-  <button data-tab="muscles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.4"/><path d="M12 7.5v6M7 10l5 1 5-1M8.5 20l3.5-6 3.5 6"/></svg>Muscles</button>
-  <button data-tab="session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3v10H4zM17 7h3v10h-3zM7 12h10M2 9v6M22 9v6"/></svg>Session</button>
-  <button data-tab="setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>Setup</button>
-</nav>
-
 <div id="restTimer">
   <button class="rt-btn" id="rtSkip">Skip</button>
   <button class="rt-btn rt-adj" id="rtMinus">−15</button>
@@ -449,7 +451,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-02 · v2.7 bike + plank redraw";
+const APP_VERSION="2026-09-20 · v2.8 top tab bar";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
