@@ -992,7 +992,7 @@ function printReorder(){
   const suppliers=Object.keys(groups).sort((a,b)=> a==='No supplier'?1 : b==='No supplier'?-1 : a.localeCompare(b));
   let grand=0, grandQty=0;
   const multi=suppliers.length>1;
-  let html='<h2>Reorder Report</h2><div class="pmeta">'+new Date().toLocaleDateString('en-GB')+' · '+list.length+' item'+(list.length===1?'':'s')+' to reorder</div>';
+  let html='<h2>Reorder Report</h2><div class="pmeta"><b>Date:</b> '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'  ·  '+list.length+' item'+(list.length===1?'':'s')+' to reorder</div>';
   html+='<table><thead><tr><th>Supplier</th><th>Item</th><th>SKU</th><th>Location</th><th class="n">In stock</th><th class="n">Reorder ≤</th><th class="n">Order</th><th class="n">Unit £</th><th class="n">Est. £</th></tr></thead><tbody>';
   suppliers.forEach(sup=>{
     const items=groups[sup].slice().sort((a,b)=> (statusOf(b)==='out'?1:0)-(statusOf(a)==='out'?1:0) || a.name.localeCompare(b.name));
