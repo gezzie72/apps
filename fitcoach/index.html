@@ -451,7 +451,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-20 · v2.9 more dumbbell/kettlebell moves";
+const APP_VERSION="2026-09-20 · v3.0 more free-weight moves";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -904,6 +904,10 @@ const MACHINES=[
     ["chest","delts"],["triceps"],
     ["Set a bench to about 30–45°, a dumbbell in each hand at upper-chest height.","Wrists stacked over elbows, shoulder blades pulled back.","Press the dumbbells up and slightly together until the arms are nearly straight.","Lower under control until you feel a stretch across the upper chest."],
     ["Emphasises the upper chest more than a flat press.","Keep the elbows at about 45°, not flared to 90°.","mistake:Setting the bench too upright — it turns into a shoulder press.","mistake:Clashing the dumbbells together at the top."]),
+  M("dumbbell-pullover","Dumbbell Pullover","Chest","Free weight (bench)","benchpress",
+    ["chest","lats"],["triceps","delts"],
+    ["Lie on a bench holding one dumbbell over your chest with both hands.","Keep a slight fixed bend in the elbows, core braced.","Lower the dumbbell back over and behind your head until you feel a stretch.","Pull it back over the chest under control."],
+    ["Works the chest and lats through a big stretch.","Keep the hips down and the movement at the shoulders — don't arch hard.","mistake:Bending the elbows to heave the weight.","mistake:Going so deep it strains the shoulders."]),
   M("push-up","Push-Up","Chest","Bodyweight","pushup",
     ["chest"],["triceps","delts","abs"],
     ["Hands slightly wider than shoulders, body in a straight line.","Brace the core and glutes, don't let the hips sag.","Lower until the chest is just above the floor.","Push back up to straight arms."],
@@ -1016,6 +1020,10 @@ const MACHINES=[
     ["triceps"],["chest","delts"],
     ["Set the seat so the handles sit near the bottom of your chest.","Back flat against the pad, grip the handles, elbows tucked in at your sides.","Press the handles down and forward until the arms are straight.","Return under control until the elbows reach about 90°."],
     ["Keep the upper arms pinned to your sides — only the forearms move.","Squeeze the triceps hard at full extension, but don't lock out hard.","mistake:Flaring the elbows out — it shifts the work off the triceps.","mistake:Leaning forward and using your bodyweight to press."]),
+  M("skull-crusher","Skull Crusher","Arms","Free weight (bench)","benchpress",
+    ["triceps"],["forearms"],
+    ["Lie on a bench holding a dumbbell in each hand (or an EZ-bar), arms straight over the chest.","Keep the upper arms vertical and still.","Bend at the elbows to lower the weight towards your forehead.","Extend the elbows to press back to straight arms."],
+    ["Only the forearms move — keep the elbows pointing at the ceiling.","Lower slowly and stop just short of your head.","mistake:Letting the elbows flare out or drift back.","mistake:Turning it into a press by moving the upper arms."]),
   M("leg-press","Leg Press","Legs","Plate-loaded (45°)","legpress",
     ["quads","glutes"],["hamstrings","adductors"],
     ["Feet shoulder-width, mid-platform; back flat on the pad.","Release the safety catches.","Lower until knees reach about 90°.","Press through the whole foot back to nearly straight (don't lock)."],
@@ -1064,6 +1072,14 @@ const MACHINES=[
     ["quads","glutes"],["hamstrings","adductors","abs"],
     ["Set the bar across your upper back/traps, feet slightly forward.","Unrack by rotating the bar, brace your core.","Squat down until the thighs are about parallel.","Drive up through the whole foot to standing, then re-rack."],
     ["The fixed bar path lets you focus on the legs safely.","Push the knees out over the toes; keep the chest up.","mistake:Setting the feet too far forward and straining the knees.","mistake:Rounding the lower back at the bottom."]),
+  M("dumbbell-step-up","Dumbbell Step-Up","Legs","Free weight (dumbbell)","lunge",
+    ["quads","glutes"],["hamstrings","calves","abs"],
+    ["Stand facing a sturdy bench or box, a dumbbell in each hand.","Place one whole foot on the box, torso tall.","Drive through that heel to stand up on the box.","Step back down under control and repeat, then switch legs."],
+    ["Push through the top foot — don't bounce off the back leg.","Pick a box height where the knee starts at about 90°.","mistake:Pushing off the trailing leg to cheat the rep.","mistake:Letting the front knee cave inward."]),
+  M("single-leg-rdl","Single-Leg Romanian Deadlift","Legs","Free weight (dumbbell)","hinge",
+    ["hamstrings","glutes"],["lowerback","abs","forearms"],
+    ["Stand on one leg holding a dumbbell in the opposite hand.","Soft bend in the standing knee, hips square.","Hinge at the hips, letting the free leg extend straight behind for balance.","Lower until you feel a hamstring stretch, then drive the hips back to stand."],
+    ["Move slowly — it's as much about balance as strength.","Keep the hips level and the back flat throughout.","mistake:Rotating the hip open towards the free leg.","mistake:Rounding the back to reach lower."]),
   M("romanian-deadlift","Romanian Deadlift","Legs","Free weight (barbell/dumbbell)","hinge",
     ["hamstrings","glutes"],["lowerback","traps","forearms"],
     ["Stand tall holding the bar/dumbbells against the thighs.","Soft knees, push the hips back and lower the weight down the legs.","Keep the back flat and the bar close until you feel a hamstring stretch.","Drive the hips forward to stand tall again."],
@@ -1104,6 +1120,10 @@ const MACHINES=[
     ["abs"],["obliques","forearms"],
     ["Hang from a bar with straight arms, shoulders active.","Brace the core, avoid swinging.","Raise the legs up in front (knees bent to scale it down).","Lower slowly under control — don't drop and swing."],
     ["Curl the pelvis up, not just lifting the legs, to hit the abs.","Keep the movement slow and controlled to avoid swinging.","mistake:Using momentum and swinging between reps."]),
+  M("turkish-getup","Turkish Get-Up","Core","Free weight (kettlebell/dumbbell)","shoulderpress",
+    ["delts","abs"],["glutes","quads","triceps","obliques"],
+    ["Lie on your back, press a kettlebell or dumbbell straight up in one hand, eyes on it.","Roll onto the opposite forearm, then the hand, and lift the hips.","Sweep the trailing leg back to a half-kneel, keeping the weight locked overhead.","Stand up fully, then reverse every step back down to the floor."],
+    ["Go slow — it's a full-body control drill, not a fast lift.","Keep the loaded arm vertical and your eyes on the weight the whole way.","Master it with no weight (or a shoe balanced on your fist) first.","mistake:Rushing the steps or letting the weight drift out of line."]),
   M("treadmill","Treadmill","Cardio","Cardio","treadmill",
     ["quads","hamstrings","calves"],["glutes"],
     ["Start walking before increasing to your pace.","Stand tall, eyes forward, relaxed shoulders.","Add incline to raise intensity without high speed.","Cool down with a slower walk before stopping."],
