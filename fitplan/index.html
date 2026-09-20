@@ -526,18 +526,19 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-09-14 · treadmill-distance-from-speed";
+const APP_VERSION = "2026-09-20 · synced-fitcoach-exercises";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
 // Typical PureGym equipment, grouped. Everything under "Cardio" logs minutes; the rest log reps/weight.
 // This is only the DEFAULT — the live list lives in state.machines and is editable in Setup.
+// Synced with the FitCoach exercise library, plus FitPlan's extra cardio options.
 const defaultMachines = {
-  "Cardio": ["Treadmill","Cross Trainer","Exercise Bike","Rowing Machine","Stair Climber","Assault Bike","Ski Erg","Walking","Hiking","Outdoor Cycling"],
-  "Legs": ["Leg Press","Hack Squat","Leg Extension","Seated Leg Curl","Lying Leg Curl","Hip Abduction","Hip Adduction","Seated Calf Raise","Glute / Hip Thrust","Smith Machine"],
-  "Chest & Shoulders": ["Chest Press","Incline Chest Press","Pec Deck (Chest Fly)","Shoulder Press","Lateral Raise Machine","Cable Crossover"],
-  "Back": ["Lat Pulldown","Seated Cable Row","T-Bar Row","Assisted Pull-up","Rear Delt Fly","Back Extension"],
-  "Arms & Core": ["Bicep Curl","Preacher Curl","Tricep Press","Assisted Dip","Cable Machine","Abdominal Crunch"]
+  "Cardio": ["Treadmill","Exercise Bike","Rowing Machine","Cross Trainer","Stair Climber","Assault Bike","Ski Erg","Walking","Hiking","Outdoor Cycling"],
+  "Legs": ["Leg Press","Leg Extension","Seated Leg Curl","Lying Leg Curl","Hip Abduction (Out)","Hip Adduction (In)","Seated Calf Raise","Standing Calf Raise","Hack Squat","Goblet Squat","Walking Lunge","Smith Machine Squat","Dumbbell Step-Up","Single-Leg Romanian Deadlift","Romanian Deadlift","Bulgarian Split Squat","Kettlebell Swing","Glute Kickback"],
+  "Chest & Shoulders": ["Chest Press","Incline Chest Press","Pec Deck (Fly)","Cable Crossover","Decline Chest Press","Dumbbell Bench Press","Incline Dumbbell Press","Dumbbell Pullover","Push-Up","Shoulder Press","Lateral Raise","Reverse Pec Deck","Dumbbell Reverse Fly","Shrugs","Dumbbell Shoulder Press","Front Raise","Upright Row","Cable Face Pull"],
+  "Back": ["Lat Pulldown","Close-Grip Lat Pulldown","Straight-Arm Pulldown","Seated Row","Plate-Loaded / T-Bar Row","Single-Arm Cable Row","Dumbbell Bent-Over Row","Assisted Pull-Up","Back Extension","Deadlift"],
+  "Arms & Core": ["Bicep Curl","Preacher Curl","Hammer Curl","Concentration Curl","Tricep Pushdown","Overhead Cable Tricep Extension","Assisted Dip","Seated Tricep Press","Skull Crusher","Ab Crunch","Rotary Torso","Plank","Cable Woodchopper","Russian Twist","Hanging Leg Raise","Turkish Get-Up"]
 };
 
 /* ---------- State ---------- */
@@ -567,6 +568,20 @@ function load(){
         });
         s.migratedOutdoor = true;
       }
+      if(!s.syncedFitcoach){   // one-time: align the dropdown with the FitCoach library, keeping any custom machines
+        const OLD_DEFAULTS = new Set(["treadmill","cross trainer","exercise bike","rowing machine","stair climber","assault bike","ski erg","walking","hiking","outdoor cycling","leg press","hack squat","leg extension","seated leg curl","lying leg curl","hip abduction","hip adduction","seated calf raise","glute / hip thrust","smith machine","chest press","incline chest press","pec deck (chest fly)","shoulder press","lateral raise machine","cable crossover","lat pulldown","seated cable row","t-bar row","assisted pull-up","rear delt fly","back extension","bicep curl","preacher curl","tricep press","assisted dip","cable machine","abdominal crunch"]);
+        const customs = [];   // machines the user added themselves (not from the old defaults)
+        for(const [g, arr] of Object.entries(s.machines||{})){
+          (arr||[]).forEach(nm=>{ if(!OLD_DEFAULTS.has(String(nm).toLowerCase())) customs.push([g, nm]); });
+        }
+        s.machines = JSON.parse(JSON.stringify(defaultMachines));   // reset to the FitCoach-synced list
+        customs.forEach(([g, nm])=>{                                // re-add the user's own machines
+          if(!s.machines[g]) s.machines[g] = [];
+          const exists = Object.values(s.machines).some(arr=>arr.some(x=>String(x).toLowerCase()===String(nm).toLowerCase()));
+          if(!exists) s.machines[g].push(nm);
+        });
+        s.syncedFitcoach = true;
+      }
       if(!s.steps) s.steps = {};   // standalone daily steps
       if(!s.bodyKg){   // one-time: body weights were stored in s.unit (kg/lb); convert to canonical kg
         const oldUnit = s.unit==="lb" ? "lb" : "kg";
@@ -587,6 +602,8 @@ function load(){
     targetWeight:null,            // target body weight in kg
     stepGoal:null,                // daily step goal
     capsNotes:true,               // auto-capitalise notes by default
+    migratedOutdoor:true,
+    syncedFitcoach:true,
     machines:JSON.parse(JSON.stringify(defaultMachines)),   // editable dropdown source
     sessions:{},                  // "YYYY-MM-DD": {rest:bool, done:bool, exercises:[{name,type,sets:[{reps,weight,mins,done}]}]}
     weights:{},                   // "YYYY-MM-DD": kg
