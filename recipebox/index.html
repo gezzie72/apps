@@ -532,7 +532,7 @@ try{ const _t=localStorage.getItem("recipebox.theme"); if(_t && _t!=="system") d
 const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-const APP_VERSION = "2026-08-25 · v14.1 servings-multiplier";
+const APP_VERSION = "2026-09-20 · v14.2 low-GI smoothies";
 const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let toastTimer=null;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -765,7 +765,38 @@ const SEED = [
     ["2 kiwis, sliced","Handful blueberries"],
     ["Peel and slice the kiwi.","Combine with blueberries and serve."],
     [],["Vegan","Gluten-free","Dairy-free"],
-    "Kiwi and blueberries are lower-GI, high-vitamin choices.")
+    "Kiwi and blueberries are lower-GI, high-vitamin choices."),
+
+  R("Berry Protein Smoothie","Breakfast",1,[230,16,10,22,8,7],
+    ["150g plain Greek yogurt","80g frozen mixed berries","200ml unsweetened almond milk","1 tbsp chia seeds","Handful of ice","Optional: ½ scoop unsweetened vanilla protein powder"],
+    ["Add the yogurt, berries and almond milk to a blender.","Add the chia seeds and ice (and protein powder if using).","Blend until smooth; add a splash more milk if too thick."],
+    ["Dairy","Nuts"],["Vegetarian","Low-carb","Gluten-free","High-protein"],
+    "No banana — berries keep the sugar low while yogurt and chia add protein and fibre for a steady release."),
+  R("Green Avocado Smoothie","Breakfast",1,[220,14,5,5,16,8],
+    ["½ ripe avocado","Large handful of spinach","200ml unsweetened almond milk","40g cucumber","1 tbsp lime juice","1 tbsp chia seeds","Handful of ice"],
+    ["Add the spinach, cucumber and almond milk to a blender and blitz.","Add the avocado, lime, chia and ice.","Blend until creamy and smooth."],
+    ["Nuts"],["Vegan","Low-carb","Gluten-free","Dairy-free"],
+    "Avocado fat and leafy greens make this very low-GI — barely moves blood sugar and keeps you full."),
+  R("Peanut Butter & Cocoa Smoothie","Breakfast",1,[260,12,5,16,16,4],
+    ["1 tbsp natural peanut butter (no added sugar)","1 tbsp unsweetened cocoa powder","200ml unsweetened soya milk","100g silken tofu","Pinch of cinnamon","Handful of ice"],
+    ["Add the soya milk and tofu to a blender.","Add the peanut butter, cocoa, cinnamon and ice.","Blend until smooth and frothy."],
+    ["Peanuts","Nuts","Soy"],["Vegan","Low-carb","Gluten-free","Dairy-free","High-protein"],
+    "A chocolatey treat without the sugar spike — tofu adds protein, peanut fat slows any sugar rise."),
+  R("Strawberry & Chia Smoothie","Snack",1,[200,15,10,16,7,6],
+    ["100g strawberries (fresh or frozen)","150g plain Greek yogurt","150ml unsweetened almond milk","1 tbsp chia seeds","A few mint leaves","Handful of ice"],
+    ["Add the strawberries, yogurt and almond milk to a blender.","Add the chia, mint and ice.","Blend until smooth."],
+    ["Dairy","Nuts"],["Vegetarian","Low-carb","Gluten-free","High-protein"],
+    "Strawberries are one of the lowest-sugar fruits; yogurt and chia keep it diabetic-friendly."),
+  R("Cucumber, Kiwi & Spinach Smoothie","Snack",1,[130,16,9,4,5,6],
+    ["1 kiwi, peeled","½ cucumber","Large handful of spinach","200ml water or unsweetened coconut water","1 tbsp ground flaxseed","Squeeze of lime","Handful of ice"],
+    ["Add the cucumber, spinach and water to a blender and blitz.","Add the kiwi, flaxseed, lime and ice.","Blend until smooth."],
+    [],["Vegan","Low-carb","Gluten-free","Dairy-free"],
+    "Light and hydrating — kiwi is lower-GI and the flaxseed fibre slows the sugar down."),
+  R("Blueberry Almond Smoothie","Breakfast",1,[240,14,9,14,14,6],
+    ["60g blueberries","1 tbsp almond butter","200ml unsweetened almond milk","100g plain Greek yogurt","1 tbsp ground flaxseed","Pinch of cinnamon","Handful of ice"],
+    ["Add the blueberries, yogurt and almond milk to a blender.","Add the almond butter, flaxseed, cinnamon and ice.","Blend until smooth."],
+    ["Dairy","Nuts"],["Vegetarian","Low-carb","Gluten-free","High-protein"],
+    "Blueberries plus almond fat and flax fibre make a low-GI, no-banana smoothie.")
 ];
 
 /* ================= state ================= */
