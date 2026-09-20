@@ -229,6 +229,18 @@
     font-weight:600; font-size:12.5px; cursor:pointer; font-family:inherit; transition:.12s}
   .seg button.on{background:var(--card); color:var(--ink); box-shadow:var(--shadow); border:1px solid var(--line2)}
 
+  /* ---- barcode ---- */
+  .inputbtn{display:flex; gap:8px; align-items:stretch}
+  .inputbtn input{flex:1; min-width:0}
+  .inputbtn .btn{flex:none; white-space:nowrap}
+  #scanStage{position:relative; background:#000; border-radius:8px; overflow:hidden; aspect-ratio:4/3; margin-bottom:12px}
+  #scanVideo{width:100%; height:100%; object-fit:cover; display:block}
+  .scanline{position:absolute; left:8%; right:8%; top:50%; height:2px; background:var(--danger); box-shadow:0 0 10px 1px var(--danger); animation:scanmove 1.7s ease-in-out infinite; pointer-events:none}
+  @keyframes scanmove{0%,100%{top:26%}50%{top:74%}}
+  .bigqty{font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-1px; line-height:1; margin:6px 0 2px}
+  .bigqty small{font-size:13px; font-weight:500; color:var(--muted); letter-spacing:0; margin-left:6px}
+  .found-meta{font-size:12.5px; color:var(--muted); font-weight:500; margin-bottom:16px}
+
   #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--bg);
     padding:10px 16px; border-radius:8px; font-size:13px; font-weight:500; opacity:0; pointer-events:none; transition:.2s; z-index:100;
     box-shadow:0 10px 30px -8px rgba(1,4,9,.5); max-width:88vw; text-align:center}
@@ -292,6 +304,13 @@
             <div><label>Category</label><input id="fCat" placeholder="optional" autocomplete="off"></div>
           </div>
           <div class="chips" id="catChips" style="margin-bottom:0"></div>
+          <div>
+            <label>Barcode</label>
+            <div class="inputbtn">
+              <input id="fBarcode" placeholder="scan or type a barcode" autocomplete="off">
+              <button type="button" class="btn ghost" onclick="openScanner('assign','fBarcode')"><svg class="ico sm" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg> Scan</button>
+            </div>
+          </div>
           <div class="trio">
             <div><label>In stock</label><input id="fQty" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
             <div><label>Reorder at</label><input id="fReorder" type="number" inputmode="numeric" step="1" min="0" placeholder="0"></div>
@@ -311,6 +330,9 @@
         <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input id="fSearch" placeholder="Search name, SKU, location…" autocomplete="off" oninput="render()">
       </div>
+      <button class="iconbtn" id="scanToolBtn" onclick="openScanner('lookup')" title="Scan a barcode">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg>
+      </button>
       <button class="iconbtn" id="sortBtn" onclick="cycleSort()" title="Sort">
         <svg class="ico" viewBox="0 0 24 24"><path d="M7 4v16M7 4l-3 3M7 4l3 3"/><path d="M17 20V4M17 20l3-3M17 20l-3-3"/></svg>
       </button>
@@ -405,6 +427,13 @@
         <div><label>SKU / code</label><input id="eSku" autocomplete="off"></div>
         <div><label>Category</label><input id="eCat" autocomplete="off"></div>
       </div>
+      <div>
+        <label>Barcode</label>
+        <div class="inputbtn">
+          <input id="eBarcode" placeholder="scan or type a barcode" autocomplete="off">
+          <button type="button" class="btn ghost" onclick="openScanner('assign','eBarcode')"><svg class="ico sm" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg> Scan</button>
+        </div>
+      </div>
       <div class="trio">
         <div><label>In stock</label><input id="eQty" type="number" step="1" min="0" inputmode="numeric"></div>
         <div><label>Reorder at</label><input id="eReorder" type="number" step="1" min="0" inputmode="numeric"></div>
@@ -478,6 +507,38 @@
   </div>
 </dialog>
 
+<!-- barcode scanner -->
+<dialog id="scanDlg">
+  <div class="modal">
+    <h3>Scan barcode</h3>
+    <div id="scanStage"><video id="scanVideo" playsinline muted></video><div class="scanline"></div></div>
+    <div id="scanMsg" class="hint" style="margin:0 0 12px">Point the camera at a barcode.</div>
+    <div class="inputbtn">
+      <input id="scanManual" placeholder="…or type / paste the code" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')scanManualSubmit()">
+      <button class="btn" onclick="scanManualSubmit()">Enter</button>
+    </div>
+    <button class="btn ghost full" style="margin-top:12px" onclick="closeScanner()">Cancel</button>
+  </div>
+</dialog>
+
+<!-- scan result (item found) -->
+<dialog id="foundDlg">
+  <div class="modal">
+    <h3 id="foundName">Item</h3>
+    <div class="found-meta" id="foundMeta"></div>
+    <div class="bigqty"><span id="foundQty">0</span><small>in stock</small></div>
+    <div class="duo" style="margin-top:14px">
+      <button class="btn ghost" onclick="foundAdjust(-1)">− Stock out</button>
+      <button class="btn" onclick="foundAdjust(1)">＋ Stock in</button>
+    </div>
+    <div class="duo" style="margin-top:8px">
+      <button class="btn ghost" onclick="foundEdit()">Edit item</button>
+      <button class="btn ghost" onclick="scanAgain()">Scan another</button>
+    </div>
+    <button class="btn ghost full" style="margin-top:8px" onclick="foundDlg.close()">Done</button>
+  </div>
+</dialog>
+
 <div id="printArea"></div>
 
 <script>
@@ -505,6 +566,7 @@ function normalize(s){
   s.items.forEach(it=>{
     it.qty=int(it.qty); it.reorder=int(it.reorder);
     it.cost=num(it.cost); it.price=num(it.price);
+    it.barcode=clean(it.barcode);
   });
   return s;
 }
@@ -539,12 +601,13 @@ function addItem(){
     id:Date.now()+''+Math.random().toString(36).slice(2,6),
     name, sku:clean($('fSku').value), category:clean($('fCat').value),
     qty, reorder:Math.max(0,int($('fReorder').value)), cost:Math.max(0,num($('fCost').value)),
-    price:0, location:clean($('fLoc').value), supplier:clean($('fSup').value), notes:''
+    price:0, location:clean($('fLoc').value), supplier:clean($('fSup').value),
+    barcode:clean($('fBarcode').value), notes:''
   };
   state.items.push(it);
   if(qty>0) addLog(it, qty, qty, 'added');
   save();
-  ['fName','fSku','fCat','fReorder','fCost','fLoc','fSup'].forEach(id=>$(id).value='');
+  ['fName','fSku','fCat','fReorder','fCost','fLoc','fSup','fBarcode'].forEach(id=>$(id).value='');
   $('fQty').value='0';
   renderCatChips();
   $('fName').focus();
@@ -558,7 +621,7 @@ function openEdit(id){
   $('eName').value=it.name; $('eSku').value=it.sku||''; $('eCat').value=it.category||'';
   $('eQty').value=it.qty; $('eReorder').value=it.reorder; $('eCost').value=it.cost||'';
   $('ePrice').value=it.price||''; $('eLoc').value=it.location||''; $('eSup').value=it.supplier||'';
-  $('eNotes').value=it.notes||'';
+  $('eBarcode').value=it.barcode||''; $('eNotes').value=it.notes||'';
   $('editDlg').showModal();
 }
 function saveEdit(){
@@ -569,7 +632,7 @@ function saveEdit(){
   it.sku=clean($('eSku').value); it.category=clean($('eCat').value);
   it.reorder=Math.max(0,int($('eReorder').value)); it.cost=Math.max(0,num($('eCost').value));
   it.price=Math.max(0,num($('ePrice').value)); it.location=clean($('eLoc').value);
-  it.supplier=clean($('eSup').value); it.notes=clean($('eNotes').value);
+  it.supplier=clean($('eSup').value); it.barcode=clean($('eBarcode').value); it.notes=clean($('eNotes').value);
   it.qty=newQty;
   if(diff!==0) addLog(it, diff, newQty, 'set count');
   save(); $('editDlg').close(); render();
@@ -644,7 +707,7 @@ function visibleItems(){
   let list=state.items;
   if(filterCat==='low') list=list.filter(i=>statusOf(i)!=='ok');
   else if(filterCat!=='all') list=list.filter(i=>(i.category||'')===filterCat);
-  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.location,i.supplier].some(v=>(v||'').toLowerCase().includes(q)));
+  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.location,i.supplier,i.barcode].some(v=>(v||'').toLowerCase().includes(q)));
   return sortItems(list);
 }
 function render(){
@@ -798,8 +861,8 @@ function printList(){
 }
 function exportCSV(){
   const list=visibleItems();
-  const rows=[['NAME','SKU','CATEGORY','QTY','REORDER','UNIT COST','SALE PRICE','STOCK VALUE','LOCATION','SUPPLIER','STATUS','NOTES']];
-  list.forEach(i=>rows.push([i.name,i.sku,i.category,i.qty,i.reorder,i.cost,i.price,(i.qty*i.cost).toFixed(2),i.location,i.supplier,statusOf(i),i.notes]));
+  const rows=[['NAME','SKU','BARCODE','CATEGORY','QTY','REORDER','UNIT COST','SALE PRICE','STOCK VALUE','LOCATION','SUPPLIER','STATUS','NOTES']];
+  list.forEach(i=>rows.push([i.name,i.sku,i.barcode,i.category,i.qty,i.reorder,i.cost,i.price,(i.qty*i.cost).toFixed(2),i.location,i.supplier,statusOf(i),i.notes]));
   const csv=rows.map(r=>r.map(c=>`"${(c==null?'':c).toString().replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob([csv],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventory-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
@@ -873,6 +936,86 @@ function toast(msg){
   t.textContent=msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1900);
 }
+
+/* ---------- BARCODE SCANNER ---------- */
+let scanStream=null, scanDetector=null, scanRAF=null, scanning=false;
+let scanMode='lookup', scanTarget=null, foundId=null;
+const BARCODE_OK = ('BarcodeDetector' in window);
+
+async function openScanner(mode, targetId){
+  scanMode=mode||'lookup'; scanTarget=targetId||null;
+  $('scanManual').value='';
+  const stage=$('scanStage'), msg=$('scanMsg');
+  $('scanDlg').showModal();
+  setTimeout(()=>{ try{ $('scanManual').focus(); }catch(e){} }, 50);
+  if(!BARCODE_OK || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+    stage.style.display='none';
+    msg.textContent='Live camera scanning isn’t supported on this browser — type or paste the code below.';
+    return;
+  }
+  try{
+    stage.style.display='';
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+    const v=$('scanVideo'); v.srcObject=scanStream; await v.play();
+    try{ scanDetector=new BarcodeDetector(); }catch(e){ scanDetector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code','itf','codabar']}); }
+    msg.textContent='Point the camera at a barcode.';
+    scanning=true; scanLoop();
+  }catch(e){
+    stopCam(); stage.style.display='none';
+    msg.textContent='Couldn’t open the camera ('+((e&&e.name)||'error')+'). Type or paste the code below instead.';
+  }
+}
+async function scanLoop(){
+  if(!scanning) return;
+  try{
+    const codes=await scanDetector.detect($('scanVideo'));
+    if(codes && codes.length && codes[0].rawValue){ handleCode(codes[0].rawValue); return; }
+  }catch(e){}
+  scanRAF=requestAnimationFrame(scanLoop);
+}
+function stopCam(){
+  scanning=false;
+  if(scanRAF){ cancelAnimationFrame(scanRAF); scanRAF=null; }
+  if(scanStream){ scanStream.getTracks().forEach(t=>{ try{t.stop();}catch(e){} }); scanStream=null; }
+  const v=$('scanVideo'); if(v){ try{ v.pause(); }catch(e){} v.srcObject=null; }
+}
+function closeScanner(){ stopCam(); $('scanDlg').close(); }
+function scanManualSubmit(){ const c=clean($('scanManual').value); if(!c){ $('scanManual').focus(); return; } handleCode(c); }
+function handleCode(code){
+  code=clean(code);
+  stopCam(); $('scanDlg').close();
+  if(!code) return;
+  if(scanMode==='assign'){
+    if(scanTarget){ const el=$(scanTarget); if(el) el.value=code; }
+    toast('Barcode captured: '+code);
+    return;
+  }
+  const lc=code.toLowerCase();
+  const it=state.items.find(i=> (i.barcode && i.barcode.toLowerCase()===lc) || (i.sku && i.sku.toLowerCase()===lc));
+  if(it){ openFound(it.id); return; }
+  if(confirm('No item has the code “'+code+'”.\n\nAdd it as a new item?')){
+    show('stock'); setTab('stock');
+    const box=$('addBox'); if(box) box.open=true;
+    ['fName','fSku','fCat','fReorder','fCost','fLoc','fSup'].forEach(id=>{ if($(id)) $(id).value=''; });
+    $('fQty').value='0'; $('fBarcode').value=code;
+    render();
+    setTimeout(()=>{ try{ $('fName').scrollIntoView({block:'center'}); $('fName').focus(); }catch(e){} }, 60);
+    toast('New item — barcode prefilled');
+  }
+}
+function openFound(id){ foundId=id; if(!renderFound()) return; $('foundDlg').showModal(); }
+function renderFound(){
+  const it=state.items.find(i=>i.id===foundId);
+  if(!it){ try{ $('foundDlg').close(); }catch(e){} return false; }
+  $('foundName').textContent=it.name;
+  $('foundMeta').textContent=[it.sku?'#'+it.sku:'', it.category, it.location, it.barcode?'⋮ '+it.barcode:''].filter(Boolean).join('   ·   ');
+  const q=$('foundQty'); q.textContent=it.qty;
+  q.style.color = it.qty<=0 ? 'var(--danger)' : (it.reorder>0 && it.qty<=it.reorder ? 'var(--amber)' : '');
+  return true;
+}
+function foundAdjust(d){ const it=state.items.find(i=>i.id===foundId); if(!it) return; adjust(it.id,d); renderFound(); }
+function foundEdit(){ const id=foundId; $('foundDlg').close(); openEdit(id); }
+function scanAgain(){ $('foundDlg').close(); openScanner('lookup'); }
 
 /* ---------- SYNC (private gist, whole-document last-write-wins) ---------- */
 const GIST_FILE="inventory.json";
