@@ -271,8 +271,11 @@
     #printArea td{border-bottom:1px solid #ddd; padding:6px 6px}
     #printArea td.n{text-align:right; font-variant-numeric:tabular-nums}
     #printArea .ptotal{margin-top:14px; font-weight:700; font-size:14px}
-    #printArea .psupp{font-weight:700; font-size:12px; margin:16px 0 4px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid #000; padding-bottom:2px}
-    #printArea .psub{font-size:11px; text-align:right; font-weight:600; margin-top:4px; color:#333}
+    #printArea .supgroup{break-before:page; page-break-before:always}
+    #printArea .supgroup:first-of-type{break-before:auto; page-break-before:auto}
+    #printArea .psupp{font-weight:700; font-size:13px; margin:0 0 6px; padding-bottom:3px; border-bottom:2px solid #000; display:flex; justify-content:space-between; align-items:baseline}
+    #printArea .psupp .pcount{font-size:10px; font-weight:600; color:#555; text-transform:none; letter-spacing:0}
+    #printArea .psub{font-size:11px; text-align:right; font-weight:700; margin-top:6px}
     #printArea .lsheet-h{font-size:16px; font-weight:700; margin:0 0 4mm}
     #printArea .labels{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5mm}
     #printArea .label{border:1px solid #999; border-radius:4px; padding:5mm 4mm; text-align:center; break-inside:avoid; page-break-inside:avoid; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.5mm; min-height:26mm}
@@ -993,19 +996,20 @@ function printReorder(){
   let html='<h2>Reorder Report</h2><div class="pmeta">'+new Date().toLocaleDateString('en-GB')+' · '+list.length+' item'+(list.length===1?'':'s')+' to reorder</div>';
   suppliers.forEach(sup=>{
     const items=groups[sup].slice().sort((a,b)=> (statusOf(b)==='out'?1:0)-(statusOf(a)==='out'?1:0) || a.name.localeCompare(b.name));
-    html+='<div class="psupp">'+escapeHtml(sup)+'</div>';
-    html+='<table><thead><tr><th>Item</th><th>SKU</th><th>Location</th><th class="n">In stock</th><th class="n">Reorder ≤</th><th class="n">Order</th><th class="n">Unit £</th><th class="n">Est. £</th></tr></thead><tbody>';
+    let block='<div class="psupp"><span>'+escapeHtml(sup)+'</span><span class="pcount">'+items.length+' item'+(items.length===1?'':'s')+' · '+new Date().toLocaleDateString('en-GB')+'</span></div>';
+    block+='<table><thead><tr><th>Item</th><th>SKU</th><th>Location</th><th class="n">In stock</th><th class="n">Reorder ≤</th><th class="n">Order</th><th class="n">Unit £</th><th class="n">Est. £</th></tr></thead><tbody>';
     let sub=0;
     items.forEach(i=>{
       const sug = i.reorder>0 ? Math.max(i.reorder - i.qty, 1) : null;
       const est = (sug!=null && i.cost>0) ? sug*i.cost : null;
       if(est!=null) sub+=est;
-      html+='<tr><td>'+escapeHtml(i.name)+(statusOf(i)==='out'?' <b>(OUT)</b>':'')+'</td><td>'+escapeHtml(i.sku||'')+'</td><td>'+escapeHtml(i.location||'')+'</td>'
+      block+='<tr><td>'+escapeHtml(i.name)+(statusOf(i)==='out'?' <b>(OUT)</b>':'')+'</td><td>'+escapeHtml(i.sku||'')+'</td><td>'+escapeHtml(i.location||'')+'</td>'
         +'<td class="n">'+i.qty+'</td><td class="n">'+(i.reorder||'')+'</td><td class="n">'+(sug==null?'—':sug)+'</td>'
         +'<td class="n">'+(i.cost>0?money(i.cost):'')+'</td><td class="n">'+(est!=null?money(est):'')+'</td></tr>';
     });
     grand+=sub;
-    html+='</tbody></table><div class="psub">'+escapeHtml(sup)+' subtotal: '+money(sub)+'</div>';
+    block+='</tbody></table><div class="psub">'+escapeHtml(sup)+' subtotal: '+money(sub)+'</div>';
+    html+='<div class="supgroup">'+block+'</div>';
   });
   html+='<div class="ptotal">Estimated reorder cost: '+money(grand)+'</div>';
   $('printArea').innerHTML=html;
