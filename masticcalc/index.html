@@ -105,6 +105,13 @@ input:focus{outline:none; border-color:var(--accent)}
       <div class="chip" data-sides="three">3 sides<small>no threshold</small></div>
     </div>
   </div>
+  <div class="field">
+    <label>Faces to seal</label>
+    <div class="presets" id="facesPresets">
+      <div class="chip on" data-faces="2">Both sides<small>internal + external</small></div>
+      <div class="chip" data-faces="1">One side<small>single face</small></div>
+    </div>
+  </div>
 </div>
 
 <div class="card">
@@ -166,7 +173,7 @@ input:focus{outline:none; border-color:var(--accent)}
 <div class="card">
   <h2>Breakdown</h2>
   <div class="breakdown">
-    <div class="brow"><span class="k">Perimeter per doorset</span><span class="v" id="perim">–</span></div>
+    <div class="brow"><span class="k">Joint length per doorset</span><span class="v" id="perim">–</span></div>
     <div class="brow"><span class="k">+ Waste allowance</span><span class="v" id="withWaste">–</span></div>
     <div class="brow"><span class="k">× Doorsets</span><span class="v" id="total">–</span></div>
     <div class="brow"><span class="k">Coverage per tube</span><span class="v" id="cov">–</span></div>
@@ -183,6 +190,7 @@ input:focus{outline:none; border-color:var(--accent)}
 const $ = id => document.getElementById(id);
 const num = id => parseFloat($(id).value) || 0;
 let sides = 'perimeter';
+let faces = 2;   // both sides (internal + external) by default
 
 // preset chip groups
 function bindPresets(containerId, onPick){
@@ -196,6 +204,7 @@ function bindPresets(containerId, onPick){
   });
 }
 bindPresets('sidesPresets', c => { sides = c.dataset.sides; calc(); });
+bindPresets('facesPresets', c => { faces = +c.dataset.faces; calc(); });
 bindPresets('beadPresets', c => { $('bw').value = c.dataset.w; $('bd').value = c.dataset.d; calc(); });
 bindPresets('tubePresets', c => { $('tube').value = c.dataset.ml; calc(); });
 
@@ -212,7 +221,7 @@ function money(n){ return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2
 
 function calc(){
   const W = num('width'), H = num('height');
-  const perimMm = sides==='perimeter' ? 2*(W+H) : (2*H + W);
+  const perimMm = (sides==='perimeter' ? 2*(W+H) : (2*H + W)) * faces;
   const perimM = perimMm/1000;
 
   const waste = num('waste');
