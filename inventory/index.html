@@ -270,6 +270,7 @@
     #printArea th{text-align:left; border-bottom:2px solid #000; padding:6px 6px; text-transform:uppercase; font-size:10px; letter-spacing:.5px}
     #printArea td{border-bottom:1px solid #ddd; padding:6px 6px}
     #printArea td.n{text-align:right; font-variant-numeric:tabular-nums}
+    #printArea th.note,#printArea td.note{width:18%; white-space:normal; word-break:break-word; color:#333}
     #printArea .ptotal{margin-top:14px; font-weight:700; font-size:14px}
     #printArea tr.subrow td{font-weight:700; border-top:1.5px solid #000; border-bottom:none; padding-top:6px}
     #printArea tr.subrow td.lbl,#printArea tr.totrow td.lbl{text-align:right; text-transform:none}
@@ -993,7 +994,7 @@ function printReorder(){
   let grand=0, grandQty=0;
   const multi=suppliers.length>1;
   let html='<h2>Reorder Report</h2><div class="pmeta"><b>Date:</b> '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'  ·  '+list.length+' item'+(list.length===1?'':'s')+' to reorder</div>';
-  html+='<table><thead><tr><th>Supplier</th><th>Item</th><th>SKU</th><th>Location</th><th class="n">In stock</th><th class="n">Reorder ≤</th><th class="n">Order</th><th class="n">Unit £</th><th class="n">Est. £</th></tr></thead><tbody>';
+  html+='<table><thead><tr><th>Supplier</th><th>Item</th><th>SKU</th><th>Location</th><th class="n">In stock</th><th class="n">Reorder ≤</th><th class="n">Order</th><th class="n">Unit £</th><th class="n">Est. £</th><th class="note">Notes</th></tr></thead><tbody>';
   suppliers.forEach(sup=>{
     const items=groups[sup].slice().sort((a,b)=> (statusOf(b)==='out'?1:0)-(statusOf(a)==='out'?1:0) || a.name.localeCompare(b.name));
     let sub=0, subQty=0;
@@ -1004,12 +1005,12 @@ function printReorder(){
       if(sug!=null) subQty+=sug;
       html+='<tr><td>'+escapeHtml(sup)+'</td><td>'+escapeHtml(i.name)+(statusOf(i)==='out'?' <b>(OUT)</b>':'')+'</td><td>'+escapeHtml(i.sku||'')+'</td><td>'+escapeHtml(i.location||'')+'</td>'
         +'<td class="n">'+i.qty+'</td><td class="n">'+(i.reorder||'')+'</td><td class="n">'+(sug==null?'—':sug)+'</td>'
-        +'<td class="n">'+(i.cost>0?money(i.cost):'')+'</td><td class="n">'+(est!=null?money(est):'')+'</td></tr>';
+        +'<td class="n">'+(i.cost>0?money(i.cost):'')+'</td><td class="n">'+(est!=null?money(est):'')+'</td><td class="note">'+escapeHtml(i.notes||'')+'</td></tr>';
     });
     grand+=sub; grandQty+=subQty;
-    if(multi) html+='<tr class="subrow"><td class="lbl" colspan="6">'+escapeHtml(sup)+' subtotal</td><td class="n">'+subQty+'</td><td></td><td class="n">'+money(sub)+'</td></tr>';
+    if(multi) html+='<tr class="subrow"><td class="lbl" colspan="6">'+escapeHtml(sup)+' subtotal</td><td class="n">'+subQty+'</td><td></td><td class="n">'+money(sub)+'</td><td></td></tr>';
   });
-  html+='<tr class="totrow"><td class="lbl" colspan="6">Total to order — '+list.length+' item'+(list.length===1?'':'s')+'</td><td class="n">'+grandQty+'</td><td></td><td class="n">'+money(grand)+'</td></tr>';
+  html+='<tr class="totrow"><td class="lbl" colspan="6">Total to order — '+list.length+' item'+(list.length===1?'':'s')+'</td><td class="n">'+grandQty+'</td><td></td><td class="n">'+money(grand)+'</td><td></td></tr>';
   html+='</tbody></table><div class="ptotal">Total: '+list.length+' item'+(list.length===1?'':'s')+'  ·  '+grandQty+' unit'+(grandQty===1?'':'s')+' to order  ·  Estimated cost: '+money(grand)+'</div>';
   $('printArea').innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
