@@ -1009,8 +1009,8 @@ function printReorder(){
     grand+=sub; grandQty+=subQty;
     if(multi) html+='<tr class="subrow"><td class="lbl" colspan="6">'+escapeHtml(sup)+' subtotal</td><td class="n">'+subQty+'</td><td></td><td class="n">'+money(sub)+'</td></tr>';
   });
-  html+='<tr class="totrow"><td class="lbl" colspan="6">Total to order</td><td class="n">'+grandQty+'</td><td></td><td class="n">'+money(grand)+'</td></tr>';
-  html+='</tbody></table><div class="ptotal">Total to order: '+grandQty+' unit'+(grandQty===1?'':'s')+'  ·  Estimated cost: '+money(grand)+'</div>';
+  html+='<tr class="totrow"><td class="lbl" colspan="6">Total to order — '+list.length+' item'+(list.length===1?'':'s')+'</td><td class="n">'+grandQty+'</td><td></td><td class="n">'+money(grand)+'</td></tr>';
+  html+='</tbody></table><div class="ptotal">Total: '+list.length+' item'+(list.length===1?'':'s')+'  ·  '+grandQty+' unit'+(grandQty===1?'':'s')+' to order  ·  Estimated cost: '+money(grand)+'</div>';
   $('printArea').innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
   setTimeout(()=>window.print(),80);
