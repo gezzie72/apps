@@ -540,7 +540,7 @@
       <button class="btn full" onclick="shareText()">Share / copy as text</button>
       <button class="btn ghost full" onclick="printReorder()">Print reorder report</button>
       <button class="btn ghost full" onclick="printStockValue()">Print stock value report</button>
-      <button class="btn ghost full" onclick="printLabels()">Print barcode labels</button>
+      <button class="btn ghost full" onclick="printLabels()">Print all barcode labels (A4)</button>
       <button class="btn ghost full" onclick="printList()">Print full stock list (A4)</button>
       <button class="btn ghost full" onclick="exportCSV()">Download CSV</button>
       <button class="btn ghost full" style="margin-top:4px" onclick="shareDlg.close()">Close</button>
@@ -976,10 +976,12 @@ function labelHTML(it, solo){
   </div>`;
 }
 function printLabels(){
-  const list=visibleItems().filter(i=>labelCode(i));
-  if(!list.length){ toast('No items in view have a barcode or SKU to print.'); return; }
-  const skipped=visibleItems().length-list.length;
-  const html='<div class="lsheet-h">Barcode labels — '+list.length+' item'+(list.length===1?'':'s')+'</div>'
+  if(!state.items.length){ toast('No items to print.'); return; }
+  const all=state.items.slice().sort((a,b)=> (a.category||'~').localeCompare(b.category||'~') || a.name.localeCompare(b.name));
+  const list=all.filter(i=>labelCode(i));
+  if(!list.length){ toast('No items have a barcode or SKU to print.'); return; }
+  const skipped=all.length-list.length;
+  const html='<div class="lsheet-h">Barcode labels — '+list.length+(skipped?' of '+all.length:'')+' item'+(list.length===1&&!skipped?'':'s')+'</div>'
     +'<div class="labels">'+list.map(i=>labelHTML(i,false)).join('')+'</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   $('shareDlg').close();
