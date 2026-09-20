@@ -451,7 +451,7 @@
 /* ============================ helpers ============================ */
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const now=()=>Date.now();
-const APP_VERSION="2026-09-20 · v2.8 top tab bar";
+const APP_VERSION="2026-09-20 · v2.9 more dumbbell/kettlebell moves";
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
 
 /* ============================ muscle catalog ============================ */
@@ -900,6 +900,10 @@ const MACHINES=[
     ["chest"],["triceps","delts"],
     ["Lie flat, feet planted, a dumbbell in each hand at chest level.","Wrists stacked over elbows, slight arch in the back.","Press the dumbbells up until the arms are nearly straight.","Lower under control until you feel a stretch across the chest."],
     ["Dumbbells give a bigger range and even out left/right strength.","Keep the elbows at about 45°, not flared to 90°.","mistake:Clashing the dumbbells together at the top.","mistake:Dropping them fast — control the lowering."]),
+  M("incline-dumbbell-press","Incline Dumbbell Press","Chest","Free weight (bench)","benchpress",
+    ["chest","delts"],["triceps"],
+    ["Set a bench to about 30–45°, a dumbbell in each hand at upper-chest height.","Wrists stacked over elbows, shoulder blades pulled back.","Press the dumbbells up and slightly together until the arms are nearly straight.","Lower under control until you feel a stretch across the upper chest."],
+    ["Emphasises the upper chest more than a flat press.","Keep the elbows at about 45°, not flared to 90°.","mistake:Setting the bench too upright — it turns into a shoulder press.","mistake:Clashing the dumbbells together at the top."]),
   M("push-up","Push-Up","Chest","Bodyweight","pushup",
     ["chest"],["triceps","delts","abs"],
     ["Hands slightly wider than shoulders, body in a straight line.","Brace the core and glutes, don't let the hips sag.","Lower until the chest is just above the floor.","Push back up to straight arms."],
@@ -928,6 +932,10 @@ const MACHINES=[
     ["lats"],["biceps","upperback","forearms"],
     ["Sit or half-kneel facing a low pulley, one handle in one hand.","Start with the arm extended, torso upright.","Pull the handle to your side, driving the elbow back.","Extend the arm slowly, letting the shoulder blade reach forward."],
     ["Working one side at a time evens out left/right strength.","Let the shoulder blade move — reach at the bottom, squeeze at the top.","mistake:Twisting the torso to help pull."]),
+  M("dumbbell-bent-row","Dumbbell Bent-Over Row","Back","Free weight","row",
+    ["lats","upperback"],["biceps","traps","forearms"],
+    ["Hold a dumbbell in each hand, hinge forward from the hips with a flat back.","Let the arms hang, knees softly bent, core braced.","Pull the dumbbells to your waist, driving the elbows back.","Lower under control until the arms are fully extended."],
+    ["Keep the torso still — row with the back and arms, not the hips.","Squeeze the shoulder blades together at the top.","mistake:Rounding the lower back.","mistake:Jerking the weight up with momentum."]),
   M("assisted-pullup","Assisted Pull-Up","Back","Assisted (knee pad)","pullup",
     ["lats"],["biceps","upperback","forearms"],
     ["Set the assistance weight (more weight = more help).","Kneel or stand on the pad, grip the top bars.","Pull your chest towards the bar, elbows down.","Lower under control to a full hang."],
@@ -952,6 +960,10 @@ const MACHINES=[
     ["delts_rear"],["upperback","traps"],
     ["Face the pad, chest against it, grab the handles.","Slight bend in the elbows, fixed.","Sweep the arms out and back, squeezing shoulder blades.","Return slowly to the front."],
     ["Great for posture and the often-neglected rear delts.","Think about pulling with the back of the shoulder.","mistake:Bending the elbows to turn it into a row."]),
+  M("db-reverse-fly","Dumbbell Reverse Fly","Shoulders","Free weight","reversefly",
+    ["delts_rear"],["upperback","traps"],
+    ["Hold a light dumbbell in each hand, hinge forward from the hips with a flat back.","Let the arms hang under the chest, slight fixed bend in the elbows.","Sweep the arms out to the sides, squeezing the shoulder blades.","Lower slowly under control."],
+    ["Hits the rear delts and upper back — great for posture.","Keep it light; lead with the back of the shoulder, not the hands.","mistake:Using momentum or swinging the torso.","mistake:Bending the elbows to turn it into a row."]),
   M("shrugs","Shrugs","Shoulders","Free weight / machine","shrug",
     ["traps"],["forearms"],
     ["Hold a dumbbell in each hand (or the machine handles) at your sides.","Stand tall, arms straight, shoulders relaxed down.","Shrug the shoulders straight up towards your ears.","Pause at the top, then lower under control."],
@@ -1056,6 +1068,14 @@ const MACHINES=[
     ["hamstrings","glutes"],["lowerback","traps","forearms"],
     ["Stand tall holding the bar/dumbbells against the thighs.","Soft knees, push the hips back and lower the weight down the legs.","Keep the back flat and the bar close until you feel a hamstring stretch.","Drive the hips forward to stand tall again."],
     ["It's a hip hinge with near-straight legs — feel the hamstrings stretch.","Only go as low as your hamstring flexibility allows with a flat back.","mistake:Rounding the back or turning it into a squat.","mistake:Letting the bar drift away from the legs."]),
+  M("bulgarian-split-squat","Bulgarian Split Squat","Legs","Free weight (dumbbell)","lunge",
+    ["quads","glutes"],["hamstrings","calves","abs"],
+    ["Stand a stride in front of a bench, rear foot resting on it, a dumbbell in each hand.","Keep the torso tall and the core braced.","Lower straight down until the front thigh is about parallel.","Drive up through the front heel to standing."],
+    ["Most of the work is on the front leg — set the stance so the front knee tracks over the foot.","Go bodyweight first to find your balance, then add dumbbells.","mistake:Leaning too far forward.","mistake:Pushing off the back foot instead of the front leg."]),
+  M("kettlebell-swing","Kettlebell Swing","Legs","Free weight (kettlebell)","hinge",
+    ["glutes","hamstrings"],["lowerback","delts","forearms"],
+    ["Stand tall holding a kettlebell with both hands, feet shoulder-width.","Hinge at the hips, letting the bell swing back between the thighs.","Snap the hips forward explosively to float the bell up to chest height.","Let it swing back down as you hinge again — it's one continuous rhythm."],
+    ["Power comes from the hip snap, not the arms or shoulders.","Keep the back flat and the arms relaxed like ropes.","mistake:Squatting the weight up instead of hinging.","mistake:Using the shoulders to lift the bell."]),
   M("glute-kickback","Glute Kickback","Legs","Cable / machine","glutekickback",
     ["glutes"],["hamstrings"],
     ["Anchor to a cable/machine, lean slightly onto the support.","Brace the core, one leg as the working leg.","Drive that leg back and up, squeezing the glute.","Return under control without letting the back arch."],
