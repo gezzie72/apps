@@ -900,8 +900,8 @@ function printList(){
 }
 function exportCSV(){
   const list=visibleItems();
-  const rows=[['NAME','SKU','BARCODE','CATEGORY','QTY','REORDER','UNIT COST','SALE PRICE','STOCK VALUE','LOCATION','SUPPLIER','STATUS','NOTES']];
-  list.forEach(i=>rows.push([i.name,i.sku,i.barcode,i.category,i.qty,i.reorder,i.cost,i.price,(i.qty*i.cost).toFixed(2),i.location,i.supplier,statusOf(i),i.notes]));
+  const rows=[['NAME','SKU','BARCODE','CATEGORY','SUPPLIER','LOCATION','QTY','REORDER','UNIT COST','SALE PRICE','STOCK VALUE','STATUS','NOTES']];
+  list.forEach(i=>rows.push([i.name,i.sku,i.barcode,i.category,i.supplier,i.location,i.qty,i.reorder,i.cost,i.price,(i.qty*i.cost).toFixed(2),statusOf(i),i.notes]));
   const csv=rows.map(r=>r.map(c=>`"${(c==null?'':c).toString().replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob([csv],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventory-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
