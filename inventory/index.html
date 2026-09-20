@@ -1027,30 +1027,42 @@ function printReorder(){
 /* ---------- STOCK VALUE REPORT (whole inventory, grouped by category) ---------- */
 function printStockValue(){
   if(!state.items.length){ toast('No items to value yet.'); return; }
+  const retail=state.items.some(i=>i.price>0);   // only show retail columns when sale prices are in use
   const groups={};
   state.items.forEach(i=>{ const c=clean(i.category)||'Uncategorised'; (groups[c]=groups[c]||[]).push(i); });
   const cats=Object.keys(groups).sort((a,b)=> a==='Uncategorised'?1 : b==='Uncategorised'?-1 : a.localeCompare(b));
   const multi=cats.length>1;
-  let grand=0, grandUnits=0;
+  let grand=0, grandUnits=0, grandRetail=0, noCost=0;
+  const n=state.items.length;
   const dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  let html='<h2>Stock Value Report</h2><div class="pmeta"><b>Date:</b> '+dateStr+'  ·  '+state.items.length+' item'+(state.items.length===1?'':'s')+'</div>';
-  html+='<table><thead><tr><th>Category</th><th>Item</th><th>SKU</th><th>Location</th><th class="n">In stock</th><th class="n">Unit £</th><th class="n">Stock value £</th></tr></thead><tbody>';
+  let html='<h2>Stock Value Report</h2><div class="pmeta"><b>Date:</b> '+dateStr+'  ·  '+n+' item'+(n===1?'':'s')+'</div>';
+  html+='<table><thead><tr><th>Category</th><th>Item</th><th>SKU</th><th>Location</th><th class="n">In stock</th><th class="n">Unit £</th><th class="n">Stock value £</th>'
+    +(retail?'<th class="n">Sale £</th><th class="n">Retail value £</th>':'')+'</tr></thead><tbody>';
   cats.forEach(cat=>{
     const items=groups[cat].slice().sort((a,b)=>a.name.localeCompare(b.name));
-    let subVal=0, subUnits=0;
+    let subVal=0, subUnits=0, subRetail=0;
     items.forEach(i=>{
       const val = i.cost>0 ? i.qty*i.cost : null;
-      if(val!=null) subVal+=val;
+      const rval = i.price>0 ? i.qty*i.price : null;
+      if(val!=null) subVal+=val; else noCost++;
+      if(rval!=null) subRetail+=rval;
       subUnits+=i.qty;
       html+='<tr><td>'+escapeHtml(cat)+'</td><td>'+escapeHtml(i.name)+'</td><td>'+escapeHtml(i.sku||'')+'</td><td>'+escapeHtml(i.location||'')+'</td>'
-        +'<td class="n">'+i.qty+'</td><td class="n">'+(i.cost>0?money(i.cost):'')+'</td><td class="n">'+(val!=null?money(val):'—')+'</td></tr>';
+        +'<td class="n">'+i.qty+'</td><td class="n">'+(i.cost>0?money(i.cost):'')+'</td><td class="n">'+(val!=null?money(val):'—')+'</td>'
+        +(retail?'<td class="n">'+(i.price>0?money(i.price):'')+'</td><td class="n">'+(rval!=null?money(rval):'—')+'</td>':'')+'</tr>';
     });
-    grand+=subVal; grandUnits+=subUnits;
-    if(multi) html+='<tr class="subrow"><td class="lbl" colspan="4">'+escapeHtml(cat)+' subtotal</td><td class="n">'+subUnits+'</td><td></td><td class="n">'+money(subVal)+'</td></tr>';
+    grand+=subVal; grandUnits+=subUnits; grandRetail+=subRetail;
+    if(multi) html+='<tr class="subrow"><td class="lbl" colspan="4">'+escapeHtml(cat)+' subtotal</td><td class="n">'+subUnits+'</td><td></td><td class="n">'+money(subVal)+'</td>'
+      +(retail?'<td></td><td class="n">'+money(subRetail)+'</td>':'')+'</tr>';
   });
-  html+='<tr class="totrow"><td class="lbl" colspan="4">Total — '+state.items.length+' item'+(state.items.length===1?'':'s')+'</td><td class="n">'+grandUnits+'</td><td></td><td class="n">'+money(grand)+'</td></tr>';
-  html+='</tbody></table><div class="ptotal">Total: '+state.items.length+' item'+(state.items.length===1?'':'s')+'  ·  '+grandUnits.toLocaleString()+' unit'+(grandUnits===1?'':'s')+'  ·  Stock value: '+money(grand)+'</div>';
-  const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
+  html+='<tr class="totrow"><td class="lbl" colspan="4">Total — '+n+' item'+(n===1?'':'s')+'</td><td class="n">'+grandUnits+'</td><td></td><td class="n">'+money(grand)+'</td>'
+    +(retail?'<td></td><td class="n">'+money(grandRetail)+'</td>':'')+'</tr>';
+  html+='</tbody></table>';
+  const profit=grandRetail-grand, marginPct=grandRetail>0?Math.round(profit/grandRetail*100):0;
+  html+='<div class="ptotal">Total stock value (at cost): '+money(grand)+'  ·  '+grandUnits.toLocaleString()+' unit'+(grandUnits===1?'':'s')+' across '+n+' item'+(n===1?'':'s')
+    +(retail?'<br>Retail value: '+money(grandRetail)+'  ·  Potential profit: '+money(profit)+' ('+marginPct+'% margin)':'')
+    +(noCost?'<br><span style="font-weight:400;color:#555">'+noCost+' item'+(noCost===1?'':'s')+' have no unit cost set (shown as “—”, excluded from the value).</span>':'')+'</div>';
+  const pa=$('printArea'); pa.classList.toggle('land', retail); pa.innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
   setTimeout(()=>window.print(),80);
 }
