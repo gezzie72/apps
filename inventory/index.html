@@ -270,6 +270,8 @@
     #printArea h2{font-size:19px; margin:0 0 2px}
     #printArea .pmeta{color:#555; font-size:12px; margin-bottom:14px}
     #printArea table{width:100%; border-collapse:collapse; font-size:12px}
+    #printArea thead{display:table-header-group}
+    #printArea tr{break-inside:avoid; page-break-inside:avoid}
     #printArea th{text-align:left; border-bottom:2px solid #000; padding:6px 6px; text-transform:uppercase; font-size:10px; letter-spacing:.5px}
     #printArea td{border-bottom:1px solid #ddd; padding:6px 6px}
     #printArea td.n{text-align:right; font-variant-numeric:tabular-nums}
@@ -539,7 +541,7 @@
       <button class="btn ghost full" onclick="printReorder()">Print reorder report</button>
       <button class="btn ghost full" onclick="printStockValue()">Print stock value report</button>
       <button class="btn ghost full" onclick="printLabels()">Print barcode labels</button>
-      <button class="btn ghost full" onclick="printList()">Print stock list</button>
+      <button class="btn ghost full" onclick="printList()">Print full stock list (A4)</button>
       <button class="btn ghost full" onclick="exportCSV()">Download CSV</button>
       <button class="btn ghost full" style="margin-top:4px" onclick="shareDlg.close()">Close</button>
     </div>
@@ -917,14 +919,17 @@ async function shareText(){
   catch(e){ window.prompt('Copy your inventory:', text); }
 }
 function printList(){
-  const list=visibleItems();
-  let html='<h2>Inventory</h2><div class="pmeta">'+new Date().toLocaleDateString('en-GB')+' · '+list.length+' items</div>';
-  html+='<table><thead><tr><th>Item</th><th>SKU</th><th>Category</th><th>Location</th><th class="n">Qty</th><th class="n">Reorder</th><th class="n">Value</th></tr></thead><tbody>';
+  if(!state.items.length){ toast('No items to print.'); return; }
+  const list=state.items.slice().sort((a,b)=> (a.category||'~').localeCompare(b.category||'~') || a.name.localeCompare(b.name));
+  const dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let html='<h2>Stock List</h2><div class="pmeta"><b>Date:</b> '+dateStr+'  ·  '+list.length+' item'+(list.length===1?'':'s')+' (all stock)</div>';
+  html+='<table><thead><tr><th>Item</th><th>SKU</th><th>Category</th><th>Location</th><th class="n">In stock</th><th class="n">Reorder ≤</th><th class="n">Value £</th></tr></thead><tbody>';
   let units=0, val=0;
   list.forEach(i=>{ units+=i.qty; val+=i.qty*i.cost;
     html+='<tr><td>'+escapeHtml(i.name)+(statusOf(i)!=='ok'?' *':'')+'</td><td>'+escapeHtml(i.sku||'')+'</td><td>'+escapeHtml(i.category||'')+'</td><td>'+escapeHtml(i.location||'')+'</td><td class="n">'+i.qty+'</td><td class="n">'+(i.reorder||'')+'</td><td class="n">'+(i.cost>0?money(i.qty*i.cost):'')+'</td></tr>';
   });
-  html+='</tbody></table><div class="ptotal">'+units+' units · '+money(val)+' at cost&nbsp;&nbsp;(* = at/below reorder level)</div>';
+  html+='<tr class="totrow"><td class="lbl" colspan="4">Total — '+list.length+' item'+(list.length===1?'':'s')+'</td><td class="n">'+units.toLocaleString()+'</td><td></td><td class="n">'+money(val)+'</td></tr>';
+  html+='</tbody></table><div class="ptotal">'+list.length+' item'+(list.length===1?'':'s')+'  ·  '+units.toLocaleString()+' unit'+(units===1?'':'s')+'  ·  Stock value: '+money(val)+' at cost<br><span style="font-weight:400;color:#555">* = at or below reorder level</span></div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   $('shareDlg').close();
   setTimeout(()=>window.print(),80);
