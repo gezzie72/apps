@@ -149,6 +149,11 @@
   .chips button:hover{border-color:var(--muted)}
   .chips button.on{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600}
   .chips button.low.on{background:var(--amber); border-color:var(--amber); color:#fff}
+  .supfilter{display:flex; align-items:center; gap:8px; margin:0 0 16px}
+  .supfilter[hidden]{display:none}
+  .supfilter .ico{color:var(--muted); flex:none}
+  .supfilter select{width:auto; max-width:100%; font-size:13px; font-weight:500; padding:7px 11px}
+  .supfilter select.on{border-color:var(--accent); color:var(--accent-d); font-weight:600}
 
   .listhead{display:flex; justify-content:space-between; align-items:center; margin:0 2px 10px}
   .listhead .ttl{font-weight:600; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px}
@@ -358,6 +363,10 @@
       </button>
     </div>
     <div class="chips" id="filterChips"></div>
+    <div class="supfilter" id="supFilterWrap" hidden>
+      <svg class="ico sm" viewBox="0 0 24 24"><path d="M3 4h18l-7 8v6l-4 2v-8L3 4z"/></svg>
+      <select id="supFilter" onchange="setSupplier(this.value)" aria-label="Filter by supplier"></select>
+    </div>
 
     <div class="listhead">
       <span class="ttl">Items</span>
@@ -592,6 +601,7 @@ const int=v=>{ const n=parseInt(v,10); return isFinite(n)?n:0; };
 let editId=null;
 let tab='stock';
 let filterCat='all';   // 'all' | 'low' | a category name
+let filterSupplier='all';   // 'all' | a supplier name
 const SORTS=['name','low','qty','value'];
 const SORT_LABEL={name:'Name (A–Z)', low:'Low stock first', qty:'Quantity', value:'Stock value'};
 let state=load();   // after SORTS: normalize() reads it
@@ -621,6 +631,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<'
 /* ---------- CATEGORY CHIPS (add form) ---------- */
 let _chipCats=[];
 function categories(){ return [...new Set(state.items.map(i=>i.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function suppliers(){ return [...new Set(state.items.map(i=>clean(i.supplier)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function renderCatChips(){
   const el=$('catChips'); if(!el) return;
   _chipCats=categories();
@@ -746,6 +757,7 @@ function visibleItems(){
   let list=state.items;
   if(filterCat==='low') list=list.filter(i=>statusOf(i)!=='ok');
   else if(filterCat!=='all') list=list.filter(i=>(i.category||'')===filterCat);
+  if(filterSupplier!=='all') list=list.filter(i=>clean(i.supplier)===filterSupplier);
   if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.location,i.supplier,i.barcode].some(v=>(v||'').toLowerCase().includes(q)));
   return sortItems(list);
 }
@@ -761,6 +773,7 @@ function render(){
     : 'Your stock';
 
   renderFilterChips();
+  renderSupplierFilter();
 
   if(tab==='reports'){ renderReports(); return; }
 
@@ -804,6 +817,17 @@ function renderFilterChips(){
   el.innerHTML=html;
 }
 function setFilter(c){ filterCat=c; render(); }
+function setSupplier(v){ filterSupplier=v; render(); }
+function renderSupplierFilter(){
+  const wrap=$('supFilterWrap'), sel=$('supFilter'); if(!wrap||!sel) return;
+  const sups=suppliers();
+  if(!sups.length){ wrap.hidden=true; filterSupplier='all'; return; }
+  if(filterSupplier!=='all' && !sups.includes(filterSupplier)) filterSupplier='all';
+  wrap.hidden=false;
+  sel.innerHTML='<option value="all">All suppliers</option>'+sups.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+  sel.value=filterSupplier;
+  sel.classList.toggle('on', filterSupplier!=='all');
+}
 
 /* ---------- REPORTS ---------- */
 function renderReports(){
