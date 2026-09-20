@@ -401,7 +401,8 @@
     </div>
 
     <div class="card pad">
-      <div class="listhead" style="margin:0 0 14px"><span class="ttl">Value by category</span></div>
+      <div class="listhead" style="margin:0 0 14px"><span class="ttl">Value by category</span>
+        <button class="btn ghost sm" onclick="printStockValue()">Print report</button></div>
       <div id="catBars"></div>
     </div>
 
@@ -536,6 +537,7 @@
     <div class="row" style="gap:8px">
       <button class="btn full" onclick="shareText()">Share / copy as text</button>
       <button class="btn ghost full" onclick="printReorder()">Print reorder report</button>
+      <button class="btn ghost full" onclick="printStockValue()">Print stock value report</button>
       <button class="btn ghost full" onclick="printLabels()">Print barcode labels</button>
       <button class="btn ghost full" onclick="printList()">Print stock list</button>
       <button class="btn ghost full" onclick="exportCSV()">Download CSV</button>
@@ -1018,6 +1020,37 @@ function printReorder(){
   html+='<tr class="totrow"><td class="lbl" colspan="6">Total to order — '+list.length+' item'+(list.length===1?'':'s')+'</td><td class="n">'+grandQty+'</td><td></td><td class="n">'+money(grandStock)+'</td><td class="n">'+money(grand)+'</td><td></td></tr>';
   html+='</tbody></table><div class="ptotal">Total: '+list.length+' item'+(list.length===1?'':'s')+'  ·  '+grandQty+' unit'+(grandQty===1?'':'s')+' to order  ·  Stock value: '+money(grandStock)+'  ·  Order value: '+money(grand)+'</div>';
   const pa=$('printArea'); pa.classList.add('land'); pa.innerHTML=html;
+  const sd=$('shareDlg'); if(sd && sd.open) sd.close();
+  setTimeout(()=>window.print(),80);
+}
+
+/* ---------- STOCK VALUE REPORT (whole inventory, grouped by category) ---------- */
+function printStockValue(){
+  if(!state.items.length){ toast('No items to value yet.'); return; }
+  const groups={};
+  state.items.forEach(i=>{ const c=clean(i.category)||'Uncategorised'; (groups[c]=groups[c]||[]).push(i); });
+  const cats=Object.keys(groups).sort((a,b)=> a==='Uncategorised'?1 : b==='Uncategorised'?-1 : a.localeCompare(b));
+  const multi=cats.length>1;
+  let grand=0, grandUnits=0;
+  const dateStr=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let html='<h2>Stock Value Report</h2><div class="pmeta"><b>Date:</b> '+dateStr+'  ·  '+state.items.length+' item'+(state.items.length===1?'':'s')+'</div>';
+  html+='<table><thead><tr><th>Category</th><th>Item</th><th>SKU</th><th>Location</th><th class="n">In stock</th><th class="n">Unit £</th><th class="n">Stock value £</th></tr></thead><tbody>';
+  cats.forEach(cat=>{
+    const items=groups[cat].slice().sort((a,b)=>a.name.localeCompare(b.name));
+    let subVal=0, subUnits=0;
+    items.forEach(i=>{
+      const val = i.cost>0 ? i.qty*i.cost : null;
+      if(val!=null) subVal+=val;
+      subUnits+=i.qty;
+      html+='<tr><td>'+escapeHtml(cat)+'</td><td>'+escapeHtml(i.name)+'</td><td>'+escapeHtml(i.sku||'')+'</td><td>'+escapeHtml(i.location||'')+'</td>'
+        +'<td class="n">'+i.qty+'</td><td class="n">'+(i.cost>0?money(i.cost):'')+'</td><td class="n">'+(val!=null?money(val):'—')+'</td></tr>';
+    });
+    grand+=subVal; grandUnits+=subUnits;
+    if(multi) html+='<tr class="subrow"><td class="lbl" colspan="4">'+escapeHtml(cat)+' subtotal</td><td class="n">'+subUnits+'</td><td></td><td class="n">'+money(subVal)+'</td></tr>';
+  });
+  html+='<tr class="totrow"><td class="lbl" colspan="4">Total — '+state.items.length+' item'+(state.items.length===1?'':'s')+'</td><td class="n">'+grandUnits+'</td><td></td><td class="n">'+money(grand)+'</td></tr>';
+  html+='</tbody></table><div class="ptotal">Total: '+state.items.length+' item'+(state.items.length===1?'':'s')+'  ·  '+grandUnits.toLocaleString()+' unit'+(grandUnits===1?'':'s')+'  ·  Stock value: '+money(grand)+'</div>';
+  const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
   setTimeout(()=>window.print(),80);
 }
