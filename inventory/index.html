@@ -237,6 +237,14 @@
   #scanVideo{width:100%; height:100%; object-fit:cover; display:block}
   .scanline{position:absolute; left:8%; right:8%; top:50%; height:2px; background:var(--danger); box-shadow:0 0 10px 1px var(--danger); animation:scanmove 1.7s ease-in-out infinite; pointer-events:none}
   @keyframes scanmove{0%,100%{top:26%}50%{top:74%}}
+  .assign-list{max-height:230px; overflow:auto; border:1px solid var(--line2); border-radius:8px; margin-top:8px}
+  .assign-item{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer}
+  .assign-item:last-child{border-bottom:none}
+  .assign-item:hover{background:var(--card2)}
+  .assign-item .an{font-weight:600; font-size:13.5px}
+  .assign-item .asub{font-size:11.5px; color:var(--muted); margin-top:1px}
+  .assign-item .abc{font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; flex:none}
+  .assign-empty{padding:16px 12px; text-align:center; color:var(--muted); font-size:13px; font-weight:500}
   .bigqty{font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-1px; line-height:1; margin:6px 0 2px}
   .bigqty small{font-size:13px; font-weight:500; color:var(--muted); letter-spacing:0; margin-left:6px}
   .found-meta{font-size:12.5px; color:var(--muted); font-weight:500; margin-bottom:16px}
@@ -536,6 +544,21 @@
       <button class="btn ghost" onclick="scanAgain()">Scan another</button>
     </div>
     <button class="btn ghost full" style="margin-top:8px" onclick="foundDlg.close()">Done</button>
+  </div>
+</dialog>
+
+<!-- scanned code not recognised -->
+<dialog id="assignDlg">
+  <div class="modal">
+    <h3>Barcode not linked yet</h3>
+    <div class="found-meta" style="margin-bottom:14px">Code <b id="assignCode"></b> isn't on any item yet. Add it as a new item, or link it to one you already have.</div>
+    <button class="btn full" onclick="assignAddNew()"><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add as a new item</button>
+    <div style="margin-top:16px">
+      <label>Link to an existing item</label>
+      <input id="assignSearch" placeholder="Search items by name, SKU…" autocomplete="off" oninput="renderAssignList()">
+      <div id="assignList" class="assign-list"></div>
+    </div>
+    <button class="btn ghost full" style="margin-top:14px" onclick="assignDlg.close()">Cancel</button>
   </div>
 </dialog>
 
@@ -993,22 +1016,60 @@ function handleCode(code){
   const lc=code.toLowerCase();
   const it=state.items.find(i=> (i.barcode && i.barcode.toLowerCase()===lc) || (i.sku && i.sku.toLowerCase()===lc));
   if(it){ openFound(it.id); return; }
-  if(confirm('No item has the code “'+code+'”.\n\nAdd it as a new item?')){
-    show('stock'); setTab('stock');
-    const box=$('addBox'); if(box) box.open=true;
-    ['fName','fSku','fCat','fReorder','fCost','fLoc','fSup'].forEach(id=>{ if($(id)) $(id).value=''; });
-    $('fQty').value='0'; $('fBarcode').value=code;
-    render();
-    setTimeout(()=>{ try{ $('fName').scrollIntoView({block:'center'}); $('fName').focus(); }catch(e){} }, 60);
-    toast('New item — barcode prefilled');
-  }
+  openAssign(code);
+}
+
+/* ---------- scanned code not recognised: add new OR link to existing ---------- */
+let pendingCode=null;
+function openAssign(code){
+  pendingCode=clean(code);
+  if(!pendingCode) return;
+  $('assignCode').textContent=pendingCode;
+  $('assignSearch').value='';
+  renderAssignList();
+  $('assignDlg').showModal();
+}
+function renderAssignList(){
+  const el=$('assignList'); if(!el) return;
+  const q=clean($('assignSearch').value).toLowerCase();
+  let list=state.items.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.location].some(v=>(v||'').toLowerCase().includes(q)));
+  if(!list.length){ el.innerHTML='<div class="assign-empty">'+(state.items.length?'No items match.':'You have no items yet — add one instead.')+'</div>'; return; }
+  el.innerHTML=list.map(i=>{
+    const sub=[i.sku?'#'+escapeHtml(i.sku):'', i.category?escapeHtml(i.category):'', i.qty+' in stock'].filter(Boolean).join('  ·  ');
+    const bc=i.barcode?('has '+escapeHtml(i.barcode)):'';
+    return `<div class="assign-item" onclick="assignTo('${i.id}')">
+      <div style="min-width:0"><div class="an">${escapeHtml(i.name)}</div><div class="asub">${sub}</div></div>
+      ${bc?`<div class="abc">${bc}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function assignTo(id){
+  const it=state.items.find(i=>i.id===id); if(!it||!pendingCode) return;
+  if(it.barcode && it.barcode!==pendingCode && !confirm('“'+it.name+'” already has the barcode '+it.barcode+'.\n\nReplace it with '+pendingCode+'?')) return;
+  it.barcode=pendingCode;
+  save();
+  $('assignDlg').close();
+  toast('Barcode linked to “'+it.name+'”');
+  openFound(it.id);
+  pendingCode=null;
+}
+function assignAddNew(){
+  const code=pendingCode; $('assignDlg').close(); pendingCode=null;
+  show('stock'); setTab('stock');
+  const box=$('addBox'); if(box) box.open=true;
+  ['fName','fSku','fCat','fReorder','fCost','fLoc','fSup'].forEach(id=>{ if($(id)) $(id).value=''; });
+  $('fQty').value='0'; $('fBarcode').value=code||'';
+  render();
+  setTimeout(()=>{ try{ $('fName').scrollIntoView({block:'center'}); $('fName').focus(); }catch(e){} }, 60);
+  toast('New item — barcode prefilled');
 }
 function openFound(id){ foundId=id; if(!renderFound()) return; $('foundDlg').showModal(); }
 function renderFound(){
   const it=state.items.find(i=>i.id===foundId);
   if(!it){ try{ $('foundDlg').close(); }catch(e){} return false; }
   $('foundName').textContent=it.name;
-  $('foundMeta').textContent=[it.sku?'#'+it.sku:'', it.category, it.location, it.barcode?'⋮ '+it.barcode:''].filter(Boolean).join('   ·   ');
+  $('foundMeta').textContent=[it.sku?'#'+it.sku:'', it.category, it.location, it.barcode||''].filter(Boolean).join('   ·   ');
   const q=$('foundQty'); q.textContent=it.qty;
   q.style.color = it.qty<=0 ? 'var(--danger)' : (it.reorder>0 && it.qty<=it.reorder ? 'var(--amber)' : '');
   return true;
