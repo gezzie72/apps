@@ -266,7 +266,17 @@
     #printArea td{border-bottom:1px solid #ddd; padding:6px 6px}
     #printArea td.n{text-align:right; font-variant-numeric:tabular-nums}
     #printArea .ptotal{margin-top:14px; font-weight:700; font-size:14px}
+    #printArea .lsheet-h{font-size:16px; font-weight:700; margin:0 0 4mm}
+    #printArea .labels{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5mm}
+    #printArea .label{border:1px solid #999; border-radius:4px; padding:5mm 4mm; text-align:center; break-inside:avoid; page-break-inside:avoid; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.5mm; min-height:26mm}
+    #printArea .label.solo{max-width:90mm; margin:8mm auto}
+    #printArea .label .lname{font-weight:700; font-size:12px; line-height:1.2}
+    #printArea .label .lsub{font-size:9.5px; color:#444}
+    #printArea .label svg.bc{display:block; margin-top:1mm}
+    #printArea .label svg.bc rect{fill:#000}
+    #printArea .label .lcode{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; letter-spacing:1.5px; margin-top:.5mm}
   }
+  svg.bc rect{fill:#000}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -457,6 +467,7 @@
         <button class="btn ghost" onclick="editDlg.close()">Cancel</button>
         <button class="btn" onclick="saveEdit()">Save changes</button>
       </div>
+      <button class="btn ghost full sm" onclick="printItemLabel(editId)"><svg class="ico sm" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg> Print label</button>
       <button class="btn danger full sm" onclick="deleteItem()" style="margin-top:2px">Delete item</button>
     </div>
   </div>
@@ -507,7 +518,8 @@
     <h3>Export inventory</h3>
     <div class="row" style="gap:8px">
       <button class="btn full" onclick="shareText()">Share / copy as text</button>
-      <button class="btn ghost full" onclick="printList()">Print</button>
+      <button class="btn ghost full" onclick="printLabels()">Print barcode labels</button>
+      <button class="btn ghost full" onclick="printList()">Print stock list</button>
       <button class="btn ghost full" onclick="exportCSV()">Download CSV</button>
       <button class="btn ghost full" style="margin-top:4px" onclick="shareDlg.close()">Close</button>
     </div>
@@ -890,6 +902,56 @@ function exportCSV(){
   const blob=new Blob([csv],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventory-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
   $('shareDlg').close();
+}
+
+/* ---------- BARCODE LABELS (self-contained Code 128-B renderer) ---------- */
+const C128=["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+function code128B(text){
+  const codes=[104]; let sum=104, pos=1;   // Start B
+  for(const ch of String(text)){
+    let v=ch.charCodeAt(0)-32; if(v<0||v>94) v=0;
+    codes.push(v); sum+=v*pos; pos++;
+  }
+  codes.push(sum%103); codes.push(106);      // checksum + Stop
+  const bars=[];
+  codes.forEach(code=>{ const pat=C128[code]; for(let i=0;i<pat.length;i++) bars.push({w:+pat[i], on:i%2===0}); });
+  return bars;
+}
+function barcodeSVG(text){
+  const bars=code128B(text), total=bars.reduce((s,b)=>s+b.w,0), h=40;
+  let x=0, rects='';
+  bars.forEach(b=>{ if(b.on) rects+=`<rect x="${x}" y="0" width="${b.w}" height="${h}"/>`; x+=b.w; });
+  const wmm=Math.max(28, total*0.33).toFixed(1);
+  return `<svg class="bc" viewBox="0 0 ${total} ${h}" preserveAspectRatio="none" style="width:${wmm}mm;height:13mm" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">${rects}</svg>`;
+}
+function labelCode(it){ return it.barcode || it.sku || ''; }   // what the label encodes (scans back to this item)
+function labelHTML(it, solo){
+  const code=labelCode(it);
+  const sub=[it.sku && it.sku!==code?'#'+escapeHtml(it.sku):'', it.category?escapeHtml(it.category):'', it.location?escapeHtml(it.location):''].filter(Boolean).join(' · ');
+  return `<div class="label${solo?' solo':''}">
+    <div class="lname">${escapeHtml(it.name)}</div>
+    ${sub?`<div class="lsub">${sub}</div>`:''}
+    ${barcodeSVG(code)}
+    <div class="lcode">${escapeHtml(code)}</div>
+  </div>`;
+}
+function printLabels(){
+  const list=visibleItems().filter(i=>labelCode(i));
+  if(!list.length){ toast('No items in view have a barcode or SKU to print.'); return; }
+  const skipped=visibleItems().length-list.length;
+  const html='<div class="lsheet-h">Barcode labels — '+list.length+' item'+(list.length===1?'':'s')+'</div>'
+    +'<div class="labels">'+list.map(i=>labelHTML(i,false)).join('')+'</div>';
+  $('printArea').innerHTML=html;
+  $('shareDlg').close();
+  if(skipped) toast(skipped+' item'+(skipped===1?'':'s')+' skipped (no barcode or SKU)');
+  setTimeout(()=>window.print(),80);
+}
+function printItemLabel(id){
+  const it=state.items.find(i=>i.id===id); if(!it) return;
+  if(!labelCode(it)){ toast('Add a barcode or SKU first, then print a label.'); return; }
+  $('printArea').innerHTML=labelHTML(it,true);
+  try{ $('editDlg').close(); }catch(e){}
+  setTimeout(()=>window.print(),80);
 }
 
 /* ---------- BACKUP / RESTORE ---------- */
