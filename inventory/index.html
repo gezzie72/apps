@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f7fb">
+<title>INVENTORY</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f4f7fb; --card:#ffffff; --ink:#1a2230; --muted:#7c8aa0;
+    --line:#e4ebf3; --line2:#d6e0ec;
+    --accent:#0f9d76; --accent-d:#0b7d5e; --accent-soft:#e2f4ee;
+    --chrome:#1a2230; --chrome-ink:#f4f7fb;
+    --danger:#e5484d; --amber:#f59e0b;
+    --shadow:0 1px 2px rgba(26,34,48,.05), 0 6px 20px -12px rgba(26,34,48,.16);
+    --radius:18px; --tscale:1;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#1c2430; --card:#26313f; --ink:#e7edf5; --muted:#95a4b8;
+      --line:#33404f; --line2:#3d4b5c;
+      --accent:#2bbf94; --accent-d:#22a883; --accent-soft:#1e3a33;
+      --chrome:#26313f; --chrome-ink:#e7edf5;
+      --danger:#ff6369; --amber:#fbbf24;
+      --shadow:0 1px 2px rgba(0,0,0,.25), 0 8px 24px -14px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1c2430; --card:#26313f; --ink:#e7edf5; --muted:#95a4b8;
+    --line:#33404f; --line2:#3d4b5c;
+    --accent:#2bbf94; --accent-d:#22a883; --accent-soft:#1e3a33;
+    --chrome:#26313f; --chrome-ink:#e7edf5;
+    --danger:#ff6369; --amber:#fbbf24;
+    --shadow:0 1px 2px rgba(0,0,0,.25), 0 8px 24px -14px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg); color:var(--ink);
+    padding:0 15px calc(40px + env(safe-area-inset-bottom));
+    max-width:640px; margin:0 auto; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    zoom:var(--tscale);
+  }
+
+  header{
+    position:sticky; top:0; z-index:30;
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:saturate(180%) blur(14px);
+    margin:0 -15px; padding:calc(16px + env(safe-area-inset-top)) 15px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex; align-items:center; gap:11px}
+  .logo{
+    width:38px; height:38px; border-radius:12px; flex:none;
+    background:var(--accent); color:#fff; display:grid; place-items:center;
+    font-size:20px; box-shadow:0 4px 12px -4px color-mix(in srgb,var(--accent) 60%,transparent);
+  }
+  .brand h1{margin:0; font-size:17px; font-weight:800; letter-spacing:-.2px}
+  .brand p{margin:1px 0 0; font-size:12px; color:var(--muted); font-weight:600}
+  .brand .btxt{flex:1; min-width:0}
+  .brand .btxt p{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .iconbtn{flex:none; width:38px; height:38px; border-radius:11px; border:1px solid var(--line);
+    background:var(--card); color:var(--ink); font-size:17px; cursor:pointer; box-shadow:var(--shadow); font-family:inherit}
+  .iconbtn:active{transform:scale(.96)}
+  .syncbtn{margin-left:auto; flex:none; display:flex; align-items:center; gap:7px; background:var(--card);
+    border:1px solid var(--line); color:var(--ink); border-radius:20px; padding:7px 12px; font-size:12px;
+    font-weight:800; letter-spacing:.2px; cursor:pointer; font-family:inherit; box-shadow:var(--shadow); white-space:nowrap}
+  .syncbtn:active{transform:scale(.97)}
+  .syncbtn .sdot{width:8px; height:8px; border-radius:50%; background:var(--muted); flex:none}
+  .syncbtn.on .sdot{background:var(--accent)}
+  .backbtn{background:none; border:none; color:var(--accent-d); font-weight:800; font-size:14px;
+    cursor:pointer; padding:2px 0; margin:0 0 14px; font-family:inherit; display:flex; align-items:center; gap:5px}
+
+  .tabs{display:flex; gap:4px; background:var(--card); border:1px solid var(--line);
+    padding:4px; border-radius:14px; margin:16px 0 18px; box-shadow:var(--shadow)}
+  .tabs button{
+    flex:1; padding:9px 6px; border:none; border-radius:10px; cursor:pointer;
+    background:transparent; color:var(--muted); font-weight:700; font-size:13px;
+    letter-spacing:.3px; font-family:inherit; transition:.15s;
+  }
+  .tabs button.on{background:var(--ink); color:var(--card)}
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:16px; box-shadow:var(--shadow);
+  }
+
+  label{display:block; font-size:11px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.6px; margin:0 0 5px}
+  input,select,textarea{
+    width:100%; padding:12px 13px; border:1.5px solid var(--line2); border-radius:12px;
+    background:var(--bg); color:var(--ink); font-size:16px; font-family:inherit; font-weight:600;
+    transition:.15s;
+  }
+  textarea{min-height:64px; resize:vertical; font-weight:500}
+  input::placeholder,textarea::placeholder{color:var(--muted); font-weight:500}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent); background:var(--card)}
+  .row{display:grid; gap:10px}
+  .duo{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+
+  .btn{
+    border:none; border-radius:12px; padding:13px; font-size:15px; font-weight:800;
+    cursor:pointer; background:var(--accent); color:#fff; letter-spacing:.2px;
+    font-family:inherit; transition:.12s; display:flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .btn:hover{background:var(--accent-d)}
+  .btn:active{transform:scale(.985)}
+  .btn.full{width:100%}
+  .btn.ghost{background:var(--bg); color:var(--ink); border:1.5px solid var(--line2)}
+  .btn.ghost:hover{background:var(--card); border-color:var(--muted)}
+  .btn.dark{background:var(--ink); color:var(--card)}
+  .btn.sm{padding:10px 14px; font-size:13px}
+  .btn.danger{background:var(--danger)}
+
+  details.addbox{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:16px}
+  details.addbox>summary{list-style:none; cursor:pointer; padding:15px 16px; font-weight:800; font-size:15px; letter-spacing:-.2px; display:flex; align-items:center; gap:9px}
+  details.addbox>summary::-webkit-details-marker{display:none}
+  details.addbox>summary .plus{width:26px; height:26px; border-radius:8px; background:var(--accent); color:#fff; display:grid; place-items:center; font-size:17px; flex:none}
+  details.addbox[open]>summary .plus{background:var(--ink)}
+  details.addbox .inner{padding:0 16px 16px}
+
+  .toolbar{display:flex; gap:8px; align-items:center; margin-bottom:12px}
+  .search{flex:1; position:relative}
+  .search input{padding-left:38px}
+  .search .mag{position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:15px; pointer-events:none}
+
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px}
+  .chips button{border:1.5px solid var(--line2); background:var(--bg); color:var(--ink); border-radius:20px;
+    padding:6px 13px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:.2px; transition:.12s; white-space:nowrap}
+  .chips button:hover{border-color:var(--accent); color:var(--accent-d)}
+  .chips button.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .chips button.low.on{background:var(--amber); border-color:var(--amber)}
+
+  .listhead{display:flex; justify-content:space-between; align-items:center; margin:4px 2px 12px}
+  .listhead .ttl{font-weight:800; letter-spacing:-.2px; font-size:15px}
+  .pill{font-size:11px; font-weight:800; padding:4px 10px; border-radius:20px;
+    background:var(--accent-soft); color:var(--accent-d); letter-spacing:.3px}
+
+  .item{
+    display:flex; align-items:center; gap:12px; padding:13px 14px;
+    border:1px solid var(--line); border-radius:15px; background:var(--card);
+    margin-bottom:9px; box-shadow:var(--shadow); transition:.12s;
+  }
+  .item.low{border-color:color-mix(in srgb,var(--amber) 55%,var(--line))}
+  .item.out{border-color:color-mix(in srgb,var(--danger) 55%,var(--line))}
+  .item .body{flex:1; min-width:0; cursor:pointer}
+  .item .name{font-weight:700; letter-spacing:-.1px; word-break:break-word}
+  .item .meta{font-size:12px; color:var(--muted); margin-top:2px; font-weight:600; display:flex; flex-wrap:wrap; gap:4px 10px}
+  .item .tag{display:inline-block; font-size:9px; font-weight:800; letter-spacing:.5px; border-radius:5px; padding:1px 5px; vertical-align:middle}
+  .tag.lowb{color:#5a3d00; background:var(--amber)}
+  .tag.outb{color:#fff; background:var(--danger)}
+
+  .stepper{display:flex; align-items:center; gap:2px; flex:none; background:var(--bg); border:1.5px solid var(--line2); border-radius:12px; padding:3px}
+  .stepper button{width:32px; height:32px; border:none; background:transparent; color:var(--ink); font-size:19px; font-weight:800; cursor:pointer; border-radius:9px; font-family:inherit; line-height:1}
+  .stepper button:hover{background:var(--card)}
+  .stepper button:active{transform:scale(.9)}
+  .stepper button:disabled{opacity:.3; cursor:default}
+  .stepper .qty{min-width:40px; text-align:center; font-weight:800; font-size:17px; font-variant-numeric:tabular-nums}
+  .item.out .qty{color:var(--danger)}
+  .item.low .qty{color:var(--amber)}
+
+  .empty{text-align:center; color:var(--muted); padding:44px 16px; font-size:14px; font-weight:600}
+  .empty .big{font-size:32px; margin-bottom:8px; opacity:.55}
+  .hint{text-align:center; color:var(--muted); font-size:11.5px; margin:14px 6px 0; font-weight:500; line-height:1.5}
+
+  .stat{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px}
+  .stat .box{background:var(--card); border:1px solid var(--line); border-radius:15px;
+    padding:14px 12px; text-align:center; box-shadow:var(--shadow)}
+  .stat .box b{display:block; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.5px}
+  .stat .box small{color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.6px; font-weight:700}
+  .stat .box.hi b{color:var(--accent-d)}
+  .stat .box.warn b{color:var(--amber)}
+  .stat .box.bad b{color:var(--danger)}
+
+  .sb-row{margin-bottom:13px}
+  .sb-row:last-child{margin-bottom:0}
+  .sb-top{display:flex; justify-content:space-between; align-items:baseline; font-size:13px; margin-bottom:5px}
+  .sb-name{font-weight:800; letter-spacing:.3px}
+  .sb-val{font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums}
+  .sb-track{height:9px; border-radius:5px; background:var(--bg); border:1px solid var(--line2); overflow:hidden}
+  .sb-fill{height:100%; background:var(--accent); border-radius:5px}
+
+  .mv-row{display:flex; justify-content:space-between; align-items:center; padding:11px 4px; border-bottom:1px solid var(--line); font-size:14px}
+  .mv-row:last-child{border:none}
+  .mv-l .mv-name{font-weight:700}
+  .mv-l .mv-sub{color:var(--muted); font-weight:600; font-size:12px; margin-top:1px}
+  .mv-delta{font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .mv-delta.up{color:var(--accent-d)} .mv-delta.down{color:var(--danger)}
+
+  dialog{border:none; border-radius:20px; padding:0; background:transparent; max-width:92vw}
+  dialog::backdrop{background:rgba(10,12,15,.55); backdrop-filter:blur(3px)}
+  .modal{background:var(--card); color:var(--ink); border:1px solid var(--line);
+    border-radius:20px; padding:20px; width:380px; max-width:92vw; box-shadow:0 20px 50px -12px rgba(0,0,0,.4); max-height:88vh; overflow:auto}
+  .modal h3{margin:0 0 14px; letter-spacing:-.2px; font-size:16px}
+  .foot{text-align:center; color:var(--muted); font-size:11px; margin:22px 0 4px; font-weight:500}
+  .muted{color:var(--muted)}
+
+  .syncrow{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .chip2{font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px; background:var(--accent-soft); color:var(--accent-d); letter-spacing:.3px}
+  code{background:var(--bg); border:1px solid var(--line2); border-radius:6px; padding:1px 6px; font-size:11px}
+  .seg{display:flex; gap:4px; background:var(--card); border:1px solid var(--line);
+    padding:4px; border-radius:13px; box-shadow:var(--shadow)}
+  .seg button{flex:1; padding:9px; border:none; border-radius:9px;
+    background:transparent; color:var(--muted); font-weight:700; font-size:12px; cursor:pointer;
+    letter-spacing:.4px; font-family:inherit; transition:.15s}
+  .seg button.on{background:var(--accent); color:#fff}
+
+  #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--card);
+    padding:11px 18px; border-radius:12px; font-size:13px; font-weight:700; opacity:0; pointer-events:none; transition:.2s; z-index:100;
+    box-shadow:0 12px 34px -10px rgba(0,0,0,.55); max-width:88vw; text-align:center}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  #printArea{display:none}
+  @media print{
+    body{zoom:1 !important; max-width:none; padding:0}
+    body > *{display:none !important}
+    body > #printArea{display:block !important; color:#000; background:#fff; padding:6px 10px}
+    #printArea h2{font-size:20px; margin:0 0 2px}
+    #printArea .pmeta{color:#555; font-size:12px; margin-bottom:14px}
+    #printArea table{width:100%; border-collapse:collapse; font-size:12px}
+    #printArea th{text-align:left; border-bottom:2px solid #000; padding:6px 6px; text-transform:uppercase; font-size:10px; letter-spacing:.5px}
+    #printArea td{border-bottom:1px dotted #bbb; padding:6px 6px}
+    #printArea td.n{text-align:right; font-variant-numeric:tabular-nums}
+    #printArea .ptotal{margin-top:14px; font-weight:800; font-size:14px}
+  }
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">📦</div>
+    <div class="btxt">
+      <h1>Inventory</h1>
+      <p id="hdrSub">Your stock</p>
+    </div>
+    <button class="syncbtn" id="syncBtn" onclick="openSync()" title="Cross-device sync">
+      <span class="sdot" id="syncDot"></span><span id="syncBtnLabel">Sync</span>
+    </button>
+    <button class="iconbtn" onclick="show('setup')" title="Settings" aria-label="Settings">⚙</button>
+  </div>
+</header>
+
+<!-- ============ STOCK VIEW ============ -->
+<section id="viewStock">
+  <div class="tabs">
+    <button class="on" id="tabStock" onclick="setTab('stock')">Stock</button>
+    <button id="tabReports" onclick="setTab('reports')">Reports</button>
+  </div>
+
+  <!-- STOCK TAB -->
+  <div id="paneStock">
+    <details class="addbox" id="addBox">
+      <summary><span class="plus">＋</span> Add an item</summary>
+      <div class="inner">
+        <div class="row">
+          <div>
+            <label>Item name</label>
+            <input id="fName" placeholder="e.g. M6 × 20 bolt" autocomplete="off">
+          </div>
+          <div class="duo">
+            <div><label>SKU / code</label><input id="fSku" placeholder="optional" autocomplete="off"></div>
+            <div><label>Category</label><input id="fCat" placeholder="optional" autocomplete="off"></div>
+          </div>
+          <div class="chips" id="catChips"></div>
+          <div class="trio">
+            <div><label>In stock</label><input id="fQty" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
+            <div><label>Reorder at</label><input id="fReorder" type="number" inputmode="numeric" step="1" min="0" placeholder="0"></div>
+            <div><label>Unit cost £</label><input id="fCost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+          </div>
+          <div class="duo">
+            <div><label>Location</label><input id="fLoc" placeholder="e.g. Bay A3" autocomplete="off"></div>
+            <div><label>Supplier</label><input id="fSup" placeholder="optional" autocomplete="off"></div>
+          </div>
+          <button class="btn full" onclick="addItem()">＋ Add to inventory</button>
+        </div>
+      </div>
+    </details>
+
+    <div class="toolbar">
+      <div class="search">
+        <span class="mag">🔍</span>
+        <input id="fSearch" placeholder="Search name, SKU, location…" autocomplete="off" oninput="render()">
+      </div>
+      <button class="iconbtn" id="sortBtn" onclick="cycleSort()" title="Sort">↕</button>
+    </div>
+    <div class="chips" id="filterChips"></div>
+
+    <div class="listhead">
+      <span class="ttl">Items</span>
+      <span style="display:flex; align-items:center; gap:8px">
+        <button class="btn ghost sm" onclick="openShare()">⤴ Export</button>
+        <span class="pill" id="listPill">0 items</span>
+      </span>
+    </div>
+
+    <div id="items"></div>
+    <div class="hint">Tap <b>−</b>/<b>+</b> to book stock out or in. Tap an item to edit its details or set an exact count. Items at or below their <b>reorder level</b> are flagged.</div>
+  </div>
+
+  <!-- REPORTS TAB -->
+  <div id="paneReports" hidden>
+    <div class="stat">
+      <div class="box hi"><b id="rItems">0</b><small>Items</small></div>
+      <div class="box"><b id="rUnits">0</b><small>Total units</small></div>
+      <div class="box hi"><b id="rValue">£0</b><small>Stock value (cost)</small></div>
+      <div class="box warn"><b id="rLow">0</b><small>Low / out of stock</small></div>
+    </div>
+
+    <div class="card" id="lowCard">
+      <div class="listhead" style="margin:0 0 10px"><span class="ttl">Needs reordering</span><span class="pill" id="lowPill">0</span></div>
+      <div id="lowList"></div>
+    </div>
+
+    <div class="card">
+      <div class="listhead" style="margin:0 0 12px"><span class="ttl">Value by category</span></div>
+      <div id="catBars"></div>
+    </div>
+
+    <div class="card">
+      <div class="listhead" style="margin:0 0 4px"><span class="ttl">Recent movements</span>
+        <button class="btn ghost sm" onclick="clearLog()">Clear</button></div>
+      <div id="mvList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SETUP VIEW ============ -->
+<section id="viewSetup" hidden>
+  <button class="backbtn" onclick="show('stock')">‹ Back to inventory</button>
+  <div class="card">
+    <div class="listhead" style="margin:0 0 12px"><span class="ttl">Appearance</span></div>
+    <label>Theme</label>
+    <div class="seg" id="themeSeg" style="margin-bottom:14px">
+      <button data-t="system" onclick="setTheme('system')">System</button>
+      <button data-t="light" onclick="setTheme('light')">Light</button>
+      <button data-t="dark" onclick="setTheme('dark')">Dark</button>
+    </div>
+    <label>Text size</label>
+    <div class="seg" id="sizeSeg" style="margin-bottom:0">
+      <button data-s="0.9" onclick="setSize('0.9')">S</button>
+      <button data-s="1" onclick="setSize('1')">M</button>
+      <button data-s="1.12" onclick="setSize('1.12')">L</button>
+      <button data-s="1.25" onclick="setSize('1.25')">XL</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="listhead" style="margin:0 0 8px"><span class="ttl">Cross-device sync</span></div>
+    <div class="hint" style="text-align:left; margin:0">Sync lives on the <b>⟳ button, top-right</b>. Tap it to connect a device, sync your stock, or set an encryption passphrase.</div>
+  </div>
+
+  <div class="card">
+    <div class="listhead" style="margin:0 0 8px"><span class="ttl">Backup</span></div>
+    <div class="hint" style="text-align:left; margin:0 0 12px">Save a copy of your whole inventory to a file on this device — a safety net that doesn't depend on GitHub. Keep it somewhere safe; restore anytime.</div>
+    <div class="syncrow">
+      <button class="btn" onclick="backupData()">⬇ Back up my data</button>
+      <button class="btn ghost sm" onclick="document.getElementById('restoreFile').click()">Restore from file…</button>
+      <input id="restoreFile" type="file" accept="application/json,.json" hidden onchange="restoreData(this.files[0]); this.value='';">
+    </div>
+    <div class="hint" id="lastBackupHint" style="text-align:left; margin-top:10px"></div>
+  </div>
+</section>
+
+<div class="foot">Syncs to your private GitHub gist · works offline</div>
+
+<!-- edit / detail modal -->
+<dialog id="editDlg">
+  <div class="modal">
+    <h3 id="editTitle">Edit item</h3>
+    <div class="row">
+      <div><label>Item name</label><input id="eName"></div>
+      <div class="duo">
+        <div><label>SKU / code</label><input id="eSku" autocomplete="off"></div>
+        <div><label>Category</label><input id="eCat" autocomplete="off"></div>
+      </div>
+      <div class="trio">
+        <div><label>In stock</label><input id="eQty" type="number" step="1" min="0" inputmode="numeric"></div>
+        <div><label>Reorder at</label><input id="eReorder" type="number" step="1" min="0" inputmode="numeric"></div>
+        <div><label>Unit cost £</label><input id="eCost" type="number" step="0.01" min="0" inputmode="decimal"></div>
+      </div>
+      <div class="duo">
+        <div><label>Sale price £</label><input id="ePrice" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div><label>Location</label><input id="eLoc" autocomplete="off"></div>
+      </div>
+      <div><label>Supplier</label><input id="eSup" autocomplete="off"></div>
+      <div><label>Notes</label><textarea id="eNotes" placeholder="optional"></textarea></div>
+      <div class="row" style="grid-template-columns:1fr 1fr; margin-top:4px">
+        <button class="btn ghost" onclick="editDlg.close()">Cancel</button>
+        <button class="btn" onclick="saveEdit()">Save</button>
+      </div>
+      <button class="btn danger full sm" onclick="deleteItem()" style="margin-top:2px">🗑 Delete item</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- sync modal -->
+<dialog id="syncDlg">
+  <div class="modal">
+    <div class="listhead" style="margin:0 0 12px"><span class="ttl">Cross-device sync</span><span class="chip2" id="syncState">Off</span></div>
+    <div id="syncDisconnected">
+      <label>GitHub token (classic, “gist” scope)</label>
+      <div class="syncrow" style="margin-bottom:10px">
+        <input id="ghToken" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" style="flex:1 1 150px">
+        <button class="btn ghost sm" id="ghShowToken" onclick="toggleToken()">Show</button>
+      </div>
+      <label>Gist ID (optional — leave blank to auto-find / create)</label>
+      <input id="ghGist" placeholder="blank on your first device" autocomplete="off" spellcheck="false" style="margin-bottom:12px">
+      <button class="btn full" onclick="ghConnect()">Connect</button>
+    </div>
+    <div id="syncConnected" hidden>
+      <div class="hint" style="text-align:left; margin:0 0 4px">Connected as <b id="syncUser">…</b></div>
+      <div class="hint" style="text-align:left; margin:0">Gist <code id="syncGistId"></code></div>
+      <div class="syncrow" style="margin-top:12px">
+        <button class="btn sm" onclick="doSyncNow()">Sync now</button>
+        <label class="muted" style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600"><input type="checkbox" id="ghAuto" onchange="toggleAuto()" style="width:auto"> Auto-sync</label>
+        <button class="btn ghost sm" onclick="ghDisconnect()" style="margin-left:auto">Disconnect</button>
+      </div>
+      <div class="syncrow" style="margin-top:14px; padding-top:12px; border-top:1px solid var(--line2)">
+        <span class="muted" style="font-size:13px; font-weight:600">Cloud encryption:</span> <b id="encStatus" style="font-size:13px"></b>
+      </div>
+      <div class="syncrow" style="margin-top:8px">
+        <input id="ghPass" type="password" placeholder="Sync passphrase" autocomplete="off" spellcheck="false" style="flex:1 1 150px">
+        <button class="btn ghost sm" id="passShowBtn" onclick="passShow()">Show</button>
+        <button class="btn sm" id="passSet" onclick="passSet()">Encrypt cloud copy</button>
+        <button class="btn ghost sm" id="passClear" onclick="passClear()" style="display:none">Remove</button>
+      </div>
+      <div class="hint" style="text-align:left">Encrypts the copy stored in your gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. <b>No recovery</b> if you forget it — keep a backup. Your on-device data stays readable.</div>
+    </div>
+    <div id="syncMsg" class="hint" style="text-align:left; min-height:1.1em; margin-top:10px"></div>
+    <div class="hint" style="text-align:left">Your stock syncs through a <b>private gist</b> in your own GitHub account — same as your other apps. Use the <b>same token</b> on each device; the first device to save wins if you edit two at once.</div>
+    <button class="btn ghost full" style="margin-top:14px" onclick="syncDlg.close()">Close</button>
+  </div>
+</dialog>
+
+<!-- export / print -->
+<dialog id="shareDlg">
+  <div class="modal">
+    <h3>Export inventory</h3>
+    <div class="row" style="gap:8px">
+      <button class="btn full" onclick="shareText()">⤴ Share / copy as text</button>
+      <button class="btn ghost full" onclick="printList()">🖨 Print</button>
+      <button class="btn ghost full" onclick="exportCSV()">⤓ Download CSV</button>
+      <button class="btn ghost full" style="margin-top:4px" onclick="shareDlg.close()">Close</button>
+    </div>
+    <div class="hint" style="text-align:left; margin-top:6px">Exports the items currently shown (matching your search &amp; filter).</div>
+  </div>
+</dialog>
+
+<div id="printArea"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const money=n=>'£'+(+n||0).toFixed(2);
+const money0=n=>'£'+Math.round(+n||0).toLocaleString();
+const uc=s=>(s||'').toString().toUpperCase().trim();
+const clean=s=>(s||'').toString().trim();
+const num=v=>{ const n=parseFloat(v); return isFinite(n)?n:0; };
+const int=v=>{ const n=parseInt(v,10); return isFinite(n)?n:0; };
+
+let editId=null;
+let tab='stock';
+let filterCat='all';   // 'all' | 'low' | a category name
+const SORTS=['name','low','qty','value'];
+const SORT_LABEL={name:'A–Z', low:'Low first', qty:'Qty', value:'Value'};
+let state=load();   // after SORTS: normalize() reads it
+
+function normalize(s){
+  s=s||{};
+  s.items=Array.isArray(s.items)?s.items:[];
+  s.log=Array.isArray(s.log)?s.log:[];
+  s.sort=SORTS.includes(s.sort)?s.sort:'low';
+  s.updatedAt=+s.updatedAt||0;
+  s.items.forEach(it=>{
+    it.qty=int(it.qty); it.reorder=int(it.reorder);
+    it.cost=num(it.cost); it.price=num(it.price);
+  });
+  return s;
+}
+function load(){
+  try{ return normalize(JSON.parse(localStorage.getItem('inventory'))||{}); }
+  catch{ return normalize({}); }
+}
+function persist(){ try{ localStorage.setItem('inventory', JSON.stringify(state)); }catch(e){} }
+function save(){ state.updatedAt=Date.now(); persist(); schedulePush(); }
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- CATEGORY CHIPS (add form) ---------- */
+let _chipCats=[];
+function categories(){ return [...new Set(state.items.map(i=>i.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function renderCatChips(){
+  const el=$('catChips'); if(!el) return;
+  _chipCats=categories();
+  if(!_chipCats.length){ el.innerHTML=''; return; }
+  const cur=clean($('fCat').value);
+  el.innerHTML=_chipCats.map((c,i)=>`<button type="button" class="${c===cur?'on':''}" onclick="pickCat(${i})">${escapeHtml(c)}</button>`).join('');
+}
+function pickCat(i){ const c=_chipCats[i]; if(c==null) return; $('fCat').value=c; renderCatChips(); }
+
+/* ---------- ADD / EDIT ---------- */
+function addItem(){
+  const name=clean($('fName').value);
+  if(!name){ $('fName').focus(); return; }
+  const qty=Math.max(0,int($('fQty').value));
+  const it={
+    id:Date.now()+''+Math.random().toString(36).slice(2,6),
+    name, sku:clean($('fSku').value), category:clean($('fCat').value),
+    qty, reorder:Math.max(0,int($('fReorder').value)), cost:Math.max(0,num($('fCost').value)),
+    price:0, location:clean($('fLoc').value), supplier:clean($('fSup').value), notes:''
+  };
+  state.items.push(it);
+  if(qty>0) addLog(it, qty, qty, 'added');
+  save();
+  ['fName','fSku','fCat','fReorder','fCost','fLoc','fSup'].forEach(id=>$(id).value='');
+  $('fQty').value='0';
+  renderCatChips();
+  $('fName').focus();
+  render();
+  toast('Added “'+name+'”');
+}
+function openEdit(id){
+  const it=state.items.find(i=>i.id===id); if(!it) return;
+  editId=id;
+  $('editTitle').textContent=it.name;
+  $('eName').value=it.name; $('eSku').value=it.sku||''; $('eCat').value=it.category||'';
+  $('eQty').value=it.qty; $('eReorder').value=it.reorder; $('eCost').value=it.cost||'';
+  $('ePrice').value=it.price||''; $('eLoc').value=it.location||''; $('eSup').value=it.supplier||'';
+  $('eNotes').value=it.notes||'';
+  $('editDlg').showModal();
+}
+function saveEdit(){
+  const it=state.items.find(i=>i.id===editId); if(!it) return;
+  const newQty=Math.max(0,int($('eQty').value));
+  const diff=newQty-it.qty;
+  it.name=clean($('eName').value)||it.name;
+  it.sku=clean($('eSku').value); it.category=clean($('eCat').value);
+  it.reorder=Math.max(0,int($('eReorder').value)); it.cost=Math.max(0,num($('eCost').value));
+  it.price=Math.max(0,num($('ePrice').value)); it.location=clean($('eLoc').value);
+  it.supplier=clean($('eSup').value); it.notes=clean($('eNotes').value);
+  it.qty=newQty;
+  if(diff!==0) addLog(it, diff, newQty, 'set count');
+  save(); $('editDlg').close(); render();
+}
+function deleteItem(){
+  const it=state.items.find(i=>i.id===editId); if(!it) return;
+  if(!confirm('Delete “'+it.name+'” from your inventory? This can\'t be undone.')) return;
+  state.items=state.items.filter(i=>i.id!==editId);
+  save(); $('editDlg').close(); render(); toast('Item deleted');
+}
+
+/* ---------- STOCK ADJUST (stepper) ---------- */
+function adjust(id, d){
+  const it=state.items.find(i=>i.id===id); if(!it) return;
+  const before=it.qty;
+  it.qty=Math.max(0, it.qty+d);
+  const applied=it.qty-before;
+  if(applied!==0) addLog(it, applied, it.qty, 'quick', true);
+  save(); render();
+}
+/* Movement log. `merge` folds rapid stepper taps on the same item into one row. */
+function addLog(it, delta, resultQty, reason, merge){
+  const now=Date.now();
+  if(merge && state.log.length){
+    const last=state.log[0];
+    if(last.itemId===it.id && last.reason==='quick' && (now-last.ts)<90000){
+      last.delta+=delta; last.qty=resultQty; last.ts=now;
+      if(last.delta===0) state.log.shift();
+      trimLog(); return;
+    }
+  }
+  state.log.unshift({id:now+''+Math.random().toString(36).slice(2,5), itemId:it.id, name:it.name, delta, qty:resultQty, reason, ts:now});
+  trimLog();
+}
+function trimLog(){ if(state.log.length>200) state.log.length=200; }
+function clearLog(){ if(!state.log.length) return; if(!confirm('Clear the movement history?')) return; state.log=[]; save(); render(); }
+
+/* ---------- STATUS ---------- */
+function statusOf(it){ if(it.qty<=0) return 'out'; if(it.reorder>0 && it.qty<=it.reorder) return 'low'; return 'ok'; }
+
+/* ---------- RENDER ---------- */
+function setTab(t){
+  tab=t;
+  $('tabStock').classList.toggle('on', t==='stock');
+  $('tabReports').classList.toggle('on', t==='reports');
+  $('paneStock').hidden=t!=='stock';
+  $('paneReports').hidden=t!=='reports';
+  render();
+}
+function cycleSort(){
+  const i=SORTS.indexOf(state.sort); state.sort=SORTS[(i+1)%SORTS.length];
+  persist(); toast('Sort: '+SORT_LABEL[state.sort]); render();
+}
+function sortItems(list){
+  const rank={out:0, low:1, ok:2};
+  const by=state.sort;
+  return list.slice().sort((a,b)=>{
+    if(by==='low'){ const r=rank[statusOf(a)]-rank[statusOf(b)]; if(r) return r; return a.name.localeCompare(b.name); }
+    if(by==='qty') return b.qty-a.qty || a.name.localeCompare(b.name);
+    if(by==='value') return (b.qty*b.cost)-(a.qty*a.cost) || a.name.localeCompare(b.name);
+    return a.name.localeCompare(b.name);
+  });
+}
+function visibleItems(){
+  const q=clean($('fSearch') ? $('fSearch').value : '').toLowerCase();
+  let list=state.items;
+  if(filterCat==='low') list=list.filter(i=>statusOf(i)!=='ok');
+  else if(filterCat!=='all') list=list.filter(i=>(i.category||'')===filterCat);
+  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.location,i.supplier].some(v=>(v||'').toLowerCase().includes(q)));
+  return sortItems(list);
+}
+function render(){
+  renderCatChips();
+  $('sortBtn').title='Sort: '+SORT_LABEL[state.sort];
+
+  const items=state.items;
+  const units=items.reduce((s,i)=>s+i.qty,0);
+  const lowN=items.filter(i=>statusOf(i)!=='ok').length;
+  $('hdrSub').textContent = items.length
+    ? (items.length+' item'+(items.length===1?'':'s')+' · '+units+' unit'+(units===1?'':'s')+(lowN?' · '+lowN+' low':''))
+    : 'Your stock';
+
+  renderFilterChips();
+
+  if(tab==='reports'){ renderReports(); return; }
+
+  const list=visibleItems();
+  $('listPill').textContent=list.length+' item'+(list.length===1?'':'s');
+
+  const wrap=$('items');
+  if(!items.length){ wrap.innerHTML='<div class="empty"><div class="big">📦</div>No items yet.<br>Tap <b>Add an item</b> to start.</div>'; return; }
+  if(!list.length){ wrap.innerHTML='<div class="empty"><div class="big">🔍</div>Nothing matches.<br>Try a different search or filter.</div>'; return; }
+  wrap.innerHTML=list.map(itemRow).join('');
+}
+function itemRow(i){
+  const st=statusOf(i);
+  const cls=st==='out'?'out':(st==='low'?'low':'');
+  const tag=st==='out'?'<span class="tag outb">OUT</span>':(st==='low'?'<span class="tag lowb">LOW</span>':'');
+  const meta=[];
+  if(i.sku) meta.push('#'+escapeHtml(i.sku));
+  if(i.category) meta.push(escapeHtml(i.category));
+  if(i.location) meta.push('📍'+escapeHtml(i.location));
+  if(i.reorder>0) meta.push('reorder ≤'+i.reorder);
+  if(i.cost>0) meta.push(money(i.qty*i.cost));
+  return `<div class="item ${cls}" data-id="${i.id}">
+    <div class="body" onclick="openEdit('${i.id}')">
+      <div class="name">${escapeHtml(i.name)} ${tag}</div>
+      ${meta.length?`<div class="meta">${meta.map(m=>`<span>${m}</span>`).join('')}</div>`:''}
+    </div>
+    <div class="stepper">
+      <button onclick="adjust('${i.id}',-1)" ${i.qty<=0?'disabled':''} aria-label="Remove one">−</button>
+      <span class="qty">${i.qty}</span>
+      <button onclick="adjust('${i.id}',1)" aria-label="Add one">＋</button>
+    </div>
+  </div>`;
+}
+function renderFilterChips(){
+  const el=$('filterChips'); if(!el) return;
+  const cats=categories();
+  const lowN=state.items.filter(i=>statusOf(i)!=='ok').length;
+  let html=`<button class="${filterCat==='all'?'on':''}" onclick="setFilter('all')">All</button>`;
+  html+=`<button class="low ${filterCat==='low'?'on':''}" onclick="setFilter('low')">Low / out${lowN?' ('+lowN+')':''}</button>`;
+  html+=cats.map(c=>`<button class="${filterCat===c?'on':''}" onclick="setFilter('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`).join('');
+  el.innerHTML=html;
+}
+function setFilter(c){ filterCat=c; render(); }
+
+/* ---------- REPORTS ---------- */
+function renderReports(){
+  const items=state.items;
+  const units=items.reduce((s,i)=>s+i.qty,0);
+  const value=items.reduce((s,i)=>s+i.qty*i.cost,0);
+  const low=items.filter(i=>statusOf(i)!=='ok');
+  $('rItems').textContent=items.length;
+  $('rUnits').textContent=units.toLocaleString();
+  $('rValue').textContent=money0(value);
+  $('rLow').textContent=low.length;
+
+  // low stock
+  $('lowPill').textContent=low.length;
+  const ll=$('lowList');
+  if(!low.length){ ll.innerHTML='<div class="muted" style="font-size:13px; font-weight:600; padding:6px 2px">Everything is above its reorder level. 👍</div>'; }
+  else{
+    ll.innerHTML=low.slice().sort((a,b)=>statusOf(a)==='out'?-1:1).map(i=>{
+      const st=statusOf(i);
+      return `<div class="mv-row" style="cursor:pointer" onclick="openEdit('${i.id}')">
+        <div class="mv-l"><div class="mv-name">${escapeHtml(i.name)} ${st==='out'?'<span class="tag outb">OUT</span>':'<span class="tag lowb">LOW</span>'}</div>
+        <div class="mv-sub">${i.qty} in stock${i.reorder>0?' · reorder ≤'+i.reorder:''}${i.supplier?' · '+escapeHtml(i.supplier):''}</div></div>
+        <div class="mv-delta ${st==='out'?'down':''}">${i.qty}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // value by category
+  const byCat={};
+  items.forEach(i=>{ const c=i.category||'Uncategorised'; byCat[c]=(byCat[c]||0)+i.qty*i.cost; });
+  const rows=Object.entries(byCat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const max=rows.length?rows[0][1]:0;
+  const cb=$('catBars');
+  cb.innerHTML=rows.length
+    ? rows.map(([c,v])=>`<div class="sb-row"><div class="sb-top"><span class="sb-name">${escapeHtml(c)}</span><span class="sb-val">${money(v)}</span></div>
+        <div class="sb-track"><div class="sb-fill" style="width:${max?Math.max(4,v/max*100):0}%"></div></div></div>`).join('')
+    : '<div class="muted" style="font-size:13px; font-weight:600">Add a unit cost to your items to see stock value here.</div>';
+
+  // movements
+  const ml=$('mvList');
+  if(!state.log.length){ ml.innerHTML='<div class="muted" style="font-size:13px; font-weight:600; padding:6px 2px">No stock movements yet.</div>'; return; }
+  ml.innerHTML=state.log.slice(0,25).map(m=>{
+    const up=m.delta>=0;
+    return `<div class="mv-row"><div class="mv-l"><div class="mv-name">${escapeHtml(m.name)}</div>
+      <div class="mv-sub">${relTime(m.ts)} · ${escapeHtml(m.reason)} · now ${m.qty}</div></div>
+      <div class="mv-delta ${up?'up':'down'}">${up?'+':''}${m.delta}</div></div>`;
+  }).join('');
+}
+function relTime(ts){
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<60) return 'just now';
+  const m=Math.floor(s/60); if(m<60) return m+'m ago';
+  const h=Math.floor(m/60); if(h<24) return h+'h ago';
+  const d=Math.floor(h/24); if(d<7) return d+'d ago';
+  return new Date(ts).toLocaleDateString('en-GB');
+}
+
+/* ---------- VIEWS ---------- */
+function show(v){
+  $('viewStock').hidden=v==='setup';
+  $('viewSetup').hidden=v!=='setup';
+  if(v==='setup') renderSetup();
+  window.scrollTo(0,0);
+}
+
+/* ---------- EXPORT / PRINT ---------- */
+function openShare(){ if(!state.items.length){ toast('Nothing to export yet.'); return; } $('shareDlg').showModal(); }
+function buildText(){
+  const list=visibleItems();
+  const lines=['INVENTORY — '+new Date().toLocaleDateString('en-GB'),''];
+  list.forEach(i=>{
+    const bits=[i.qty+' ×'];
+    if(i.sku) bits.push('#'+i.sku);
+    lines.push('• '+i.name+' — '+i.qty+' in stock'+(i.location?' ('+i.location+')':'')+(statusOf(i)!=='ok'?'  [REORDER]':''));
+  });
+  const units=list.reduce((s,i)=>s+i.qty,0), val=list.reduce((s,i)=>s+i.qty*i.cost,0);
+  lines.push('', list.length+' items · '+units+' units · '+money(val)+' at cost');
+  return lines.join('\n');
+}
+async function shareText(){
+  const text=buildText();
+  try{ if(navigator.share){ await navigator.share({title:'Inventory', text}); $('shareDlg').close(); return; } }
+  catch(e){ if(e && e.name==='AbortError') return; }
+  try{ await navigator.clipboard.writeText(text); toast('Copied to clipboard'); $('shareDlg').close(); }
+  catch(e){ window.prompt('Copy your inventory:', text); }
+}
+function printList(){
+  const list=visibleItems();
+  let html='<h2>Inventory</h2><div class="pmeta">'+new Date().toLocaleDateString('en-GB')+' · '+list.length+' items</div>';
+  html+='<table><thead><tr><th>Item</th><th>SKU</th><th>Category</th><th>Location</th><th class="n">Qty</th><th class="n">Reorder</th><th class="n">Value</th></tr></thead><tbody>';
+  let units=0, val=0;
+  list.forEach(i=>{ units+=i.qty; val+=i.qty*i.cost;
+    html+='<tr><td>'+escapeHtml(i.name)+(statusOf(i)!=='ok'?' *':'')+'</td><td>'+escapeHtml(i.sku||'')+'</td><td>'+escapeHtml(i.category||'')+'</td><td>'+escapeHtml(i.location||'')+'</td><td class="n">'+i.qty+'</td><td class="n">'+(i.reorder||'')+'</td><td class="n">'+(i.cost>0?money(i.qty*i.cost):'')+'</td></tr>';
+  });
+  html+='</tbody></table><div class="ptotal">'+units+' units · '+money(val)+' at cost&nbsp;&nbsp;(* = at/below reorder level)</div>';
+  $('printArea').innerHTML=html;
+  $('shareDlg').close();
+  setTimeout(()=>window.print(),80);
+}
+function exportCSV(){
+  const list=visibleItems();
+  const rows=[['NAME','SKU','CATEGORY','QTY','REORDER','UNIT COST','SALE PRICE','STOCK VALUE','LOCATION','SUPPLIER','STATUS','NOTES']];
+  list.forEach(i=>rows.push([i.name,i.sku,i.category,i.qty,i.reorder,i.cost,i.price,(i.qty*i.cost).toFixed(2),i.location,i.supplier,statusOf(i),i.notes]));
+  const csv=rows.map(r=>r.map(c=>`"${(c==null?'':c).toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventory-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  $('shareDlg').close();
+}
+
+/* ---------- BACKUP / RESTORE ---------- */
+var BACKUP_PREFIX='inventory';
+function backupData(){
+  try{
+    var data={};
+    for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k && k.indexOf(BACKUP_PREFIX)===0) data[k]=localStorage.getItem(k); }
+    var now=new Date();
+    var payload={app:BACKUP_PREFIX, version:1, exported:now.toISOString(), data:data};
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    var pad=function(n){return (n<10?'0':'')+n;};
+    var stamp=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=BACKUP_PREFIX+'-backup-'+stamp+'.json'; a.click();
+    try{ localStorage.setItem(BACKUP_PREFIX+'.lastBackup', now.toISOString()); }catch(e){}
+    renderLastBackup();
+    toast('Backup saved');
+  }catch(e){ alert('Backup failed: '+(e&&e.message?e.message:e)); }
+}
+function restoreData(file){
+  if(!file) return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var p=JSON.parse(r.result);
+      if(!p||!p.data||p.app!==BACKUP_PREFIX){ alert('That doesn\u2019t look like an '+BACKUP_PREFIX+' backup file.'); return; }
+      var when=p.exported?new Date(p.exported).toLocaleString('en-GB'):'unknown date';
+      if(!confirm('Restore this backup from '+when+'?\n\nThis replaces the current data in this app on this device.')) return;
+      Object.keys(p.data).forEach(function(k){ try{ localStorage.setItem(k,p.data[k]); }catch(e){} });
+      alert('Backup restored. The app will now reload.');
+      location.reload();
+    }catch(e){ alert('Could not read that file: '+(e&&e.message?e.message:e)); }
+  };
+  r.readAsText(file);
+}
+function renderLastBackup(){
+  var el=document.getElementById('lastBackupHint'); if(!el) return;
+  var t=''; try{ t=localStorage.getItem(BACKUP_PREFIX+'.lastBackup')||''; }catch(e){}
+  if(!t){ el.textContent='No backup saved yet on this device.'; return; }
+  var days=Math.floor((Date.now()-new Date(t).getTime())/86400000);
+  var ago=days<=0?'today':(days===1?'yesterday':days+' days ago');
+  el.innerHTML='Last backup on this device: <b>'+ago+'</b> ('+new Date(t).toLocaleDateString('en-GB')+').';
+}
+renderLastBackup();
+
+function renderSetup(){ renderSync(); renderAppearance(); renderLastBackup(); }
+
+/* ---------- APPEARANCE ---------- */
+const THEME_KEY='inventory.theme', SIZE_KEY='inventory.tsize';
+function getTheme(){ try{ return localStorage.getItem(THEME_KEY)||'system'; }catch(e){ return 'system'; } }
+function getSize(){ try{ return localStorage.getItem(SIZE_KEY)||'1'; }catch(e){ return '1'; } }
+function applyTheme(v){ const r=document.documentElement; if(v==='system') r.removeAttribute('data-theme'); else r.setAttribute('data-theme',v); }
+function applySize(v){ document.documentElement.style.setProperty('--tscale', v); }
+function setTheme(v){ try{ localStorage.setItem(THEME_KEY,v); }catch(e){} applyTheme(v); renderAppearance(); }
+function setSize(v){ try{ localStorage.setItem(SIZE_KEY,v); }catch(e){} applySize(v); renderAppearance(); }
+function renderAppearance(){
+  const t=getTheme(); document.querySelectorAll('#themeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  const s=getSize(); document.querySelectorAll('#sizeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.s===s));
+}
+applyTheme(getTheme()); applySize(getSize());
+
+/* ---------- TOAST ---------- */
+let toastTimer=null;
+function toast(msg){
+  let t=$('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast'; document.body.appendChild(t); }
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1900);
+}
+
+/* ---------- SYNC (private gist, whole-document last-write-wins) ---------- */
+const GIST_FILE="inventory.json";
+const GH={
+  get token(){ try{return localStorage.getItem("gh.token")||""}catch(e){return ""} },
+  get gist(){ try{return localStorage.getItem("inventory.gh.gist")||""}catch(e){return ""} },
+  get auto(){ try{return localStorage.getItem("inventory.gh.auto")!=="0"}catch(e){return true} },
+  get user(){ try{return localStorage.getItem("inventory.gh.user")||""}catch(e){return ""} },
+  set token(v){ try{v?localStorage.setItem("gh.token",v):localStorage.removeItem("gh.token")}catch(e){} },
+  set gist(v){ try{v?localStorage.setItem("inventory.gh.gist",v):localStorage.removeItem("inventory.gh.gist")}catch(e){} },
+  set auto(v){ try{localStorage.setItem("inventory.gh.auto",v?"1":"0")}catch(e){} },
+  set user(v){ try{v?localStorage.setItem("inventory.gh.user",v):localStorage.removeItem("inventory.gh.user")}catch(e){} },
+  get connected(){ return !!(this.token && this.gist); }
+};
+
+const _enc=new TextEncoder(), _dec=new TextDecoder();
+const _b64={ enc:buf=>btoa(String.fromCharCode(...new Uint8Array(buf))), dec:str=>Uint8Array.from(atob(str),c=>c.charCodeAt(0)) };
+Object.defineProperty(GH,"pass",{
+  get(){ try{return localStorage.getItem("inventory.gh.pass")||""}catch(e){return ""} },
+  set(v){ try{v?localStorage.setItem("inventory.gh.pass",v):localStorage.removeItem("inventory.gh.pass")}catch(e){} }
+});
+let SYNC_PASS=GH.pass;
+async function _deriveKey(pass, salt){
+  const base=await crypto.subtle.importKey("raw", _enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:200000, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function encodeForGist(){
+  const plain=JSON.stringify(state);
+  if(!SYNC_PASS) return plain;
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await _deriveKey(SYNC_PASS, salt);
+  const cipher=await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, _enc.encode(plain));
+  return JSON.stringify({ __enc:1, alg:"AES-GCM-PBKDF2-200k", salt:_b64.enc(salt), iv:_b64.enc(iv), data:_b64.enc(cipher), updatedAt: state.updatedAt||Date.now() });
+}
+async function decodeEnvelope(env){
+  const key=await _deriveKey(SYNC_PASS, _b64.dec(env.salt));
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM", iv:_b64.dec(env.iv)}, key, _b64.dec(env.data));
+  return JSON.parse(_dec.decode(plain));
+}
+function renderEnc(){
+  const s=$('encStatus'); if(s){ s.textContent=SYNC_PASS?"On 🔒":"Off — cloud copy is plain text"; s.style.color=SYNC_PASS?"var(--accent-d)":"var(--danger)"; }
+  const clr=$('passClear'); if(clr) clr.style.display=SYNC_PASS?"":"none";
+  const setb=$('passSet'); if(setb) setb.textContent=SYNC_PASS?"Update passphrase":"Encrypt cloud copy";
+}
+async function ghApi(method,path,body){
+  let res;
+  try{ res=await fetch("https://api.github.com"+path,{method,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined}); }
+  catch(e){ throw new Error("Can't reach GitHub — if you opened this as a file, use the hosted version instead."); }
+  if(!res.ok){ let d=""; try{d=(await res.json()).message||""}catch(e){}
+    if(res.status===401) throw new Error("Invalid or expired token (401). Use a CLASSIC token with gist scope.");
+    if(res.status===403) throw new Error("Forbidden (403) — token missing 'gist' scope, or rate-limited.");
+    if(res.status===404) throw new Error("Not found (404) — wrong Gist ID, or a fine-grained token (gists need a CLASSIC token).");
+    throw new Error("GitHub "+res.status+(d?" — "+d:"")); }
+  return res.json();
+}
+function syncMsg(m,err){ const el=$('syncMsg'); if(el){ el.textContent=m||''; el.style.color=err?'var(--danger)':'var(--muted)'; } }
+function setSyncTime(){ try{localStorage.setItem("inventory.gh.lastSync",String(Date.now()))}catch(e){} }
+let pushTimer=null;
+function schedulePush(){ if(!GH.connected||!GH.auto) return; clearTimeout(pushTimer); pushTimer=setTimeout(()=>{ syncPush().catch(e=>syncMsg("Push failed: "+e.message,true)); },1500); }
+async function syncPush(){ if(!GH.connected) return; syncMsg("Saving…"); const content=await encodeForGist(); await ghApi("PATCH","/gists/"+GH.gist,{files:{[GIST_FILE]:{content}}}); setSyncTime(); syncMsg(SYNC_PASS?"Synced 🔒":"Synced ✓"); }
+async function syncPull(force,quiet){
+  if(!GH.connected) return;
+  if(!quiet) syncMsg("Checking…");
+  const g=await ghApi("GET","/gists/"+GH.gist);
+  const f=g.files && g.files[GIST_FILE];
+  if(!f||!f.content){ if(!quiet) syncMsg("Connected — no data in this gist yet"); return "empty"; }
+  let parsed; try{ parsed=JSON.parse(f.truncated&&f.raw_url ? await (await fetch(f.raw_url)).text() : f.content); }
+  catch(e){ if(!quiet) syncMsg("Sync data unreadable",true); return "error"; }
+  if(!(force || (parsed.updatedAt||0) > (state.updatedAt||0))){ setSyncTime(); if(!quiet) syncMsg("Up to date"); return "uptodate"; }
+  let remote=parsed;
+  if(parsed && parsed.__enc===1){
+    if(!SYNC_PASS){ if(!quiet) syncMsg("This sync is encrypted — set your passphrase below to unlock it.",true); return "locked"; }
+    try{ remote=await decodeEnvelope(parsed); }
+    catch(e){ if(!quiet) syncMsg("Wrong sync passphrase — your local data was kept.",true); return "badpass"; }
+  }
+  state=normalize(remote); persist(); render(); if(!$('viewSetup').hidden) renderSetup(); setSyncTime();
+  if(!quiet) syncMsg(parsed.__enc===1?"Pulled latest changes 🔒":"Pulled latest changes ✓");
+  if(parsed.__enc!==1 && SYNC_PASS) schedulePush();
+  return "pulled";
+}
+async function findGist(){
+  const list=await ghApi("GET","/gists?per_page=100");
+  const mine=(list||[]).filter(g=>(g.files&&g.files[GIST_FILE])||g.description==="Inventory sync");
+  if(!mine.length) return null;
+  mine.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)); return mine[0].id;
+}
+async function fetchUser(){ try{ const u=await ghApi("GET","/user"); GH.user=u.login; const el=$('syncUser'); if(el) el.textContent=u.login; }catch(e){} }
+function renderSync(){
+  const conn=GH.connected;
+  $('syncDisconnected').hidden=conn;
+  $('syncConnected').hidden=!conn;
+  const st=$('syncState'); if(st){ st.textContent=conn?'On':'Off'; st.style.color=conn?'var(--accent-d)':'var(--muted)'; }
+  if(conn){ $('syncGistId').textContent=GH.gist; $('syncUser').textContent=GH.user||'…'; if(!GH.user) fetchUser(); $('ghAuto').checked=GH.auto; }
+  const btn=$('syncBtn'); if(btn){ btn.classList.toggle('on',conn); const lbl=$('syncBtnLabel'); if(lbl) lbl.textContent=conn?(SYNC_PASS?'Synced 🔒':'Synced'):'Sync'; }
+  renderEnc();
+}
+function openSync(){ renderSync(); $('syncDlg').showModal(); }
+function passShow(){ const i=$('ghPass'); const show=i.type==='password'; i.type=show?'text':'password'; $('passShowBtn').textContent=show?'Hide':'Show'; }
+async function passSet(){
+  const p=$('ghPass').value;
+  if(!p){ syncMsg("Enter a passphrase first.",true); return; }
+  if(p.length<6){ syncMsg("Use at least 6 characters.",true); return; }
+  SYNC_PASS=p; GH.pass=p; $('ghPass').value=''; if($('ghPass').type==='text'){ $('ghPass').type='password'; $('passShowBtn').textContent='Show'; }
+  renderEnc();
+  if(!GH.connected){ toast("Passphrase saved — connect sync to use it."); return; }
+  syncMsg("Applying passphrase…");
+  try{
+    const r=await syncPull(true);
+    if(r==="badpass"){ syncMsg("That passphrase doesn't match your existing encrypted sync — local data kept. Check it and try again.",true); return; }
+    await syncPush(); syncMsg("Cloud copy is now encrypted 🔒"); toast("Cloud copy encrypted");
+  }catch(e){ syncMsg("Couldn't update the gist: "+e.message,true); }
+}
+async function passClear(){
+  if(!confirm("Remove cloud encryption? On the next sync your data will be written back to the gist as PLAIN TEXT.")) return;
+  SYNC_PASS=''; GH.pass=''; renderEnc();
+  if(!GH.connected){ toast("Passphrase removed."); return; }
+  syncMsg("Removing encryption…");
+  try{ await syncPush(); syncMsg("Cloud encryption removed."); }
+  catch(e){ syncMsg("Couldn't update the gist: "+e.message,true); }
+}
+function toggleToken(){ const i=$('ghToken'); const show=i.type==='password'; i.type=show?'text':'password'; $('ghShowToken').textContent=show?'Hide':'Show'; }
+function toggleAuto(){ GH.auto=$('ghAuto').checked; if(GH.auto) schedulePush(); }
+async function ghConnect(){
+  const t=$('ghToken').value.trim(); let gid=$('ghGist').value.trim();
+  if(!t){ syncMsg("Paste your GitHub token first.",true); return; }
+  const _prevTok=GH.token; GH.token=t; syncMsg("Connecting…");
+  try{
+    if(!gid) gid=await findGist();
+    if(gid){ GH.gist=gid; renderSync(); const r=await syncPull(true);
+      if(r==="empty"){ await syncPush(); syncMsg(SYNC_PASS?"Connected — seeded this gist (encrypted 🔒).":"Connected — seeded this gist with your inventory."); }
+      else if(r==="locked"){ syncMsg("Connected — this sync is encrypted. Set your passphrase below to unlock it.",true); }
+      else if(r==="badpass"){ syncMsg("Connected, but that passphrase doesn't match this sync. Update it below.",true); }
+      else syncMsg("Connected — using your existing sync."); }
+    else { const content=await encodeForGist(); const g=await ghApi("POST","/gists",{description:"Inventory sync",public:false,files:{[GIST_FILE]:{content}}}); GH.gist=g.id; setSyncTime(); syncMsg(SYNC_PASS?"Connected — new encrypted sync created 🔒.":"Connected — new sync created."); }
+    $('ghToken').value=''; $('ghGist').value=''; renderSync(); fetchUser();
+  }catch(e){ GH.token=_prevTok||''; GH.gist=''; GH.user=''; renderSync(); syncMsg("Couldn't connect: "+e.message,true); }
+}
+function ghDisconnect(){ if(confirm("Disconnect sync on this device? Your inventory stays here; the gist is untouched. Other apps stay connected.")){ GH.gist=''; GH.user=''; renderSync(); syncMsg(''); toast("Disconnected"); } }
+async function doSyncNow(){ try{ await syncPull(false); await syncPush(); toast("Synced"); }catch(e){ syncMsg("Sync failed: "+e.message,true); } }
+setInterval(()=>{ if(GH.connected&&GH.auto&&!document.hidden) syncPull(false,true).catch(()=>{}); }, 45000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden&&GH.connected&&GH.auto) syncPull(false,true).catch(()=>{}); });
+window.addEventListener("pagehide", ()=>{ if(GH.connected&&GH.auto&&!SYNC_PASS){ try{ fetch("https://api.github.com/gists/"+GH.gist,{method:"PATCH",keepalive:true,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}})}).catch(()=>{}); }catch(e){} } });
+
+render();
+renderSync();
+if(GH.connected) syncPull(false,true).catch(()=>{});
+</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+<script>
+/* Sync screen helpers: token backup reminder + auto-fill the token field from the
+   shared, already-stored token so a new device needs one paste, then one Connect. */
+(function(){
+  var MSG="💾 Back up this token (e.g. in your password manager). GitHub shows it only once, and clearing browser data removes it here — you'll need it to reconnect.";
+  function ls(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }
+  function ensureNote(){
+    var ti=document.getElementById("ghToken");
+    if(!ti || document.getElementById("tokenBackupNote")) return;
+    var n=document.createElement("div");
+    n.id="tokenBackupNote"; n.className="muted";
+    n.style.cssText="font-size:12px;line-height:1.4;margin-top:6px;opacity:.8";
+    n.textContent=MSG;
+    (ti.closest("label")||ti.parentElement||ti).insertAdjacentElement("afterend", n);
+  }
+  function prefillToken(){
+    var ti=document.getElementById("ghToken");
+    if(!ti || ti.dataset.tkpref) return;
+    var tok=ls("gh.token");
+    if(tok && !ti.value){ ti.value=tok; ti.dataset.tkpref="1"; }
+  }
+  function run(){ ensureNote(); prefillToken(); }
+  function boot(){ run(); try{ new MutationObserver(run).observe(document.body,{childList:true,subtree:true}); }catch(e){} }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot); else boot();
+})();
+</script>
+</body>
+</html>
