@@ -73,7 +73,6 @@ input:focus{outline:none; border-color:var(--accent)}
 .op-head .c-qty{width:58px; text-align:center}
 .op-head .c-dim{flex:1; text-align:center}
 .op-head .c-x{width:16px}
-.op-head .c-typ{width:42px; text-align:center}
 .op-head .c-del{width:34px}
 .op{margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:12px}
 .op:last-child{border-bottom:none; padding-bottom:0}
@@ -85,8 +84,10 @@ input:focus{outline:none; border-color:var(--accent)}
 .op .del{width:34px; height:44px; flex:none; background:var(--card2); border:1px solid var(--line);
   color:var(--muted); border-radius:9px; font-size:1.1rem; cursor:pointer; padding:0}
 .op .del:active{background:var(--bad); color:#fff}
-.op .typ{width:42px; height:44px; flex:none; background:var(--card2); border:1px solid var(--line);
-  color:var(--txt); border-radius:9px; font-size:1.05rem; font-weight:800; cursor:pointer; padding:0}
+.op-meta{display:flex; align-items:center; gap:10px; margin-top:6px}
+.op-meta .len{margin-top:0}
+.op .typ{flex:none; background:var(--card2); border:1px solid var(--line);
+  color:var(--txt); border-radius:8px; font-size:.85rem; font-weight:800; cursor:pointer; padding:6px 14px}
 .op .typ.glass{background:#0369a1; border-color:#38bdf8; color:#fff}
 .op .typ:active{transform:translateY(1px)}
 .op .len{display:block; margin-top:5px; padding-left:2px; font-size:.85rem; color:var(--muted); font-weight:600}
@@ -281,12 +282,11 @@ select:focus{outline:none; border-color:var(--accent)}
     <span class="c-dim">Width</span>
     <span class="c-x"></span>
     <span class="c-dim">Height</span>
-    <span class="c-typ">Type</span>
     <span class="c-del"></span>
   </div>
   <div id="ops"></div>
   <button class="addbtn" id="addRow">+ Add frame</button>
-  <p class="muted" style="margin:10px 0 0; font-size:.85rem">Tap <b>Type</b> to switch each frame between <b>L</b> (louvre) and <b>G</b> (glass). Glass frames appear on a separate glass order list at +30&nbsp;mm on width &amp; height.</p>
+  <p class="muted" style="margin:10px 0 0; font-size:.85rem">Tap <b>Type</b> to switch each frame between <b>Louvre</b> and <b>Glass</b>. Glass frames appear on a separate glass order list at +30&nbsp;mm on width &amp; height.</p>
 </div>
 
 <div class="card result">
@@ -422,13 +422,15 @@ function rowHTML(qty='', w='', h='', type='L'){
       `<input class="c-dim w" type="number" inputmode="numeric" min="0" placeholder="W" value="${w}">`+
       `<span class="c-x">×</span>`+
       `<input class="c-dim h" type="number" inputmode="numeric" min="0" placeholder="H" value="${h}">`+
-      `<button class="typ${isG?' glass':''}" type="button" title="Glass or Louvre — tap to toggle">${isG?'G':'L'}</button>`+
       `<button class="del" title="Remove">✕</button>`+
     `</div>`+
-    `<span class="len">–</span>`;
+    `<div class="op-meta">`+
+      `<button class="typ${isG?' glass':''}" type="button" title="Glass or Louvre — tap to toggle">${isG?'Glass':'Louvre'}</button>`+
+      `<span class="len">–</span>`+
+    `</div>`;
   d.querySelector('.del').addEventListener('click',()=>{ d.remove(); ensureRow(); calc(); save(); });
   const typBtn = d.querySelector('.typ');
-  typBtn.addEventListener('click',()=>{ const g=typBtn.classList.toggle('glass'); typBtn.textContent=g?'G':'L'; calc(); save(); });
+  typBtn.addEventListener('click',()=>{ const g=typBtn.classList.toggle('glass'); typBtn.textContent=g?'Glass':'Louvre'; calc(); save(); });
   d.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{ calc(); save(); }));
   return d;
 }
@@ -579,7 +581,7 @@ function buildReport(){
 
   const rowsHtml = s.rows.map((r,i)=>
     `<tr><td class="num">${i+1}</td><td>${fmt(r.w)} × ${fmt(r.h)} mm</td>`+
-    `<td>${r.type==='G'?'G — Glass':'L — Louvre'}</td>`+
+    `<td>${r.type==='G'?'Glass':'Louvre'}</td>`+
     `<td class="num">${fmt(r.qty)}</td><td class="num">${fmt(r.frame)} mm</td>`+
     `<td class="num">${fmt(r.pieces)}</td><td class="num">${fmt(r.len)} mm</td></tr>`).join('');
 
@@ -627,7 +629,7 @@ function buildReport(){
         <td class="num">${fmt(s.totLen)} mm</td>
       </tr></tfoot>
     </table>
-    <p class="r-note" style="margin-top:.5em"><b>Type:</b> G = Glass · L = Louvre. Glass frames also have a separate glass order list (order size = frame + 30&nbsp;mm on width and height).</p>
+    <p class="r-note" style="margin-top:.5em"><b>Type</b> shows whether each frame is Glass or Louvre. Glass frames also have a separate glass order list (order size = frame + 30&nbsp;mm on width and height).</p>
 
     <div class="r-result">
       <div class="rmain"><span class="n">${s.barsPack}</span> No. <b>${fmt(s.bar)} mm</b> ${s.barsPack===1?'length':'lengths'} required for this order</div>
@@ -745,7 +747,7 @@ $('pdfBtn').addEventListener('click',()=>{
 });
 $('glassBtn').addEventListener('click',()=>{
   if(!last || !last.has){ alert('Enter at least one frame first.'); return; }
-  if(!last.rows.some(r=>r.type==='G')){ alert('No frames are marked as Glass (G). Tap a frame\'s Type button to switch it from L to G.'); return; }
+  if(!last.rows.some(r=>r.type==='G')){ alert('No frames are marked as Glass. Tap a frame\'s Type button to switch it from Louvre to Glass.'); return; }
   buildGlassReport();
   fitReportToPage();
   setTimeout(()=>window.print(), 150);
