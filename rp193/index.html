@@ -73,6 +73,7 @@ input:focus{outline:none; border-color:var(--accent)}
 .op-head .c-qty{width:58px; text-align:center}
 .op-head .c-dim{flex:1; text-align:center}
 .op-head .c-x{width:16px}
+.op-head .c-typ{width:42px; text-align:center}
 .op-head .c-del{width:34px}
 .op{margin-bottom:12px; border-bottom:1px solid var(--line); padding-bottom:12px}
 .op:last-child{border-bottom:none; padding-bottom:0}
@@ -84,6 +85,10 @@ input:focus{outline:none; border-color:var(--accent)}
 .op .del{width:34px; height:44px; flex:none; background:var(--card2); border:1px solid var(--line);
   color:var(--muted); border-radius:9px; font-size:1.1rem; cursor:pointer; padding:0}
 .op .del:active{background:var(--bad); color:#fff}
+.op .typ{width:42px; height:44px; flex:none; background:var(--card2); border:1px solid var(--line);
+  color:var(--txt); border-radius:9px; font-size:1.05rem; font-weight:800; cursor:pointer; padding:0}
+.op .typ.glass{background:#0369a1; border-color:#38bdf8; color:#fff}
+.op .typ:active{transform:translateY(1px)}
 .op .len{display:block; margin-top:5px; padding-left:2px; font-size:.85rem; color:var(--muted); font-weight:600}
 .op .len b{color:var(--accent)}
 .addbtn{width:100%; background:var(--card2); border:1px dashed var(--line); color:var(--accent);
@@ -276,10 +281,12 @@ select:focus{outline:none; border-color:var(--accent)}
     <span class="c-dim">Width</span>
     <span class="c-x"></span>
     <span class="c-dim">Height</span>
+    <span class="c-typ">Type</span>
     <span class="c-del"></span>
   </div>
   <div id="ops"></div>
   <button class="addbtn" id="addRow">+ Add frame</button>
+  <p class="muted" style="margin:10px 0 0; font-size:.85rem">Tap <b>Type</b> to switch each frame between <b>L</b> (louvre) and <b>G</b> (glass). Glass frames appear on a separate glass cut list at +30&nbsp;mm on width &amp; height.</p>
 </div>
 
 <div class="card result">
@@ -309,6 +316,9 @@ select:focus{outline:none; border-color:var(--accent)}
 
 <button class="pdfbtn" id="pdfBtn">📄 Export / email PDF report</button>
 <p class="pdfhint">Opens your device's print sheet — choose <b>Save as PDF</b>, then attach it to an email. Nothing leaves your phone.</p>
+
+<button class="pdfbtn" id="glassBtn" style="margin-top:12px; background:linear-gradient(135deg,#0369a1,#0f766e)">🪟 Glass cut list PDF</button>
+<p class="pdfhint">A separate sheet listing only the <b>G</b> (glass) frames at their glass cut size (+30&nbsp;mm width &amp; height).</p>
 
 <div id="setup" hidden>
 <div class="card">
@@ -396,28 +406,33 @@ All data is stored locally on this device and, if connected, in your private Git
 const $ = id => document.getElementById(id);
 const opsBox = $('ops');
 const STORE = 'rp193.ops.v1';
+const GLASS_ADD = 30;   // glass cut size = frame width +30mm, height +30mm
 let last = null;
 
 function fmt(n, dp=0){ return n.toLocaleString('en-GB',{maximumFractionDigits:dp}); }
 function money(n){ return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
-function rowHTML(qty='', w='', h=''){
+function rowHTML(qty='', w='', h='', type='L'){
   const d = document.createElement('div');
   d.className = 'op';
+  const isG = String(type).toUpperCase()==='G';
   d.innerHTML =
     `<div class="op-inputs">`+
       `<input class="c-qty q" type="number" inputmode="numeric" min="0" placeholder="1" value="${qty}">`+
       `<input class="c-dim w" type="number" inputmode="numeric" min="0" placeholder="W" value="${w}">`+
       `<span class="c-x">×</span>`+
       `<input class="c-dim h" type="number" inputmode="numeric" min="0" placeholder="H" value="${h}">`+
+      `<button class="typ${isG?' glass':''}" type="button" title="Glass or Louvre — tap to toggle">${isG?'G':'L'}</button>`+
       `<button class="del" title="Remove">✕</button>`+
     `</div>`+
     `<span class="len">–</span>`;
   d.querySelector('.del').addEventListener('click',()=>{ d.remove(); ensureRow(); calc(); save(); });
+  const typBtn = d.querySelector('.typ');
+  typBtn.addEventListener('click',()=>{ const g=typBtn.classList.toggle('glass'); typBtn.textContent=g?'G':'L'; calc(); save(); });
   d.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{ calc(); save(); }));
   return d;
 }
-function addRow(qty,w,h){ opsBox.appendChild(rowHTML(qty,w,h)); }
+function addRow(qty,w,h,type){ opsBox.appendChild(rowHTML(qty,w,h,type)); }
 function ensureRow(){ if(!opsBox.querySelector('.op')) addRow(); }
 
 function readRows(){
@@ -426,12 +441,13 @@ function readRows(){
     qty:parseFloat(op.querySelector('.q').value)||0,
     w:parseFloat(op.querySelector('.w').value)||0,
     h:parseFloat(op.querySelector('.h').value)||0,
+    type:op.querySelector('.typ').classList.contains('glass')?'G':'L',
   }));
 }
 
 let curUpdatedAt = 0;
 function getState(){
-  return { rows: readRows().map(r=>[r.qty,r.w,r.h]),
+  return { rows: readRows().map(r=>[r.qty,r.w,r.h,r.type]),
     bar:$('bar').value, kerf:$('kerf').value, cost:$('cost').value,
     job:$('job').value, prep:$('prep').value,
     ordno:$('ordno').value, ordref:$('ordref').value, door:$('door').value, doorsQty:$('doorsQty').value,
@@ -455,7 +471,7 @@ function applyFields(d){
   if(d.reqMonth!=null) $('reqMonth').value=d.reqMonth;
   if(d.reqYear!=null) ensureYearOption(d.reqYear), $('reqYear').value=d.reqYear;
   opsBox.innerHTML='';
-  if(Array.isArray(d.rows)&&d.rows.length){ d.rows.forEach(r=>addRow(r[0],r[1],r[2])); }
+  if(Array.isArray(d.rows)&&d.rows.length){ d.rows.forEach(r=>addRow(r[0],r[1],r[2],r[3]||'L')); }
   if(!opsBox.querySelector('.op')) addRow();
 }
 function load(){
@@ -540,7 +556,7 @@ function calc(){
   // stash the computed figures for the PDF report
   last = {
     rows: rows.filter(r=>r.qty>0 && (r.w||r.h)).map(r=>({
-      qty:Math.round(r.qty), w:r.w, h:r.h,
+      qty:Math.round(r.qty), w:r.w, h:r.h, type:r.type||'L',
       frame:2*(r.w+r.h), pieces:4*Math.round(r.qty), len:r.qty*2*(r.w+r.h)
     })),
     bar, kerf, totLen, totPcs, barsPack, barsPool, lastOffcut, cost:pricePerM, oversize, has
@@ -563,6 +579,7 @@ function buildReport(){
 
   const rowsHtml = s.rows.map((r,i)=>
     `<tr><td class="num">${i+1}</td><td>${fmt(r.w)} × ${fmt(r.h)} mm</td>`+
+    `<td>${r.type==='G'?'G — Glass':'L — Louvre'}</td>`+
     `<td class="num">${fmt(r.qty)}</td><td class="num">${fmt(r.frame)} mm</td>`+
     `<td class="num">${fmt(r.pieces)}</td><td class="num">${fmt(r.len)} mm</td></tr>`).join('');
 
@@ -598,18 +615,19 @@ function buildReport(){
     <h3>Schedule of frames</h3>
     <table>
       <thead><tr>
-        <th class="num">#</th><th>Frame (W × H)</th><th class="num">Qty</th>
+        <th class="num">#</th><th>Frame (W × H)</th><th>Type</th><th class="num">Qty</th>
         <th class="num">Frame length</th><th class="num">Pieces</th><th class="num">Total length</th>
       </tr></thead>
       <tbody>${rowsHtml}</tbody>
       <tfoot><tr>
-        <td colspan="2">TOTALS</td>
+        <td colspan="3">TOTALS</td>
         <td class="num">${fmt(s.rows.reduce((a,r)=>a+r.qty,0))}</td>
         <td></td>
         <td class="num">${fmt(s.totPcs)}</td>
         <td class="num">${fmt(s.totLen)} mm</td>
       </tr></tfoot>
     </table>
+    <p class="r-note" style="margin-top:.5em"><b>Type:</b> G = Glass · L = Louvre. Glass frames also have a separate glass cut list (cut size = frame + 30&nbsp;mm on width and height).</p>
 
     <div class="r-result">
       <div class="rmain"><span class="n">${s.barsPack}</span> No. <b>${fmt(s.bar)} mm</b> ${s.barsPack===1?'length':'lengths'} required for this order</div>
@@ -625,6 +643,64 @@ function buildReport(){
       ${s.barsPool} bar${s.barsPool===1?'':'s'} — a floor that is rarely achievable in practice.
       Figures are approximate and exclude general wastage, damages and defects.</p>
     <div class="r-foot"><span>Generated by RP193 Calc</span><span>${esc(dateStr)}</span></div>
+  `;
+  $('report').innerHTML = html;
+}
+
+function buildGlassReport(){
+  const s = last;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const job = $('job').value.trim();
+  const prep = $('prep').value.trim();
+  const ordno = $('ordno').value.trim();
+  const ordref = $('ordref').value.trim();
+  const door = $('door').value.trim();
+  const reqBy = [$('reqMonth').value, $('reqYear').value].filter(Boolean).join(' ');
+
+  const glass = s.rows.filter(r=>r.type==='G');
+  const totPanes = glass.reduce((a,r)=>a+r.qty,0);
+
+  const rowsHtml = glass.map((r,i)=>
+    `<tr><td class="num">${i+1}</td>`+
+    `<td>${fmt(r.w)} × ${fmt(r.h)} mm</td>`+
+    `<td class="num">${fmt(r.w+GLASS_ADD)} × ${fmt(r.h+GLASS_ADD)} mm</td>`+
+    `<td class="num">${fmt(r.qty)}</td></tr>`).join('');
+
+  const html = `
+    <div class="r-head">
+      <div>
+        <p class="r-title">Glass Cut List</p>
+        <p class="r-sub">Glass frames only — cut size = frame + ${GLASS_ADD} mm on width &amp; height</p>
+      </div>
+      <div class="r-badge"><b>RP193 CALC</b><br>Prepared ${esc(dateStr)}${prep?'<br>By '+esc(prep):''}</div>
+    </div>
+    <div class="r-meta">
+      <div><span>Job / project</span><b>${job?esc(job):'—'}</b></div>
+      <div><span>Order Number</span><b>${ordno?esc(ordno):'—'}</b></div>
+      <div><span>Order Ref</span><b>${ordref?esc(ordref):'—'}</b></div>
+      <div><span>Door Number</span><b>${door?esc(door):'—'}</b></div>
+      <div><span>Required by</span><b>${reqBy?esc(reqBy):'—'}</b></div>
+      <div><span>No. of glass panes</span><b>${fmt(totPanes)}</b></div>
+    </div>
+
+    <p class="r-disclaimer">Please check sizes before cutting glass. Cut sizes are the frame size plus ${GLASS_ADD} mm on the width and ${GLASS_ADD} mm on the height, based on the drawing dimensions at assessing stage — this is not a final cutting list.</p>
+
+    <h3>Glass schedule</h3>
+    <table>
+      <thead><tr>
+        <th class="num">#</th><th>Frame size (W × H)</th><th class="num">Glass cut size (W × H)</th><th class="num">Qty</th>
+      </tr></thead>
+      <tbody>${rowsHtml}</tbody>
+      <tfoot><tr>
+        <td colspan="3">TOTAL PANES</td>
+        <td class="num">${fmt(totPanes)}</td>
+      </tr></tfoot>
+    </table>
+
+    <p class="r-note"><b>Method.</b> Each glass frame's cut size is the frame width + ${GLASS_ADD} mm and the frame height + ${GLASS_ADD} mm.
+      Louvre (L) frames are excluded from this list. Figures are approximate and exclude general wastage, damages and defects.</p>
+    <div class="r-foot"><span>Generated by RP193 Calc — glass cut list</span><span>${esc(dateStr)}</span></div>
   `;
   $('report').innerHTML = html;
 }
@@ -664,6 +740,13 @@ function fitReportToPage(){
 $('pdfBtn').addEventListener('click',()=>{
   if(!last || !last.has){ alert('Enter at least one frame first.'); return; }
   buildReport();
+  fitReportToPage();
+  setTimeout(()=>window.print(), 150);
+});
+$('glassBtn').addEventListener('click',()=>{
+  if(!last || !last.has){ alert('Enter at least one frame first.'); return; }
+  if(!last.rows.some(r=>r.type==='G')){ alert('No frames are marked as Glass (G). Tap a frame\'s Type button to switch it from L to G.'); return; }
+  buildGlassReport();
   fitReportToPage();
   setTimeout(()=>window.print(), 150);
 });
