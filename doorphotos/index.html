@@ -103,6 +103,20 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
 .entry .edel:active{background:var(--bad); color:#fff}
 .empty{color:var(--muted); text-align:center; padding:16px 0}
 
+/* entry details modal */
+.modal{position:fixed; inset:0; z-index:110; background:rgba(0,0,0,.55); display:none; align-items:flex-start; justify-content:center; padding:24px 14px; overflow-y:auto; -webkit-overflow-scrolling:touch}
+.modal.show{display:flex}
+.modal-card{width:100%; max-width:560px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; margin:auto}
+.modal-hd{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px}
+.modal-hd h2{margin:0; font-size:1.2rem; text-transform:none; letter-spacing:0; color:var(--txt)}
+.mx{flex:none; width:38px; height:38px; background:var(--card2); border:1px solid var(--line); color:var(--muted); border-radius:9px; font-size:1.1rem; cursor:pointer}
+.mrow{display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); font-size:1rem}
+.mrow span{color:var(--muted)}
+.mrow b{text-align:right}
+.mnotes{margin:12px 0 4px; padding:11px 13px; background:var(--card2); border:1px solid var(--line); border-radius:10px; white-space:pre-wrap; font-size:.98rem}
+.modal-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px}
+.modal-actions .btn{flex:1; min-width:110px; text-align:center; justify-content:center}
+
 /* lightbox */
 .lb{position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.9); display:none; align-items:center; justify-content:center; padding:20px}
 .lb.show{display:flex}
@@ -272,11 +286,23 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
 
 <p class="foot">All data — including photos — is stored locally on this device and, if connected, in your private GitHub gist. Nothing else leaves your device.<br><span id="verLine"></span></p>
 
+<div class="modal" id="entryModal">
+  <div class="modal-card">
+    <div class="modal-hd"><h2 id="mTitle">Entry</h2><button class="mx" id="mClose" type="button" title="Close">✕</button></div>
+    <div id="mBody"></div>
+    <div class="modal-actions">
+      <button class="btn primary" id="mEdit" type="button">✏️ Edit</button>
+      <button class="btn" id="mPdf" type="button">📄 PDF</button>
+      <button class="btn bad" id="mDel" type="button">🗑 Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="lb" id="lightbox"><button class="lbclose" id="lbClose" type="button">✕</button><img id="lbImg" alt=""></div>
 <div id="report"></div>
 
 <script>
-const APP_VERSION = "2026-09-23 · v1.3";
+const APP_VERSION = "2026-09-23 · v1.4";
 const $ = id => document.getElementById(id);
 const STORE = 'doorphotos.data';
 const DRAFT = 'doorphotos.draft';
@@ -384,9 +410,29 @@ function renderEntries(){
       `<span>${fmtDate(e.createdAt)} · ${np} photo${np===1?'':'s'}${e.notes?' · '+esc(e.notes.slice(0,40))+(e.notes.length>40?'…':''):''}</span></div>`+
       `<button class="edel" data-del="${e.id}" title="Delete">🗑</button></div>`;
   }).join('');
-  box.querySelectorAll('[data-open]').forEach(el=> el.onclick=e=>{ if(e.target.closest('[data-del]')) return; editEntry(el.dataset.open); });
+  box.querySelectorAll('[data-open]').forEach(el=> el.onclick=e=>{ if(e.target.closest('[data-del]')) return; openEntry(el.dataset.open); });
   box.querySelectorAll('[data-del]').forEach(b=> b.onclick=e=>{ e.stopPropagation(); deleteEntry(b.dataset.del); });
 }
+/* ---------- entry details pop-up ---------- */
+function openEntry(id){
+  const e=state.entries.find(x=>x.id===id); if(!e) return;
+  const title=[e.door?('Door '+esc(e.door)):'', e.customer?esc(e.customer):''].filter(Boolean).join(' · ')||'Entry';
+  const photos=e.photos||[];
+  $('mTitle').innerHTML=title;
+  $('mBody').innerHTML =
+    `<div class="mrow"><span>Customer Name</span><b>${e.customer?esc(e.customer):'—'}</b></div>`+
+    `<div class="mrow"><span>Door Number</span><b>${e.door?esc(e.door):'—'}</b></div>`+
+    `<div class="mrow"><span>Date</span><b>${esc(fmtDate(e.createdAt))||'—'}</b></div>`+
+    `<div class="mrow"><span>Photos</span><b>${photos.length}</b></div>`+
+    (e.notes?`<div class="mnotes">${esc(e.notes)}</div>`:'')+
+    (photos.length?`<div class="photos" id="mPhotos">`+photos.map((p,i)=>`<div class="thumb"><img src="${p}" data-i="${i}" alt="photo ${i+1}"></div>`).join('')+`</div>`:`<div class="emptyphotos">No photos on this entry.</div>`);
+  $('mPhotos') && $('mPhotos').querySelectorAll('img').forEach(im=> im.onclick=()=>openLightbox(im.src));
+  $('mEdit').onclick=()=>{ closeEntryModal(); editEntry(id); };
+  $('mPdf').onclick=()=>{ printReport(e); };
+  $('mDel').onclick=()=>{ closeEntryModal(); deleteEntry(id); };
+  $('entryModal').classList.add('show');
+}
+function closeEntryModal(){ $('entryModal').classList.remove('show'); }
 $('search').oninput=renderEntries;
 ['customer','door','notes'].forEach(id=>$(id).addEventListener('input',saveDraft));
 
@@ -394,13 +440,13 @@ $('search').oninput=renderEntries;
 function openLightbox(src){ $('lbImg').src=src; $('lightbox').classList.add('show'); }
 $('lbClose').onclick=()=>$('lightbox').classList.remove('show');
 $('lightbox').onclick=e=>{ if(e.target===$('lightbox')) $('lightbox').classList.remove('show'); };
+$('mClose').onclick=closeEntryModal;
+$('entryModal').onclick=e=>{ if(e.target===$('entryModal')) closeEntryModal(); };
 
 /* ---------- print / PDF ---------- */
-function buildReport(){
-  saveDraft();
-  const now=new Date();
-  const dateStr=now.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  const photos=draft.photos||[];
+function buildReport(d){
+  const dateStr=(()=>{ const iso=d.createdAt; try{ return new Date(iso||Date.now()).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); } })();
+  const photos=d.photos||[];
   const gcls = photos.length===1 ? ' single' : photos.length===2 ? ' two' : '';
   const grid=photos.length ? `<h3>Photos (${photos.length})</h3><div class="r-photos${gcls}">`+
     photos.map(p=>`<img src="${p}" alt="">`).join('')+`</div>` : '<p class="muted">No photos attached.</p>';
@@ -410,22 +456,25 @@ function buildReport(){
       <div class="r-badge"><b>DOOR PHOTOS</b><br>Prepared ${esc(dateStr)}</div>
     </div>
     <div class="r-meta">
-      <div><span>Customer Name</span><b>${draft.customer?esc(draft.customer):'—'}</b></div>
-      <div><span>Door Number</span><b>${draft.door?esc(draft.door):'—'}</b></div>
+      <div><span>Customer Name</span><b>${d.customer?esc(d.customer):'—'}</b></div>
+      <div><span>Door Number</span><b>${d.door?esc(d.door):'—'}</b></div>
       <div><span>Date</span><b>${esc(dateStr)}</b></div>
       <div><span>Photos</span><b>${photos.length}</b></div>
     </div>
-    ${draft.notes?`<div class="r-notes">${esc(draft.notes)}</div>`:''}
+    ${d.notes?`<div class="r-notes">${esc(d.notes)}</div>`:''}
     ${grid}
     <div class="r-foot"><span>Generated by Door Photos</span><span>${esc(dateStr)}</span></div>`;
+}
+function printReport(d){
+  buildReport(d);
+  const imgs=[...$('report').querySelectorAll('img')];
+  Promise.all(imgs.map(im=> im.complete ? Promise.resolve() : new Promise(r=>{ im.onload=im.onerror=r; })))
+    .then(()=> setTimeout(()=>window.print(), 120));
 }
 $('pdfBtn').onclick=()=>{
   saveDraft();
   if(!draft.customer.trim() && !draft.door.trim() && !draft.photos.length){ toast('Add a customer/door number or a photo first'); return; }
-  buildReport();
-  const imgs=[...$('report').querySelectorAll('img')];
-  Promise.all(imgs.map(im=> im.complete ? Promise.resolve() : new Promise(r=>{ im.onload=im.onerror=r; })))
-    .then(()=> setTimeout(()=>window.print(), 120));
+  printReport(draft);
 };
 
 /* ---------- toast ---------- */
