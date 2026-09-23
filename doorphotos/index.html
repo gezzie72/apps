@@ -156,8 +156,8 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
   <div class="card-hd"><h2 id="formTitle">New entry</h2><span class="count" id="photoCount">0 photos</span></div>
   <div class="row">
     <div class="field">
-      <label>Customer Number</label>
-      <input id="customer" type="text" inputmode="text" placeholder="e.g. C-10482" autocomplete="off">
+      <label>Customer Name</label>
+      <input id="customer" type="text" inputmode="text" placeholder="e.g. Smith Joinery" autocomplete="off">
     </div>
     <div class="field">
       <label>Door Number</label>
@@ -198,7 +198,7 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
 
 <!-- ===== Setup ===== -->
 <div id="setup" hidden>
-<div class="card">
+<div class="card" hidden>
   <h2>Sync across devices</h2>
   <div id="syncDisconnected">
     <p class="muted">Keep your devices in sync via a <b>private</b> GitHub gist. Create a classic token with only the <b>gist</b> scope and paste it on each device. Your token is stored only in this browser and is sent only to GitHub.</p>
@@ -284,7 +284,7 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
 <div id="report"></div>
 
 <script>
-const APP_VERSION = "2026-09-23 · v1.0";
+const APP_VERSION = "2026-09-23 · v1.1";
 const $ = id => document.getElementById(id);
 const STORE = 'doorphotos.data';
 const DRAFT = 'doorphotos.draft';
@@ -387,7 +387,7 @@ function renderEntries(){
   box.innerHTML=list.map(e=>{
     const th=(e.photos&&e.photos[0]) ? `<img class="ethumb" src="${e.photos[0]}" alt="">` : `<div class="ethumb ph">📄</div>`;
     const np=(e.photos||[]).length;
-    const title=[e.door?('Door '+esc(e.door)):'', e.customer?('Cust '+esc(e.customer)):''].filter(Boolean).join(' · ')||'Untitled entry';
+    const title=[e.door?('Door '+esc(e.door)):'', e.customer?esc(e.customer):''].filter(Boolean).join(' · ')||'Untitled entry';
     return `<div class="entry" data-open="${e.id}">${th}<div class="einfo"><b>${title}</b>`+
       `<span>${fmtDate(e.createdAt)} · ${np} photo${np===1?'':'s'}${e.notes?' · '+esc(e.notes.slice(0,40))+(e.notes.length>40?'…':''):''}</span></div>`+
       `<button class="edel" data-del="${e.id}" title="Delete">🗑</button></div>`;
@@ -417,7 +417,7 @@ function buildReport(){
       <div class="r-badge"><b>DOOR PHOTOS</b><br>Prepared ${esc(dateStr)}</div>
     </div>
     <div class="r-meta">
-      <div><span>Customer Number</span><b>${draft.customer?esc(draft.customer):'—'}</b></div>
+      <div><span>Customer Name</span><b>${draft.customer?esc(draft.customer):'—'}</b></div>
       <div><span>Door Number</span><b>${draft.door?esc(draft.door):'—'}</b></div>
       <div><span>Date</span><b>${esc(dateStr)}</b></div>
       <div><span>Photos</span><b>${photos.length}</b></div>
