@@ -293,6 +293,7 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
     <div class="modal-actions">
       <button class="btn primary" id="mEdit" type="button">✏️ Edit</button>
       <button class="btn" id="mPdf" type="button">📄 PDF</button>
+      <button class="btn" id="mEmail" type="button">📧 Email</button>
       <button class="btn bad" id="mDel" type="button">🗑 Delete</button>
     </div>
   </div>
@@ -302,7 +303,7 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
 <div id="report"></div>
 
 <script>
-const APP_VERSION = "2026-09-23 · v1.4";
+const APP_VERSION = "2026-09-23 · v1.5";
 const $ = id => document.getElementById(id);
 const STORE = 'doorphotos.data';
 const DRAFT = 'doorphotos.draft';
@@ -429,6 +430,7 @@ function openEntry(id){
   $('mPhotos') && $('mPhotos').querySelectorAll('img').forEach(im=> im.onclick=()=>openLightbox(im.src));
   $('mEdit').onclick=()=>{ closeEntryModal(); editEntry(id); };
   $('mPdf').onclick=()=>{ printReport(e); };
+  $('mEmail').onclick=()=>{ emailEntry(e); };
   $('mDel').onclick=()=>{ closeEntryModal(); deleteEntry(id); };
   $('entryModal').classList.add('show');
 }
@@ -470,6 +472,28 @@ function printReport(d){
   const imgs=[...$('report').querySelectorAll('img')];
   Promise.all(imgs.map(im=> im.complete ? Promise.resolve() : new Promise(r=>{ im.onload=im.onerror=r; })))
     .then(()=> setTimeout(()=>window.print(), 120));
+}
+function dataURLtoFile(dataurl, name){
+  try{ const [meta,b64]=dataurl.split(','); const mime=(meta.match(/:(.*?);/)||[])[1]||'image/jpeg';
+    const bin=atob(b64), arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    return new File([arr], name, {type:mime}); }catch(e){ return null; }
+}
+async function emailEntry(e){
+  const subject='Door Photos'+(e.door?' — Door '+e.door:'')+(e.customer?' — '+e.customer:'');
+  const dateStr=fmtDate(e.createdAt);
+  const lines=['Customer Name: '+(e.customer||'—'),'Door Number: '+(e.door||'—'),'Date: '+(dateStr||'—'),'Photos: '+((e.photos||[]).length)];
+  if(e.notes) lines.push('','Notes:',e.notes);
+  const text=lines.join('\n');
+  // Best path (mostly mobile): share the actual photo files to the share sheet, which includes Mail
+  try{
+    const photos=e.photos||[];
+    if(photos.length && navigator.canShare){
+      const files=photos.map((p,i)=>dataURLtoFile(p,(e.door||'door')+'-photo-'+(i+1)+'.jpg')).filter(Boolean);
+      if(files.length && navigator.canShare({files})){ await navigator.share({files, title:subject, text}); return; }
+    }
+  }catch(err){ if(err && err.name==='AbortError') return; /* else fall through to mailto */ }
+  // Fallback (desktop / no file sharing): open the mail client with the details prefilled
+  window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text+'\n\n(Photos: use “PDF” to save/attach them, or send from a phone to attach directly.)');
 }
 $('pdfBtn').onclick=()=>{
   saveDraft();
