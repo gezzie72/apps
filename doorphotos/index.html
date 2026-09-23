@@ -308,7 +308,7 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
 <div id="report"></div>
 
 <script>
-const APP_VERSION = "2026-09-23 · v2.1";
+const APP_VERSION = "2026-09-23 · v2.2";
 const $ = id => document.getElementById(id);
 const STORE = 'doorphotos.data';
 const DRAFT = 'doorphotos.draft';
@@ -687,7 +687,18 @@ setInterval(updateLastSync,30000);
 let pushTimer=null;
 function schedulePush(){ if(!GH.connected||!GH.auto) return; clearTimeout(pushTimer); pushTimer=setTimeout(()=>{ syncPush().catch(e=>{ spin(false); markSync('Push failed: '+e.message,true); }); },1800); }
 async function syncPush(){ if(!GH.connected) return; spin(true); markSync('Saving…');
-  try{ const s=Object.assign({},state); s.updatedAt=curUpdatedAt||Date.now(); const content=await encodeForGist(s);
+  try{
+    // Merge with whatever is already in the gist first, so a push never clobbers another
+    // device's changes or deletions (tombstones). Prevents deleted entries reappearing.
+    try{
+      const g=await ghApi('GET','/gists/'+GH.gist); const f=g.files&&g.files['doorphotos.json'];
+      if(f&&f.content){
+        let remote=JSON.parse(f.truncated&&f.raw_url ? await (await fetch(f.raw_url)).text() : f.content);
+        if(remote&&remote.__enc===1){ if(SYNC_PASS){ try{ remote=await decodeEnvelope(remote); }catch(e){ remote=null; } } else { remote=null; } }
+        if(remote&&Array.isArray(remote.entries)){ mergeState(remote); renderEntries(); }
+      }
+    }catch(e){ /* best-effort merge; fall through to write */ }
+    const s=Object.assign({},state); s.updatedAt=curUpdatedAt||Date.now(); const content=await encodeForGist(s);
     await ghApi('PATCH','/gists/'+GH.gist,{files:{'doorphotos.json':{content}}}); setSyncTime(); markSync(SYNC_PASS?'Synced 🔒':'Synced'); }
   finally{ spin(false); } }
 async function syncPull(force,quiet){ if(!GH.connected) return;
