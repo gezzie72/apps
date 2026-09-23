@@ -308,7 +308,7 @@ input:focus,textarea:focus{outline:none; border-color:var(--accent)}
 <div id="report"></div>
 
 <script>
-const APP_VERSION = "2026-09-23 · v1.8";
+const APP_VERSION = "2026-09-23 · v1.9";
 const $ = id => document.getElementById(id);
 const STORE = 'doorphotos.data';
 const DRAFT = 'doorphotos.draft';
@@ -489,37 +489,70 @@ async function buildEntryPdf(e){
   const enc=s=>String(s==null?'':s).replace(/[\\()]/g,'\\$&').replace(/[^\x20-\x7E]/g,'?');
   const dateStr=(()=>{ try{ return new Date(e.createdAt||Date.now()).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }catch(_){ return ''; } })();
 
+  // palette (matches the on-screen report)
+  const NAVY=[0.059,0.090,0.165], HEAD=[0.114,0.227,0.373], GREY=[0.392,0.455,0.545],
+        SUB=[0.278,0.333,0.412], LINE=[0.886,0.910,0.941], CELLBG=[0.945,0.961,0.976], CELLBD=[0.796,0.835,0.882];
+
   let idc=0; const nextId=()=>++idc;
   const catalogId=nextId(), pagesId=nextId(), fontId=nextId(), fontBId=nextId();
   const imgIds=photos.map(()=>nextId());
 
   const pages=[]; let cur={ops:[], xo:{}}, y=PH-M;
   const newPage=()=>{ pages.push(cur); cur={ops:[], xo:{}}; y=PH-M; };
-  const ensure=sp=>{ if(y-sp<M) newPage(); };
-  const line=(str,size,bold,after)=>{ ensure(size+(after||0)); cur.ops.push(`BT /${bold?'F2':'F1'} ${size} Tf ${M} ${(y-size).toFixed(2)} Td (${enc(str)}) Tj ET`); y-=(size+(after==null?5:after)); };
-  const wrap=(str,size,cpl)=>{ const words=String(str).split(/\s+/); let ln=''; const out=[]; words.forEach(w=>{ if((ln+' '+w).trim().length>cpl){ if(ln) out.push(ln); ln=w; } else ln=(ln?ln+' ':'')+w; }); if(ln) out.push(ln); out.forEach(l=>line(l,size,false,3)); };
+  const tw=(str,size,bold)=>{ let w=0; for(const ch of String(str)){ let f=0.5; if("iIl.,:;'!|jtf ".indexOf(ch)>=0) f=0.30; else if('mwMW@'.indexOf(ch)>=0) f=0.82; else if(ch>='A'&&ch<='Z') f=0.66; w+=f; } return w*size*(bold?1.05:1); };
+  const T=(x,yy,str,size,bold,col,align)=>{ let tx=x; if(align==='right') tx=x-tw(str,size,bold); else if(align==='center') tx=x-tw(str,size,bold)/2;
+    cur.ops.push(`${col[0]} ${col[1]} ${col[2]} rg BT /${bold?'F2':'F1'} ${size} Tf ${tx.toFixed(2)} ${yy.toFixed(2)} Td (${enc(str)}) Tj ET`); };
+  const RECT=(x,yy,w,h,fill)=>cur.ops.push(`${fill[0]} ${fill[1]} ${fill[2]} rg ${x.toFixed(2)} ${yy.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`);
+  const BORDER=(x,yy,w,h,c,lw)=>cur.ops.push(`${c[0]} ${c[1]} ${c[2]} RG ${lw} w ${x.toFixed(2)} ${yy.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re S`);
+  const HLINE=(x1,x2,yy,c,lw)=>cur.ops.push(`${c[0]} ${c[1]} ${c[2]} RG ${lw} w ${x1.toFixed(2)} ${yy.toFixed(2)} m ${x2.toFixed(2)} ${yy.toFixed(2)} l S`);
+  const wrapLines=(str,size,cpl)=>{ const words=String(str).split(/\s+/); let ln=''; const out=[]; words.forEach(w=>{ if((ln+' '+w).trim().length>cpl){ if(ln) out.push(ln); ln=w; } else ln=(ln?ln+' ':'')+w; }); if(ln) out.push(ln); return out; };
 
-  line('Door Photo Record',18,true,6);
-  line('Site photo record',10.5,false,12);
-  line('Customer Name:  '+(e.customer||'-'),11,false,4);
-  line('Door Number:  '+(e.door||'-'),11,false,4);
-  line('Date:  '+(dateStr||'-'),11,false,4);
-  line('Photos:  '+photos.length,11,false,10);
-  if(e.notes){ line('Notes:',11,true,4); wrap(e.notes,10.5,95); y-=6; }
+  // ---- header ----
+  T(M, y-20, 'Door Photo Record', 20, true, NAVY);
+  T(M, y-34, 'Site photo record', 10, false, SUB);
+  T(PW-M, y-12, 'DOOR PHOTOS', 9, true, NAVY, 'right');
+  T(PW-M, y-24, 'Prepared '+dateStr, 8.5, false, SUB, 'right');
+  const ruleY=y-48; HLINE(M, PW-M, ruleY, HEAD, 2.5);
+  y=ruleY-22;
+
+  // ---- meta grid (two columns) ----
+  const colW=(usable-16)/2, c1=M, c2=M+colW+16;
+  const rowPair=(l1,v1,l2,v2)=>{ const base=y-11;
+    T(c1,base,l1,10,false,GREY); T(c1+colW,base,String(v1),11,true,NAVY,'right'); HLINE(c1,c1+colW,y-20,LINE,0.8);
+    T(c2,base,l2,10,false,GREY); T(c2+colW,base,String(v2),11,true,NAVY,'right'); HLINE(c2,c2+colW,y-20,LINE,0.8);
+    y-=27; };
+  rowPair('Customer Name', e.customer||'-', 'Door Number', e.door||'-');
+  rowPair('Date', dateStr||'-', 'Photos', String(photos.length));
+  y-=6;
+
+  // ---- notes box ----
+  if(e.notes){ const nl=wrapLines(e.notes,10,96), bh=nl.length*13+16;
+    RECT(M, y-bh, usable, bh, CELLBG); BORDER(M, y-bh, usable, bh, LINE, 0.8);
+    let ty=y-16; nl.forEach(l=>{ T(M+10, ty, l, 10, false, NAVY); ty-=13; });
+    y-=bh+16; }
+
+  // ---- photos section ----
+  if(photos.length){ T(M, y-10, 'PHOTOS ('+photos.length+')', 10, true, HEAD); HLINE(M, PW-M, y-15, CELLBD, 1.5); y-=27; }
+  else { T(M, y-10, 'No photos attached.', 10, false, GREY); y-=20; }
 
   let col=0, rowTop=y;
   photos.forEach((p,i)=>{
-    if(col===0){ ensure(cellH+GAP); rowTop=y; }
+    if(col===0){ if(y-(cellH+GAP)<M+34){ newPage(); T(M, y-10, 'PHOTOS (cont.)', 10, true, HEAD); HLINE(M, PW-M, y-15, CELLBD, 1.5); y-=27; } rowTop=y; }
     const x=M+col*(cellW+GAP), cellBottom=rowTop-cellH, d=dims[i]||{w:1,h:1};
-    let dw=cellW, dh=cellH;
-    if(d.w>0 && d.h>0){ const s=Math.min(cellW/d.w, cellH/d.h); dw=d.w*s; dh=d.h*s; }
+    RECT(x, cellBottom, cellW, cellH, CELLBG); BORDER(x, cellBottom, cellW, cellH, CELLBD, 0.8);
+    let dw=cellW-8, dh=cellH-8;
+    if(d.w>0 && d.h>0){ const s=Math.min((cellW-8)/d.w, (cellH-8)/d.h); dw=d.w*s; dh=d.h*s; }
     const ix=x+(cellW-dw)/2, iy=cellBottom+(cellH-dh)/2, name='Im'+i;
     cur.xo[name]=imgIds[i];
     cur.ops.push(`q ${dw.toFixed(2)} 0 0 ${dh.toFixed(2)} ${ix.toFixed(2)} ${iy.toFixed(2)} cm /${name} Do Q`);
     col++; if(col===COLS){ col=0; y=rowTop-cellH-GAP; }
   });
   if(col!==0) y=rowTop-cellH-GAP;
-  if(!photos.length) line('No photos attached.',10.5,false,4);
+
+  // ---- footer (bottom of last page) ----
+  HLINE(M, PW-M, M+22, LINE, 0.8);
+  T(M, M+10, 'Generated by Door Photos', 8.5, false, GREY);
+  T(PW-M, M+10, dateStr, 8.5, false, GREY, 'right');
   pages.push(cur);
 
   const pageIds=[], contentIds=[];
