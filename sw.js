@@ -1,7 +1,7 @@
 /* My Apps launcher service worker — offline shell, network-first so updates land.
    Scoped narrowly: only handles the hub's own root-level files, never sub-app folders,
    so each app's own service worker stays in charge of its pages. */
-const CACHE = "myapps-v4";
+const CACHE = "myapps-v5";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
@@ -18,8 +18,14 @@ self.addEventListener("fetch", e=>{
   if(!url.pathname.startsWith(scopePath)) return;
   const rest = url.pathname.slice(scopePath.length);            // "", "index.html", "ideapad/..."
   if(rest.indexOf("/") !== -1) return;            // sub-app folder -> leave it to that app's SW
+  // Revalidate the page itself with the server. A plain fetch() still goes
+  // through the browser's HTTP cache, and Pages sends max-age=600, so without
+  // this the hub can keep serving a 10-minute-old tile list while online.
+  // no-cache = conditional request: a 304 when nothing changed, so it's cheap.
+  const isPage = e.request.mode === "navigate" || rest === "" || rest.endsWith(".html");
+  const req = isPage ? new Request(e.request, { cache: "no-cache" }) : e.request;
   e.respondWith(
-    fetch(e.request).then(res=>{
+    fetch(req).then(res=>{
       const copy = res.clone();
       caches.open(CACHE).then(c=>c.put(e.request, copy));
       return res;
