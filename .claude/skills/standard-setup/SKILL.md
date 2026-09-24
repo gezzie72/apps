@@ -5,7 +5,7 @@ description: >-
   (ideapad, healthlog, fitplan, vault, recipebox, financemanager, or a new one).
   The standard Setup panel bundles the settings every app here shares: Appearance
   (light / dark / system theme), Text size, GitHub Gist sync across devices,
-  Export / Import JSON, and the shared "My apps" links list. Use this whenever the
+  Export / Import JSON, and the shared "My apps" App Launcher link. Use this whenever the
   user says "add the standard setup", "add the usual setup panel", "add the standard
   setup panel", "give it the usual settings", or otherwise asks for the normal
   settings / sync / theme / text-size block behind a Setup button or tab — even if
@@ -35,7 +35,7 @@ button opening a modal like ideapad — follow the target app's existing navigat
    / Sync now / Disconnect**, and an **Auto-sync** toggle. Each app uses its **own
    separate gist**.
 4. **Data** — **Export JSON** and **Import JSON** (import merges, never blind-overwrites).
-5. **My apps** — the shared links list (canonical list below), so any app can reach
+5. **My apps** — a link to the shared App Launcher (see below), so any app can reach
    the others and be installed to the home screen.
 
 ## How to build it — copy, don't reinvent
@@ -67,20 +67,26 @@ Steps:
    GitHub's API. Say so in the UI copy, and link the classic-token page:
    `https://github.com/settings/tokens/new?scopes=gist&description=<AppName>%20sync`.
 
-## Canonical "My apps" list
+## The "My apps" block
 
-Include all of these (drop the entry for the app you're editing only if you prefer;
-keeping it is fine). Emoji + name + link to `https://gezzie72.github.io/apps/<slug>/`:
+**Link to the App Launcher — do not hardcode a list of apps.** The repo now holds 17
+apps; a per-app list embedded in every app went stale the moment one was added or
+renamed. Every app that has this block (healthlog, ideapad, recipebox, vault,
+financemanager) uses the single launcher link, and none still carries the old list.
 
-- ✚ **HealthLog** — `healthlog`
-- 🏋 **FitPlan** — `fitplan`
-- 💡 **IdeaPad** — `ideapad`
-- 🔐 **Vault** — `vault`
-- 🥗 **RecipeBox** — `recipebox`
-- 💷 **Finance Manager** — `financemanager`
+Use this, adapted to the target app's own classes and theme tokens:
 
-Under it, a short line: "Open on any device, then use your browser menu → **Install**
-/ **Add to Home screen**."
+```html
+<h2>My apps</h2>
+<p class="muted">Open on any device, then use your browser menu → <b>Install</b> / <b>Add to Home screen</b>.</p>
+<p class="muted" style="margin-top:6px">🚀 <a class="link" href="https://gezzie72.github.io/apps/" target="_blank" rel="noopener">Open the App Launcher</a> — all your apps in one place.</p>
+```
+
+If the app has no `.link` class, style the anchor inline with the app's accent token
+(e.g. `style="color:var(--accent); font-weight:600"`) so it looks native in both themes.
+
+The launcher at `https://gezzie72.github.io/apps/` lists every app and is the one
+place that needs updating when an app is added.
 
 ## Finish
 
