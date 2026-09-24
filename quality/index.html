@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1b2a">
+<title>Quality Log</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+/* ============================================================
+   Quality Log - shopfloor fault capture
+   Phone: capture and correct.  Desktop: read and report.
+   ============================================================ */
+:root{
+  --bg:#f5f7fa; --surface:#fff; --sunk:#eef1f6;
+  --text:#14181f; --muted:#5d6675; --line:#dde2ea;
+  --accent:#1d4ed8; --accent-soft:#e6edff;
+  --ok:#137a45; --warn:#9a6700; --bad:#b3261e;
+  --w1:#eef2f7; --w1t:#3d4c5e;
+  --w2:#fff4d6; --w2t:#7a5a00;
+  --w3:#ffe2de; --w3t:#96241b;
+  --w4:#fdd8d4; --w4t:#7a1611;
+  --r:14px; --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 12px rgba(16,24,40,.05);
+  --tap:48px;
+  color-scheme:light;
+}
+:root[data-theme=dark]{
+  --bg:#0d1017; --surface:#161b25; --sunk:#1e2432;
+  --text:#e8ecf3; --muted:#98a2b3; --line:#2a3244;
+  --accent:#6f9bff; --accent-soft:#1c2740;
+  --ok:#54d195; --warn:#e8b64c; --bad:#ff8b80;
+  --w1:#222a38; --w1t:#b8c4d6;
+  --w2:#3d3013; --w2t:#f0cc72;
+  --w3:#48211d; --w3t:#ffb0a6;
+  --w4:#5a1f1a; --w4t:#ffc2ba;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  /* clears the tab bar AND the floating add button, so the last
+     record is never hidden underneath them */
+  padding-bottom:calc(150px + env(safe-area-inset-bottom));
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+
+/* ---- top bar ---- */
+.top{
+  position:sticky; top:0; z-index:20; background:var(--bg);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 8px;
+  border-bottom:1px solid var(--line);
+}
+.top h1{margin:0; font-size:19px; letter-spacing:-.2px}
+.top .sub{color:var(--muted); font-size:12.5px; margin-top:1px}
+
+/* ---- search ---- */
+.search{position:relative; margin-top:10px}
+.search input{
+  width:100%; height:var(--tap); padding:0 38px 0 38px;
+  background:var(--sunk); border:1px solid transparent; border-radius:999px;
+}
+.search input:focus{outline:none; border-color:var(--accent); background:var(--surface)}
+.search .mag{position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--muted)}
+.search .clr{
+  position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  width:34px; height:34px; border:0; border-radius:50%; background:transparent; color:var(--muted);
+  display:none; font-size:17px;
+}
+.search.has .clr{display:block}
+
+/* ---- list ---- */
+.wrap{padding:12px 16px 0; max-width:1100px; margin:0 auto}
+.daygroup{margin-top:14px}
+.daygroup h2{
+  margin:0 0 7px; font-size:12px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.6px; color:var(--muted);
+}
+.rec{
+  display:flex; gap:12px; align-items:flex-start; width:100%; text-align:left;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  padding:12px; margin-bottom:8px; box-shadow:var(--shadow);
+}
+.rec:active{transform:scale(.995)}
+.rec .thumb{
+  flex:0 0 52px; width:52px; height:52px; border-radius:10px; object-fit:cover;
+  background:var(--sunk); display:grid; place-items:center; color:var(--muted); font-size:18px;
+}
+.rec .mid{flex:1; min-width:0}
+.rec .ttl{font-weight:650; letter-spacing:-.15px}
+.rec .meta{color:var(--muted); font-size:13px; margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.rec .note{color:var(--muted); font-size:12.5px; margin-top:4px; font-style:italic;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden}
+.pill{
+  display:inline-block; padding:2px 9px; border-radius:999px;
+  font-size:11.5px; font-weight:700; white-space:nowrap;
+}
+.w1{background:var(--w1); color:var(--w1t)}
+.w2{background:var(--w2); color:var(--w2t)}
+.w3{background:var(--w3); color:var(--w3t)}
+.w4{background:var(--w4); color:var(--w4t)}
+.cnt{font-size:11px; color:var(--muted); margin-top:5px}
+
+.empty{text-align:center; color:var(--muted); padding:52px 20px}
+.empty .big{font-size:40px; margin-bottom:10px}
+
+/* ---- bottom bar ---- */
+.tabs{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  display:grid; grid-template-columns:repeat(4,1fr);
+  background:var(--surface); border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabs button{
+  background:none; border:0; padding:9px 4px 8px; color:var(--muted);
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  font-size:10.5px; font-weight:650; min-height:56px;
+}
+.tabs button .ic{font-size:19px; line-height:1}
+.tabs button[aria-selected=true]{color:var(--accent)}
+
+/* ---- big add button ---- */
+.fab{
+  position:fixed; right:18px; bottom:calc(80px + env(safe-area-inset-bottom)); z-index:29;
+  width:58px; height:58px; border-radius:50%; border:0;
+  background:var(--accent); color:#fff; font-size:29px; line-height:1;
+  box-shadow:0 6px 18px rgba(29,78,216,.42);
+}
+
+/* ---- editor sheet ---- */
+.sheet{
+  position:fixed; inset:0; z-index:40; background:var(--bg);
+  display:flex; flex-direction:column; transform:translateY(100%);
+  transition:transform .22s ease; visibility:hidden;
+}
+.sheet.open{transform:none; visibility:visible}
+.sheet .shead{
+  display:flex; align-items:center; gap:10px;
+  padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+  border-bottom:1px solid var(--line); background:var(--surface);
+}
+.sheet .shead h2{flex:1; margin:0; font-size:17px}
+.sheet .sbody{flex:1; overflow:auto; padding:14px 16px 26px}
+.sheet .sfoot{
+  display:flex; gap:10px; padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line); background:var(--surface);
+}
+.btn{
+  height:var(--tap); padding:0 18px; border-radius:11px; border:1px solid transparent;
+  background:var(--accent); color:#fff; font-weight:650;
+}
+.btn.grow{flex:1}
+.btn.ghost{background:var(--surface); color:var(--text); border-color:var(--line)}
+.btn.danger{background:var(--surface); color:var(--bad); border-color:var(--bad)}
+.iconbtn{
+  width:var(--tap); height:var(--tap); border-radius:11px; border:1px solid var(--line);
+  background:var(--surface); font-size:18px;
+}
+
+.f{margin-bottom:14px}
+.f label{display:block; font-size:12.5px; font-weight:700; color:var(--muted); margin-bottom:5px}
+.f input,.f select,.f textarea{
+  width:100%; min-height:var(--tap); padding:11px 12px;
+  background:var(--surface); border:1px solid var(--line); border-radius:11px;
+}
+.f textarea{min-height:92px; resize:vertical; line-height:1.5}
+.f input:focus,.f select:focus,.f textarea:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+
+/* warning chooser */
+.wsel{display:grid; grid-template-columns:repeat(2,1fr); gap:8px}
+.wsel button{
+  min-height:var(--tap); border-radius:11px; border:1px solid var(--line);
+  background:var(--surface); font-weight:650; font-size:13.5px; color:var(--text);
+}
+.wsel button[aria-pressed=true]{border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent)}
+
+/* photos */
+.shots{display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:8px}
+.shot{position:relative; aspect-ratio:1; border-radius:11px; overflow:hidden; background:var(--sunk)}
+.shot img{width:100%; height:100%; object-fit:cover; display:block}
+.shot .x{
+  position:absolute; top:4px; right:4px; width:26px; height:26px; border-radius:50%;
+  border:0; background:rgba(0,0,0,.62); color:#fff; font-size:15px; line-height:1;
+}
+.addshot{
+  aspect-ratio:1; border:1.5px dashed var(--line); border-radius:11px; background:var(--surface);
+  color:var(--muted); display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:3px; font-size:11.5px; font-weight:650;
+}
+.addshot .ic{font-size:23px}
+
+/* lightbox */
+.light{position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.92);
+  display:none; align-items:center; justify-content:center}
+.light.open{display:flex}
+.light img{max-width:100%; max-height:100%; object-fit:contain}
+.light .x{position:absolute; top:calc(10px + env(safe-area-inset-top)); right:14px;
+  width:42px; height:42px; border-radius:50%; border:0; background:rgba(255,255,255,.16);
+  color:#fff; font-size:20px}
+
+.toast{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:calc(88px + env(safe-area-inset-bottom)); z-index:70;
+  background:var(--text); color:var(--bg); padding:10px 16px; border-radius:999px;
+  font-size:13.5px; font-weight:600; opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.toast.show{opacity:1}
+
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  padding:16px; margin-bottom:12px; box-shadow:var(--shadow)}
+.panel h3{margin:0 0 10px; font-size:15px}
+.muted{color:var(--muted); font-size:13px}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:11px; overflow:hidden}
+.seg button{background:var(--surface); border:0; border-right:1px solid var(--line);
+  padding:0 14px; min-height:42px; font-weight:650; font-size:13px; color:var(--text)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--accent); color:#fff}
+
+/* ---- desktop ---- */
+@media (min-width:860px){
+  body{padding-bottom:0}
+  .tabs{
+    position:sticky; top:0; bottom:auto; grid-template-columns:repeat(4,auto);
+    justify-content:start; gap:4px; padding:0 16px; border-top:0; border-bottom:1px solid var(--line);
+  }
+  .tabs button{flex-direction:row; gap:7px; font-size:13.5px; padding:0 14px; min-height:52px}
+  .tabs button .ic{font-size:15px}
+  .fab{display:none}
+  .top{padding-top:14px}
+  .top .row{display:flex; align-items:center; gap:16px}
+  .top .search{flex:1; max-width:420px; margin-top:0}
+  .newbtn{display:inline-flex !important; align-items:center; gap:7px}
+  .list{display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:10px}
+  .rec{margin-bottom:0}
+  .sheet{
+    inset:auto; top:50%; left:50%; width:min(660px,94vw); max-height:88vh;
+    transform:translate(-50%,-50%) scale(.97); border-radius:18px; overflow:hidden;
+    border:1px solid var(--line); box-shadow:0 24px 70px rgba(0,0,0,.3); opacity:0;
+    transition:opacity .16s ease, transform .16s ease;
+  }
+  .sheet.open{transform:translate(-50%,-50%); opacity:1}
+  .scrim{position:fixed; inset:0; z-index:39; background:rgba(9,12,18,.5); display:none}
+  .scrim.open{display:block}
+}
+.newbtn{display:none; height:42px; padding:0 15px; border-radius:11px; border:0;
+  background:var(--accent); color:#fff; font-weight:650}
+
+@media print{
+  .tabs,.fab,.top,.sheet,.scrim,.toast{display:none !important}
+  body{background:#fff; padding:0}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="row">
+    <div>
+      <h1>Quality Log</h1>
+      <div class="sub" id="subline">Shopfloor faults</div>
+    </div>
+    <div class="search" id="searchWrap">
+      <span class="mag">&#128269;</span>
+      <input id="q" type="search" placeholder="Search door, name, fault..." autocomplete="off">
+      <button class="clr" id="qClear" aria-label="Clear search">&times;</button>
+    </div>
+    <button class="newbtn" id="newTop"><span>+</span> Log fault</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-view="log"     aria-selected="true"><span class="ic">&#128203;</span>Log</button>
+  <button role="tab" data-view="reports" aria-selected="false"><span class="ic">&#128202;</span>Reports</button>
+  <button role="tab" data-view="lists"   aria-selected="false"><span class="ic">&#128100;</span>Lists</button>
+  <button role="tab" data-view="setup"   aria-selected="false"><span class="ic">&#9881;</span>Setup</button>
+</nav>
+
+<main class="wrap" id="main"></main>
+
+<button class="fab" id="fab" aria-label="Log a fault">+</button>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- editor -->
+<section class="sheet" id="sheet" aria-hidden="true">
+  <div class="shead">
+    <button class="iconbtn" id="sClose" aria-label="Close">&times;</button>
+    <h2 id="sTitle">Log a fault</h2>
+    <button class="iconbtn" id="sDelete" aria-label="Delete" style="color:var(--bad)">&#128465;</button>
+  </div>
+  <div class="sbody">
+    <div class="row2">
+      <div class="f"><label for="fDate">Date</label><input id="fDate" type="date"></div>
+      <div class="f"><label for="fDoor">Door no.</label><input id="fDoor" type="text" inputmode="numeric" placeholder="e.g. 150023"></div>
+    </div>
+    <div class="f"><label for="fType">Fault</label><select id="fType"></select></div>
+    <div class="row2">
+      <div class="f"><label for="fDept">Department</label><select id="fDept"></select></div>
+      <div class="f"><label for="fEmp">Operative</label><select id="fEmp"></select></div>
+    </div>
+    <div class="f">
+      <label>Warning level</label>
+      <div class="wsel" id="fWarn"></div>
+    </div>
+    <div class="f"><label for="fNotes">Notes</label>
+      <textarea id="fNotes" placeholder="What happened, what was done about it..."></textarea></div>
+    <div class="f">
+      <label>Photos</label>
+      <div class="shots" id="fShots"></div>
+      <input id="camIn"  type="file" accept="image/*" capture="environment" hidden>
+      <input id="fileIn" type="file" accept="image/*" multiple hidden>
+    </div>
+  </div>
+  <div class="sfoot">
+    <button class="btn ghost" id="sCancel">Cancel</button>
+    <button class="btn grow" id="sSave">Save</button>
+  </div>
+</section>
+
+<div class="light" id="light"><button class="x" id="lightX">&times;</button><img id="lightImg" alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Data
+   Text log  -> localStorage (small, always available)
+   Photos    -> IndexedDB (large; localStorage is shared with every
+                other app on this origin and would fill up fast)
+   ============================================================ */
+const APP_VERSION = "0.1";
+const LS = "quality.log.v1";
+const PREF_THEME = "quality.theme";
+const PREF_TEXT  = "quality.text";
+
+const WARNINGS = ["Awareness","Verbal Given","Disciplinary","Termination"];
+const wClass = w => "w" + Math.max(1, WARNINGS.indexOf(w) + 1);
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+function seed(){
+  return {
+    updatedAt: Date.now(),
+    lists:{
+      employees:["Andrew Coombes","Andrew Palmer","Andrew Morgan","Brandon Evans","Gary Thomas",
+                 "Hugh Pierce","Keiron","Louis","Mike Griffiths","Rhys Davies","Ryan Oneil"],
+      departments:["Bending","Buffing","Dispatch","Laser","Packing","Painting","Programming","Welding"],
+      types:["Not Enough Powder","Programming Issue","Bending Issue","Glue on Door","Advels Loose",
+             "Parametric Issue","Surges (paint)"]
+    },
+    faults:[]
+  };
+}
+let state = load();
+function load(){
+  try{ const raw = localStorage.getItem(LS); if(raw) return norm(JSON.parse(raw)); }catch(e){}
+  return seed();
+}
+function norm(s){
+  s.lists = s.lists || {};
+  ["employees","departments","types"].forEach(k => s.lists[k] = s.lists[k] || []);
+  s.faults = (s.faults || []).map(f => ({ photos:[], notes:"", ...f }));
+  s.updatedAt = s.updatedAt || 0;
+  return s;
+}
+function save(){
+  state.updatedAt = Date.now();
+  try{ localStorage.setItem(LS, JSON.stringify(state)); }
+  catch(e){ toast("Couldn't save - storage full"); }
+}
+
+/* ---------- photo store (IndexedDB) ---------- */
+const DB_NAME = "quality-photos", STORE = "photos";
+let _db;
+function db(){
+  if(_db) return Promise.resolve(_db);
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => { if(!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE); };
+    r.onsuccess = () => { _db = r.result; res(_db); };
+    r.onerror = () => rej(r.error);
+  });
+}
+async function putPhoto(id, dataUrl){
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(STORE, "readwrite");
+    t.objectStore(STORE).put(dataUrl, id);
+    t.oncomplete = res; t.onerror = () => rej(t.error);
+  });
+}
+async function getPhoto(id){
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(STORE, "readonly");
+    const q = t.objectStore(STORE).get(id);
+    q.onsuccess = () => res(q.result || null);
+    q.onerror = () => rej(q.error);
+  });
+}
+async function delPhoto(id){
+  const d = await db();
+  return new Promise(res => {
+    const t = d.transaction(STORE, "readwrite");
+    t.objectStore(STORE).delete(id);
+    t.oncomplete = res; t.onerror = res;
+  });
+}
+
+/* ---------- photo capture ----------
+   800px / q0.55: small enough that a month of photos syncs sensibly,
+   still clear enough to show a paint run or a mis-drilled hinge.      */
+const MAX_DIM = 800, JPEG_Q = 0.55;
+function shrink(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      let { naturalWidth:w, naturalHeight:h } = img;
+      if(w > h && w > MAX_DIM){ h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+      else if(h >= w && h > MAX_DIM){ w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      try{ res(c.toDataURL("image/jpeg", JPEG_Q)); }catch(e){ rej(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("unreadable image")); };
+    img.src = url;
+  });
+}
+
+/* ---------- helpers ---------- */
+function toast(m){ const t = $("#toast"); t.textContent = m; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 1900); }
+function todayISO(){ const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+function fmtDay(iso){
+  if(!iso) return "";
+  const [y,m,d] = iso.split("-").map(Number);
+  const dt = new Date(y, m-1, d), t = new Date(), y2 = new Date(t); y2.setDate(t.getDate()-1);
+  const same = (a,b) => a.toDateString() === b.toDateString();
+  if(same(dt,t)) return "Today";
+  if(same(dt,y2)) return "Yesterday";
+  return dt.toLocaleDateString("en-GB",{ weekday:"short", day:"numeric", month:"short",
+    year: dt.getFullYear() === t.getFullYear() ? undefined : "numeric" });
+}
+function shortDate(iso){ const [y,m,d] = (iso||"").split("-"); return d ? `${d}/${m}/${y}` : ""; }
+
+/* ---------- theme ---------- */
+function readPref(k, d){ try{ return localStorage.getItem(k) || d; }catch(e){ return d; } }
+function applyTheme(v){
+  const dark = v === "dark" || (v === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.toggleAttribute("data-theme", dark);
+  if(dark) document.documentElement.setAttribute("data-theme","dark");
+  const mc = document.querySelector('meta[name=theme-color]');
+  if(mc) mc.setAttribute("content", dark ? "#0d1017" : "#0d1b2a");
+}
+applyTheme(readPref(PREF_THEME, "system"));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if(readPref(PREF_THEME,"system") === "system") applyTheme("system");
+});
+
+/* ============================================================
+   Views
+   ============================================================ */
+let view = "log", query = "";
+
+function setView(v){
+  view = v;
+  $$(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === v)));
+  $("#searchWrap").style.visibility = v === "log" ? "" : "hidden";
+  render();
+}
+
+function matches(f, q){
+  if(!q) return true;
+  q = q.toLowerCase();
+  return [f.door, f.type, f.department, f.employee, f.warning, f.notes]
+    .some(x => String(x||"").toLowerCase().includes(q));
+}
+
+function render(){
+  const m = $("#main");
+  if(view === "log")     return renderLog(m);
+  if(view === "reports") return renderReports(m);
+  if(view === "lists")   return renderLists(m);
+  if(view === "setup")   return renderSetup(m);
+}
+
+function renderLog(m){
+  const rows = state.faults.filter(f => matches(f, query))
+    .sort((a,b) => (b.date||"").localeCompare(a.date||"") || (b.createdAt||0) - (a.createdAt||0));
+
+  $("#subline").textContent = state.faults.length
+    ? `${state.faults.length} fault${state.faults.length===1?"":"s"} logged`
+    : "Shopfloor faults";
+
+  if(!rows.length){
+    m.innerHTML = query
+      ? `<div class="empty"><div class="big">&#128269;</div><b>Nothing matches "${esc(query)}"</b>
+         <div class="muted" style="margin-top:6px">Try a door number, a name, or a fault type.</div></div>`
+      : `<div class="empty"><div class="big">&#128203;</div><b>No faults logged yet</b>
+         <div class="muted" style="margin-top:6px">Tap + to log the first one.</div></div>`;
+    return;
+  }
+
+  const groups = [];
+  for(const f of rows){
+    const last = groups[groups.length-1];
+    if(last && last.day === f.date) last.items.push(f);
+    else groups.push({ day:f.date, items:[f] });
+  }
+
+  m.innerHTML = groups.map(g => `
+    <section class="daygroup">
+      <h2>${esc(fmtDay(g.day))}</h2>
+      <div class="list">
+        ${g.items.map(f => `
+          <button class="rec" data-id="${f.id}">
+            <span class="thumb" data-thumb="${f.photos && f.photos[0] ? f.photos[0] : ""}">${
+              f.photos && f.photos.length ? "" : "&#128247;"}</span>
+            <span class="mid">
+              <span class="ttl">${esc(f.type || "Fault")}${f.door ? " &middot; " + esc(f.door) : ""}</span>
+              <span class="meta">${esc(f.employee || "-")} &middot; ${esc(f.department || "-")}</span>
+              ${f.notes ? `<span class="note">${esc(f.notes)}</span>` : ""}
+              ${f.photos && f.photos.length > 1 ? `<span class="cnt">&#128247; ${f.photos.length} photos</span>` : ""}
+            </span>
+            <span class="pill ${wClass(f.warning)}">${esc(f.warning || "-")}</span>
+          </button>`).join("")}
+      </div>
+    </section>`).join("");
+
+  m.querySelectorAll(".rec").forEach(b => b.onclick = () => openEditor(b.dataset.id));
+  m.querySelectorAll("[data-thumb]").forEach(async el => {
+    const id = el.dataset.thumb; if(!id) return;
+    const d = await getPhoto(id);
+    if(d){ const i = new Image(); i.src = d; i.className = "thumb"; i.alt = ""; el.replaceWith(i); }
+  });
+}
+
+function renderReports(m){
+  const by = (key) => {
+    const out = {};
+    for(const f of state.faults){
+      const k = f[key] || "-";
+      out[k] = out[k] || { total:0, w:{} };
+      out[k].total++;
+      out[k].w[f.warning] = (out[k].w[f.warning]||0) + 1;
+    }
+    return Object.entries(out).sort((a,b) => b[1].total - a[1].total);
+  };
+  const table = (title, rows) => `
+    <div class="panel">
+      <h3>${title}</h3>
+      ${rows.length ? `<table style="width:100%; border-collapse:collapse; font-size:14px">
+        <thead><tr style="text-align:left; color:var(--muted); font-size:12px">
+          <th style="padding:6px 0">Name</th><th>Faults</th><th>Highest</th></tr></thead>
+        <tbody>${rows.map(([k,v]) => {
+          const highest = WARNINGS.filter(w => v.w[w]).pop() || "-";
+          return `<tr style="border-top:1px solid var(--line)">
+            <td style="padding:8px 0">${esc(k)}</td><td>${v.total}</td>
+            <td><span class="pill ${wClass(highest)}">${esc(highest)}</span></td></tr>`;
+        }).join("")}</tbody></table>` : `<p class="muted">Nothing logged yet.</p>`}
+    </div>`;
+  m.innerHTML = table("By operative", by("employee")) + table("By department", by("department"));
+}
+
+function renderLists(m){
+  const block = (key, label) => `
+    <div class="panel">
+      <h3>${label} <span class="muted">(${state.lists[key].length})</span></h3>
+      <div style="display:flex; flex-wrap:wrap; gap:7px; margin-bottom:11px">
+        ${state.lists[key].map((v,i) => `
+          <span class="pill w1" style="padding:6px 10px; font-weight:600">
+            ${esc(v)} <button data-rm="${key}:${i}" style="border:0;background:none;color:var(--muted);padding:0 0 0 5px">&times;</button>
+          </span>`).join("") || '<span class="muted">Empty</span>'}
+      </div>
+      <div style="display:flex; gap:8px">
+        <input class="addin" data-add="${key}" placeholder="Add ${label.toLowerCase().replace(/s$/,"")}"
+               style="flex:1; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:11px; background:var(--surface)">
+        <button class="btn" data-addbtn="${key}">Add</button>
+      </div>
+    </div>`;
+  m.innerHTML = block("employees","Operatives") + block("departments","Departments") + block("types","Fault types");
+
+  m.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => {
+    const [k,i] = b.dataset.rm.split(":");
+    const name = state.lists[k][+i];
+    if(!confirm(`Remove "${name}"?\n\nExisting fault records keep it; it just won't appear in the dropdown.`)) return;
+    state.lists[k].splice(+i,1); save(); render();
+  });
+  const add = k => {
+    const inp = m.querySelector(`[data-add="${k}"]`);
+    const v = inp.value.trim(); if(!v) return;
+    if(state.lists[k].some(x => x.toLowerCase() === v.toLowerCase())) return toast("Already in the list");
+    state.lists[k].push(v); state.lists[k].sort((a,b)=>a.localeCompare(b)); save(); render();
+  };
+  m.querySelectorAll("[data-addbtn]").forEach(b => b.onclick = () => add(b.dataset.addbtn));
+  m.querySelectorAll("[data-add]").forEach(i => i.onkeydown = e => { if(e.key === "Enter") add(i.dataset.add); });
+}
+
+function renderSetup(m){
+  const theme = readPref(PREF_THEME,"system");
+  m.innerHTML = `
+    <div class="panel">
+      <h3>Appearance</h3>
+      <div class="seg" id="themeSeg">
+        ${["system","light","dark"].map(t =>
+          `<button data-t="${t}" aria-pressed="${t===theme}">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Storage</h3>
+      <p class="muted" id="useLine">Checking...</p>
+    </div>
+    <div class="panel">
+      <h3>About</h3>
+      <p class="muted">Quality Log v${APP_VERSION} &mdash; early build.
+      Sync and printable reports aren't wired up yet.</p>
+    </div>`;
+  m.querySelectorAll("#themeSeg button").forEach(b => b.onclick = () => {
+    try{ localStorage.setItem(PREF_THEME, b.dataset.t); }catch(e){}
+    applyTheme(b.dataset.t); render();
+  });
+  (async () => {
+    const shots = state.faults.reduce((n,f) => n + (f.photos ? f.photos.length : 0), 0);
+    let est = "";
+    try{
+      if(navigator.storage && navigator.storage.estimate){
+        const { usage } = await navigator.storage.estimate();
+        est = ` &middot; about ${(usage/1048576).toFixed(1)} MB used`;
+      }
+    }catch(e){}
+    const el = $("#useLine");
+    if(el) el.innerHTML = `${state.faults.length} fault record(s), ${shots} photo(s)${est}.`;
+  })();
+}
+
+/* ============================================================
+   Editor
+   ============================================================ */
+let editing = null;          // id being edited, or null for a new one
+let draftShots = [];         // photo ids while the sheet is open
+let dirty = false;
+
+function fillSelect(sel, values, current){
+  sel.innerHTML = `<option value="">- select -</option>` +
+    values.map(v => `<option${v===current?" selected":""}>${esc(v)}</option>`).join("");
+}
+
+function openEditor(id){
+  editing = id || null;
+  const f = id ? state.faults.find(x => x.id === id) : null;
+  $("#sTitle").textContent = f ? "Edit fault" : "Log a fault";
+  $("#sDelete").style.display = f ? "" : "none";
+  $("#fDate").value  = f ? f.date : todayISO();
+  $("#fDoor").value  = f ? (f.door || "") : "";
+  $("#fNotes").value = f ? (f.notes || "") : "";
+  fillSelect($("#fType"), state.lists.types,       f && f.type);
+  fillSelect($("#fDept"), state.lists.departments, f && f.department);
+  fillSelect($("#fEmp"),  state.lists.employees,   f && f.employee);
+  drawWarn(f ? f.warning : "");
+  draftShots = f && f.photos ? [...f.photos] : [];
+  drawShots();
+  dirty = false;
+  $("#sheet").classList.add("open"); $("#sheet").setAttribute("aria-hidden","false");
+  $("#scrim").classList.add("open");
+}
+function closeEditor(force){
+  if(dirty && !force && !confirm("Discard your changes?")) return;
+  $("#sheet").classList.remove("open"); $("#sheet").setAttribute("aria-hidden","true");
+  $("#scrim").classList.remove("open");
+  editing = null; draftShots = []; dirty = false;
+}
+function drawWarn(current){
+  $("#fWarn").innerHTML = WARNINGS.map(w =>
+    `<button type="button" class="${wClass(w)}" data-w="${w}" aria-pressed="${w===current}">${w}</button>`).join("");
+  $$("#fWarn button").forEach(b => b.onclick = () => { drawWarn(b.dataset.w); dirty = true; });
+}
+function currentWarn(){ const b = $("#fWarn button[aria-pressed=true]"); return b ? b.dataset.w : ""; }
+
+async function drawShots(){
+  const box = $("#fShots");
+  box.innerHTML = draftShots.map(id => `<div class="shot" data-id="${id}"></div>`).join("") +
+    `<button type="button" class="addshot" id="addShot"><span class="ic">&#128247;</span>Add photo</button>`;
+  $("#addShot").onclick = pickPhoto;
+  for(const id of draftShots){
+    const d = await getPhoto(id);
+    const cell = box.querySelector(`.shot[data-id="${id}"]`);
+    if(!cell) continue;
+    if(d){
+      cell.innerHTML = `<img src="${d}" alt=""><button class="x" data-x="${id}" aria-label="Remove photo">&times;</button>`;
+      cell.querySelector("img").onclick = () => { $("#lightImg").src = d; $("#light").classList.add("open"); };
+      cell.querySelector("[data-x]").onclick = async e => {
+        e.stopPropagation();
+        draftShots = draftShots.filter(x => x !== id);
+        await delPhoto(id); dirty = true; drawShots();
+      };
+    } else {
+      cell.innerHTML = `<div style="display:grid;place-items:center;height:100%;color:var(--muted);font-size:11px">missing</div>`;
+    }
+  }
+}
+function pickPhoto(){
+  // phones get the camera; desktop gets a file picker
+  const touch = matchMedia("(pointer: coarse)").matches;
+  (touch ? $("#camIn") : $("#fileIn")).click();
+}
+async function handleFiles(list){
+  const files = [...list].filter(f => f.type && f.type.startsWith("image/"));
+  if(!files.length) return;
+  toast(files.length === 1 ? "Adding photo..." : `Adding ${files.length} photos...`);
+  for(const file of files){
+    try{
+      const data = await shrink(file);
+      const id = uid();
+      await putPhoto(id, data);
+      draftShots.push(id); dirty = true;
+    }catch(e){ toast("Couldn't read that image"); }
+  }
+  drawShots();
+}
+$("#camIn").onchange  = function(){ handleFiles(this.files); this.value = ""; };
+$("#fileIn").onchange = function(){ handleFiles(this.files); this.value = ""; };
+
+$("#sSave").onclick = () => {
+  const rec = {
+    date: $("#fDate").value || todayISO(),
+    door: $("#fDoor").value.trim(),
+    type: $("#fType").value,
+    department: $("#fDept").value,
+    employee: $("#fEmp").value,
+    warning: currentWarn(),
+    notes: $("#fNotes").value.trim(),
+    photos: [...draftShots],
+  };
+  if(!rec.type || !rec.employee){ toast("Fault and operative are needed"); return; }
+  if(editing){
+    const i = state.faults.findIndex(f => f.id === editing);
+    state.faults[i] = { ...state.faults[i], ...rec };
+    toast("Saved");
+  } else {
+    state.faults.push({ id: uid(), createdAt: Date.now(), ...rec });
+    toast("Fault logged");
+  }
+  save(); closeEditor(true); render();
+};
+$("#sDelete").onclick = async () => {
+  if(!editing) return;
+  const f = state.faults.find(x => x.id === editing);
+  if(!confirm("Delete this fault record?\n\nIts photos are deleted too. This can't be undone.")) return;
+  for(const p of (f.photos || [])) await delPhoto(p);
+  state.faults = state.faults.filter(x => x.id !== editing);
+  save(); closeEditor(true); render(); toast("Deleted");
+};
+$("#sClose").onclick  = () => closeEditor();
+$("#sCancel").onclick = () => closeEditor();
+$("#scrim").onclick   = () => closeEditor();
+$("#lightX").onclick  = () => $("#light").classList.remove("open");
+$("#light").onclick   = e => { if(e.target.id === "light") $("#light").classList.remove("open"); };
+["#fDate","#fDoor","#fNotes","#fType","#fDept","#fEmp"].forEach(s =>
+  $(s).addEventListener("input", () => dirty = true));
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape"){
+    if($("#light").classList.contains("open")) return $("#light").classList.remove("open");
+    if($("#sheet").classList.contains("open")) closeEditor();
+  }
+});
+
+/* ---------- wiring ---------- */
+$$(".tabs button").forEach(b => b.onclick = () => setView(b.dataset.view));
+$("#fab").onclick = () => openEditor(null);
+$("#newTop").onclick = () => openEditor(null);
+$("#q").addEventListener("input", e => {
+  query = e.target.value.trim();
+  $("#searchWrap").classList.toggle("has", !!query);
+  renderLog($("#main"));
+});
+$("#qClear").onclick = () => { $("#q").value = ""; query = "";
+  $("#searchWrap").classList.remove("has"); renderLog($("#main")); $("#q").focus(); };
+
+setView("log");
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
