@@ -1,5 +1,5 @@
 /* Quality Log service worker - offline shell, network-first so updates land. */
-const CACHE = "quality-v1";
+const CACHE = "quality-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

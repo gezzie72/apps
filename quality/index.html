@@ -11,36 +11,40 @@
    Quality Log - shopfloor fault capture
    Phone: capture and correct.  Desktop: read and report.
    ============================================================ */
+/* Palette matches the Quality Report webapp so the two read as one system:
+   navy bar, blue accents, white cards on light grey, its warning tags. */
 :root{
-  --bg:#f5f7fa; --surface:#fff; --sunk:#eef1f6;
-  --text:#14181f; --muted:#5d6675; --line:#dde2ea;
-  --accent:#1d4ed8; --accent-soft:#e6edff;
-  --ok:#137a45; --warn:#9a6700; --bad:#b3261e;
-  --w1:#eef2f7; --w1t:#3d4c5e;
-  --w2:#fff4d6; --w2t:#7a5a00;
-  --w3:#ffe2de; --w3t:#96241b;
-  --w4:#fdd8d4; --w4t:#7a1611;
-  --r:14px; --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 12px rgba(16,24,40,.05);
+  --navy:#1f3864; --accent:#2e5496; --accent-soft:#d9e2f3;
+  --bg:#f4f6fa; --surface:#fff; --sunk:#eef1f6;
+  --text:#1a1a1a; --muted:#667085; --line:#d0d5dd;
+  --heading:#1f3864;
+  --ok:#1f6b3b; --warn:#d9a600; --bad:#c0392b;
+  --w1:#f2f2f2; --w1t:#3d4c5e;   /* Awareness    */
+  --w2:#fff2cc; --w2t:#7a5c00;   /* Verbal Given */
+  --w3:#f4cccc; --w3t:#7a1c12;   /* Disciplinary */
+  --w4:#e8b4b0; --w4t:#6b120d;   /* Termination  */
+  --r:10px; --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
   --tap:48px;
   color-scheme:light;
 }
 :root[data-theme=dark]{
-  --bg:#0d1017; --surface:#161b25; --sunk:#1e2432;
-  --text:#e8ecf3; --muted:#98a2b3; --line:#2a3244;
-  --accent:#6f9bff; --accent-soft:#1c2740;
-  --ok:#54d195; --warn:#e8b64c; --bad:#ff8b80;
+  --navy:#10192c; --accent:#5b8ae0; --accent-soft:#22314f;
+  --bg:#0f131b; --surface:#161c27; --sunk:#1b2130;
+  --text:#e6e9ef; --muted:#9aa4b6; --line:#2c3444;
+  --heading:#a8c2ef;
+  --ok:#4caf7d; --warn:#e8b64c; --bad:#e57368;
   --w1:#222a38; --w1t:#b8c4d6;
-  --w2:#3d3013; --w2t:#f0cc72;
-  --w3:#48211d; --w3t:#ffb0a6;
+  --w2:#4a3a12; --w2t:#f0cc72;
+  --w3:#4a211c; --w3t:#ffb0a6;
   --w4:#5a1f1a; --w4t:#ffc2ba;
-  --shadow:0 1px 2px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.35);
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
   color-scheme:dark;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{
   background:var(--bg); color:var(--text);
-  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font:15px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
   /* clears the tab bar AND the floating add button, so the last
      record is never hidden underneath them */
   padding-bottom:calc(150px + env(safe-area-inset-bottom));
@@ -50,20 +54,21 @@ button{cursor:pointer}
 
 /* ---- top bar ---- */
 .top{
-  position:sticky; top:0; z-index:20; background:var(--bg);
-  padding:calc(10px + env(safe-area-inset-top)) 16px 8px;
-  border-bottom:1px solid var(--line);
+  position:sticky; top:0; z-index:20; background:var(--navy); color:#fff;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+  box-shadow:var(--shadow);
 }
-.top h1{margin:0; font-size:19px; letter-spacing:-.2px}
-.top .sub{color:var(--muted); font-size:12.5px; margin-top:1px}
+.top h1{margin:0; font-size:19px; font-weight:700; letter-spacing:.2px; color:#fff}
+.top .sub{color:#aebfdf; font-size:12.5px; margin-top:1px}
 
 /* ---- search ---- */
 .search{position:relative; margin-top:10px}
 .search input{
   width:100%; height:var(--tap); padding:0 38px 0 38px;
-  background:var(--sunk); border:1px solid transparent; border-radius:999px;
+  background:var(--surface); color:var(--text);
+  border:1px solid rgba(255,255,255,.25); border-radius:8px;
 }
-.search input:focus{outline:none; border-color:var(--accent); background:var(--surface)}
+.search input:focus{outline:2px solid var(--accent-soft); outline-offset:-1px; border-color:var(--accent-soft)}
 .search .mag{position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--muted)}
 .search .clr{
   position:absolute; right:6px; top:50%; transform:translateY(-50%);
@@ -116,19 +121,20 @@ button{cursor:pointer}
   padding-bottom:env(safe-area-inset-bottom);
 }
 .tabs button{
-  background:none; border:0; padding:9px 4px 8px; color:var(--muted);
+  background:none; border:0; border-top:3px solid transparent;
+  padding:8px 4px; color:var(--muted);
   display:flex; flex-direction:column; align-items:center; gap:3px;
   font-size:10.5px; font-weight:650; min-height:56px;
 }
 .tabs button .ic{font-size:19px; line-height:1}
-.tabs button[aria-selected=true]{color:var(--accent)}
+.tabs button[aria-selected=true]{color:var(--accent); border-top-color:var(--accent); background:var(--accent-soft)}
 
 /* ---- big add button ---- */
 .fab{
   position:fixed; right:18px; bottom:calc(80px + env(safe-area-inset-bottom)); z-index:29;
   width:58px; height:58px; border-radius:50%; border:0;
   background:var(--accent); color:#fff; font-size:29px; line-height:1;
-  box-shadow:0 6px 18px rgba(29,78,216,.42);
+  box-shadow:0 6px 18px rgba(31,56,100,.45);
 }
 
 /* ---- editor sheet ---- */
@@ -213,7 +219,16 @@ button{cursor:pointer}
 
 .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
   padding:16px; margin-bottom:12px; box-shadow:var(--shadow)}
-.panel h3{margin:0 0 10px; font-size:15px}
+.panel h3{margin:0 0 10px; font-size:15px; color:var(--heading)}
+/* tables read like the webapp's: navy header row, ruled rows */
+.panel table{border-collapse:collapse; width:100%; font-size:13.5px}
+.panel thead th{background:var(--navy); color:#fff; text-align:left;
+  padding:9px 11px; font-weight:600; font-size:12.5px}
+.panel thead th:first-child{border-top-left-radius:6px}
+.panel thead th:last-child{border-top-right-radius:6px}
+.panel tbody td{padding:9px 11px; border-bottom:1px solid var(--line)}
+.panel tbody tr:last-child td{border-bottom:0}
+.panel tbody tr:nth-child(even){background:var(--sunk)}
 .muted{color:var(--muted); font-size:13px}
 .seg{display:inline-flex; border:1px solid var(--line); border-radius:11px; overflow:hidden}
 .seg button{background:var(--surface); border:0; border-right:1px solid var(--line);
@@ -249,6 +264,11 @@ button{cursor:pointer}
 }
 .newbtn{display:none; height:42px; padding:0 15px; border-radius:11px; border:0;
   background:var(--accent); color:#fff; font-weight:650}
+
+/* the log owns the search box and the add button */
+body:not([data-view="log"]) .search,
+body:not([data-view="log"]) .fab,
+body:not([data-view="log"]) .newbtn{display:none !important}
 
 @media print{
   .tabs,.fab,.top,.sheet,.scrim,.toast{display:none !important}
@@ -476,7 +496,10 @@ let view = "log", query = "";
 function setView(v){
   view = v;
   $$(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === v)));
-  $("#searchWrap").style.visibility = v === "log" ? "" : "hidden";
+  // search and the add button belong to the log; hiding them outright keeps
+  // the navy bar from leaving an empty gap on the other tabs. Done with a
+  // body attribute because .newbtn's desktop rule is !important.
+  document.body.dataset.view = v;
   render();
 }
 
@@ -560,13 +583,11 @@ function renderReports(m){
   const table = (title, rows) => `
     <div class="panel">
       <h3>${title}</h3>
-      ${rows.length ? `<table style="width:100%; border-collapse:collapse; font-size:14px">
-        <thead><tr style="text-align:left; color:var(--muted); font-size:12px">
-          <th style="padding:6px 0">Name</th><th>Faults</th><th>Highest</th></tr></thead>
+      ${rows.length ? `<table>
+        <thead><tr><th>Name</th><th>Faults</th><th>Highest reached</th></tr></thead>
         <tbody>${rows.map(([k,v]) => {
           const highest = WARNINGS.filter(w => v.w[w]).pop() || "-";
-          return `<tr style="border-top:1px solid var(--line)">
-            <td style="padding:8px 0">${esc(k)}</td><td>${v.total}</td>
+          return `<tr><td>${esc(k)}</td><td>${v.total}</td>
             <td><span class="pill ${wClass(highest)}">${esc(highest)}</span></td></tr>`;
         }).join("")}</tbody></table>` : `<p class="muted">Nothing logged yet.</p>`}
     </div>`;
