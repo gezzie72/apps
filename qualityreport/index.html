@@ -382,6 +382,11 @@
       </div>
       <p class="muted" style="font-size:12px; margin-top:10px" id="verLine"></p>
     </div>
+    <div class="card">
+      <h3>My apps</h3>
+      <p class="muted">Open on any device, then use your browser menu &rarr; <b>Install</b> / <b>Add to Home screen</b>.</p>
+      <p class="muted" style="margin-top:6px">&#x1F680; <a href="https://gezzie72.github.io/apps/" target="_blank" rel="noopener" style="color:var(--accent,#2f5fd0); font-weight:600">Open the App Launcher</a> &mdash; all your apps in one place.</p>
+    </div>
   </section>
 </main>
 
@@ -389,7 +394,7 @@
 
 <script>
 /* ================= Quality Report — single-file PWA ================= */
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2";
 const KEY = "qualityreport.state";
 const GISTFILE = "qualityreport.json";
 const $ = s => document.querySelector(s);
@@ -433,6 +438,42 @@ function normalise(s){
   s.seq = s.seq || (s.faults.reduce((m,i)=>Math.max(m,i.id||0),0)+1);
   s.updatedAt = s.updatedAt || 0;
   return s;
+}
+/* Import merge: identify a fault by its content, not its id, so the same record
+   imported from another device is never duplicated and never overwrites a local one. */
+function faultSig(f){
+  return [f.date,f.ref,f.type,f.department,f.employee,f.warning,(f.notes||"").trim()]
+    .map(v=>String(v==null?"":v).trim().toLowerCase()).join("␟");
+}
+function countNew(incoming){
+  const have=new Set(state.faults.map(faultSig));
+  let faults=0; (incoming.faults||[]).forEach(f=>{ const k=faultSig(f); if(!have.has(k)){ have.add(k); faults++; } });
+  let lists=0;
+  ["employees","departments","types"].forEach(k=>{
+    const cur=new Set((state.lists[k]||[]).map(v=>String(v).toLowerCase()));
+    ((incoming.lists&&incoming.lists[k])||[]).forEach(v=>{
+      const n=String(v).toLowerCase(); if(v!=null&&String(v).trim()&&!cur.has(n)){ cur.add(n); lists++; }
+    });
+  });
+  return {faults, lists};
+}
+function mergeInto(incoming){
+  ["employees","departments","types"].forEach(k=>{
+    const cur=state.lists[k]||(state.lists[k]=[]);
+    const seen=new Set(cur.map(v=>String(v).toLowerCase()));
+    ((incoming.lists&&incoming.lists[k])||[]).forEach(v=>{
+      if(v==null||!String(v).trim()) return;
+      const n=String(v).toLowerCase(); if(!seen.has(n)){ seen.add(n); cur.push(v); }
+    });
+    cur.sort((a,b)=>String(a).localeCompare(String(b)));
+  });
+  const have=new Set(state.faults.map(faultSig));
+  let seq=state.faults.reduce((m,f)=>Math.max(m,f.id||0),0)+1;
+  (incoming.faults||[]).forEach(f=>{
+    const k=faultSig(f); if(have.has(k)) return; have.add(k);
+    state.faults.push(Object.assign({}, f, {id:seq++}));   // re-id: incoming ids may clash with local ones
+  });
+  state.seq=seq;
 }
 function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 function touch(){ state.updatedAt = Date.now(); persist(); schedulePush(); }
@@ -1111,7 +1152,16 @@ function bind(){
     document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(a.href); };
   $("#importJsonBtn").onclick=()=>$("#importJson").click();
   $("#importJson").onchange=(e)=>{ const file=e.target.files[0]; if(!file) return;
-    const rd=new FileReader(); rd.onload=()=>{ try{ const obj=JSON.parse(rd.result); state=normalise(obj); touch(); refreshAll(); toast("Backup imported"); }catch(err){ alert("Invalid backup file."); } }; rd.readAsText(file); };
+    const rd=new FileReader(); rd.onload=()=>{
+      let obj; try{ obj=normalise(JSON.parse(rd.result)); }catch(err){ alert("Invalid backup file."); return; }
+      const add=countNew(obj);
+      const msg = add.faults||add.lists
+        ? "Import this backup?\n\nIt adds "+add.faults+" new fault record(s) and "+add.lists+" new list entr"+(add.lists===1?"y":"ies")+".\nYour existing records are kept."
+        : "This backup contains nothing new — everything in it is already here.\n\nImport anyway?";
+      if(!confirm(msg)) return;
+      mergeInto(obj); touch(); refreshAll();
+      toast(add.faults||add.lists ? "Backup merged" : "Nothing new to import");
+    }; rd.readAsText(file); };
   $("#resetData").onclick=()=>{ if(confirm("Reset this device to example data? This replaces the current log.")){ state=defaultState(); touch(); refreshAll(); toast("Reset to example data"); } };
 
   // appearance
