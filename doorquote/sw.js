@@ -1,9 +1,9 @@
 /* Door Hardware Quote service worker - offline app shell, network-first so updates land. */
-const CACHE = "doorquote-v50";
+const CACHE = "doorquote-v51";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL.map(u=> new Request(u, {cache:"reload"})))).then(()=>self.skipWaiting()));
 });
 self.addEventListener("activate", e=>{
   e.waitUntil(caches.keys().then(ks=>Promise.all(ks.map(k=> k===CACHE?null:caches.delete(k)))).then(()=>self.clients.claim()));
