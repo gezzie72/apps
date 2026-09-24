@@ -551,6 +551,11 @@ function computeTax(annualGross, opt){
 }
 
 /* ============ STATE ============ */
+/* NOTE: every key here is namespaced "finance.", not "financemanager." like the
+   folder. That is deliberate and must stay: "finance.data" holds each device's
+   saved budget, and GIST_FILE "finance.json" is how findGist() locates a user's
+   existing sync. Renaming the prefix would orphan saved data on every device and
+   desync devices still on the old build. No other app uses a "finance." key. */
 const LS_KEY = "finance.data";
 let state = load();
 let currentTab = "summary";

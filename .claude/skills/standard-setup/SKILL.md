@@ -28,8 +28,21 @@ button opening a modal like ideapad — follow the target app's existing navigat
 
 1. **Appearance** — theme buttons: **System / Light / Dark**. Persist per-device;
    apply immediately; keep the `<meta name="theme-color">` in step.
-2. **Text size** — **Small / Medium / Large / Extra large**, driving a `--tscale`
-   CSS multiplier on the root. Persist per-device.
+2. **Text size** — **Small / Medium / Large / Extra large**, persisted per-device.
+   Two patterns exist in this repo. **Match whatever the target app already uses**;
+   for a new app, choose deliberately:
+   - **Text-only scaling** — a `--tscale` multiplier applied through
+     `font-size: calc(15px * var(--tscale))`. Leaves images, padding and layout
+     alone. Used by healthlog, ideapad, fitplan, fitcoach, recipebox, rp193,
+     doorphotos, financemanager. Copy from **`healthlog`**.
+   - **Whole-UI zoom** — `zoom: var(...)` on `html`/`body`, scaling everything
+     including images and spacing. Used by qualityreport, officereport and
+     shopfloorreport (`--tzoom` + a `data-text` attribute on the root), inventory
+     and shoplist (`--tscale`), and doorquote (`--scale`). Copy from
+     **`qualityreport`**.
+
+   Do **not** convert an existing app from one pattern to the other unless asked:
+   it visibly changes how the whole app renders.
 3. **Sync across devices (GitHub Gist)** — password field for a **classic token
    (gist scope)**, an optional **Gist ID** box (auto-detected if blank), **Connect
    / Sync now / Disconnect**, and an **Auto-sync** toggle. Each app uses its **own
@@ -57,6 +70,12 @@ Steps:
 3. **Give the app its own storage + gist identity.** Namespace everything to the app:
    - `localStorage` keys like `<app>.theme`, `<app>.textScale`, `<app>.gh.token`,
      `<app>.gh.gist`, `<app>.gh.auto`, and the app's own data key.
+   - **For a NEW app only.** Existing apps vary (`textScale`, `text`, `tsize`,
+     `textsize`, `scale`), and financemanager namespaces everything under
+     `finance.` rather than `financemanager.`. **Match the app's existing keys —
+     never rename them.** A key rename silently orphans every user's saved data
+     on every device, and renaming the gist filename makes devices on different
+     versions stop syncing with each other.
    - Gist file named `<app>.json`, gist description `"<AppName> sync"`. Auto-detect
      the app's gist by that filename/description so it never collides with the other
      apps' gists.
