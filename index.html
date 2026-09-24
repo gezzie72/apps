@@ -50,6 +50,11 @@
   .cdot{position:absolute; top:10px; right:10px; width:10px; height:10px; border-radius:50%; background:var(--muted); opacity:.0}
   .cdot.show{opacity:1}
   .cdot.good{background:var(--good)} .cdot.bad{background:var(--danger)}
+  /* address setter on a tile that points at a machine on your own network */
+  .cog{position:absolute; top:6px; left:6px; width:22px; height:22px; line-height:20px;
+       padding:0; border:0; border-radius:50%; background:transparent; color:var(--muted);
+       font-size:13px; cursor:pointer}
+  .cog:hover{background:rgba(128,128,128,.18); color:inherit}
 
   .hint{color:var(--muted); font-size:13px; text-align:center; max-width:420px}
   .hint b{color:var(--text)}
@@ -121,7 +126,29 @@ var APPS = [
   ["masticcalc","Mastic Calc",null]
 ];
 
+/* Apps that aren't hosted here: they run on a machine on your own network, so
+   the address depends on which network you're on and can change when the
+   router hands out a new one. It's kept on this device rather than committed,
+   which also keeps a private address out of this public repo. */
+var LOCAL_APPS = [
+  { key:"qrserver.url", name:"Quality Report (PC)", icon:"qualityreport/icon-192.png",
+    example:"http://192.168.1.180:8000/" }
+];
+
 function ls(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }
+
+function askLocalUrl(app){
+  var cur = ls(app.key) || app.example;
+  var v = prompt(
+    app.name + "\n\nAddress of the PC running it (same Wi-Fi, server started):",
+    cur);
+  if(v===null) return null;
+  v = v.trim();
+  if(v && !/^https?:\/\//i.test(v)) v = "http://" + v;
+  try{ v ? localStorage.setItem(app.key, v) : localStorage.removeItem(app.key); }catch(e){}
+  render();
+  return v;
+}
 
 function backupAll(){
   try{
@@ -180,6 +207,29 @@ function render(){
     var img=document.createElement("img"); img.className="ic"; img.src=folder+"/icon-192.png"; img.alt="";
     var nm=document.createElement("span"); nm.className="name"; nm.textContent=name;
     card.appendChild(dot); card.appendChild(img); card.appendChild(nm);
+    wrap.appendChild(card);
+  });
+
+  LOCAL_APPS.forEach(function(app){
+    var url = ls(app.key);
+    var card = document.createElement("a");
+    card.className = "card";
+    card.href = url || "#";
+    card.title = url ? url : "Tap to set the address of the PC running this";
+    var dot = document.createElement("span");
+    dot.className = "cdot show " + (url ? "good" : "bad");
+    dot.title = url ? "Address set on this device" : "No address set on this device";
+    var img = document.createElement("img"); img.className = "ic"; img.src = app.icon; img.alt = "";
+    var nm = document.createElement("span"); nm.className = "name"; nm.textContent = app.name;
+    var cog = document.createElement("button");
+    cog.className = "cog"; cog.type = "button"; cog.textContent = "⚙";
+    cog.title = "Change the address";
+    cog.onclick = function(e){ e.preventDefault(); e.stopPropagation(); askLocalUrl(app); };
+    card.addEventListener("click", function(e){
+      if(!ls(app.key)){ e.preventDefault(); askLocalUrl(app); }
+    });
+    card.appendChild(dot); card.appendChild(cog);
+    card.appendChild(img); card.appendChild(nm);
     wrap.appendChild(card);
   });
 

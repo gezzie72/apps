@@ -1,7 +1,7 @@
 /* My Apps launcher service worker — offline shell, network-first so updates land.
    Scoped narrowly: only handles the hub's own root-level files, never sub-app folders,
    so each app's own service worker stays in charge of its pages. */
-const CACHE = "myapps-v3";
+const CACHE = "myapps-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
