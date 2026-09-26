@@ -445,7 +445,11 @@
       </div>
       <span class="count" id="catPill">0 items</span>
     </div>
-    <button class="btn full sm" style="margin:0 0 12px" onclick="openCatEdit()"><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New catalogue item</button>
+    <div class="syncrow" style="margin:0 0 12px">
+      <button class="btn sm" onclick="openCatEdit()"><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New catalogue item</button>
+      <button class="btn ghost sm" onclick="printCatalogue()">Print price list</button>
+      <button class="btn ghost sm" onclick="exportCatalogueCSV()">Export CSV</button>
+    </div>
     <div id="catList"></div>
     <div class="hint c">Your price list for quotes &amp; orders — you don't have to stock any of it. Import or refresh it in <b>Setup → Catalogue</b>. Tap <b>PO</b> or <b>Invoice</b> to drop an item onto a document, <b>Stock</b> to start holding it, or <b>Edit</b> to change a price.</div>
   </div>
@@ -505,10 +509,15 @@
     </div>
     <div class="card pad">
       <label>Notes</label><textarea id="poNotes" rows="2" placeholder="Delivery instructions, terms, etc." oninput="docField('po','notes',this.value)"></textarea>
-      <div class="duo" style="margin-top:12px">
+      <div class="trio" style="margin-top:12px">
         <button class="btn ghost" onclick="clearDoc('po')">Clear</button>
-        <button class="btn" onclick="printDoc('po')">Print / export PDF</button>
+        <button class="btn ghost" onclick="saveDoc('po')">Save</button>
+        <button class="btn" onclick="printDoc('po')">Print / PDF</button>
       </div>
+    </div>
+    <div class="card pad">
+      <div class="listhead" style="margin:0 0 6px"><span class="ttl">Saved purchase orders</span></div>
+      <div id="poSaved"></div>
     </div>
   </div>
 
@@ -536,10 +545,15 @@
     </div>
     <div class="card pad">
       <label>Notes</label><textarea id="invNotes" rows="2" placeholder="Payment terms, bank details, thank you, etc." oninput="docField('inv','notes',this.value)"></textarea>
-      <div class="duo" style="margin-top:12px">
+      <div class="trio" style="margin-top:12px">
         <button class="btn ghost" onclick="clearDoc('inv')">Clear</button>
-        <button class="btn" onclick="printDoc('inv')">Print / export PDF</button>
+        <button class="btn ghost" onclick="saveDoc('inv')">Save</button>
+        <button class="btn" onclick="printDoc('inv')">Print / PDF</button>
       </div>
+    </div>
+    <div class="card pad">
+      <div class="listhead" style="margin:0 0 6px"><span class="ttl">Saved invoices</span></div>
+      <div id="invSaved"></div>
     </div>
   </div>
   <datalist id="supList"></datalist>
@@ -817,7 +831,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v34 · 2026-09-26';
+const APP_VER='v35 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -854,6 +868,11 @@ function normalize(s){
   s.po=normalizeDoc(s.po,false);
   s.inv=normalizeDoc(s.inv,true);
   s.seqPO=int(s.seqPO); s.seqInv=int(s.seqInv);
+  s.savedDocs=Array.isArray(s.savedDocs)?s.savedDocs.map(e=>({
+    id:clean(e.id)||('d'+Date.now()+Math.random().toString(36).slice(2,6)),
+    kind:(e.kind==='inv'?'inv':'po'), ref:clean(e.ref), party:clean(e.party), date:clean(e.date),
+    total:num(e.total), savedAt:+e.savedAt||Date.now(), snapshot:normalizeDoc(e.snapshot, e.kind==='inv')
+  })):[];
   s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
   Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address)}; });
   s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
@@ -1426,11 +1445,39 @@ function deleteCatItem(){
   state.catalogue=(state.catalogue||[]).filter(x=>x.id!==catEditId);
   save(); $('catEditDlg').close(); render(); if(!$('viewSetup').hidden) renderSetup(); toast('Removed from catalogue.');
 }
-function renderCatalogueView(){
+function catFiltered(){
   const cat=state.catalogue||[];
   const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
   let list=cat.slice().sort((a,b)=>clean(a.name).localeCompare(clean(b.name)));
   if(q) list=list.filter(c=>[c.name,c.sku,c.colour,c.category].some(v=>(v||'').toLowerCase().includes(q)));
+  return list;
+}
+function exportCatalogueCSV(){
+  const list=catFiltered();
+  if(!list.length){ toast('Catalogue is empty — nothing to export.'); return; }
+  const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier'];
+  const rows=[header].concat(list.map(c=>[c.name,c.sku,c.colour,c.category,(num(c.cost)||0).toFixed(2),(num(c.price)||0).toFixed(2),c.supplier]));
+  const csv=rows.map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='catalogue-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  toast('Exported '+list.length+' item'+(list.length===1?'':'s')+'.');
+}
+function printCatalogue(){
+  const list=catFiltered();
+  if(!list.length){ toast('Catalogue is empty — nothing to print.'); return; }
+  const biz=state.biz||{};
+  const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  let html='<h2>Price List</h2><div class="pmeta">'+(biz.name?'<b>'+escapeHtml(biz.name)+'</b>  ·  ':'')+escapeHtml(dateStr)+'  ·  '+list.length+' item'+(list.length===1?'':'s')+'</div>';
+  html+='<table><thead><tr><th>Product</th><th>SKU</th><th>Colour</th><th>Category</th><th class="n">Cost £</th><th class="n">Sale £</th></tr></thead><tbody>';
+  list.forEach(c=>{ html+='<tr><td>'+escapeHtml(c.name||'')+'</td><td>'+escapeHtml(c.sku||'')+'</td><td>'+escapeHtml(c.colour||'')+'</td><td>'+escapeHtml(c.category||'')+'</td><td class="n">'+(num(c.cost)>0?money(c.cost):'')+'</td><td class="n">'+(num(c.price)>0?money(c.price):'')+'</td></tr>'; });
+  html+='</tbody></table>';
+  const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
+  const sd=$('shareDlg'); if(sd && sd.open) sd.close();
+  setTimeout(()=>window.print(),80);
+}
+function renderCatalogueView(){
+  const cat=state.catalogue||[];
+  const list=catFiltered();
+  const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
   $('catPill').textContent=list.length+' item'+(list.length===1?'':'s');
   const el=$('catList');
   if(!cat.length){ el.innerHTML='<div class="assign-empty" style="border:1px solid var(--line2); border-radius:8px; margin-top:8px">No catalogue yet.<br>Import it in <b>Setup → Catalogue</b>.</div>'; return; }
@@ -1626,6 +1673,7 @@ function renderDoc(kind){
     </div>`).join('');
   }
   renderDocTotals(kind);
+  renderSavedDocs(kind);
 }
 function renderDocTotals(kind){
   const d=docState(kind), t=docTotals(kind), P=kind==='po'?'po':'inv';
@@ -1667,6 +1715,44 @@ function clearDoc(kind){
   if(docState(kind).lines.length && !confirm('Clear this '+(kind==='po'?'purchase order':'invoice')+'?')) return;
   if(kind==='po') state.po=normalizeDoc({},false); else state.inv=normalizeDoc({},true);
   save(); renderDoc(kind);
+}
+function saveDoc(kind){
+  const d=docState(kind);
+  if(!d.lines.length){ toast('Add at least one item first.'); return; }
+  const isInv=kind==='inv';
+  if(!clean(d.ref)){ if(isInv){ state.seqInv++; d.ref='INV-'+String(state.seqInv).padStart(4,'0'); } else { state.seqPO++; d.ref='PO-'+String(state.seqPO).padStart(4,'0'); } }
+  const snap=JSON.parse(JSON.stringify(normalizeDoc(d, isInv)));
+  const total=docTotals(kind).total;
+  state.savedDocs=state.savedDocs||[];
+  const existing=state.savedDocs.find(x=>x.kind===kind && x.ref===d.ref);
+  const data={ kind, ref:d.ref, party:clean(d.party), date:clean(d.date), total, savedAt:Date.now(), snapshot:snap };
+  if(existing) Object.assign(existing, data);
+  else state.savedDocs.push(Object.assign({ id:'d'+Date.now()+Math.random().toString(36).slice(2,6) }, data));
+  save(); renderDoc(kind);
+  toast((existing?'Updated ':'Saved ')+d.ref);
+}
+function recallDoc(id){
+  const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return;
+  const doc=normalizeDoc(JSON.parse(JSON.stringify(e.snapshot)), e.kind==='inv');
+  if(e.kind==='po') state.po=doc; else state.inv=doc;
+  save(); setTab(e.kind); toast('Loaded '+e.ref);
+}
+function deleteSavedDoc(id){
+  const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return;
+  if(!confirm('Delete saved '+(e.kind==='po'?'purchase order':'invoice')+' '+e.ref+'? (Only the saved copy — anything on screen stays.)')) return;
+  state.savedDocs=(state.savedDocs||[]).filter(x=>x.id!==id);
+  save(); renderDoc(e.kind);
+}
+function renderSavedDocs(kind){
+  const box=$(kind==='po'?'poSaved':'invSaved'); if(!box) return;
+  const list=(state.savedDocs||[]).filter(x=>x.kind===kind).sort((a,b)=>b.savedAt-a.savedAt);
+  if(!list.length){ box.innerHTML='<div class="assign-empty" style="padding:12px 0">Nothing saved yet — build a '+(kind==='po'?'purchase order':'invoice')+' and tap <b>Save</b> to recall it later.</div>'; return; }
+  box.innerHTML=list.map(e=>{
+    const dt=e.date?new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+    const sub=[clean(e.party)||'—', dt, (e.snapshot.lines||[]).length+' line'+((e.snapshot.lines||[]).length===1?'':'s')].filter(Boolean).join(' · ');
+    return `<div class="mv-row"><div class="mv-l"><div class="mv-name">${escapeHtml(e.ref)} <span style="color:var(--muted);font-weight:600">${money(e.total)}</span></div><div class="mv-sub">${escapeHtml(sub)}</div></div>
+      <span style="display:flex; gap:6px; flex:none"><button class="btn ghost sm" onclick="recallDoc('${e.id}')">Recall</button><button class="btn ghost sm" onclick="deleteSavedDoc('${e.id}')" aria-label="Delete saved">✕</button></span></div>`;
+  }).join('');
 }
 function openPick(kind){ pickTarget=kind; const s=$('pickSearch'); if(s) s.value=''; renderPick(); $('pickDlg').showModal(); }
 function renderPick(){
