@@ -550,7 +550,7 @@
 
   <div class="card pad">
     <div class="listhead" style="margin:0 0 10px"><span class="ttl">Prices from Door Quote</span></div>
-    <div class="hint" style="margin:0 0 14px">Pull unit cost &amp; sale price from your Door Quote catalogue, matched by <b>SKU / stock code</b>. Open Door Quote on this device first so its catalogue is available. Only items whose SKU matches are updated — quantities aren't touched.</div>
+    <div class="hint" style="margin:0 0 14px">Pull unit cost &amp; sale price from your Door Quote catalogue, matched by <b>SKU / stock code</b> (or by exact item name). Open Door Quote on this device first so its catalogue is available. Only matching items are updated — quantities aren't touched.</div>
     <button class="btn" onclick="importDoorQuotePrices()">Import prices from Door Quote</button>
   </div>
 
@@ -1164,27 +1164,31 @@ function importDoorQuotePrices(){
   let cat=[];
   try{ cat=JSON.parse(localStorage.getItem('dhq.catalogue.v1'))||[]; }catch(e){ cat=[]; }
   if(!Array.isArray(cat)||!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
-  // index catalogue by stock code (SKU)
-  const bySku={};
-  cat.forEach(c=>{ const k=clean(c.code).toLowerCase(); if(k) bySku[k]=c; });
-  const withSku=state.items.filter(i=>clean(i.sku));
-  let matched=0, updated=0;
-  const changes=[];
-  withSku.forEach(i=>{
-    const c=bySku[clean(i.sku).toLowerCase()]; if(!c) return;
+  const norm=s=>clean(s).toLowerCase();
+  const bySku={}, byName={};
+  cat.forEach(c=>{ const k=norm(c.code); if(k&&!(k in bySku)) bySku[k]=c; const n=norm(c.desc); if(n&&!(n in byName)) byName[n]=c; });
+  let matched=0; const changes=[];
+  state.items.forEach(i=>{
+    let c = norm(i.sku) ? bySku[norm(i.sku)] : null;
+    if(!c) c = byName[norm(i.name)];   // fallback: match item name to catalogue description
+    if(!c) return;
     matched++;
     const newCost=num(c.cost), newPrice=num(c.unit);
-    let ch=false;
-    if(newCost>0 && newCost!==i.cost) ch=true;
-    if(newPrice>0 && newPrice!==i.price) ch=true;
-    if(ch) changes.push({i, newCost, newPrice});
+    if((newCost>0 && newCost!==i.cost) || (newPrice>0 && newPrice!==i.price)) changes.push({i,newCost,newPrice});
   });
-  if(!matched){ toast('No SKUs matched your Door Quote catalogue ('+cat.length+' catalogue item'+(cat.length===1?'':'s')+').'); return; }
+  if(!matched){
+    const withSku=state.items.filter(i=>clean(i.sku)).length;
+    const withCode=cat.filter(c=>clean(c.code)).length;
+    const egSku=(state.items.find(i=>clean(i.sku))||{}).sku||'—';
+    const egCode=(cat.find(c=>clean(c.code))||{}).code||'—';
+    alert('No matches found.\n\nYour inventory: '+state.items.length+' item'+(state.items.length===1?'':'s')+' ('+withSku+' with a SKU).\nDoor Quote catalogue: '+cat.length+' items ('+withCode+' with a stock code).\n\nItems are matched by SKU = Door Quote stock code, or by exact item name = catalogue description.\n\nExample of your SKU: "'+egSku+'"\nExample Door Quote code: "'+egCode+'"\n\nMake these line up (in either app), then try again.');
+    return;
+  }
   if(!changes.length){ toast(matched+' item'+(matched===1?'':'s')+' matched — prices already up to date.'); return; }
-  if(!confirm('Door Quote catalogue: '+cat.length+' items.\n'+matched+' of your items match by SKU.\nUpdate cost & sale price on '+changes.length+' item'+(changes.length===1?'':'s')+'?')) return;
-  changes.forEach(({i,newCost,newPrice})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; updated++; });
+  if(!confirm(matched+' of your items match Door Quote (by SKU or name).\nUpdate cost & sale price on '+changes.length+' item'+(changes.length===1?'':'s')+'?')) return;
+  changes.forEach(({i,newCost,newPrice})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; });
   save(); render();
-  toast('Updated '+updated+' item'+(updated===1?'':'s')+' from Door Quote.');
+  toast('Updated '+changes.length+' item'+(changes.length===1?'':'s')+' from Door Quote.');
 }
 function fillBiz(){ const n=$('bizName'), a=$('bizAddr'); if(n&&document.activeElement!==n) n.value=state.biz.name||''; if(a&&document.activeElement!==a) a.value=state.biz.address||''; }
 function docTotals(kind){
