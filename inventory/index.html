@@ -260,6 +260,10 @@
   .crow .cprice small{color:var(--muted); font-weight:500; font-size:11px}
   .crow .csub{font-size:11.5px; color:var(--muted); margin-top:2px}
   .crow .cacts{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
+  .bizlogo-row{display:flex; align-items:center; gap:14px; margin:0 0 14px}
+  .bizlogo{width:96px; height:64px; flex:none; border:1px solid var(--line2); border-radius:8px; background:var(--card2); display:flex; align-items:center; justify-content:center; overflow:hidden}
+  .bizlogo span{color:var(--muted); font-size:11px; font-weight:600}
+  .bizlogo img{max-width:100%; max-height:100%; object-fit:contain}
   .crow .cacts .btn{padding:6px 12px; font-size:12.5px}
   .bigqty{font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-1px; line-height:1; margin:6px 0 2px}
   .bigqty small{font-size:13px; font-weight:500; color:var(--muted); letter-spacing:0; margin-left:6px}
@@ -337,6 +341,7 @@
     #printArea .docnotes{margin-top:14px; font-size:11.5px; color:#333; white-space:pre-line; border-top:1px solid #ddd; padding-top:8px}
     /* invoice / PO letterhead */
     #printArea .plet{display:flex; justify-content:space-between; align-items:flex-start; gap:24px; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:16px}
+    #printArea .plogo{max-height:56px; max-width:200px; object-fit:contain; display:block; margin-bottom:6px}
     #printArea .pbiz{font-size:22px; font-weight:800; letter-spacing:-.3px}
     #printArea .paddr{font-size:11px; color:#444; white-space:pre-line; margin-top:3px; line-height:1.45}
     #printArea .pdoc{text-align:right; min-width:44%}
@@ -617,11 +622,27 @@
 
   <div class="card pad">
     <div class="listhead" style="margin:0 0 10px"><span class="ttl">Business details</span></div>
-    <div class="hint" style="margin:0 0 12px">Shown as the "from" header on your purchase orders and invoices.</div>
+    <div class="hint" style="margin:0 0 12px">Shown as the letterhead on your purchase orders and invoices.</div>
+    <div class="bizlogo-row">
+      <div class="bizlogo" id="bizLogoPrev"><span>No logo</span></div>
+      <div style="display:flex; flex-direction:column; gap:6px">
+        <button class="btn ghost sm" onclick="document.getElementById('bizLogoFile').click()">Upload logo</button>
+        <button class="btn ghost sm" id="bizLogoRemove" onclick="removeLogo()" style="display:none">Remove logo</button>
+        <input id="bizLogoFile" type="file" accept="image/*" hidden onchange="setLogo(this.files[0]); this.value='';">
+      </div>
+    </div>
     <label>Your business name</label>
     <input id="bizName" placeholder="e.g. Acme Doors Ltd" autocomplete="off" oninput="bizField('name',this.value)" style="margin-bottom:12px">
-    <label>Address / contact</label>
-    <textarea id="bizAddr" rows="3" placeholder="Address, phone, email, VAT no." oninput="bizField('address',this.value)"></textarea>
+    <label>Address</label>
+    <textarea id="bizAddr" rows="3" placeholder="Street, town, postcode" oninput="bizField('address',this.value)" style="margin-bottom:12px"></textarea>
+    <div class="duo">
+      <div><label>Phone</label><input id="bizPhone" autocomplete="off" placeholder="020 7946 0000" oninput="bizField('phone',this.value)"></div>
+      <div><label>Email</label><input id="bizEmail" autocomplete="off" placeholder="accounts@…" oninput="bizField('email',this.value)"></div>
+    </div>
+    <div class="duo" style="margin-top:12px">
+      <div><label>VAT number</label><input id="bizVat" autocomplete="off" placeholder="GB 123 4567 89" oninput="bizField('vat',this.value)"></div>
+      <div><label>Company reg no.</label><input id="bizReg" autocomplete="off" placeholder="optional" oninput="bizField('reg',this.value)"></div>
+    </div>
   </div>
 
   <div class="card pad">
@@ -861,7 +882,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v37 · 2026-09-26';
+const APP_VER='v38 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -895,7 +916,7 @@ function normalize(s){
   s.log=Array.isArray(s.log)?s.log:[];
   s.sort=SORTS.includes(s.sort)?s.sort:'low';
   s.updatedAt=+s.updatedAt||0;
-  s.biz=(s.biz&&typeof s.biz==='object')?{name:clean(s.biz.name),address:clean(s.biz.address)}:{name:'',address:''};
+  s.biz=(s.biz&&typeof s.biz==='object')?{name:clean(s.biz.name),address:clean(s.biz.address),phone:clean(s.biz.phone),email:clean(s.biz.email),vat:clean(s.biz.vat),reg:clean(s.biz.reg),logo:clean(s.biz.logo)}:{name:'',address:'',phone:'',email:'',vat:'',reg:'',logo:''};
   s.po=normalizeDoc(s.po,false);
   s.inv=normalizeDoc(s.inv,true);
   s.seqPO=int(s.seqPO); s.seqInv=int(s.seqInv);
@@ -1675,7 +1696,39 @@ function importCatalogueCSV(file){
   };
   r.readAsText(file);
 }
-function fillBiz(){ const n=$('bizName'), a=$('bizAddr'); if(n&&document.activeElement!==n) n.value=state.biz.name||''; if(a&&document.activeElement!==a) a.value=state.biz.address||''; }
+function fillBiz(){
+  const b=state.biz||{};
+  const set=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value=v||''; };
+  set('bizName',b.name); set('bizAddr',b.address); set('bizPhone',b.phone); set('bizEmail',b.email); set('bizVat',b.vat); set('bizReg',b.reg);
+  const prev=$('bizLogoPrev'), rm=$('bizLogoRemove');
+  if(prev){ prev.innerHTML = clean(b.logo) ? '<img src="'+b.logo+'" alt="logo">' : '<span>No logo</span>'; }
+  if(rm) rm.style.display = clean(b.logo) ? 'block' : 'none';
+}
+function setLogo(file){
+  if(!file) return;
+  if(!/^image\//.test(file.type)){ toast('Please choose an image file.'); return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=360, maxH=200;
+      let w=img.width, h=img.height;
+      const scale=Math.min(1, maxW/w, maxH/h);
+      w=Math.round(w*scale); h=Math.round(h*scale);
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      let data;
+      try{ data=cv.toDataURL('image/png'); if(data.length>200000) data=cv.toDataURL('image/jpeg',0.85); }
+      catch(e){ toast('Could not read that image.'); return; }
+      state.biz.logo=data; save(); fillBiz();
+      toast('Logo added.');
+    };
+    img.onerror=()=>toast('Could not read that image.');
+    img.src=r.result;
+  };
+  r.readAsDataURL(file);
+}
+function removeLogo(){ state.biz.logo=''; save(); fillBiz(); toast('Logo removed.'); }
 function docTotals(kind){
   const d=docState(kind);
   const goods=d.lines.reduce((s,l)=>s+(int(l.qty)||0)*(num(l.price)||0),0);
@@ -1849,8 +1902,15 @@ function printDoc(kind){
   let meta='<tr><td>Number</td><th>'+escapeHtml(d.ref)+'</th></tr><tr><td>Date</td><th>'+escapeHtml(dateStr)+'</th></tr>';
   if(clean(d.account)) meta+='<tr><td>Account</td><th>'+escapeHtml(d.account)+'</th></tr>';
   if(clean(d.accountStatus)) meta+='<tr><td>Status</td><th>'+escapeHtml(d.accountStatus)+'</th></tr>';
+  const contact=[];
+  if(clean(biz.phone)||clean(biz.email)) contact.push([clean(biz.phone)?'Tel '+clean(biz.phone):'', clean(biz.email)].filter(Boolean).join('  ·  '));
+  if(clean(biz.vat)||clean(biz.reg)) contact.push([clean(biz.vat)?'VAT '+clean(biz.vat):'', clean(biz.reg)?'Reg '+clean(biz.reg):''].filter(Boolean).join('  ·  '));
+  const logoImg = clean(biz.logo) ? '<img class="plogo" src="'+biz.logo+'" alt="">' : '';
+  const fromInner='<div class="pbiz">'+escapeHtml(biz.name||'Your business')+'</div>'
+    +(clean(biz.address)?'<div class="paddr">'+escapeHtml(biz.address)+'</div>':'')
+    +contact.map(c=>'<div class="paddr">'+escapeHtml(c)+'</div>').join('');
   let html='<div class="plet">'
-    +'<div class="pfrom"><div class="pbiz">'+escapeHtml(biz.name||'Your business')+'</div>'+(clean(biz.address)?'<div class="paddr">'+escapeHtml(biz.address)+'</div>':'')+'</div>'
+    +'<div class="pfrom">'+logoImg+fromInner+'</div>'
     +'<div class="pdoc"><div class="pdtitle">'+title+'</div><table class="pmeta2">'+meta+'</table></div>'
     +'</div>';
   // parties: to + deliver-to
