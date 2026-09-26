@@ -259,7 +259,7 @@
   .crow .cprice{font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--accent)}
   .crow .cprice small{color:var(--muted); font-weight:500; font-size:11px}
   .crow .csub{font-size:11.5px; color:var(--muted); margin-top:2px}
-  .crow .cacts{display:flex; gap:6px; margin-top:9px}
+  .crow .cacts{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
   .crow .cacts .btn{padding:6px 12px; font-size:12.5px}
   .bigqty{font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-1px; line-height:1; margin:6px 0 2px}
   .bigqty small{font-size:13px; font-weight:500; color:var(--muted); letter-spacing:0; margin-left:6px}
@@ -445,8 +445,9 @@
       </div>
       <span class="count" id="catPill">0 items</span>
     </div>
+    <button class="btn full sm" style="margin:0 0 12px" onclick="openCatEdit()"><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New catalogue item</button>
     <div id="catList"></div>
-    <div class="hint c">Your price list for quotes &amp; orders — you don't have to stock any of it. Import or refresh it in <b>Setup → Catalogue</b>. Tap <b>PO</b> or <b>Invoice</b> to drop an item onto a document, or <b>Stock</b> to start holding it.</div>
+    <div class="hint c">Your price list for quotes &amp; orders — you don't have to stock any of it. Import or refresh it in <b>Setup → Catalogue</b>. Tap <b>PO</b> or <b>Invoice</b> to drop an item onto a document, <b>Stock</b> to start holding it, or <b>Edit</b> to change a price.</div>
   </div>
 
   <!-- REPORTS TAB -->
@@ -766,6 +767,30 @@
   </div>
 </dialog>
 
+<dialog id="catEditDlg">
+  <div class="modal">
+    <h3 id="catEditTitle">New catalogue item</h3>
+    <div class="row">
+      <div><label>Product name</label><input id="ceName" autocomplete="off" placeholder="e.g. CISA C2000 Cylinder"></div>
+      <div class="duo">
+        <div><label>SKU / code</label><input id="ceSku" autocomplete="off" placeholder="optional"></div>
+        <div><label>Category</label><input id="ceCat" autocomplete="off" placeholder="optional"></div>
+      </div>
+      <div><label>Colour / finish</label><input id="ceColour" autocomplete="off" placeholder="optional"></div>
+      <div class="duo">
+        <div><label>Unit cost £</label><input id="ceCost" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
+        <div><label>Sale price £</label><input id="cePrice" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
+      </div>
+      <div><label>Supplier</label><input id="ceSup" autocomplete="off" placeholder="optional"></div>
+      <div class="duo" style="margin-top:4px">
+        <button class="btn ghost" onclick="catEditDlg.close()">Cancel</button>
+        <button class="btn" onclick="saveCatEdit()">Save</button>
+      </div>
+      <button class="btn danger full sm" id="ceDelete" onclick="deleteCatItem()" style="margin-top:2px; display:none">Delete from catalogue</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="pickDlg">
   <div class="modal">
     <h3>Add item from inventory</h3>
@@ -790,7 +815,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v32 · 2026-09-26';
+const APP_VER='v33 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -1333,6 +1358,36 @@ function stockFromCatalogue(catId){
   state.items.push(it); save(); render(); openEdit(it.id); toast('Added to stock — set the quantity.');
 }
 function catToDoc(kind,id){ addLineFromCatalogue(kind,id); setTab(kind); }
+let catEditId=null;
+function openCatEdit(id){
+  catEditId=id||null;
+  const c=id ? (state.catalogue||[]).find(x=>x.id===id) : null;
+  $('catEditTitle').textContent = c ? 'Edit catalogue item' : 'New catalogue item';
+  $('ceName').value=c?c.name:''; $('ceSku').value=c?c.sku:''; $('ceCat').value=c?c.category:'';
+  $('ceColour').value=c?c.colour:''; $('ceCost').value=c&&num(c.cost)?c.cost:''; $('cePrice').value=c&&num(c.price)?c.price:'';
+  $('ceSup').value=c?c.supplier:'';
+  $('ceDelete').style.display=c?'block':'none';
+  $('catEditDlg').showModal();
+  setTimeout(()=>$('ceName').focus(),40);
+}
+function saveCatEdit(){
+  const name=clean($('ceName').value), sku=clean($('ceSku').value);
+  if(!name && !sku){ $('ceName').focus(); toast('Give it a name or a SKU.'); return; }
+  const rec={ name, sku, category:clean($('ceCat').value), colour:clean($('ceColour').value),
+    cost:Math.max(0,num($('ceCost').value)), price:Math.max(0,num($('cePrice').value)), supplier:clean($('ceSup').value) };
+  state.catalogue=state.catalogue||[];
+  if(catEditId){ const c=state.catalogue.find(x=>x.id===catEditId); if(c) Object.assign(c,rec); }
+  else{ state.catalogue.push(Object.assign({id:'c'+Date.now()+Math.random().toString(36).slice(2,6)},rec)); }
+  save(); $('catEditDlg').close(); render(); if(!$('viewSetup').hidden) renderSetup();
+  toast(catEditId?'Catalogue item updated.':'Added to catalogue.');
+}
+function deleteCatItem(){
+  if(!catEditId) return;
+  const c=(state.catalogue||[]).find(x=>x.id===catEditId);
+  if(!confirm('Delete “'+((c&&c.name)||'this item')+'” from the catalogue?')) return;
+  state.catalogue=(state.catalogue||[]).filter(x=>x.id!==catEditId);
+  save(); $('catEditDlg').close(); render(); if(!$('viewSetup').hidden) renderSetup(); toast('Removed from catalogue.');
+}
 function renderCatalogueView(){
   const cat=state.catalogue||[];
   const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
@@ -1353,6 +1408,7 @@ function renderCatalogueView(){
         <button class="btn ghost" onclick="catToDoc('po','${c.id}')">＋ PO</button>
         <button class="btn ghost" onclick="catToDoc('inv','${c.id}')">＋ Invoice</button>
         <button class="btn ghost" onclick="stockFromCatalogue('${c.id}')">＋ Stock</button>
+        <button class="btn ghost" onclick="openCatEdit('${c.id}')">Edit</button>
       </div>
     </div>`;
   }).join('');
