@@ -333,6 +333,7 @@
     #printArea .dochead .blk .lbl{font-size:9px; text-transform:uppercase; letter-spacing:.6px; color:#666; font-weight:700; margin-bottom:2px}
     #printArea .dochead .blk .nm{font-weight:700; font-size:13px}
     #printArea .docref{text-align:right}
+    #printArea .dochead .blk .acct{font-size:10.5px; color:#555; margin-top:3px}
     #printArea .docnotes{margin-top:16px; font-size:11.5px; color:#333; white-space:pre-line; border-top:1px solid #ddd; padding-top:8px}
   }
   svg.bc rect{fill:#000}
@@ -492,6 +493,12 @@
         </div>
         <div><label>Supplier address / details</label><textarea id="poAddr" rows="2" oninput="docField('po','address',this.value)"></textarea></div>
         <div class="duo">
+          <div><label>Our account no.</label><input id="poAccount" autocomplete="off" placeholder="account with supplier" oninput="docField('po','account',this.value)"></div>
+          <div><label>Account status</label><input id="poAcctStatus" list="acctStatusList" autocomplete="off" placeholder="e.g. On account" oninput="docField('po','accountStatus',this.value)"></div>
+        </div>
+        <div><label>Delivery address <span class="muted" style="font-weight:500">(if different)</span></label><textarea id="poDeliverTo" rows="2" placeholder="e.g. deliver direct to customer / site" oninput="docField('po','deliverTo',this.value)"></textarea></div>
+        <div><label>Payment terms / options</label><textarea id="poPay" rows="2" placeholder="e.g. 30 days net, BACS, card on collection" oninput="docField('po','payment',this.value)"></textarea></div>
+        <div class="duo">
           <div><label>Date</label><input id="poDate" type="date" oninput="docField('po','date',this.value)"></div>
           <div><label>VAT</label><label class="chk"><input type="checkbox" id="poVat" onchange="docVat('po',this.checked)"> Add VAT @ <input id="poVatRate" type="number" step="0.1" min="0" style="width:56px" oninput="docRate('po',this.value)">%</label></div>
         </div>
@@ -531,6 +538,12 @@
         </div>
         <div><label>Customer address / details</label><textarea id="invAddr" rows="2" oninput="docField('inv','address',this.value)"></textarea></div>
         <div class="duo">
+          <div><label>Account no.</label><input id="invAccount" autocomplete="off" placeholder="customer account" oninput="docField('inv','account',this.value)"></div>
+          <div><label>Account status</label><input id="invAcctStatus" list="acctStatusList" autocomplete="off" placeholder="e.g. On account" oninput="docField('inv','accountStatus',this.value)"></div>
+        </div>
+        <div><label>Delivery address <span class="muted" style="font-weight:500">(if different)</span></label><textarea id="invDeliverTo" rows="2" placeholder="where the goods go, if not the billing address" oninput="docField('inv','deliverTo',this.value)"></textarea></div>
+        <div><label>Payment terms / options</label><textarea id="invPay" rows="2" placeholder="e.g. 30 days net, bank details, card link" oninput="docField('inv','payment',this.value)"></textarea></div>
+        <div class="duo">
           <div><label>Date</label><input id="invDate" type="date" oninput="docField('inv','date',this.value)"></div>
           <div><label>VAT</label><label class="chk"><input type="checkbox" id="invVat" onchange="docVat('inv',this.checked)"> Add VAT @ <input id="invVatRate" type="number" step="0.1" min="0" style="width:56px" oninput="docRate('inv',this.value)">%</label></div>
         </div>
@@ -558,6 +571,7 @@
   </div>
   <datalist id="supList"></datalist>
   <datalist id="custList"></datalist>
+  <datalist id="acctStatusList"><option value="On account"><option value="Pro forma"><option value="Cash"><option value="COD"><option value="Paid"><option value="On hold"><option value="New account"></datalist>
 </section>
 
 <!-- ============ SETUP VIEW ============ -->
@@ -831,7 +845,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v35 · 2026-09-26';
+const APP_VER='v36 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -852,6 +866,7 @@ function normalizeDoc(d, defVatOn){
   d=d||{};
   return {
     party:clean(d.party), address:clean(d.address), ref:clean(d.ref), date:clean(d.date), notes:clean(d.notes),
+    account:clean(d.account), accountStatus:clean(d.accountStatus), payment:clean(d.payment), deliverTo:clean(d.deliverTo),
     vatOn: d.vatOn==null ? !!defVatOn : !!d.vatOn,
     vatRate: d.vatRate==null ? 20 : num(d.vatRate),
     delivery: num(d.delivery),
@@ -874,7 +889,7 @@ function normalize(s){
     total:num(e.total), savedAt:+e.savedAt||Date.now(), snapshot:normalizeDoc(e.snapshot, e.kind==='inv')
   })):[];
   s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
-  Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address)}; });
+  Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address),account:clean(v.account),accountStatus:clean(v.accountStatus),payment:clean(v.payment),deliverTo:clean(v.deliverTo)}; });
   s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
   s.catalogue=Array.isArray(s.catalogue)?s.catalogue.map(c=>({          // price list for quotes/orders (not held stock)
     id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
@@ -1276,12 +1291,18 @@ function docState(kind){ return kind==='po' ? state.po : state.inv; }
 function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function docField(kind,key,val){
   const d=docState(kind); d[key]=clean(val);
+  const P=kind==='po'?'po':'inv';
   if(key==='party'){
     const saved=state.parties[d.party.toLowerCase()];
-    if(saved && !clean(d.address)){ d.address=saved.address; const P=kind==='po'?'po':'inv'; const a=$(P+'Addr'); if(a) a.value=d.address; }
+    if(saved){
+      const fill=(k,id)=>{ if(!clean(d[k]) && clean(saved[k])){ d[k]=clean(saved[k]); const el=$(P+id); if(el) el.value=d[k]; } };
+      fill('address','Addr'); fill('account','Account'); fill('accountStatus','AcctStatus'); fill('payment','Pay'); fill('deliverTo','DeliverTo');
+    }
   }
-  if((key==='party'||key==='address') && clean(d.party)){
-    state.parties[d.party.toLowerCase()]={name:clean(d.party),address:clean(d.address)};
+  if(clean(d.party)){
+    const k=d.party.toLowerCase(), cur=state.parties[k]||{};
+    const keep=(f)=> clean(d[f]) || clean(cur[f]) || '';
+    state.parties[k]={ name:clean(d.party), address:keep('address'), account:keep('account'), accountStatus:keep('accountStatus'), payment:keep('payment'), deliverTo:keep('deliverTo') };
   }
   save();
 }
@@ -1652,6 +1673,7 @@ function renderDoc(kind){
   const setVal=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value=v; };
   if(!d.date) d.date=todayISO();
   setVal(P+'Party',d.party); setVal(P+'Ref',d.ref); setVal(P+'Addr',d.address); setVal(P+'Date',d.date); setVal(P+'Notes',d.notes);
+  setVal(P+'Account',d.account); setVal(P+'AcctStatus',d.accountStatus); setVal(P+'Pay',d.payment); setVal(P+'DeliverTo',d.deliverTo);
   setVal(P+'Deliv', d.delivery||'');
   const vc=$(P+'Vat'); if(vc) vc.checked=d.vatOn;
   const vr=$(P+'VatRate'); if(vr && document.activeElement!==vr) vr.value=d.vatRate;
@@ -1799,7 +1821,9 @@ function printDoc(kind){
   const title=isInv?'Invoice':'Purchase Order';
   const dateStr=d.date ? new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   const fromBlk='<div class="blk"><div class="lbl">From</div><div class="nm">'+escapeHtml(biz.name||'Your business')+'</div>'+(biz.address?escapeHtml(biz.address):'')+'</div>';
-  const toBlk='<div class="blk"><div class="lbl">'+(isInv?'Invoice to':'Supplier')+'</div><div class="nm">'+escapeHtml(d.party||'—')+'</div>'+(d.address?escapeHtml(d.address):'')+'</div>';
+  const acctLine = clean(d.account) ? '<div class="acct">Account: '+escapeHtml(d.account)+(clean(d.accountStatus)?' · '+escapeHtml(d.accountStatus):'')+'</div>' : (clean(d.accountStatus)?'<div class="acct">'+escapeHtml(d.accountStatus)+'</div>':'');
+  const toBlk='<div class="blk"><div class="lbl">'+(isInv?'Invoice to':'Supplier')+'</div><div class="nm">'+escapeHtml(d.party||'—')+'</div>'+(d.address?escapeHtml(d.address):'')+acctLine+'</div>';
+  const shipBlk = clean(d.deliverTo) ? '<div class="blk"><div class="lbl">Deliver to</div>'+escapeHtml(d.deliverTo)+'</div>' : '';
   const refBlk='<div class="blk docref"><div class="lbl">'+title+'</div><div class="nm">'+escapeHtml(d.ref)+'</div>Date: '+escapeHtml(dateStr)+'</div>';
   let rows='';
   d.lines.forEach(l=>{ const amt=(int(l.qty)||0)*(num(l.price)||0);
@@ -1809,7 +1833,9 @@ function printDoc(kind){
   if(d.vatOn) tot+='<tr class="subrow"><td class="lbl" colspan="4">VAT @ '+(num(d.vatRate)||0)+'%</td><td class="n">'+money(t.vat)+'</td></tr>';
   tot+='<tr class="totrow"><td class="lbl" colspan="4">Total</td><td class="n">'+money(t.total)+'</td></tr>';
   let html='<h2>'+title+'</h2><div class="dochead">'+fromBlk+toBlk+refBlk+'</div>';
+  if(shipBlk) html+='<div class="dochead" style="margin-top:0">'+shipBlk+'</div>';
   html+='<table><thead><tr><th class="n">Qty</th><th>Description</th><th>SKU</th><th class="n">Unit £</th><th class="n">Amount £</th></tr></thead><tbody>'+rows+tot+'</tbody></table>';
+  if(clean(d.payment)) html+='<div class="docnotes"><b>Payment:</b> '+escapeHtml(d.payment)+'</div>';
   if(d.notes) html+='<div class="docnotes">'+escapeHtml(d.notes)+'</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
