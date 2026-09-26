@@ -216,6 +216,10 @@
   .mv-l .mv-sub{color:var(--muted); font-weight:500; font-size:12px; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .mv-delta{font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; margin-left:12px}
   .mv-delta.up{color:var(--ok)} .mv-delta.down{color:var(--danger)}
+  .qbadge{display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; padding:1px 6px; border-radius:999px; vertical-align:middle; margin-left:4px}
+  .qbadge.ok{background:color-mix(in srgb, var(--ok) 16%, transparent); color:var(--ok)}
+  .qbadge.soon{background:color-mix(in srgb, #d98a00 20%, transparent); color:#b07400}
+  .qbadge.exp{background:color-mix(in srgb, var(--danger) 16%, transparent); color:var(--danger)}
 
   /* ---- dialogs ---- */
   dialog{border:none; border-radius:12px; padding:0; background:transparent; max-width:92vw}
@@ -932,7 +936,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v49 · 2026-09-26';
+const APP_VER='v50 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
@@ -1922,10 +1926,22 @@ function renderSavedDocs(kind){
   const box=$(kind+'Saved'); if(!box) return;
   const list=(state.savedDocs||[]).filter(x=>x.kind===kind).sort((a,b)=>b.savedAt-a.savedAt);
   if(!list.length){ box.innerHTML='<div class="assign-empty" style="padding:12px 0">Nothing saved yet — build a '+docLabel(kind)+' and tap <b>Save</b> to recall it later.</div>'; return; }
+  const today=todayISO();
   box.innerHTML=list.map(e=>{
     const dt=e.date?new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
     const sub=[clean(e.party)||'—', dt, (e.snapshot.lines||[]).length+' line'+((e.snapshot.lines||[]).length===1?'':'s')].filter(Boolean).join(' · ');
-    return `<div class="mv-row"><div class="mv-l"><div class="mv-name">${escapeHtml(e.ref)} <span style="color:var(--muted);font-weight:600">${money(e.total)}</span></div><div class="mv-sub">${escapeHtml(sub)}</div></div>
+    let badge='';
+    if(kind==='quote'){
+      const vu=clean(e.snapshot.validUntil);
+      if(vu){
+        const days=Math.round((new Date(vu+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+        if(days<0) badge=' <span class="qbadge exp">Expired</span>';
+        else if(days===0) badge=' <span class="qbadge soon">Expires today</span>';
+        else if(days<=7) badge=' <span class="qbadge soon">'+days+'d left</span>';
+        else badge=' <span class="qbadge ok">Valid</span>';
+      }
+    }
+    return `<div class="mv-row"><div class="mv-l"><div class="mv-name">${escapeHtml(e.ref)} <span style="color:var(--muted);font-weight:600">${money(e.total)}</span>${badge}</div><div class="mv-sub">${escapeHtml(sub)}</div></div>
       <span style="display:flex; gap:6px; flex:none"><button class="btn ghost sm" onclick="recallDoc('${e.id}')">Recall</button><button class="btn ghost sm" onclick="duplicateSavedDoc('${e.id}')">Duplicate</button><button class="btn ghost sm" onclick="deleteSavedDoc('${e.id}')" aria-label="Delete saved">✕</button></span></div>`;
   }).join('');
 }
