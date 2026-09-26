@@ -956,7 +956,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v55 · 2026-09-26';
+const APP_VER='v56 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1072,8 +1072,8 @@ function openEdit(id){
   $('editTitle').textContent=it.name;
   $('eName').value=it.name; $('eSku').value=it.sku||''; $('eCat').value=it.category||'';
   $('eColour').value=it.colour||'';
-  $('eQty').value=it.qty; $('eReorder').value=it.reorder; $('eCost').value=it.cost||'';
-  $('ePrice').value=it.price||''; $('eLoc').value=it.location||''; $('eSup').value=it.supplier||'';
+  $('eQty').value=it.qty; $('eReorder').value=it.reorder; $('eCost').value=it.cost?num(it.cost).toFixed(2):'';
+  $('ePrice').value=it.price?num(it.price).toFixed(2):''; $('eLoc').value=it.location||''; $('eSup').value=it.supplier||'';
   $('eBarcode').value=it.barcode||''; $('eNotes').value=it.notes||'';
   $('editDlg').showModal();
 }
@@ -1568,7 +1568,7 @@ function openCatEdit(id){
   const c=id ? (state.catalogue||[]).find(x=>x.id===id) : null;
   $('catEditTitle').textContent = c ? 'Edit catalogue item' : 'New catalogue item';
   $('ceName').value=c?c.name:''; $('ceSku').value=c?c.sku:''; $('ceCat').value=c?c.category:'';
-  $('ceColour').value=c?c.colour:''; $('ceCost').value=c&&num(c.cost)?c.cost:''; $('cePrice').value=c&&num(c.price)?c.price:'';
+  $('ceColour').value=c?c.colour:''; $('ceCost').value=c&&num(c.cost)?num(c.cost).toFixed(2):''; $('cePrice').value=c&&num(c.price)?num(c.price).toFixed(2):'';
   $('ceSup').value=c?c.supplier:'';
   $('ceDelete').style.display=c?'block':'none';
   $('catEditDlg').showModal();
@@ -1835,7 +1835,7 @@ function renderDoc(kind){
   setVal(P+'Party',d.party); setVal(P+'Ref',d.ref); setVal(P+'Addr',d.address); setVal(P+'Date',d.date); setVal(P+'Notes',d.notes);
   setVal(P+'Account',d.account); setVal(P+'AcctStatus',d.accountStatus); setVal(P+'Pay',d.payment); setVal(P+'DeliverTo',d.deliverTo);
   if(kind==='quote') setVal('quoteValid', d.validUntil);
-  setVal(P+'Deliv', d.delivery||'');
+  setVal(P+'Deliv', d.delivery?num(d.delivery).toFixed(2):'');
   const vc=$(P+'Vat'); if(vc) vc.checked=d.vatOn;
   const vr=$(P+'VatRate'); if(vr && document.activeElement!==vr) vr.value=d.vatRate;
   const partyNames=Object.values(state.parties).map(x=>x.name).filter(Boolean);
@@ -1848,7 +1848,7 @@ function renderDoc(kind){
       <div class="dl-main"><div class="dl-name">${escapeHtml(l.name)||'<span style="opacity:.6">(no name)</span>'}</div>${l.sku?`<div class="dl-sub">#${escapeHtml(l.sku)}</div>`:''}</div>
       <div class="dl-ctrl">
         <label class="dl-f"><span>Qty</span><input type="number" min="0" step="1" inputmode="numeric" value="${l.qty}" onchange="lineQty('${kind}',${idx},this.value)" aria-label="Quantity"></label>
-        <label class="dl-f"><span>Unit £</span><input class="dl-price" type="number" min="0" step="0.01" inputmode="decimal" value="${l.price}" onchange="linePrice('${kind}',${idx},this.value)" aria-label="Unit price"></label>
+        <label class="dl-f"><span>Unit £</span><input class="dl-price" type="number" min="0" step="0.01" inputmode="decimal" value="${num(l.price).toFixed(2)}" onchange="linePrice('${kind}',${idx},this.value)" aria-label="Unit price"></label>
         <div class="dl-amt"><span>Amount</span><b>${money((int(l.qty)||0)*(num(l.price)||0))}</b></div>
         <button class="dl-del" onclick="removeLine('${kind}',${idx})" aria-label="Remove line" title="Remove line">🗑</button>
       </div>
@@ -2522,6 +2522,13 @@ setInterval(()=>{ if(GH.connected&&GH.auto&&!document.hidden) syncPull(false,tru
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden&&GH.connected&&GH.auto) syncPull(false,true).catch(()=>{}); });
 window.addEventListener("pagehide", ()=>{ if(GH.connected&&GH.auto&&!SYNC_PASS){ try{ fetch("https://api.github.com/gists/"+GH.gist,{method:"PATCH",keepalive:true,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}})}).catch(()=>{}); }catch(e){} } });
 
+// Reformat money fields (step="0.01") to 2 decimals when the user leaves them, so £5 shows as 5.00
+document.addEventListener('focusout', e=>{
+  const el=e.target;
+  if(el && el.tagName==='INPUT' && el.type==='number' && el.step==='0.01' && el.value!==''){
+    const n=parseFloat(el.value); if(isFinite(n)) el.value=n.toFixed(2);
+  }
+});
 try{ const av=$('appVer'); if(av) av.textContent=APP_VER; }catch(e){}
 render();
 renderSync();
