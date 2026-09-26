@@ -250,6 +250,7 @@
   .assign-item .asub{font-size:11.5px; color:var(--muted); margin-top:1px}
   .assign-item .abc{font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; flex:none}
   .assign-empty{padding:16px 12px; text-align:center; color:var(--muted); font-size:13px; font-weight:500}
+  .pickhdr{position:sticky; top:0; background:var(--card); font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); padding:8px 12px 4px; border-bottom:1px solid var(--line)}
   .bigqty{font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-1px; line-height:1; margin:6px 0 2px}
   .bigqty small{font-size:13px; font-weight:500; color:var(--muted); letter-spacing:0; margin-left:6px}
   .found-meta{font-size:12.5px; color:var(--muted); font-weight:500; margin-bottom:16px}
@@ -555,8 +556,19 @@
   </div>
 
   <div class="card pad">
+    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Catalogue (price list)</span><span class="chip2" id="catCount">0</span></div>
+    <div class="hint" style="margin:0 0 14px">Your full product list for <b>quotes &amp; orders</b> — you don't have to keep any of it in stock. Import it from Door Quote (or a CSV) in one go, then add lines straight onto a <b>purchase order</b> or <b>invoice</b> from the catalogue. Great when items go <b>direct supplier → customer</b>.</div>
+    <div class="syncrow">
+      <button class="btn" onclick="importCatalogueFromDoorQuote()">Import catalogue from Door Quote</button>
+      <button class="btn ghost sm" onclick="document.getElementById('catCsvFile').click()">Import CSV</button>
+      <button class="btn ghost sm" onclick="clearCatalogue()">Clear</button>
+      <input id="catCsvFile" type="file" accept=".csv,text/csv" hidden onchange="importCatalogueListCSV(this.files[0]); this.value='';">
+    </div>
+  </div>
+
+  <div class="card pad">
     <div class="listhead" style="margin:0 0 10px"><span class="ttl">Prices from Door Quote</span></div>
-    <div class="hint" style="margin:0 0 14px">Pull unit cost &amp; sale price from your Door Quote catalogue, matched by <b>SKU / stock code</b> (or by exact item name). Open Door Quote on this device first so its catalogue is available. Only matching items are updated — quantities aren't touched.</div>
+    <div class="hint" style="margin:0 0 14px">For the items you <b>do keep in stock</b>: update their unit cost &amp; sale price from Door Quote, matched by <b>SKU / stock code</b> (or item name). Open Door Quote on this device first. Quantities aren't touched. (For everything else, use the <b>Catalogue</b> above.)</div>
     <div class="syncrow">
       <button class="btn" onclick="importDoorQuotePrices()">Import prices from Door Quote</button>
       <button class="btn ghost sm" onclick="openMatcher()">Match items manually…</button>
@@ -754,7 +766,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v30 · 2026-09-26';
+const APP_VER='v31 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -794,6 +806,12 @@ function normalize(s){
   s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
   Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address)}; });
   s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
+  s.catalogue=Array.isArray(s.catalogue)?s.catalogue.map(c=>({          // price list for quotes/orders (not held stock)
+    id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
+    name:clean(c.name), sku:clean(c.sku), colour:clean(c.colour),
+    category:clean(c.category), supplier:clean(c.supplier),
+    cost:num(c.cost), price:num(c.price)
+  })):[];
   s.items.forEach(it=>{
     it.qty=int(it.qty); it.reorder=int(it.reorder);
     it.cost=num(it.cost); it.price=num(it.price);
@@ -1236,6 +1254,56 @@ function importDoorQuotePrices(){
   unmatchedNote();
 }
 
+/* ---------- CATALOGUE (price list for quotes & orders — not held stock) ---------- */
+function importCatalogueFromDoorQuote(){
+  const cat=loadDQCatalogue();
+  if(!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
+  const existing=(state.catalogue||[]).length;
+  if(existing && !confirm('Replace your catalogue ('+existing+' item'+(existing===1?'':'s')+') with '+cat.length+' from Door Quote?\n\nThis is your price list for quotes & orders — your actual stock items aren\'t touched.')) return;
+  if(!existing && !confirm('Import '+cat.length+' item'+(cat.length===1?'':'s')+' from Door Quote as your catalogue (price list for quotes & orders)?')) return;
+  state.catalogue=cat.map(c=>({
+    id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
+    name:clean(c.desc), sku:clean(c.code), colour:clean(c.finish),
+    category:'', supplier:'', cost:num(c.cost), price:num(c.unit)
+  })).filter(c=>c.name||c.sku);
+  save(); render(); if(!$('viewSetup').hidden) renderSetup();
+  toast('Catalogue updated — '+state.catalogue.length+' item'+(state.catalogue.length===1?'':'s')+'.');
+}
+function importCatalogueListCSV(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let rows; try{ rows=parseCSV(r.result); }catch(e){ rows=[]; }
+    if(rows.length<2){ toast('That CSV looks empty.'); return; }
+    const header=rows[0].map(h=>clean(h).toLowerCase().replace(/\(.*?\)/g,'').replace(/[£≤*]/g,'').trim());
+    const col={}; Object.keys(CSV_ALIAS).forEach(f=>{ const idx=header.findIndex(h=>CSV_ALIAS[f].includes(h)); if(idx>=0) col[f]=idx; });
+    if(col.name==null && col.sku==null){ alert('Couldn’t find a Product/Name or SKU column.\n\nUse "Download template" for the exact columns.'); return; }
+    const get=(row,f)=> col[f]==null ? '' : clean(row[col[f]]);
+    const list=[];
+    for(let ri=1;ri<rows.length;ri++){ const row=rows[ri];
+      const name=get(row,'name'), sku=get(row,'sku'); if(!name && !sku) continue;
+      list.push({ id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name, sku, colour:get(row,'colour'), category:get(row,'category'), supplier:get(row,'supplier'), cost:num(get(row,'cost')), price:num(get(row,'price')) });
+    }
+    if(!list.length){ toast('No usable rows found in that CSV.'); return; }
+    const existing=(state.catalogue||[]).length;
+    if(existing && !confirm('Replace your catalogue ('+existing+' item'+(existing===1?'':'s')+') with '+list.length+' from this CSV?')) return;
+    state.catalogue=list;
+    save(); render(); if(!$('viewSetup').hidden) renderSetup();
+    toast('Catalogue updated — '+list.length+' item'+(list.length===1?'':'s')+'.');
+  };
+  r.readAsText(file);
+}
+function clearCatalogue(){
+  if(!(state.catalogue||[]).length){ toast('Catalogue is already empty.'); return; }
+  if(!confirm('Clear the catalogue? Your stock items and documents aren\'t affected.')) return;
+  state.catalogue=[]; save(); render(); if(!$('viewSetup').hidden) renderSetup(); toast('Catalogue cleared.');
+}
+function stockFromCatalogue(catId){
+  const c=(state.catalogue||[]).find(x=>x.id===catId); if(!c) return;
+  const it={ id:Date.now()+''+Math.random().toString(36).slice(2,6), name:c.name, sku:c.sku, category:c.category||'', colour:c.colour||'', qty:0, reorder:0, cost:num(c.cost), price:num(c.price), location:'', supplier:c.supplier||'', barcode:'', notes:'' };
+  state.items.push(it); save(); render(); openEdit(it.id); toast('Added to stock — set the quantity.');
+}
+
 /* ---------- MANUAL MATCH to Door Quote ---------- */
 let matchCat=[], matchItems=[];
 function loadDQCatalogue(){ try{ const c=JSON.parse(localStorage.getItem('dhq.catalogue.v1')); return Array.isArray(c)?c:[]; }catch(e){ return []; } }
@@ -1455,18 +1523,38 @@ function clearDoc(kind){
 function openPick(kind){ pickTarget=kind; const s=$('pickSearch'); if(s) s.value=''; renderPick(); $('pickDlg').showModal(); }
 function renderPick(){
   const q=clean($('pickSearch').value).toLowerCase();
-  let list=state.items.slice().sort((a,b)=>a.name.localeCompare(b.name));
-  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.colour,i.location,i.supplier,i.barcode].some(v=>(v||'').toLowerCase().includes(q)));
+  const m=v=>(v||'').toLowerCase().includes(q);
+  const stock=state.items.slice().sort((a,b)=>a.name.localeCompare(b.name))
+    .filter(i=>!q||[i.name,i.sku,i.category,i.colour,i.location,i.supplier,i.barcode].some(m))
+    .map(i=>({src:'item', id:i.id, name:i.name, unit:pickTarget==='po'?i.cost:(i.price||i.cost),
+      sub:[i.sku?'#'+i.sku:'', i.colour||'', i.category||'', i.qty+' in stock'].filter(Boolean).join(' · ')}));
+  const cat=(state.catalogue||[]).slice().sort((a,b)=>a.name.localeCompare(b.name))
+    .filter(c=>!q||[c.name,c.sku,c.colour,c.category].some(m))
+    .map(c=>({src:'cat', id:c.id, name:c.name, unit:pickTarget==='po'?c.cost:(c.price||c.cost),
+      sub:[c.sku?'#'+c.sku:'', c.colour||'', c.category||''].filter(Boolean).join(' · ')}));
   const el=$('pickList');
-  if(!state.items.length){ el.innerHTML='<div class="assign-empty">No inventory items yet.</div>'; return; }
-  if(!list.length){ el.innerHTML='<div class="assign-empty">Nothing matches.</div>'; return; }
-  el.innerHTML=list.map(i=>{
-    const unit = pickTarget==='po' ? i.cost : (i.price||i.cost);
-    const sub=[i.sku?'#'+escapeHtml(i.sku):'', i.colour?escapeHtml(i.colour):'', i.category?escapeHtml(i.category):'', i.qty+' in stock'].filter(Boolean).join(' · ');
-    return `<div class="assign-item" onclick="addLineFromItem('${pickTarget}','${i.id}')">
-      <div><div class="an">${escapeHtml(i.name)}</div><div class="asub">${sub}</div></div>
-      <div class="abc">${unit>0?money(unit):''}</div></div>`;
-  }).join('');
+  if(!stock.length && !cat.length){
+    const empty=(state.items.length||(state.catalogue||[]).length) ? 'Nothing matches.' : 'No stock or catalogue yet — import your catalogue in Setup.';
+    el.innerHTML='<div class="assign-empty">'+empty+'</div>'; return;
+  }
+  const row=e=>`<div class="assign-item" onclick="addLineFrom('${pickTarget}','${e.src}','${e.id}')">
+    <div><div class="an">${escapeHtml(e.name)}</div><div class="asub">${escapeHtml(e.sub)}</div></div>
+    <div class="abc">${e.unit>0?money(e.unit):''}</div></div>`;
+  let html='';
+  if(stock.length) html+='<div class="pickhdr">In stock</div>'+stock.map(row).join('');
+  if(cat.length) html+='<div class="pickhdr">Catalogue</div>'+cat.map(row).join('');
+  el.innerHTML=html;
+}
+function addLineFrom(kind,src,id){ if(src==='cat') addLineFromCatalogue(kind,id); else addLineFromItem(kind,id); }
+function addLineFromCatalogue(kind,id){
+  const c=(state.catalogue||[]).find(x=>x.id===id); if(!c) return;
+  const key='cat:'+id, d=docState(kind), existing=d.lines.find(l=>l.itemId===key);
+  if(existing){ existing.qty=(int(existing.qty)||0)+1; }
+  else{
+    const price = kind==='po' ? num(c.cost) : (num(c.price)||num(c.cost));
+    d.lines.push({ itemId:key, name:(clean(c.colour)?c.name+' — '+clean(c.colour):c.name), sku:clean(c.sku), qty:1, price });
+  }
+  save(); renderDoc(kind); toast(clean(c.name)+' added');
 }
 function printDoc(kind){
   const d=docState(kind);
@@ -1614,7 +1702,7 @@ function renderLastBackup(){
 }
 renderLastBackup();
 
-function renderSetup(){ renderSync(); renderAppearance(); renderLastBackup(); fillBiz(); }
+function renderSetup(){ renderSync(); renderAppearance(); renderLastBackup(); fillBiz(); const cc=$('catCount'); if(cc) cc.textContent=(state.catalogue||[]).length; }
 
 /* ---------- APPEARANCE ---------- */
 const THEME_KEY='inventory.theme', SIZE_KEY='inventory.tsize';
