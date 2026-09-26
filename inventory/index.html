@@ -1048,7 +1048,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v64 · 2026-09-26';
+const APP_VER='v65 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1744,7 +1744,7 @@ function catFiltered(){
   const cat=state.catalogue||[];
   const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
   let list=cat.slice().sort((a,b)=>clean(a.name).localeCompare(clean(b.name)));
-  if(q) list=list.filter(c=>[c.name,c.sku,c.colour,c.category].some(v=>(v||'').toLowerCase().includes(q)));
+  if(q) list=list.filter(c=>[c.name,c.sku,c.colour,c.category,c.barcode].some(v=>(v||'').toLowerCase().includes(q)));
   return list;
 }
 function exportCatalogueCSV(){
@@ -1762,8 +1762,9 @@ function printCatalogue(){
   const biz=state.biz||{};
   const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   let html='<h2>Price List</h2><div class="pmeta">'+(biz.name?'<b>'+escapeHtml(biz.name)+'</b>  ·  ':'')+escapeHtml(dateStr)+'  ·  '+list.length+' item'+(list.length===1?'':'s')+'</div>';
-  html+='<table><thead><tr><th>Product</th><th>SKU</th><th>Colour</th><th>Category</th><th class="n">Cost £</th><th class="n">Sale £</th></tr></thead><tbody>';
-  list.forEach(c=>{ html+='<tr><td>'+escapeHtml(c.name||'')+'</td><td>'+escapeHtml(c.sku||'')+'</td><td>'+escapeHtml(c.colour||'')+'</td><td>'+escapeHtml(c.category||'')+'</td><td class="n">'+(num(c.cost)>0?money(c.cost):'')+'</td><td class="n">'+(num(c.price)>0?money(c.price):'')+'</td></tr>'; });
+  const anyBc=list.some(c=>clean(c.barcode));
+  html+='<table><thead><tr><th>Product</th><th>SKU</th>'+(anyBc?'<th>Barcode</th>':'')+'<th>Colour</th><th>Category</th><th class="n">Cost £</th><th class="n">Sale £</th></tr></thead><tbody>';
+  list.forEach(c=>{ html+='<tr><td>'+escapeHtml(c.name||'')+'</td><td>'+escapeHtml(c.sku||'')+'</td>'+(anyBc?'<td>'+escapeHtml(clean(c.barcode))+'</td>':'')+'<td>'+escapeHtml(c.colour||'')+'</td><td>'+escapeHtml(c.category||'')+'</td><td class="n">'+(num(c.cost)>0?money(c.cost):'')+'</td><td class="n">'+(num(c.price)>0?money(c.price):'')+'</td></tr>'; });
   html+='</tbody></table>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
@@ -1778,7 +1779,7 @@ function renderCatalogueView(){
   if(!cat.length){ el.innerHTML='<div class="assign-empty" style="border:1px solid var(--line2); border-radius:8px; margin-top:8px">No catalogue yet.<br>Import it in <b>Setup → Catalogue</b>.</div>'; return; }
   if(!list.length){ el.innerHTML='<div class="assign-empty">Nothing matches “'+escapeHtml(q)+'”.</div>'; return; }
   el.innerHTML=list.map(c=>{
-    const sub=[c.sku?'#'+escapeHtml(c.sku):'', c.colour?escapeHtml(c.colour):'', c.category?escapeHtml(c.category):''].filter(Boolean).join(' · ');
+    const sub=[c.sku?'#'+escapeHtml(c.sku):'', c.colour?escapeHtml(c.colour):'', c.category?escapeHtml(c.category):'', clean(c.barcode)?'▯ '+escapeHtml(clean(c.barcode)):''].filter(Boolean).join(' · ');
     const priceBlk = num(c.price)>0 ? money(c.price)+' <small>sale</small>' : (num(c.cost)>0 ? money(c.cost)+' <small>cost</small>' : '');
     const costLine = (num(c.cost)>0 && num(c.price)>0) ? '<div class="csub">Cost '+money(c.cost)+'</div>' : '';
     return `<div class="crow">
