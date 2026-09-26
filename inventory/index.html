@@ -555,6 +555,16 @@
   </div>
 
   <div class="card pad">
+    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Catalogue CSV</span></div>
+    <div class="hint" style="margin:0 0 14px">Import a product list from a spreadsheet — matched by <b>SKU</b> (or item name). It updates cost, sale price, category, supplier, location and reorder level; you can also add any new items. Download the template for the exact columns. (Export is under <b>Export</b> on the stock screen.)</div>
+    <div class="syncrow">
+      <button class="btn" onclick="document.getElementById('csvFile').click()">Import CSV</button>
+      <button class="btn ghost sm" onclick="downloadCatalogueTemplate()">Download template</button>
+      <input id="csvFile" type="file" accept=".csv,text/csv" hidden onchange="importCatalogueCSV(this.files[0]); this.value='';">
+    </div>
+  </div>
+
+  <div class="card pad">
     <div class="listhead" style="margin:0 0 10px"><span class="ttl">Backup</span></div>
     <div class="hint" style="margin:0 0 14px">Save a copy of your whole inventory to a file on this device — a safety net that doesn't depend on GitHub. Keep it somewhere safe; restore anytime.</div>
     <div class="syncrow">
@@ -1189,6 +1199,78 @@ function importDoorQuotePrices(){
   changes.forEach(({i,newCost,newPrice})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; });
   save(); render();
   toast('Updated '+changes.length+' item'+(changes.length===1?'':'s')+' from Door Quote.');
+}
+
+/* ---------- CATALOGUE CSV (shared format) ---------- */
+const CSV_ALIAS={
+  name:['product','name','item','description','desc'],
+  sku:['sku','code','stock code','stockcode'],
+  colour:['colour','color','finish'],
+  category:['category','cat'],
+  cost:['cost','unit cost','unitcost','buy price','buy'],
+  price:['sale price','saleprice','price','unit price','sell'],
+  supplier:['supplier','vendor'],
+  qty:['qty','quantity','in stock','stock'],
+  reorder:['reorder','reorder at','reorder level','min'],
+  location:['location','loc','bay'],
+  barcode:['barcode','ean','upc']
+};
+function parseCSV(text){
+  text=String(text).replace(/^﻿/,'');
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===','){ row.push(cur); cur=''; }
+    else if(ch==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+    else if(ch==='\r'){ /* ignore */ }
+    else cur+=ch;
+  }
+  if(cur.length||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.some(c=>clean(c)!==''));
+}
+function downloadCatalogueTemplate(){
+  const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier','Qty','Reorder','Location','Barcode'];
+  const example=['M6 x 20 bolt (example row)','B0002','Zinc','Fixings','2.24','4.00','BoltCo','100','20','Bay A1',''];
+  const csv=[header,example].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='catalogue-template.csv'; a.click();
+}
+function importCatalogueCSV(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let rows; try{ rows=parseCSV(r.result); }catch(e){ rows=[]; }
+    if(rows.length<2){ toast('That CSV looks empty.'); return; }
+    const header=rows[0].map(h=>clean(h).toLowerCase().replace(/\(.*?\)/g,'').replace(/[£≤*]/g,'').trim());
+    const col={};
+    Object.keys(CSV_ALIAS).forEach(f=>{ const idx=header.findIndex(h=>CSV_ALIAS[f].includes(h)); if(idx>=0) col[f]=idx; });
+    if(col.name==null && col.sku==null){ alert('Couldn’t find a Product/Name or SKU column.\n\nExpected headers like:\nProduct, SKU, Colour, Category, Cost, Sale price, Supplier, Qty, Reorder, Location, Barcode.\n\nUse "Download template" for the exact columns.'); return; }
+    const get=(row,f)=> col[f]==null ? '' : clean(row[col[f]]);
+    const norm=s=>clean(s).toLowerCase();
+    const bySku={}, byName={};
+    state.items.forEach(it=>{ const s=norm(it.sku); if(s&&!(s in bySku)) bySku[s]=it; const n=norm(it.name); if(n&&!(n in byName)) byName[n]=it; });
+    const updates=[], news=[];
+    for(let ri=1;ri<rows.length;ri++){ const row=rows[ri];
+      const name=get(row,'name'), sku=get(row,'sku');
+      if(!name && !sku) continue;
+      let it = sku ? bySku[norm(sku)] : null; if(!it && name) it=byName[norm(name)];
+      const rec={ name, sku, cost:get(row,'cost'), price:get(row,'price'), qty:get(row,'qty'), reorder:get(row,'reorder'), category:get(row,'category'), supplier:get(row,'supplier'), location:get(row,'location'), barcode:get(row,'barcode') };
+      if(it) updates.push({it,rec}); else if(name) news.push(rec);
+    }
+    if(!updates.length && !news.length){ toast('No usable rows found in that CSV.'); return; }
+    let createNew=false;
+    if(updates.length && news.length){ createNew=confirm('Import CSV:\n• Update '+updates.length+' existing item'+(updates.length===1?'':'s')+'\n• '+news.length+' new item'+(news.length===1?'':'s')+' not in your stock\n\nOK = update AND add the new ones\nCancel = update existing only'); }
+    else if(news.length){ if(!confirm('Add '+news.length+' new item'+(news.length===1?'':'s')+' to your stock?')) return; createNew=true; }
+    else { if(!confirm('Update '+updates.length+' existing item'+(updates.length===1?'':'s')+' from the CSV?')) return; }
+    const setNum=(it,key,val)=>{ if(val!=='' && isFinite(parseFloat(val))) it[key]=(key==='qty'||key==='reorder')?int(val):num(val); };
+    const setStr=(it,key,val)=>{ if(val!=='') it[key]=val; };
+    let upd=0, cre=0;
+    updates.forEach(({it,rec})=>{ setNum(it,'cost',rec.cost); setNum(it,'price',rec.price); setNum(it,'qty',rec.qty); setNum(it,'reorder',rec.reorder); setStr(it,'category',rec.category); setStr(it,'supplier',rec.supplier); setStr(it,'location',rec.location); setStr(it,'barcode',rec.barcode); if(rec.sku) it.sku=rec.sku; upd++; });
+    if(createNew){ news.forEach(rec=>{ state.items.push({ id:Date.now()+''+Math.random().toString(36).slice(2,6), name:rec.name, sku:clean(rec.sku), category:clean(rec.category), supplier:clean(rec.supplier), location:clean(rec.location), barcode:clean(rec.barcode), qty:int(rec.qty), reorder:int(rec.reorder), cost:num(rec.cost), price:num(rec.price), notes:'' }); cre++; }); }
+    save(); render();
+    toast('Imported: '+upd+' updated'+(cre?', '+cre+' added':'')+'.');
+  };
+  r.readAsText(file);
 }
 function fillBiz(){ const n=$('bizName'), a=$('bizAddr'); if(n&&document.activeElement!==n) n.value=state.biz.name||''; if(a&&document.activeElement!==a) a.value=state.biz.address||''; }
 function docTotals(kind){

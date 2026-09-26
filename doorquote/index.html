@@ -758,6 +758,18 @@ function addStandardSetup(){
 
 /* ---------- catalogue manager (modal) ---------- */
 let catSearch = "";
+function exportCatalogueCSV(){
+  if(!catalogue.length){ toast("Catalogue is empty — nothing to export."); return; }
+  const header=["Product","SKU","Colour","Category","Cost","Sale price","Supplier","Qty","Reorder","Location","Barcode"];
+  const rows=[header];
+  catalogue.slice().sort((a,b)=>(a.desc||"").localeCompare(b.desc||"")).forEach(c=>{
+    rows.push([c.desc||"", c.code||"", c.finish||"", "", (Number(c.cost)||0), (Number(c.unit)||0), "", "", "", "", ""]);
+  });
+  const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="door-quote-catalogue-"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+  toast("Catalogue exported ("+catalogue.length+" items)");
+}
 function openCatalogue(){
   $("modalRoot").innerHTML = `
   <div class="overlay" id="overlay">
@@ -783,12 +795,14 @@ function openCatalogue(){
       <div class="err" id="catErr"></div>
       <div class="modal-actions">
         <button class="btn accent" id="ncAdd">➕ Add item</button>
+        <button class="btn" id="catExport">⬇ Export CSV</button>
         <button class="link flex1" onclick="closeModal()" style="flex:1">Done</button>
       </div>
     </div>
   </div>`;
   bindOverlayClose();
   renderCatListBox();
+  const eb = $("catExport"); if(eb) eb.onclick = exportCatalogueCSV;
   const si = $("catSearchIn"); if(si) si.oninput = e=>{ catSearch = e.target.value; renderCatListBox(); };
   linkCostMarkupSale("ncCost","ncMarkup","ncUnit");
   $("ncAdd").onclick = ()=>{
@@ -1974,7 +1988,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v50 · 2026-09-18";
+const VERSION = "v51 · 2026-09-26 · catalogue CSV";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
