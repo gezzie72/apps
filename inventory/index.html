@@ -253,6 +253,11 @@
   .bigqty{font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-1px; line-height:1; margin:6px 0 2px}
   .bigqty small{font-size:13px; font-weight:500; color:var(--muted); letter-spacing:0; margin-left:6px}
   .found-meta{font-size:12.5px; color:var(--muted); font-weight:500; margin-bottom:16px}
+  .matchrow{padding:11px 0; border-bottom:1px solid var(--line)}
+  .matchrow:last-child{border-bottom:none}
+  .mr-name{font-weight:600; font-size:13.5px}
+  .mr-sub{font-size:11.5px; color:var(--muted); margin:1px 0 7px}
+  .mr-sel{width:100%; background:var(--card); color:var(--ink); border:1px solid var(--line2); border-radius:8px; padding:9px 10px; font:inherit; font-size:13.5px}
 
   /* purchase order / invoice builder */
   textarea{width:100%; background:var(--card); color:var(--ink); border:1px solid var(--line2); border-radius:8px; padding:10px 12px; font:inherit; font-size:14px; resize:vertical}
@@ -552,7 +557,11 @@
   <div class="card pad">
     <div class="listhead" style="margin:0 0 10px"><span class="ttl">Prices from Door Quote</span></div>
     <div class="hint" style="margin:0 0 14px">Pull unit cost &amp; sale price from your Door Quote catalogue, matched by <b>SKU / stock code</b> (or by exact item name). Open Door Quote on this device first so its catalogue is available. Only matching items are updated — quantities aren't touched.</div>
-    <button class="btn" onclick="importDoorQuotePrices()">Import prices from Door Quote</button>
+    <div class="syncrow">
+      <button class="btn" onclick="importDoorQuotePrices()">Import prices from Door Quote</button>
+      <button class="btn ghost sm" onclick="openMatcher()">Match items manually…</button>
+    </div>
+    <div class="hint" style="margin:12px 0 0">Some items won't auto-match if their SKU/name differs from Door Quote. Use <b>Match items manually…</b> to link them by hand — it saves the stock code so they match automatically after that.</div>
   </div>
 
   <div class="card pad">
@@ -577,7 +586,7 @@
   </div>
 </section>
 
-<div class="foot">Syncs to your private GitHub gist · works offline</div>
+<div class="foot">Syncs to your private GitHub gist · works offline · <span id="appVer"></span></div>
 
 <!-- edit / detail modal -->
 <dialog id="editDlg">
@@ -730,9 +739,22 @@
   </div>
 </dialog>
 
+<dialog id="matchDlg">
+  <div class="modal">
+    <h3>Match to Door Quote</h3>
+    <div class="found-meta" style="margin-bottom:12px">Pick the matching Door Quote catalogue item for each. That copies its cost, sale price &amp; colour, and saves its stock code onto your item so it matches automatically next time.</div>
+    <div id="matchList" style="max-height:52vh; overflow:auto"></div>
+    <div class="duo" style="margin-top:16px">
+      <button class="btn ghost" onclick="matchDlg.close()">Cancel</button>
+      <button class="btn" onclick="applyMatches()">Apply matches</button>
+    </div>
+  </div>
+</dialog>
+
 <div id="printArea"></div>
 
 <script>
+const APP_VER='v30 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -771,6 +793,7 @@ function normalize(s){
   s.seqPO=int(s.seqPO); s.seqInv=int(s.seqInv);
   s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
   Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address)}; });
+  s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
   s.items.forEach(it=>{
     it.qty=int(it.qty); it.reorder=int(it.reorder);
     it.cost=num(it.cost); it.price=num(it.price);
@@ -1190,6 +1213,7 @@ function importDoorQuotePrices(){
     if(!c) c = byName[norm(i.name)];              // fallback: item name = catalogue description
     if(!c && loose(i.sku)) c = byLoose[loose(i.sku)];   // fallback: SKU ignoring punctuation/spacing
     if(!c && loose(i.name)) c = byLoose[loose(i.name)]; // fallback: name ignoring punctuation/spacing
+    if(!c && state.dqMatch[i.id]) c = byName[norm(state.dqMatch[i.id])] || byLoose[loose(state.dqMatch[i.id])]; // manual link
     if(!c){ unmatched.push(i); return; }
     matched++;
     const newCost=num(c.cost), newPrice=num(c.unit), newColour=clean(c.finish);
@@ -1203,13 +1227,78 @@ function importDoorQuotePrices(){
     alert('No matches found.\n\nYour inventory: '+state.items.length+' item'+(state.items.length===1?'':'s')+' ('+withSku+' with a SKU).\nDoor Quote catalogue: '+cat.length+' items ('+withCode+' with a stock code).\n\nItems are matched by SKU = Door Quote stock code, or by exact item name = catalogue description.\n\nExample of your SKU: "'+egSku+'"\nExample Door Quote code: "'+egCode+'"\n\nMake these line up (in either app), then try again.');
     return;
   }
-  const unmatchedNote=()=>{ if(!unmatched.length) return; alert(unmatched.length+' of your item'+(unmatched.length===1?'':'s')+" didn't match Door Quote — check the SKU or name against the catalogue:\n\n"+unmatched.map(i=>'• '+(clean(i.name)||'(no name)')+(clean(i.sku)?'  [SKU '+clean(i.sku)+']':'  [no SKU]')).join('\n')); };
+  const unmatchedNote=()=>{ if(!unmatched.length) return; if(confirm(unmatched.length+' of your item'+(unmatched.length===1?'':'s')+" didn't match Door Quote:\n\n"+unmatched.map(i=>'• '+(clean(i.name)||'(no name)')+(clean(i.sku)?'  [SKU '+clean(i.sku)+']':'  [no SKU]')).join('\n')+"\n\nMatch them to the catalogue by hand now?")) openMatcher(); };
   if(!changes.length){ toast(matched+' item'+(matched===1?'':'s')+' matched — prices already up to date.'); unmatchedNote(); return; }
   if(!confirm(matched+' of your items match Door Quote (by SKU or name).\nUpdate cost & sale price on '+changes.length+' item'+(changes.length===1?'':'s')+'?'+(unmatched.length?'\n\n('+unmatched.length+" won't match — you'll see which after.)":''))) return;
   changes.forEach(({i,newCost,newPrice,newColour})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; if(newColour) i.colour=newColour; });
   save(); render();
   toast('Updated '+changes.length+' item'+(changes.length===1?'':'s')+' from Door Quote.');
   unmatchedNote();
+}
+
+/* ---------- MANUAL MATCH to Door Quote ---------- */
+let matchCat=[], matchItems=[];
+function loadDQCatalogue(){ try{ const c=JSON.parse(localStorage.getItem('dhq.catalogue.v1')); return Array.isArray(c)?c:[]; }catch(e){ return []; } }
+function openMatcher(){
+  const cat=loadDQCatalogue();
+  if(!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
+  const norm=s=>clean(s).toLowerCase(), loose=s=>norm(s).replace(/[^a-z0-9]/g,'');
+  const bySku={}, byName={}, byLoose={};
+  cat.forEach(c=>{ const k=norm(c.code); if(k&&!(k in bySku))bySku[k]=c; const n=norm(c.desc); if(n&&!(n in byName))byName[n]=c;
+    const lk=loose(c.code); if(lk&&!(lk in byLoose))byLoose[lk]=c; const ln=loose(c.desc); if(ln&&!(ln in byLoose))byLoose[ln]=c; });
+  matchCat=cat.slice().sort((a,b)=>(clean(a.desc)).localeCompare(clean(b.desc)));
+  matchItems=state.items.filter(i=>{
+    let c = norm(i.sku)?bySku[norm(i.sku)]:null;
+    if(!c) c=byName[norm(i.name)];
+    if(!c && loose(i.sku)) c=byLoose[loose(i.sku)];
+    if(!c && loose(i.name)) c=byLoose[loose(i.name)];
+    if(!c && state.dqMatch[i.id]) c=byName[norm(state.dqMatch[i.id])]||byLoose[loose(state.dqMatch[i.id])];
+    return !c;
+  });
+  if(!matchItems.length){ toast('All your items already match Door Quote. 🎉'); return; }
+  renderMatcher();
+  $('matchDlg').showModal();
+}
+function guessMatch(item){
+  const toks=(clean(item.name).toLowerCase().match(/[a-z0-9]+/g)||[]).filter(t=>t.length>=2);
+  if(!toks.length) return -1;
+  let best=-1, bestScore=0;
+  matchCat.forEach((c,idx)=>{ const d=clean(c.desc).toLowerCase(); let s=0; toks.forEach(t=>{ if(d.includes(t)) s+=/\d/.test(t)?2:1; }); if(s>bestScore){ bestScore=s; best=idx; } });
+  return bestScore>=2 ? best : -1;
+}
+function renderMatcher(){
+  const box=$('matchList');
+  const opt=(c,idx,sel)=>`<option value="${idx}"${idx===sel?' selected':''}>${escapeHtml(clean(c.desc)||'(no name)')}${clean(c.code)?' · '+escapeHtml(clean(c.code)):''} · ${money(c.unit)}</option>`;
+  box.innerHTML=matchItems.map((it,ii)=>{
+    const g=guessMatch(it);
+    const opts='<option value="-1">— skip —</option>'+matchCat.map((c,idx)=>opt(c,idx,g)).join('');
+    return `<div class="matchrow">
+      <div class="mr-name">${escapeHtml(clean(it.name))||'(no name)'}</div>
+      <div class="mr-sub">${clean(it.sku)?'SKU '+escapeHtml(clean(it.sku)):'no SKU'} · now ${money(it.price)}</div>
+      <select class="mr-sel" data-ii="${ii}">${opts}</select>
+    </div>`;
+  }).join('');
+}
+function applyMatches(){
+  const sels=$('matchList').querySelectorAll('select.mr-sel');
+  let n=0;
+  sels.forEach(sel=>{
+    const ii=+sel.dataset.ii, ci=+sel.value;
+    if(!(ci>=0)) return;
+    const it=matchItems[ii], c=matchCat[ci];
+    if(!it||!c) return;
+    const nc=num(c.cost), np=num(c.unit), col=clean(c.finish);
+    if(nc>0) it.cost=nc;
+    if(np>0) it.price=np;
+    if(col) it.colour=col;
+    if(clean(c.code)) it.sku=clean(c.code);            // write real stock code so future imports auto-match
+    else if(clean(c.desc)) state.dqMatch[it.id]=clean(c.desc);  // no code: remember the link by description
+    n++;
+  });
+  if(!n){ toast('Nothing selected — pick a Door Quote item for at least one row.'); return; }
+  save(); render();
+  $('matchDlg').close();
+  toast('Matched & updated '+n+' item'+(n===1?'':'s')+'. Saved for next time.');
 }
 
 /* ---------- CATALOGUE CSV (shared format) ---------- */
@@ -1810,6 +1899,7 @@ setInterval(()=>{ if(GH.connected&&GH.auto&&!document.hidden) syncPull(false,tru
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden&&GH.connected&&GH.auto) syncPull(false,true).catch(()=>{}); });
 window.addEventListener("pagehide", ()=>{ if(GH.connected&&GH.auto&&!SYNC_PASS){ try{ fetch("https://api.github.com/gists/"+GH.gist,{method:"PATCH",keepalive:true,headers:{"Authorization":"Bearer "+GH.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(state)}}})}).catch(()=>{}); }catch(e){} } });
 
+try{ const av=$('appVer'); if(av) av.textContent=APP_VER; }catch(e){}
 render();
 renderSync();
 if(GH.connected) syncPull(false,true).catch(()=>{});
