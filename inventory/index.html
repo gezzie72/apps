@@ -1180,13 +1180,17 @@ function importDoorQuotePrices(){
   try{ cat=JSON.parse(localStorage.getItem('dhq.catalogue.v1'))||[]; }catch(e){ cat=[]; }
   if(!Array.isArray(cat)||!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
   const norm=s=>clean(s).toLowerCase();
-  const bySku={}, byName={};
-  cat.forEach(c=>{ const k=norm(c.code); if(k&&!(k in bySku)) bySku[k]=c; const n=norm(c.desc); if(n&&!(n in byName)) byName[n]=c; });
-  let matched=0; const changes=[];
+  const loose=s=>norm(s).replace(/[^a-z0-9]/g,'');   // ignore spaces/hyphens/dots when matching
+  const bySku={}, byName={}, byLoose={};
+  cat.forEach(c=>{ const k=norm(c.code); if(k&&!(k in bySku)) bySku[k]=c; const n=norm(c.desc); if(n&&!(n in byName)) byName[n]=c;
+    const lk=loose(c.code); if(lk&&!(lk in byLoose)) byLoose[lk]=c; const ln=loose(c.desc); if(ln&&!(ln in byLoose)) byLoose[ln]=c; });
+  let matched=0; const changes=[], unmatched=[];
   state.items.forEach(i=>{
     let c = norm(i.sku) ? bySku[norm(i.sku)] : null;
-    if(!c) c = byName[norm(i.name)];   // fallback: match item name to catalogue description
-    if(!c) return;
+    if(!c) c = byName[norm(i.name)];              // fallback: item name = catalogue description
+    if(!c && loose(i.sku)) c = byLoose[loose(i.sku)];   // fallback: SKU ignoring punctuation/spacing
+    if(!c && loose(i.name)) c = byLoose[loose(i.name)]; // fallback: name ignoring punctuation/spacing
+    if(!c){ unmatched.push(i); return; }
     matched++;
     const newCost=num(c.cost), newPrice=num(c.unit), newColour=clean(c.finish);
     if((newCost>0 && newCost!==i.cost) || (newPrice>0 && newPrice!==i.price) || (newColour && newColour!==clean(i.colour))) changes.push({i,newCost,newPrice,newColour});
@@ -1199,11 +1203,13 @@ function importDoorQuotePrices(){
     alert('No matches found.\n\nYour inventory: '+state.items.length+' item'+(state.items.length===1?'':'s')+' ('+withSku+' with a SKU).\nDoor Quote catalogue: '+cat.length+' items ('+withCode+' with a stock code).\n\nItems are matched by SKU = Door Quote stock code, or by exact item name = catalogue description.\n\nExample of your SKU: "'+egSku+'"\nExample Door Quote code: "'+egCode+'"\n\nMake these line up (in either app), then try again.');
     return;
   }
-  if(!changes.length){ toast(matched+' item'+(matched===1?'':'s')+' matched — prices already up to date.'); return; }
-  if(!confirm(matched+' of your items match Door Quote (by SKU or name).\nUpdate cost & sale price on '+changes.length+' item'+(changes.length===1?'':'s')+'?')) return;
+  const unmatchedNote=()=>{ if(!unmatched.length) return; alert(unmatched.length+' of your item'+(unmatched.length===1?'':'s')+" didn't match Door Quote — check the SKU or name against the catalogue:\n\n"+unmatched.map(i=>'• '+(clean(i.name)||'(no name)')+(clean(i.sku)?'  [SKU '+clean(i.sku)+']':'  [no SKU]')).join('\n')); };
+  if(!changes.length){ toast(matched+' item'+(matched===1?'':'s')+' matched — prices already up to date.'); unmatchedNote(); return; }
+  if(!confirm(matched+' of your items match Door Quote (by SKU or name).\nUpdate cost & sale price on '+changes.length+' item'+(changes.length===1?'':'s')+'?'+(unmatched.length?'\n\n('+unmatched.length+" won't match — you'll see which after.)":''))) return;
   changes.forEach(({i,newCost,newPrice,newColour})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; if(newColour) i.colour=newColour; });
   save(); render();
   toast('Updated '+changes.length+' item'+(changes.length===1?'':'s')+' from Door Quote.');
+  unmatchedNote();
 }
 
 /* ---------- CATALOGUE CSV (shared format) ---------- */
@@ -1252,13 +1258,16 @@ function importCatalogueCSV(file){
     if(col.name==null && col.sku==null){ alert('Couldn’t find a Product/Name or SKU column.\n\nExpected headers like:\nProduct, SKU, Colour, Category, Cost, Sale price, Supplier, Qty, Reorder, Location, Barcode.\n\nUse "Download template" for the exact columns.'); return; }
     const get=(row,f)=> col[f]==null ? '' : clean(row[col[f]]);
     const norm=s=>clean(s).toLowerCase();
-    const bySku={}, byName={};
-    state.items.forEach(it=>{ const s=norm(it.sku); if(s&&!(s in bySku)) bySku[s]=it; const n=norm(it.name); if(n&&!(n in byName)) byName[n]=it; });
+    const loose=s=>norm(s).replace(/[^a-z0-9]/g,'');
+    const bySku={}, byName={}, byLoose={};
+    state.items.forEach(it=>{ const s=norm(it.sku); if(s&&!(s in bySku)) bySku[s]=it; const n=norm(it.name); if(n&&!(n in byName)) byName[n]=it;
+      const ls=loose(it.sku); if(ls&&!(ls in byLoose)) byLoose[ls]=it; const ln=loose(it.name); if(ln&&!(ln in byLoose)) byLoose[ln]=it; });
     const updates=[], news=[];
     for(let ri=1;ri<rows.length;ri++){ const row=rows[ri];
       const name=get(row,'name'), sku=get(row,'sku');
       if(!name && !sku) continue;
       let it = sku ? bySku[norm(sku)] : null; if(!it && name) it=byName[norm(name)];
+      if(!it && loose(sku)) it=byLoose[loose(sku)]; if(!it && loose(name)) it=byLoose[loose(name)];
       const rec={ name, sku, cost:get(row,'cost'), price:get(row,'price'), qty:get(row,'qty'), reorder:get(row,'reorder'), category:get(row,'category'), colour:get(row,'colour'), supplier:get(row,'supplier'), location:get(row,'location'), barcode:get(row,'barcode') };
       if(it) updates.push({it,rec}); else if(name) news.push(rec);
     }
