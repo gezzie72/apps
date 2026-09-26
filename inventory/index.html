@@ -366,6 +366,7 @@
             <div><label>SKU / code</label><input id="fSku" placeholder="optional" autocomplete="off"></div>
             <div><label>Category</label><input id="fCat" placeholder="optional" autocomplete="off"></div>
           </div>
+          <div><label>Colour / finish</label><input id="fColour" placeholder="optional" autocomplete="off"></div>
           <div class="chips" id="catChips" style="margin-bottom:0"></div>
           <div>
             <label>Barcode</label>
@@ -588,6 +589,7 @@
         <div><label>SKU / code</label><input id="eSku" autocomplete="off"></div>
         <div><label>Category</label><input id="eCat" autocomplete="off"></div>
       </div>
+      <div><label>Colour / finish</label><input id="eColour" autocomplete="off"></div>
       <div>
         <label>Barcode</label>
         <div class="inputbtn">
@@ -773,6 +775,7 @@ function normalize(s){
     it.qty=int(it.qty); it.reorder=int(it.reorder);
     it.cost=num(it.cost); it.price=num(it.price);
     it.barcode=clean(it.barcode);
+    it.colour=clean(it.colour);
   });
   return s;
 }
@@ -806,7 +809,7 @@ function addItem(){
   const qty=Math.max(0,int($('fQty').value));
   const it={
     id:Date.now()+''+Math.random().toString(36).slice(2,6),
-    name, sku:clean($('fSku').value), category:clean($('fCat').value),
+    name, sku:clean($('fSku').value), category:clean($('fCat').value), colour:clean($('fColour').value),
     qty, reorder:Math.max(0,int($('fReorder').value)), cost:Math.max(0,num($('fCost').value)),
     price:0, location:clean($('fLoc').value), supplier:clean($('fSup').value),
     barcode:clean($('fBarcode').value), notes:''
@@ -814,7 +817,7 @@ function addItem(){
   state.items.push(it);
   if(qty>0) addLog(it, qty, qty, 'added');
   save();
-  ['fName','fSku','fCat','fReorder','fCost','fLoc','fSup','fBarcode'].forEach(id=>$(id).value='');
+  ['fName','fSku','fCat','fColour','fReorder','fCost','fLoc','fSup','fBarcode'].forEach(id=>$(id).value='');
   $('fQty').value='0';
   renderCatChips();
   $('fName').focus();
@@ -826,6 +829,7 @@ function openEdit(id){
   editId=id;
   $('editTitle').textContent=it.name;
   $('eName').value=it.name; $('eSku').value=it.sku||''; $('eCat').value=it.category||'';
+  $('eColour').value=it.colour||'';
   $('eQty').value=it.qty; $('eReorder').value=it.reorder; $('eCost').value=it.cost||'';
   $('ePrice').value=it.price||''; $('eLoc').value=it.location||''; $('eSup').value=it.supplier||'';
   $('eBarcode').value=it.barcode||''; $('eNotes').value=it.notes||'';
@@ -836,7 +840,7 @@ function saveEdit(){
   const newQty=Math.max(0,int($('eQty').value));
   const diff=newQty-it.qty;
   it.name=clean($('eName').value)||it.name;
-  it.sku=clean($('eSku').value); it.category=clean($('eCat').value);
+  it.sku=clean($('eSku').value); it.category=clean($('eCat').value); it.colour=clean($('eColour').value);
   it.reorder=Math.max(0,int($('eReorder').value)); it.cost=Math.max(0,num($('eCost').value));
   it.price=Math.max(0,num($('ePrice').value)); it.location=clean($('eLoc').value);
   it.supplier=clean($('eSup').value); it.barcode=clean($('eBarcode').value); it.notes=clean($('eNotes').value);
@@ -919,7 +923,7 @@ function visibleItems(){
   if(filterCat==='low') list=list.filter(i=>statusOf(i)!=='ok');
   else if(filterCat!=='all') list=list.filter(i=>(i.category||'')===filterCat);
   if(filterSupplier!=='all') list=list.filter(i=>clean(i.supplier)===filterSupplier);
-  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.location,i.supplier,i.barcode].some(v=>(v||'').toLowerCase().includes(q)));
+  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.colour,i.location,i.supplier,i.barcode].some(v=>(v||'').toLowerCase().includes(q)));
   return sortItems(list);
 }
 function render(){
@@ -955,6 +959,7 @@ function itemRow(i){
   const meta=[];
   if(i.sku) meta.push('#'+escapeHtml(i.sku));
   if(i.category) meta.push(escapeHtml(i.category));
+  if(i.colour) meta.push(escapeHtml(i.colour));
   if(i.location) meta.push(escapeHtml(i.location));
   if(i.reorder>0) meta.push('reorder ≤'+i.reorder);
   if(i.cost>0) meta.push(money(i.qty*i.cost));
@@ -1090,8 +1095,8 @@ function printList(){
 }
 function exportCSV(){
   const list=visibleItems();
-  const rows=[['NAME','SKU','BARCODE','CATEGORY','SUPPLIER','LOCATION','QTY','REORDER','UNIT COST','SALE PRICE','STOCK VALUE','STATUS','NOTES']];
-  list.forEach(i=>rows.push([i.name,i.sku,i.barcode,i.category,i.supplier,i.location,i.qty,i.reorder,i.cost,i.price,(i.qty*i.cost).toFixed(2),statusOf(i),i.notes]));
+  const rows=[['NAME','SKU','COLOUR','BARCODE','CATEGORY','SUPPLIER','LOCATION','QTY','REORDER','UNIT COST','SALE PRICE','STOCK VALUE','STATUS','NOTES']];
+  list.forEach(i=>rows.push([i.name,i.sku,i.colour,i.barcode,i.category,i.supplier,i.location,i.qty,i.reorder,i.cost,i.price,(i.qty*i.cost).toFixed(2),statusOf(i),i.notes]));
   const csv=rows.map(r=>r.map(c=>`"${(c==null?'':c).toString().replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob([csv],{type:'text/csv'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventory-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
@@ -1183,8 +1188,8 @@ function importDoorQuotePrices(){
     if(!c) c = byName[norm(i.name)];   // fallback: match item name to catalogue description
     if(!c) return;
     matched++;
-    const newCost=num(c.cost), newPrice=num(c.unit);
-    if((newCost>0 && newCost!==i.cost) || (newPrice>0 && newPrice!==i.price)) changes.push({i,newCost,newPrice});
+    const newCost=num(c.cost), newPrice=num(c.unit), newColour=clean(c.finish);
+    if((newCost>0 && newCost!==i.cost) || (newPrice>0 && newPrice!==i.price) || (newColour && newColour!==clean(i.colour))) changes.push({i,newCost,newPrice,newColour});
   });
   if(!matched){
     const withSku=state.items.filter(i=>clean(i.sku)).length;
@@ -1196,7 +1201,7 @@ function importDoorQuotePrices(){
   }
   if(!changes.length){ toast(matched+' item'+(matched===1?'':'s')+' matched — prices already up to date.'); return; }
   if(!confirm(matched+' of your items match Door Quote (by SKU or name).\nUpdate cost & sale price on '+changes.length+' item'+(changes.length===1?'':'s')+'?')) return;
-  changes.forEach(({i,newCost,newPrice})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; });
+  changes.forEach(({i,newCost,newPrice,newColour})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; if(newColour) i.colour=newColour; });
   save(); render();
   toast('Updated '+changes.length+' item'+(changes.length===1?'':'s')+' from Door Quote.');
 }
@@ -1254,7 +1259,7 @@ function importCatalogueCSV(file){
       const name=get(row,'name'), sku=get(row,'sku');
       if(!name && !sku) continue;
       let it = sku ? bySku[norm(sku)] : null; if(!it && name) it=byName[norm(name)];
-      const rec={ name, sku, cost:get(row,'cost'), price:get(row,'price'), qty:get(row,'qty'), reorder:get(row,'reorder'), category:get(row,'category'), supplier:get(row,'supplier'), location:get(row,'location'), barcode:get(row,'barcode') };
+      const rec={ name, sku, cost:get(row,'cost'), price:get(row,'price'), qty:get(row,'qty'), reorder:get(row,'reorder'), category:get(row,'category'), colour:get(row,'colour'), supplier:get(row,'supplier'), location:get(row,'location'), barcode:get(row,'barcode') };
       if(it) updates.push({it,rec}); else if(name) news.push(rec);
     }
     if(!updates.length && !news.length){ toast('No usable rows found in that CSV.'); return; }
@@ -1265,8 +1270,8 @@ function importCatalogueCSV(file){
     const setNum=(it,key,val)=>{ if(val!=='' && isFinite(parseFloat(val))) it[key]=(key==='qty'||key==='reorder')?int(val):num(val); };
     const setStr=(it,key,val)=>{ if(val!=='') it[key]=val; };
     let upd=0, cre=0;
-    updates.forEach(({it,rec})=>{ setNum(it,'cost',rec.cost); setNum(it,'price',rec.price); setNum(it,'qty',rec.qty); setNum(it,'reorder',rec.reorder); setStr(it,'category',rec.category); setStr(it,'supplier',rec.supplier); setStr(it,'location',rec.location); setStr(it,'barcode',rec.barcode); if(rec.sku) it.sku=rec.sku; upd++; });
-    if(createNew){ news.forEach(rec=>{ state.items.push({ id:Date.now()+''+Math.random().toString(36).slice(2,6), name:rec.name, sku:clean(rec.sku), category:clean(rec.category), supplier:clean(rec.supplier), location:clean(rec.location), barcode:clean(rec.barcode), qty:int(rec.qty), reorder:int(rec.reorder), cost:num(rec.cost), price:num(rec.price), notes:'' }); cre++; }); }
+    updates.forEach(({it,rec})=>{ setNum(it,'cost',rec.cost); setNum(it,'price',rec.price); setNum(it,'qty',rec.qty); setNum(it,'reorder',rec.reorder); setStr(it,'category',rec.category); setStr(it,'colour',rec.colour); setStr(it,'supplier',rec.supplier); setStr(it,'location',rec.location); setStr(it,'barcode',rec.barcode); if(rec.sku) it.sku=rec.sku; upd++; });
+    if(createNew){ news.forEach(rec=>{ state.items.push({ id:Date.now()+''+Math.random().toString(36).slice(2,6), name:rec.name, sku:clean(rec.sku), category:clean(rec.category), colour:clean(rec.colour), supplier:clean(rec.supplier), location:clean(rec.location), barcode:clean(rec.barcode), qty:int(rec.qty), reorder:int(rec.reorder), cost:num(rec.cost), price:num(rec.price), notes:'' }); cre++; }); }
     save(); render();
     toast('Imported: '+upd+' updated'+(cre?', '+cre+' added':'')+'.');
   };
@@ -1328,7 +1333,7 @@ function addLineFromItem(kind,id){
     let qty=1;
     if(kind==='po' && statusOf(it)!=='ok' && it.reorder>0) qty=Math.max(it.reorder-it.qty,1);
     const price = kind==='po' ? num(it.cost) : (num(it.price)||num(it.cost));
-    d.lines.push({ itemId:id, name:it.name, sku:clean(it.sku), qty, price });
+    d.lines.push({ itemId:id, name:(clean(it.colour)?it.name+' — '+clean(it.colour):it.name), sku:clean(it.sku), qty, price });
   }
   save(); renderDoc(kind); toast(clean(it.name)+' added');
 }
@@ -1340,7 +1345,7 @@ function addReorder(kind){
   let added=0;
   low.forEach(it=>{ if(d.lines.some(l=>l.itemId===it.id)) return;
     const qty=it.reorder>0?Math.max(it.reorder-it.qty,1):1;
-    d.lines.push({ itemId:it.id, name:it.name, sku:clean(it.sku), qty, price:num(it.cost) }); added++; });
+    d.lines.push({ itemId:it.id, name:(clean(it.colour)?it.name+' — '+clean(it.colour):it.name), sku:clean(it.sku), qty, price:num(it.cost) }); added++; });
   save(); renderDoc(kind);
   toast(added?('Added '+added+' item'+(added===1?'':'s')):'Already on the order.');
 }
@@ -1353,13 +1358,13 @@ function openPick(kind){ pickTarget=kind; const s=$('pickSearch'); if(s) s.value
 function renderPick(){
   const q=clean($('pickSearch').value).toLowerCase();
   let list=state.items.slice().sort((a,b)=>a.name.localeCompare(b.name));
-  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.location,i.supplier,i.barcode].some(v=>(v||'').toLowerCase().includes(q)));
+  if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.colour,i.location,i.supplier,i.barcode].some(v=>(v||'').toLowerCase().includes(q)));
   const el=$('pickList');
   if(!state.items.length){ el.innerHTML='<div class="assign-empty">No inventory items yet.</div>'; return; }
   if(!list.length){ el.innerHTML='<div class="assign-empty">Nothing matches.</div>'; return; }
   el.innerHTML=list.map(i=>{
     const unit = pickTarget==='po' ? i.cost : (i.price||i.cost);
-    const sub=[i.sku?'#'+escapeHtml(i.sku):'', i.category?escapeHtml(i.category):'', i.qty+' in stock'].filter(Boolean).join(' · ');
+    const sub=[i.sku?'#'+escapeHtml(i.sku):'', i.colour?escapeHtml(i.colour):'', i.category?escapeHtml(i.category):'', i.qty+' in stock'].filter(Boolean).join(' · ');
     return `<div class="assign-item" onclick="addLineFromItem('${pickTarget}','${i.id}')">
       <div><div class="an">${escapeHtml(i.name)}</div><div class="asub">${sub}</div></div>
       <div class="abc">${unit>0?money(unit):''}</div></div>`;
