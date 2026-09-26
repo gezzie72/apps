@@ -280,6 +280,19 @@
   .crow .cprice small{color:var(--muted); font-weight:500; font-size:11px}
   .crow .csub{font-size:11.5px; color:var(--muted); margin-top:2px}
   .crow .cacts{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
+  .ordrow{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid var(--line)}
+  .ordrow:last-child{border-bottom:none}
+  .ord-main{min-width:0; flex:1}
+  .ord-top{display:flex; align-items:baseline; gap:10px}
+  .ord-ins{font-weight:700; font-size:14px; font-variant-numeric:tabular-nums}
+  .ord-val{color:var(--muted); font-weight:600; font-size:13px; font-variant-numeric:tabular-nums}
+  .ord-desc{font-size:13px; margin-top:1px; overflow-wrap:anywhere}
+  .ord-sub{font-size:11.5px; color:var(--muted); margin-top:2px}
+  .ord-acts{display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex:none}
+  .ordbadge{appearance:none; cursor:pointer; font-family:inherit; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; padding:6px 11px; border-radius:20px; border:1px solid transparent; white-space:nowrap}
+  .ordbadge.st-ordered{background:color-mix(in srgb,#d98a00 20%,transparent); color:#b07400}
+  .ordbadge.st-purchased{background:color-mix(in srgb,var(--accent) 18%,transparent); color:var(--accent)}
+  .ordbadge.st-invoiced{background:color-mix(in srgb,var(--ok) 18%,transparent); color:var(--ok)}
   .bizlogo-row{display:flex; align-items:center; gap:14px; margin:0 0 14px}
   .bizlogo{width:96px; height:64px; flex:none; border:1px solid var(--line2); border-radius:8px; background:var(--card2); display:flex; align-items:center; justify-content:center; overflow:hidden}
   .bizlogo span{color:var(--muted); font-size:11px; font-weight:600}
@@ -415,6 +428,7 @@
     <button id="tabQuote" onclick="setTab('quote')">Quotation</button>
     <button id="tabPO" onclick="setTab('po')">Purchase order</button>
     <button id="tabInv" onclick="setTab('inv')">Invoice</button>
+    <button id="tabOrders" onclick="setTab('orders')">Orders</button>
   </div>
 
   <!-- STOCK TAB -->
@@ -664,8 +678,63 @@
       <div id="invSaved"></div>
     </div>
   </div>
+
+  <!-- ORDERS TAB (fulfilment tracker by INS stock code) -->
+  <div id="paneOrders" hidden>
+    <div class="stat" id="ordStat">
+      <div class="box warn"><b id="ordToBuy">0</b><small>To purchase</small></div>
+      <div class="box hi"><b id="ordToInv">0</b><small>To invoice</small></div>
+      <div class="box"><b id="ordDone">0</b><small>Invoiced</small></div>
+    </div>
+    <details class="addbox" id="ordAddBox">
+      <summary><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add an order line</summary>
+      <div class="inner">
+        <div class="row">
+          <div>
+            <label>INS stock code</label>
+            <div class="inputbtn">
+              <input id="oIns" list="insOpts" placeholder="e.g. INS-0001" autocomplete="off">
+              <button type="button" class="btn ghost" onclick="openScanner('assign','oIns')"><svg class="ico sm" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg> Scan</button>
+            </div>
+          </div>
+          <div><label>Description</label><input id="oDesc" placeholder="what it is" autocomplete="off"></div>
+          <div class="duo">
+            <div><label>Customer</label><input id="oCust" list="custList" placeholder="optional" autocomplete="off"></div>
+            <div><label>Supplier</label><input id="oSup" list="supOpts" placeholder="optional" autocomplete="off"></div>
+          </div>
+          <div class="trio">
+            <div><label>Qty</label><input id="oQty" type="number" inputmode="numeric" step="1" min="0" value="1"></div>
+            <div><label>Cost £</label><input id="oCost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+            <div><label>Sale £</label><input id="oPrice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+          </div>
+          <button class="btn full" onclick="addOrder()">Add to tracker</button>
+        </div>
+      </div>
+    </details>
+    <div class="toolbar">
+      <div class="search">
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="ordSearch" placeholder="Search INS, description, customer…" autocomplete="off" oninput="renderOrders()">
+      </div>
+      <select id="ordFilter" onchange="renderOrders()" aria-label="Filter by status">
+        <option value="all">All</option>
+        <option value="ordered">Ordered</option>
+        <option value="purchased">Purchased</option>
+        <option value="invoiced">Invoiced</option>
+      </select>
+    </div>
+    <div class="syncrow" style="margin:0 0 12px">
+      <button class="btn ghost sm" onclick="document.getElementById('ordCsvFile').click()">Import CSV</button>
+      <button class="btn ghost sm" onclick="downloadOrdersTemplate()">Download template</button>
+      <button class="btn ghost sm" onclick="exportOrdersCSV()">Export CSV</button>
+      <input id="ordCsvFile" type="file" accept=".csv,text/csv" hidden onchange="importOrdersCSV(this.files[0]); this.value='';">
+    </div>
+    <div id="ordList"></div>
+    <div class="hint c">Track each INS stock code through <b>Ordered → Purchased → Invoiced</b>. Tap a row's status to move it on. Import your spreadsheet (keyed by INS stock code) with <b>Import CSV</b>.</div>
+  </div>
   <datalist id="supList"></datalist>
   <datalist id="custList"></datalist>
+  <datalist id="insOpts"></datalist>
   <datalist id="acctStatusList"><option value="On account"><option value="Pro forma"><option value="Cash"><option value="COD"><option value="Paid"><option value="On hold"><option value="New account"></datalist>
   <datalist id="catOpts"></datalist>
   <datalist id="colourOpts"></datalist>
@@ -979,7 +1048,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v63 · 2026-09-26';
+const APP_VER='v64 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1030,6 +1099,13 @@ function normalize(s){
   s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
   Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address),account:clean(v.account),accountStatus:clean(v.accountStatus),payment:clean(v.payment),deliverTo:clean(v.deliverTo)}; });
   s.markup = isFinite(+s.markup) ? +s.markup : 40;   // default markup % on cost for auto-pricing
+  s.orders = Array.isArray(s.orders) ? s.orders.map(o=>({   // fulfilment tracker keyed by INS stock code
+    id:clean(o.id)||('o'+Date.now()+Math.random().toString(36).slice(2,6)),
+    ins:clean(o.ins), desc:clean(o.desc), customer:clean(o.customer), supplier:clean(o.supplier),
+    qty:int(o.qty)||1, cost:num(o.cost), price:num(o.price),
+    status:['ordered','purchased','invoiced'].includes(o.status)?o.status:'ordered',
+    date:clean(o.date)||'', notes:clean(o.notes), savedAt:+o.savedAt||Date.now()
+  })) : [];
   s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
   s.catalogue=Array.isArray(s.catalogue)?s.catalogue.map(c=>({          // price list for quotes/orders (not held stock)
     id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
@@ -1065,6 +1141,11 @@ function fillOptionLists(){
   const cl=$('colourOpts'); if(cl) cl.innerHTML=allColours().map(c=>`<option value="${escapeHtml(c)}">`).join('');
   const su=$('supOpts'); if(su) su.innerHTML=allSuppliers().map(c=>`<option value="${escapeHtml(c)}">`).join('');
   const lo=$('locOpts'); if(lo){ const locs=[...new Set(state.items.map(i=>clean(i.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); lo.innerHTML=locs.map(c=>`<option value="${escapeHtml(c)}">`).join(''); }
+  const io=$('insOpts'); if(io){ const s=new Set();
+    state.items.forEach(i=>{ if(clean(i.barcode)) s.add(clean(i.barcode)); if(clean(i.sku)) s.add(clean(i.sku)); });
+    (state.catalogue||[]).forEach(c=>{ if(clean(c.barcode)) s.add(clean(c.barcode)); if(clean(c.sku)) s.add(clean(c.sku)); });
+    (state.orders||[]).forEach(o=>{ if(clean(o.ins)) s.add(clean(o.ins)); });
+    io.innerHTML=[...s].sort((a,b)=>a.localeCompare(b)).map(c=>`<option value="${escapeHtml(c)}">`).join(''); }
 }
 function suppliers(){ return [...new Set(state.items.map(i=>clean(i.supplier)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function renderCatChips(){
@@ -1202,12 +1283,14 @@ function setTab(t){
   $('tabQuote').classList.toggle('on', t==='quote');
   $('tabPO').classList.toggle('on', t==='po');
   $('tabInv').classList.toggle('on', t==='inv');
+  $('tabOrders').classList.toggle('on', t==='orders');
   $('paneStock').hidden=t!=='stock';
   $('paneCatalogue').hidden=t!=='catalogue';
   $('paneReports').hidden=t!=='reports';
   $('paneQuote').hidden=t!=='quote';
   $('panePO').hidden=t!=='po';
   $('paneInv').hidden=t!=='inv';
+  $('paneOrders').hidden=t!=='orders';
   render();
 }
 function cycleSort(){
@@ -1253,6 +1336,7 @@ function render(){
   if(tab==='quote'){ renderDoc('quote'); return; }
   if(tab==='po'){ renderDoc('po'); return; }
   if(tab==='inv'){ renderDoc('inv'); return; }
+  if(tab==='orders'){ renderOrders(); return; }
 
   const list=visibleItems();
   $('listPill').textContent=list.length+' item'+(list.length===1?'':'s');
@@ -2297,6 +2381,107 @@ function renderLastBackup(){
 }
 renderLastBackup();
 
+/* ---------- ORDERS: fulfilment tracker (Ordered → Purchased → Invoiced) ---------- */
+const ORD_STAGES=['ordered','purchased','invoiced'];
+const ORD_LABEL={ordered:'Ordered', purchased:'Purchased', invoiced:'Invoiced'};
+function addOrder(){
+  const ins=clean($('oIns').value), desc=clean($('oDesc').value);
+  if(!ins && !desc){ $('oIns').focus(); toast('Enter an INS stock code or description.'); return; }
+  const o={ id:'o'+Date.now()+Math.random().toString(36).slice(2,6), ins, desc,
+    customer:clean($('oCust').value), supplier:clean($('oSup').value),
+    qty:Math.max(0,int($('oQty').value))||1, cost:Math.max(0,num($('oCost').value)), price:Math.max(0,num($('oPrice').value)),
+    status:'ordered', date:todayISO(), notes:'', savedAt:Date.now() };
+  state.orders=state.orders||[]; state.orders.push(o); save(); renderOrders();
+  ['oIns','oDesc','oCust','oSup','oCost','oPrice'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+  $('oQty').value='1'; $('oIns').focus();
+  toast('Added '+(ins||desc)+' to the tracker.');
+}
+function setOrderStatus(id,val){ const o=(state.orders||[]).find(x=>x.id===id); if(!o) return; o.status=ORD_STAGES.includes(val)?val:'ordered'; save(); renderOrders(); }
+function cycleOrder(id){ const o=(state.orders||[]).find(x=>x.id===id); if(!o) return; const i=ORD_STAGES.indexOf(o.status); o.status=ORD_STAGES[(i+1)%ORD_STAGES.length]; save(); renderOrders(); }
+function deleteOrder(id){ const o=(state.orders||[]).find(x=>x.id===id); if(!o) return; if(!confirm('Remove '+(clean(o.ins)||clean(o.desc)||'this line')+' from the tracker?')) return; state.orders=(state.orders||[]).filter(x=>x.id!==id); save(); renderOrders(); }
+function renderOrders(){
+  const list=state.orders||[];
+  const val=o=>(int(o.qty)||0)*(num(o.price)||0);
+  const byStage=st=>list.filter(o=>o.status===st);
+  const setTile=(id,st)=>{ const el=$(id); if(el) el.textContent=byStage(st).length; };
+  setTile('ordToBuy','ordered'); setTile('ordToInv','purchased'); setTile('ordDone','invoiced');
+  const q=clean($('ordSearch')?$('ordSearch').value:'').toLowerCase();
+  const filt=$('ordFilter')?$('ordFilter').value:'all';
+  let rows=list.slice().sort((a,b)=>b.savedAt-a.savedAt);
+  if(filt!=='all') rows=rows.filter(o=>o.status===filt);
+  if(q) rows=rows.filter(o=>[o.ins,o.desc,o.customer,o.supplier].some(v=>(v||'').toLowerCase().includes(q)));
+  const box=$('ordList');
+  if(!list.length){ box.innerHTML='<div class="assign-empty" style="padding:16px 0">No orders tracked yet — add a line above, or <b>Import CSV</b> from your spreadsheet.</div>'; return; }
+  if(!rows.length){ box.innerHTML='<div class="assign-empty" style="padding:16px 0">Nothing matches.</div>'; return; }
+  box.innerHTML=rows.map(o=>{
+    const sub=[clean(o.customer), clean(o.supplier), (int(o.qty)||0)+'×'].filter(Boolean).join(' · ');
+    const amt=val(o);
+    return `<div class="ordrow">
+      <div class="ord-main">
+        <div class="ord-top"><span class="ord-ins">${escapeHtml(clean(o.ins)||'—')}</span>${amt>0?`<span class="ord-val">${money(amt)}</span>`:''}</div>
+        <div class="ord-desc">${escapeHtml(clean(o.desc)||'')}</div>
+        ${sub?`<div class="ord-sub">${escapeHtml(sub)}</div>`:''}
+      </div>
+      <div class="ord-acts">
+        <button class="ordbadge st-${o.status}" onclick="cycleOrder('${o.id}')" title="Tap to advance stage">${ORD_LABEL[o.status]}</button>
+        <button class="btn ghost sm" onclick="deleteOrder('${o.id}')" aria-label="Remove">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+const ORD_ALIAS={
+  ins:['ins','stock code','stockcode','stock no','stock','ins code','ins number','code','ref'],
+  desc:['description','desc','product','name','item'],
+  customer:['customer','client','account','buyer'],
+  supplier:['supplier','vendor'],
+  qty:['qty','quantity'],
+  cost:['cost','buy','unit cost'],
+  price:['sale price','saleprice','price','sell','sale'],
+  status:['status','stage']
+};
+function importOrdersCSV(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let rows; try{ rows=parseCSV(r.result); }catch(e){ rows=[]; }
+    if(rows.length<2){ toast('That CSV looks empty.'); return; }
+    const header=rows[0].map(h=>clean(h).toLowerCase().replace(/\(.*?\)/g,'').replace(/[£≤*]/g,'').trim());
+    const col={}; Object.keys(ORD_ALIAS).forEach(f=>{ const idx=header.findIndex(h=>ORD_ALIAS[f].includes(h)); if(idx>=0) col[f]=idx; });
+    if(col.ins==null){ const idx=header.findIndex(h=> h.startsWith('ins') || h.includes('stock')); if(idx>=0) col.ins=idx; }
+    if(col.ins==null && col.desc==null){ alert('Couldn’t find an INS / stock code or Description column.\n\nUse "Download template" for the exact columns.'); return; }
+    const get=(row,f)=> col[f]==null ? '' : clean(row[col[f]]);
+    const add=[]; state.orders=state.orders||[];
+    const norm=s=>clean(s).toLowerCase();
+    for(let ri=1;ri<rows.length;ri++){ const row=rows[ri];
+      const ins=get(row,'ins'), desc=get(row,'desc'); if(!ins && !desc) continue;
+      const st=norm(get(row,'status'));
+      add.push({ id:'o'+Date.now()+Math.random().toString(36).slice(2,6)+ri, ins, desc,
+        customer:get(row,'customer'), supplier:get(row,'supplier'),
+        qty:int(get(row,'qty'))||1, cost:num(get(row,'cost')), price:num(get(row,'price')),
+        status:ORD_STAGES.includes(st)?st:'ordered', date:todayISO(), notes:'', savedAt:Date.now()+ri });
+    }
+    if(!add.length){ toast('No usable rows found in that CSV.'); return; }
+    if(!confirm('Add '+add.length+' line'+(add.length===1?'':'s')+' to the order tracker?')) return;
+    state.orders.push(...add); save(); renderOrders();
+    toast('Imported '+add.length+' line'+(add.length===1?'':'s')+'.');
+  };
+  r.readAsText(file);
+}
+function downloadOrdersTemplate(){
+  const header=['INS stock code','Description','Customer','Supplier','Qty','Cost','Sale price','Status'];
+  const example=['INS-0001','CISA C2000 40mm Cylinder','J. Smith Builders','LockCo','2','8.50','14.00','ordered'];
+  const csv=[header,example].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='orders-template.csv'; a.click();
+}
+function exportOrdersCSV(){
+  const list=state.orders||[];
+  if(!list.length){ toast('No orders to export.'); return; }
+  const header=['INS stock code','Description','Customer','Supplier','Qty','Cost','Sale price','Status','Date'];
+  const rows=[header].concat(list.map(o=>[o.ins,o.desc,o.customer,o.supplier,int(o.qty)||0,(num(o.cost)||0).toFixed(2),(num(o.price)||0).toFixed(2),o.status,o.date]));
+  const csv=rows.map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='orders-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  toast('Exported '+list.length+' line'+(list.length===1?'':'s')+'.');
+}
 function renderSetup(){ renderSync(); renderAppearance(); renderLastBackup(); fillBiz(); const cc=$('catCount'); if(cc) cc.textContent=(state.catalogue||[]).length;
   const mk=$('mkPct'); if(mk && document.activeElement!==mk) mk.value=(num(state.markup)||0);
   const ex=$('mkExample'); if(ex) ex.innerHTML='e.g. cost '+money(10)+' → sale <b>'+money(markupPrice(10))+'</b>'; }
