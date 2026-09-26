@@ -341,7 +341,7 @@
     #printArea .docnotes{margin-top:14px; font-size:11.5px; color:#333; white-space:pre-line; border-top:1px solid #ddd; padding-top:8px}
     /* invoice / PO letterhead */
     #printArea .plet{display:flex; justify-content:space-between; align-items:flex-start; gap:24px; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:16px}
-    #printArea .plogo{height:112px; width:auto; max-width:100%; object-fit:contain; display:block; margin-bottom:12px}
+    #printArea .plogo{height:56px; width:auto; max-width:100%; object-fit:contain; display:block; margin-bottom:10px}
     #printArea .pbiz{font-size:22px; font-weight:800; letter-spacing:-.3px}
     #printArea .paddr{font-size:11px; color:#444; white-space:pre-line; margin-top:3px; line-height:1.45}
     #printArea .plet .pfrom{min-width:0; flex:1 1 auto}
@@ -884,7 +884,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v47 · 2026-09-26';
+const APP_VER='v48 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
