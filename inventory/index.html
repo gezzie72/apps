@@ -388,6 +388,7 @@
     <button class="on" id="tabStock" onclick="setTab('stock')">Stock</button>
     <button id="tabCatalogue" onclick="setTab('catalogue')">Catalogue</button>
     <button id="tabReports" onclick="setTab('reports')">Reports</button>
+    <button id="tabQuote" onclick="setTab('quote')">Quotation</button>
     <button id="tabPO" onclick="setTab('po')">Purchase order</button>
     <button id="tabInv" onclick="setTab('inv')">Invoice</button>
   </div>
@@ -547,6 +548,53 @@
     <div class="card pad">
       <div class="listhead" style="margin:0 0 6px"><span class="ttl">Saved purchase orders</span></div>
       <div id="poSaved"></div>
+    </div>
+  </div>
+
+  <!-- QUOTATION TAB -->
+  <div id="paneQuote" hidden>
+    <div class="card pad">
+      <div class="row">
+        <div class="duo">
+          <div><label>Customer (to)</label><input id="quoteParty" list="custList" placeholder="Customer name" autocomplete="off" oninput="docField('quote','party',this.value)"></div>
+          <div><label>Quote number</label><input id="quoteRef" placeholder="auto" autocomplete="off" oninput="docField('quote','ref',this.value)"></div>
+        </div>
+        <div><label>Customer address / details</label><textarea id="quoteAddr" rows="2" oninput="docField('quote','address',this.value)"></textarea></div>
+        <div class="duo">
+          <div><label>Account no.</label><input id="quoteAccount" autocomplete="off" placeholder="customer account" oninput="docField('quote','account',this.value)"></div>
+          <div><label>Account status</label><input id="quoteAcctStatus" list="acctStatusList" autocomplete="off" placeholder="e.g. New enquiry" oninput="docField('quote','accountStatus',this.value)"></div>
+        </div>
+        <div><label>Delivery address <span class="muted" style="font-weight:500">(if different)</span></label><textarea id="quoteDeliverTo" rows="2" placeholder="where the goods would go, if not the billing address" oninput="docField('quote','deliverTo',this.value)"></textarea></div>
+        <div><label>Payment terms / options</label><textarea id="quotePay" rows="2" placeholder="e.g. payment on order, 30 days net on account" oninput="docField('quote','payment',this.value)"></textarea></div>
+        <div class="duo">
+          <div><label>Date</label><input id="quoteDate" type="date" oninput="docField('quote','date',this.value)"></div>
+          <div><label>Valid until</label><input id="quoteValid" type="date" oninput="docField('quote','validUntil',this.value)"></div>
+        </div>
+        <div class="duo">
+          <div><label>VAT</label><label class="chk"><input type="checkbox" id="quoteVat" onchange="docVat('quote',this.checked)"> Add VAT @ <input id="quoteVatRate" type="number" step="0.1" min="0" style="width:56px" oninput="docRate('quote',this.value)">%</label></div>
+          <div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card pad">
+      <div class="listhead" style="margin:0 0 10px"><span class="ttl">Items</span>
+        <span class="right"><button class="btn ghost sm" onclick="openPick('quote')">＋ Add item</button></span></div>
+      <div id="quoteLines"></div>
+      <div class="delivrow"><span>Delivery charge £</span><input id="quoteDeliv" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" oninput="docDeliv('quote',this.value)"></div>
+      <div id="quoteTotals" class="doctotals"></div>
+    </div>
+    <div class="card pad">
+      <label>Notes</label><textarea id="quoteNotes" rows="2" placeholder="Lead time, terms, what's included, etc." oninput="docField('quote','notes',this.value)"></textarea>
+      <div class="trio" style="margin-top:12px">
+        <button class="btn ghost" onclick="clearDoc('quote')">Clear</button>
+        <button class="btn ghost" onclick="saveDoc('quote')">Save</button>
+        <button class="btn" onclick="printDoc('quote')">Print / PDF</button>
+      </div>
+      <button class="btn ghost full sm" style="margin-top:8px" onclick="convertQuoteToInvoice()">Convert to invoice →</button>
+    </div>
+    <div class="card pad">
+      <div class="listhead" style="margin:0 0 6px"><span class="ttl">Saved quotations</span></div>
+      <div id="quoteSaved"></div>
     </div>
   </div>
 
@@ -884,7 +932,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v48 · 2026-09-26';
+const APP_VER='v49 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
@@ -907,6 +955,7 @@ function normalizeDoc(d, defVatOn){
   return {
     party:clean(d.party), address:clean(d.address), ref:clean(d.ref), date:clean(d.date), notes:clean(d.notes),
     account:clean(d.account), accountStatus:clean(d.accountStatus), payment:clean(d.payment), deliverTo:clean(d.deliverTo),
+    validUntil:clean(d.validUntil),
     vatOn: d.vatOn==null ? !!defVatOn : !!d.vatOn,
     vatRate: d.vatRate==null ? 20 : num(d.vatRate),
     delivery: num(d.delivery),
@@ -922,12 +971,14 @@ function normalize(s){
   s.biz=(s.biz&&typeof s.biz==='object')?{name:clean(s.biz.name),address:clean(s.biz.address),phone:clean(s.biz.phone),email:clean(s.biz.email),vat:clean(s.biz.vat),reg:clean(s.biz.reg),logo:clean(s.biz.logo)}:{name:'',address:'',phone:'',email:'',vat:'',reg:'',logo:''};
   s.po=normalizeDoc(s.po,false);
   s.inv=normalizeDoc(s.inv,true);
-  s.seqPO=int(s.seqPO); s.seqInv=int(s.seqInv);
-  s.savedDocs=Array.isArray(s.savedDocs)?s.savedDocs.map(e=>({
-    id:clean(e.id)||('d'+Date.now()+Math.random().toString(36).slice(2,6)),
-    kind:(e.kind==='inv'?'inv':'po'), ref:clean(e.ref), party:clean(e.party), date:clean(e.date),
-    total:num(e.total), savedAt:+e.savedAt||Date.now(), snapshot:normalizeDoc(e.snapshot, e.kind==='inv')
-  })):[];
+  s.quote=normalizeDoc(s.quote,true);
+  s.seqPO=int(s.seqPO); s.seqInv=int(s.seqInv); s.seqQuote=int(s.seqQuote);
+  s.savedDocs=Array.isArray(s.savedDocs)?s.savedDocs.map(e=>{
+    const kind=['po','inv','quote'].includes(e.kind)?e.kind:'po';
+    return { id:clean(e.id)||('d'+Date.now()+Math.random().toString(36).slice(2,6)),
+      kind, ref:clean(e.ref), party:clean(e.party), date:clean(e.date),
+      total:num(e.total), savedAt:+e.savedAt||Date.now(), snapshot:normalizeDoc(e.snapshot, kind!=='po') };
+  }):[];
   s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
   Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address),account:clean(v.account),accountStatus:clean(v.accountStatus),payment:clean(v.payment),deliverTo:clean(v.deliverTo)}; });
   s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
@@ -1062,11 +1113,13 @@ function setTab(t){
   $('tabStock').classList.toggle('on', t==='stock');
   $('tabCatalogue').classList.toggle('on', t==='catalogue');
   $('tabReports').classList.toggle('on', t==='reports');
+  $('tabQuote').classList.toggle('on', t==='quote');
   $('tabPO').classList.toggle('on', t==='po');
   $('tabInv').classList.toggle('on', t==='inv');
   $('paneStock').hidden=t!=='stock';
   $('paneCatalogue').hidden=t!=='catalogue';
   $('paneReports').hidden=t!=='reports';
+  $('paneQuote').hidden=t!=='quote';
   $('panePO').hidden=t!=='po';
   $('paneInv').hidden=t!=='inv';
   render();
@@ -1110,6 +1163,7 @@ function render(){
 
   if(tab==='catalogue'){ renderCatalogueView(); return; }
   if(tab==='reports'){ renderReports(); return; }
+  if(tab==='quote'){ renderDoc('quote'); return; }
   if(tab==='po'){ renderDoc('po'); return; }
   if(tab==='inv'){ renderDoc('inv'); return; }
 
@@ -1327,11 +1381,18 @@ function printItemLabel(id){
 /* ---------- REORDER REPORT (purchase-order style, grouped by supplier) ---------- */
 /* ---------- PURCHASE ORDER & INVOICE ---------- */
 let pickTarget='po';
-function docState(kind){ return kind==='po' ? state.po : state.inv; }
+const DOC={
+  po:   {title:'Purchase Order', prefix:'PO',  seq:'seqPO',    partyLbl:'Supplier',   dueLbl:'Order total'},
+  inv:  {title:'Invoice',        prefix:'INV', seq:'seqInv',   partyLbl:'Invoice to', dueLbl:'Amount due'},
+  quote:{title:'Quotation',      prefix:'QUO', seq:'seqQuote', partyLbl:'Quote to',   dueLbl:'Quotation total'}
+};
+function docState(kind){ return kind==='quote' ? state.quote : kind==='po' ? state.po : state.inv; }
+function setDocState(kind,doc){ if(kind==='po') state.po=doc; else if(kind==='quote') state.quote=doc; else state.inv=doc; }
+function docLabel(kind){ return kind==='po'?'purchase order':kind==='quote'?'quotation':'invoice'; }
 function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function docField(kind,key,val){
   const d=docState(kind); d[key]=clean(val);
-  const P=kind==='po'?'po':'inv';
+  const P=kind;
   if(key==='party'){
     const saved=state.parties[d.party.toLowerCase()];
     if(saved){
@@ -1742,11 +1803,13 @@ function docTotals(kind){
   return { goods, deliv, net, vat, total:net+vat };
 }
 function renderDoc(kind){
-  const d=docState(kind), P=kind==='po'?'po':'inv';
+  const d=docState(kind), P=kind;
   const setVal=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value=v; };
   if(!d.date) d.date=todayISO();
+  if(kind==='quote' && !d.validUntil){ const dt=new Date(); dt.setDate(dt.getDate()+30); d.validUntil=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
   setVal(P+'Party',d.party); setVal(P+'Ref',d.ref); setVal(P+'Addr',d.address); setVal(P+'Date',d.date); setVal(P+'Notes',d.notes);
   setVal(P+'Account',d.account); setVal(P+'AcctStatus',d.accountStatus); setVal(P+'Pay',d.payment); setVal(P+'DeliverTo',d.deliverTo);
+  if(kind==='quote') setVal('quoteValid', d.validUntil);
   setVal(P+'Deliv', d.delivery||'');
   const vc=$(P+'Vat'); if(vc) vc.checked=d.vatOn;
   const vr=$(P+'VatRate'); if(vr && document.activeElement!==vr) vr.value=d.vatRate;
@@ -1771,7 +1834,7 @@ function renderDoc(kind){
   renderSavedDocs(kind);
 }
 function renderDocTotals(kind){
-  const d=docState(kind), t=docTotals(kind), P=kind==='po'?'po':'inv';
+  const d=docState(kind), t=docTotals(kind), P=kind;
   const el=$(P+'Totals'); if(!el) return;
   let h='<div class="tl"><span>Subtotal</span><span>'+money(t.goods)+'</span></div>';
   if(t.deliv>0) h+='<div class="tl"><span>Delivery</span><span>'+money(t.deliv)+'</span></div>';
@@ -1807,16 +1870,15 @@ function addReorder(kind){
   toast(added?('Added '+added+' item'+(added===1?'':'s')):'Already on the order.');
 }
 function clearDoc(kind){
-  if(docState(kind).lines.length && !confirm('Clear this '+(kind==='po'?'purchase order':'invoice')+'?')) return;
-  if(kind==='po') state.po=normalizeDoc({},false); else state.inv=normalizeDoc({},true);
+  if(docState(kind).lines.length && !confirm('Clear this '+docLabel(kind)+'?')) return;
+  setDocState(kind, normalizeDoc({}, kind!=='po'));
   save(); renderDoc(kind);
 }
 function saveDoc(kind){
   const d=docState(kind);
   if(!d.lines.length){ toast('Add at least one item first.'); return; }
-  const isInv=kind==='inv';
-  if(!clean(d.ref)){ if(isInv){ state.seqInv++; d.ref='INV-'+String(state.seqInv).padStart(4,'0'); } else { state.seqPO++; d.ref='PO-'+String(state.seqPO).padStart(4,'0'); } }
-  const snap=JSON.parse(JSON.stringify(normalizeDoc(d, isInv)));
+  if(!clean(d.ref)){ const cfg=DOC[kind]; state[cfg.seq]++; d.ref=cfg.prefix+'-'+String(state[cfg.seq]).padStart(4,'0'); }
+  const snap=JSON.parse(JSON.stringify(normalizeDoc(d, kind!=='po')));
   const total=docTotals(kind).total;
   state.savedDocs=state.savedDocs||[];
   const existing=state.savedDocs.find(x=>x.kind===kind && x.ref===d.ref);
@@ -1828,28 +1890,38 @@ function saveDoc(kind){
 }
 function recallDoc(id){
   const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return;
-  const doc=normalizeDoc(JSON.parse(JSON.stringify(e.snapshot)), e.kind==='inv');
-  if(e.kind==='po') state.po=doc; else state.inv=doc;
+  const doc=normalizeDoc(JSON.parse(JSON.stringify(e.snapshot)), e.kind!=='po');
+  setDocState(e.kind, doc);
   save(); setTab(e.kind); toast('Loaded '+e.ref);
 }
 function duplicateSavedDoc(id){
   const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return;
-  const doc=normalizeDoc(JSON.parse(JSON.stringify(e.snapshot)), e.kind==='inv');
+  const doc=normalizeDoc(JSON.parse(JSON.stringify(e.snapshot)), e.kind!=='po');
   doc.ref=''; doc.date=todayISO();                 // fresh copy: new number, today's date
-  if(e.kind==='po') state.po=doc; else state.inv=doc;
+  if(e.kind==='quote'){ const dt=new Date(); dt.setDate(dt.getDate()+30); doc.validUntil=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+  setDocState(e.kind, doc);
   save(); setTab(e.kind);
-  toast('Copied '+e.ref+' → new '+(e.kind==='po'?'purchase order':'invoice')+' (unsaved). Save or Print to assign a number.');
+  toast('Copied '+e.ref+' → new '+docLabel(e.kind)+' (unsaved). Save or Print to assign a number.');
 }
 function deleteSavedDoc(id){
   const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return;
-  if(!confirm('Delete saved '+(e.kind==='po'?'purchase order':'invoice')+' '+e.ref+'? (Only the saved copy — anything on screen stays.)')) return;
+  if(!confirm('Delete saved '+docLabel(e.kind)+' '+e.ref+'? (Only the saved copy — anything on screen stays.)')) return;
   state.savedDocs=(state.savedDocs||[]).filter(x=>x.id!==id);
   save(); renderDoc(e.kind);
 }
+function convertQuoteToInvoice(){
+  const q=state.quote;
+  if(!q.lines.length){ toast('Add items to the quotation first.'); return; }
+  if(!confirm('Create an invoice from this quotation?\n\nCopies the customer, lines, prices, VAT & delivery to a new invoice. The quotation is left as it is.')) return;
+  const inv=normalizeDoc(JSON.parse(JSON.stringify(q)), true);
+  inv.ref=''; inv.date=todayISO(); inv.validUntil='';   // invoices don't carry a quote expiry
+  state.inv=inv; save(); setTab('inv');
+  toast('Invoice drafted from '+(clean(q.ref)||'quotation')+' — Save or Print to number it.');
+}
 function renderSavedDocs(kind){
-  const box=$(kind==='po'?'poSaved':'invSaved'); if(!box) return;
+  const box=$(kind+'Saved'); if(!box) return;
   const list=(state.savedDocs||[]).filter(x=>x.kind===kind).sort((a,b)=>b.savedAt-a.savedAt);
-  if(!list.length){ box.innerHTML='<div class="assign-empty" style="padding:12px 0">Nothing saved yet — build a '+(kind==='po'?'purchase order':'invoice')+' and tap <b>Save</b> to recall it later.</div>'; return; }
+  if(!list.length){ box.innerHTML='<div class="assign-empty" style="padding:12px 0">Nothing saved yet — build a '+docLabel(kind)+' and tap <b>Save</b> to recall it later.</div>'; return; }
   box.innerHTML=list.map(e=>{
     const dt=e.date?new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
     const sub=[clean(e.party)||'—', dt, (e.snapshot.lines||[]).length+' line'+((e.snapshot.lines||[]).length===1?'':'s')].filter(Boolean).join(' · ');
@@ -1896,14 +1968,16 @@ function addLineFromCatalogue(kind,id){
 function printDoc(kind){
   const d=docState(kind);
   if(!d.lines.length){ toast('Add at least one item first.'); return; }
-  const isInv=kind==='inv';
-  if(!d.ref){ if(isInv){ state.seqInv++; d.ref='INV-'+String(state.seqInv).padStart(4,'0'); } else { state.seqPO++; d.ref='PO-'+String(state.seqPO).padStart(4,'0'); } save(); renderDoc(kind); }
+  const cfg=DOC[kind]||DOC.inv;
+  const fmtDate=iso=> iso ? new Date(iso+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '';
+  if(!d.ref){ state[cfg.seq]++; d.ref=cfg.prefix+'-'+String(state[cfg.seq]).padStart(4,'0'); save(); renderDoc(kind); }
   const t=docTotals(kind), biz=state.biz||{};
-  const title=isInv?'Invoice':'Purchase Order';
-  const dateStr=d.date ? new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const title=cfg.title;
+  const dateStr=d.date ? fmtDate(d.date) : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   const totalItems=d.lines.reduce((s,l)=>s+(int(l.qty)||0),0);
   // letterhead: business (left) + document meta (right)
   let meta='<tr><td>Number</td><th>'+escapeHtml(d.ref)+'</th></tr><tr><td>Date</td><th>'+escapeHtml(dateStr)+'</th></tr>';
+  if(kind==='quote' && clean(d.validUntil)) meta+='<tr><td>Valid until</td><th>'+escapeHtml(fmtDate(d.validUntil))+'</th></tr>';
   if(clean(d.account)) meta+='<tr><td>Account</td><th>'+escapeHtml(d.account)+'</th></tr>';
   if(clean(d.accountStatus)) meta+='<tr><td>Status</td><th>'+escapeHtml(d.accountStatus)+'</th></tr>';
   const contact=[];
@@ -1922,7 +1996,7 @@ function printDoc(kind){
     +'</div>';
   // parties: to + deliver-to
   html+='<div class="pparties">'
-    +'<div class="pparty"><div class="lbl">'+(isInv?'Invoice to':'Supplier')+'</div><div class="nm">'+escapeHtml(d.party||'—')+'</div>'+(clean(d.address)?'<div>'+escapeHtml(d.address)+'</div>':'')+'</div>'
+    +'<div class="pparty"><div class="lbl">'+cfg.partyLbl+'</div><div class="nm">'+escapeHtml(d.party||'—')+'</div>'+(clean(d.address)?'<div>'+escapeHtml(d.address)+'</div>':'')+'</div>'
     +(clean(d.deliverTo)?'<div class="pparty"><div class="lbl">Deliver to</div><div>'+escapeHtml(d.deliverTo)+'</div></div>':'<div class="pparty"><div class="lbl">Deliver to</div><div style="color:#999">As above</div></div>')
     +'</div>';
   // line items
@@ -1934,12 +2008,15 @@ function printDoc(kind){
   if(d.vatOn) tot+='<tr class="subrow"><td class="lbl" colspan="5">VAT @ '+(num(d.vatRate)||0)+'%</td><td class="n">'+money(t.vat)+'</td></tr>';
   tot+='<tr class="totrow"><td class="lbl" colspan="5">Total</td><td class="n">'+money(t.total)+'</td></tr>';
   html+='<table><thead><tr><th class="n">#</th><th class="n">Qty</th><th>Description</th><th>SKU</th><th class="n">Unit £</th><th class="n">Amount £</th></tr></thead><tbody>'+rows+tot+'</tbody></table>';
-  html+='<div class="pdue">'+(isInv?'Amount due':'Order total')+': '+money(t.total)+(d.vatOn?'':'  <span style="font-size:10px;font-weight:600;color:#777">(no VAT)</span>')+'</div>';
+  html+='<div class="pdue">'+cfg.dueLbl+': '+money(t.total)+(d.vatOn?'':'  <span style="font-size:10px;font-weight:600;color:#777">(no VAT)</span>')+'</div>';
+  if(kind==='quote' && clean(d.validUntil)) html+='<div class="docnotes"><b>Valid until:</b> '+escapeHtml(fmtDate(d.validUntil))+' — prices held until this date.</div>';
   if(clean(d.payment)) html+='<div class="docnotes"><b>Payment terms:</b> '+escapeHtml(d.payment)+'</div>';
   if(clean(d.notes)) html+='<div class="docnotes"><b>Notes:</b> '+escapeHtml(d.notes)+'</div>';
-  const footer = isInv
-    ? 'Thank you for your business.'+(clean(biz.name)?'  '+escapeHtml(biz.name):'')
-    : 'Please supply the '+totalItems+' item'+(totalItems===1?'':'s')+' above to the delivery address shown.';
+  const footer = kind==='po'
+    ? 'Please supply the '+totalItems+' item'+(totalItems===1?'':'s')+' above to the delivery address shown.'
+    : kind==='quote'
+    ? 'Thank you for your enquiry — we look forward to your order.'+(clean(biz.name)?'  '+escapeHtml(biz.name):'')
+    : 'Thank you for your business.'+(clean(biz.name)?'  '+escapeHtml(biz.name):'');
   html+='<div class="pfooter">'+footer+'</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
