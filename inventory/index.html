@@ -449,7 +449,7 @@
             <div><label>Sale price £</label><input id="fPrice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="auto from markup"><div class="hint" id="fPriceHint" style="margin:4px 0 0"></div></div>
             <div><label>Location</label><input id="fLoc" placeholder="e.g. Bay A3" autocomplete="off"></div>
           </div>
-          <div><label>Supplier</label><input id="fSup" placeholder="optional" autocomplete="off"></div>
+          <div><label>Supplier</label><input id="fSup" list="supOpts" placeholder="optional" autocomplete="off"></div>
           <button class="btn full" style="margin-top:4px" onclick="addItem()">Add to inventory</button>
         </div>
       </div>
@@ -669,6 +669,7 @@
   <datalist id="acctStatusList"><option value="On account"><option value="Pro forma"><option value="Cash"><option value="COD"><option value="Paid"><option value="On hold"><option value="New account"></datalist>
   <datalist id="catOpts"></datalist>
   <datalist id="colourOpts"></datalist>
+  <datalist id="supOpts"></datalist>
 </section>
 
 <!-- ============ SETUP VIEW ============ -->
@@ -807,7 +808,7 @@
         <div><label>Sale price £</label><input id="ePrice" type="number" step="0.01" min="0" inputmode="decimal"><div class="hint" id="ePriceHint" style="margin:4px 0 0"></div></div>
         <div><label>Location</label><input id="eLoc" autocomplete="off"></div>
       </div>
-      <div><label>Supplier</label><input id="eSup" autocomplete="off"></div>
+      <div><label>Supplier</label><input id="eSup" list="supOpts" autocomplete="off"></div>
       <div><label>Notes</label><textarea id="eNotes" placeholder="optional"></textarea></div>
       <div class="duo" style="margin-top:4px">
         <button class="btn ghost" onclick="editDlg.close()">Cancel</button>
@@ -936,7 +937,7 @@
         <div><label>Unit cost £</label><input id="ceCost" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
         <div><label>Sale price £</label><input id="cePrice" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
       </div>
-      <div><label>Supplier</label><input id="ceSup" autocomplete="off" placeholder="optional"></div>
+      <div><label>Supplier</label><input id="ceSup" list="supOpts" autocomplete="off" placeholder="optional"></div>
       <div class="duo" style="margin-top:4px">
         <button class="btn ghost" onclick="catEditDlg.close()">Cancel</button>
         <button class="btn" onclick="saveCatEdit()">Save</button>
@@ -970,7 +971,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v59 · 2026-09-26';
+const APP_VER='v60 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1050,9 +1051,11 @@ let _chipCats=[];
 function categories(){ return [...new Set(state.items.map(i=>i.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function allCategories(){ const s=new Set(categories()); (state.catalogue||[]).forEach(c=>{ if(clean(c.category)) s.add(clean(c.category)); }); return [...s].sort((a,b)=>a.localeCompare(b)); }
 function allColours(){ const s=new Set(); state.items.forEach(i=>{ if(clean(i.colour)) s.add(clean(i.colour)); }); (state.catalogue||[]).forEach(c=>{ if(clean(c.colour)) s.add(clean(c.colour)); }); return [...s].sort((a,b)=>a.localeCompare(b)); }
+function allSuppliers(){ const s=new Set(suppliers()); (state.catalogue||[]).forEach(c=>{ if(clean(c.supplier)) s.add(clean(c.supplier)); }); return [...s].sort((a,b)=>a.localeCompare(b)); }
 function fillOptionLists(){
   const co=$('catOpts'); if(co) co.innerHTML=allCategories().map(c=>`<option value="${escapeHtml(c)}">`).join('');
   const cl=$('colourOpts'); if(cl) cl.innerHTML=allColours().map(c=>`<option value="${escapeHtml(c)}">`).join('');
+  const su=$('supOpts'); if(su) su.innerHTML=allSuppliers().map(c=>`<option value="${escapeHtml(c)}">`).join('');
 }
 function suppliers(){ return [...new Set(state.items.map(i=>clean(i.supplier)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function renderCatChips(){
