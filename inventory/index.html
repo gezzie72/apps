@@ -586,9 +586,11 @@
     <div class="syncrow">
       <button class="btn" onclick="importCatalogueFromDoorQuote()">Import catalogue from Door Quote</button>
       <button class="btn ghost sm" onclick="document.getElementById('catCsvFile').click()">Import CSV</button>
+      <button class="btn ghost sm" onclick="downloadCatalogueListTemplate()">Download template</button>
       <button class="btn ghost sm" onclick="clearCatalogue()">Clear</button>
       <input id="catCsvFile" type="file" accept=".csv,text/csv" hidden onchange="importCatalogueListCSV(this.files[0]); this.value='';">
     </div>
+    <div class="hint" style="margin:12px 0 0">Imports <b>merge</b> — matching items (by SKU or name) are updated and new ones added; your hand-added items stay. Use <b>Clear</b> first if you want to fully replace it. CSV columns: Product, SKU, Colour, Category, Cost, Sale price, Supplier.</div>
   </div>
 
   <div class="card pad">
@@ -815,7 +817,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v33 · 2026-09-26';
+const APP_VER='v34 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -1307,19 +1309,49 @@ function importDoorQuotePrices(){
 }
 
 /* ---------- CATALOGUE (price list for quotes & orders — not held stock) ---------- */
+/* Merge incoming rows into the catalogue: update matches (by SKU, then name,
+   ignoring punctuation/spacing), add new ones, and leave everything else alone. */
+function mergeCatalogue(incoming){
+  const norm=s=>clean(s).toLowerCase(), loose=s=>norm(s).replace(/[^a-z0-9]/g,'');
+  state.catalogue=state.catalogue||[];
+  const bySku={}, byName={}, byLoose={};
+  const index=c=>{ const s=norm(c.sku); if(s&&!(s in bySku))bySku[s]=c; const n=norm(c.name); if(n&&!(n in byName))byName[n]=c; const ls=loose(c.sku); if(ls&&!(ls in byLoose))byLoose[ls]=c; const ln=loose(c.name); if(ln&&!(ln in byLoose))byLoose[ln]=c; };
+  state.catalogue.forEach(index);
+  let upd=0, add=0;
+  incoming.forEach(inc=>{
+    if(!clean(inc.name) && !clean(inc.sku)) return;
+    let c = norm(inc.sku)?bySku[norm(inc.sku)]:null;
+    if(!c) c=byName[norm(inc.name)];
+    if(!c && loose(inc.sku)) c=byLoose[loose(inc.sku)];
+    if(!c && loose(inc.name)) c=byLoose[loose(inc.name)];
+    if(c){
+      if(num(inc.cost)>0) c.cost=num(inc.cost);
+      if(num(inc.price)>0) c.price=num(inc.price);
+      if(clean(inc.colour)) c.colour=clean(inc.colour);
+      if(clean(inc.category)) c.category=clean(inc.category);
+      if(clean(inc.supplier)) c.supplier=clean(inc.supplier);
+      if(clean(inc.sku) && !clean(c.sku)) c.sku=clean(inc.sku);
+      if(clean(inc.name) && !clean(c.name)) c.name=clean(inc.name);
+      upd++;
+    } else {
+      const nc={ id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name:clean(inc.name), sku:clean(inc.sku), colour:clean(inc.colour), category:clean(inc.category), supplier:clean(inc.supplier), cost:num(inc.cost), price:num(inc.price) };
+      state.catalogue.push(nc); index(nc); add++;
+    }
+  });
+  return {upd, add};
+}
 function importCatalogueFromDoorQuote(){
   const cat=loadDQCatalogue();
   if(!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
+  const incoming=cat.map(c=>({ name:clean(c.desc), sku:clean(c.code), colour:clean(c.finish), category:'', supplier:'', cost:num(c.cost), price:num(c.unit) })).filter(c=>c.name||c.sku);
   const existing=(state.catalogue||[]).length;
-  if(existing && !confirm('Replace your catalogue ('+existing+' item'+(existing===1?'':'s')+') with '+cat.length+' from Door Quote?\n\nThis is your price list for quotes & orders — your actual stock items aren\'t touched.')) return;
-  if(!existing && !confirm('Import '+cat.length+' item'+(cat.length===1?'':'s')+' from Door Quote as your catalogue (price list for quotes & orders)?')) return;
-  state.catalogue=cat.map(c=>({
-    id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
-    name:clean(c.desc), sku:clean(c.code), colour:clean(c.finish),
-    category:'', supplier:'', cost:num(c.cost), price:num(c.unit)
-  })).filter(c=>c.name||c.sku);
+  const msg = existing
+    ? 'Merge '+incoming.length+' item'+(incoming.length===1?'':'s')+' from Door Quote into your catalogue?\n\nUpdates matching items and adds new ones — your hand-added and other items stay. (Use “Clear” first if you want to replace everything.)'
+    : 'Import '+incoming.length+' item'+(incoming.length===1?'':'s')+' from Door Quote as your catalogue?';
+  if(!confirm(msg)) return;
+  const {upd,add}=mergeCatalogue(incoming);
   save(); render(); if(!$('viewSetup').hidden) renderSetup();
-  toast('Catalogue updated — '+state.catalogue.length+' item'+(state.catalogue.length===1?'':'s')+'.');
+  toast('Catalogue: '+add+' added'+(upd?', '+upd+' updated':'')+'.');
 }
 function importCatalogueListCSV(file){
   if(!file) return;
@@ -1331,19 +1363,25 @@ function importCatalogueListCSV(file){
     const col={}; Object.keys(CSV_ALIAS).forEach(f=>{ const idx=header.findIndex(h=>CSV_ALIAS[f].includes(h)); if(idx>=0) col[f]=idx; });
     if(col.name==null && col.sku==null){ alert('Couldn’t find a Product/Name or SKU column.\n\nUse "Download template" for the exact columns.'); return; }
     const get=(row,f)=> col[f]==null ? '' : clean(row[col[f]]);
-    const list=[];
+    const incoming=[];
     for(let ri=1;ri<rows.length;ri++){ const row=rows[ri];
       const name=get(row,'name'), sku=get(row,'sku'); if(!name && !sku) continue;
-      list.push({ id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name, sku, colour:get(row,'colour'), category:get(row,'category'), supplier:get(row,'supplier'), cost:num(get(row,'cost')), price:num(get(row,'price')) });
+      incoming.push({ name, sku, colour:get(row,'colour'), category:get(row,'category'), supplier:get(row,'supplier'), cost:num(get(row,'cost')), price:num(get(row,'price')) });
     }
-    if(!list.length){ toast('No usable rows found in that CSV.'); return; }
+    if(!incoming.length){ toast('No usable rows found in that CSV.'); return; }
     const existing=(state.catalogue||[]).length;
-    if(existing && !confirm('Replace your catalogue ('+existing+' item'+(existing===1?'':'s')+') with '+list.length+' from this CSV?')) return;
-    state.catalogue=list;
+    if(existing && !confirm('Merge '+incoming.length+' item'+(incoming.length===1?'':'s')+' from this CSV into your catalogue?\n\nUpdates matching items and adds new ones — your other items stay. (Use “Clear” first to replace everything.)')) return;
+    const {upd,add}=mergeCatalogue(incoming);
     save(); render(); if(!$('viewSetup').hidden) renderSetup();
-    toast('Catalogue updated — '+list.length+' item'+(list.length===1?'':'s')+'.');
+    toast('Catalogue: '+add+' added'+(upd?', '+upd+' updated':'')+'.');
   };
   r.readAsText(file);
+}
+function downloadCatalogueListTemplate(){
+  const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier'];
+  const example=['CISA C2000 Cylinder (example row)','CIS-C2000','Satin Chrome','Cylinders','8.50','14.00','LockCo'];
+  const csv=[header,example].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='catalogue-template.csv'; a.click();
 }
 function clearCatalogue(){
   if(!(state.catalogue||[]).length){ toast('Catalogue is already empty.'); return; }
