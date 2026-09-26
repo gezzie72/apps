@@ -83,9 +83,10 @@
     cursor:pointer; padding:2px 0; margin:2px 0 16px; font-family:inherit; display:inline-flex; align-items:center; gap:5px}
 
   /* ---- underline tabs ---- */
-  .tabs{display:flex; gap:2px; border-bottom:1px solid var(--line); margin:14px 0 18px}
+  .tabs{display:flex; gap:2px; border-bottom:1px solid var(--line); margin:14px 0 18px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
   .tabs button{
-    appearance:none; background:none; border:none; cursor:pointer; font-family:inherit;
+    appearance:none; background:none; border:none; cursor:pointer; font-family:inherit; flex:none; white-space:nowrap;
     padding:10px 14px; margin-bottom:-1px; color:var(--muted); font-weight:600; font-size:13.5px;
     border-bottom:2px solid transparent; transition:.12s;
   }
@@ -251,6 +252,15 @@
   .assign-item .abc{font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; flex:none}
   .assign-empty{padding:16px 12px; text-align:center; color:var(--muted); font-size:13px; font-weight:500}
   .pickhdr{position:sticky; top:0; background:var(--card); font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); padding:8px 12px 4px; border-bottom:1px solid var(--line)}
+  .crow{padding:12px 0; border-bottom:1px solid var(--line)}
+  .crow:last-child{border-bottom:none}
+  .crow .ctop{display:flex; justify-content:space-between; align-items:baseline; gap:12px}
+  .crow .cname{font-weight:600; font-size:14px; min-width:0}
+  .crow .cprice{font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--accent)}
+  .crow .cprice small{color:var(--muted); font-weight:500; font-size:11px}
+  .crow .csub{font-size:11.5px; color:var(--muted); margin-top:2px}
+  .crow .cacts{display:flex; gap:6px; margin-top:9px}
+  .crow .cacts .btn{padding:6px 12px; font-size:12.5px}
   .bigqty{font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-1px; line-height:1; margin:6px 0 2px}
   .bigqty small{font-size:13px; font-weight:500; color:var(--muted); letter-spacing:0; margin-left:6px}
   .found-meta{font-size:12.5px; color:var(--muted); font-weight:500; margin-bottom:16px}
@@ -353,6 +363,7 @@
 <section id="viewStock">
   <div class="tabs">
     <button class="on" id="tabStock" onclick="setTab('stock')">Stock</button>
+    <button id="tabCatalogue" onclick="setTab('catalogue')">Catalogue</button>
     <button id="tabReports" onclick="setTab('reports')">Reports</button>
     <button id="tabPO" onclick="setTab('po')">Purchase order</button>
     <button id="tabInv" onclick="setTab('inv')">Invoice</button>
@@ -423,6 +434,19 @@
 
     <div id="items"></div>
     <div class="hint c">Use the steppers to book stock out or in. Tap an item to edit its details or set an exact count. Items at or below their reorder level are flagged.</div>
+  </div>
+
+  <!-- CATALOGUE TAB -->
+  <div id="paneCatalogue" hidden>
+    <div class="toolbar">
+      <div class="search">
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="catSearch" placeholder="Search catalogue by name, SKU, colour…" autocomplete="off" oninput="renderCatalogueView()">
+      </div>
+      <span class="count" id="catPill">0 items</span>
+    </div>
+    <div id="catList"></div>
+    <div class="hint c">Your price list for quotes &amp; orders — you don't have to stock any of it. Import or refresh it in <b>Setup → Catalogue</b>. Tap <b>PO</b> or <b>Invoice</b> to drop an item onto a document, or <b>Stock</b> to start holding it.</div>
   </div>
 
   <!-- REPORTS TAB -->
@@ -766,7 +790,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v31 · 2026-09-26';
+const APP_VER='v32 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -935,10 +959,12 @@ const ICO_PLUS='<svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/
 function setTab(t){
   tab=t;
   $('tabStock').classList.toggle('on', t==='stock');
+  $('tabCatalogue').classList.toggle('on', t==='catalogue');
   $('tabReports').classList.toggle('on', t==='reports');
   $('tabPO').classList.toggle('on', t==='po');
   $('tabInv').classList.toggle('on', t==='inv');
   $('paneStock').hidden=t!=='stock';
+  $('paneCatalogue').hidden=t!=='catalogue';
   $('paneReports').hidden=t!=='reports';
   $('panePO').hidden=t!=='po';
   $('paneInv').hidden=t!=='inv';
@@ -981,6 +1007,7 @@ function render(){
   renderFilterChips();
   renderSupplierFilter();
 
+  if(tab==='catalogue'){ renderCatalogueView(); return; }
   if(tab==='reports'){ renderReports(); return; }
   if(tab==='po'){ renderDoc('po'); return; }
   if(tab==='inv'){ renderDoc('inv'); return; }
@@ -1300,8 +1327,35 @@ function clearCatalogue(){
 }
 function stockFromCatalogue(catId){
   const c=(state.catalogue||[]).find(x=>x.id===catId); if(!c) return;
+  const existing=state.items.find(i=>clean(i.sku)&&clean(i.sku).toLowerCase()===clean(c.sku).toLowerCase());
+  if(existing){ openEdit(existing.id); toast('Already in stock — opened it.'); return; }
   const it={ id:Date.now()+''+Math.random().toString(36).slice(2,6), name:c.name, sku:c.sku, category:c.category||'', colour:c.colour||'', qty:0, reorder:0, cost:num(c.cost), price:num(c.price), location:'', supplier:c.supplier||'', barcode:'', notes:'' };
   state.items.push(it); save(); render(); openEdit(it.id); toast('Added to stock — set the quantity.');
+}
+function catToDoc(kind,id){ addLineFromCatalogue(kind,id); setTab(kind); }
+function renderCatalogueView(){
+  const cat=state.catalogue||[];
+  const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
+  let list=cat.slice().sort((a,b)=>clean(a.name).localeCompare(clean(b.name)));
+  if(q) list=list.filter(c=>[c.name,c.sku,c.colour,c.category].some(v=>(v||'').toLowerCase().includes(q)));
+  $('catPill').textContent=list.length+' item'+(list.length===1?'':'s');
+  const el=$('catList');
+  if(!cat.length){ el.innerHTML='<div class="assign-empty" style="border:1px solid var(--line2); border-radius:8px; margin-top:8px">No catalogue yet.<br>Import it in <b>Setup → Catalogue</b>.</div>'; return; }
+  if(!list.length){ el.innerHTML='<div class="assign-empty">Nothing matches “'+escapeHtml(q)+'”.</div>'; return; }
+  el.innerHTML=list.map(c=>{
+    const sub=[c.sku?'#'+escapeHtml(c.sku):'', c.colour?escapeHtml(c.colour):'', c.category?escapeHtml(c.category):''].filter(Boolean).join(' · ');
+    const priceBlk = num(c.price)>0 ? money(c.price)+' <small>sale</small>' : (num(c.cost)>0 ? money(c.cost)+' <small>cost</small>' : '');
+    const costLine = (num(c.cost)>0 && num(c.price)>0) ? '<div class="csub">Cost '+money(c.cost)+'</div>' : '';
+    return `<div class="crow">
+      <div class="ctop"><div class="cname">${escapeHtml(c.name)||'(no name)'}</div><div class="cprice">${priceBlk}</div></div>
+      ${sub?`<div class="csub">${sub}</div>`:''}${costLine}
+      <div class="cacts">
+        <button class="btn ghost" onclick="catToDoc('po','${c.id}')">＋ PO</button>
+        <button class="btn ghost" onclick="catToDoc('inv','${c.id}')">＋ Invoice</button>
+        <button class="btn ghost" onclick="stockFromCatalogue('${c.id}')">＋ Stock</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ---------- MANUAL MATCH to Door Quote ---------- */
