@@ -219,6 +219,23 @@
   .qbadge.ok{background:color-mix(in srgb, var(--ok) 16%, transparent); color:var(--ok)}
   .qbadge.soon{background:color-mix(in srgb, #d98a00 20%, transparent); color:#b07400}
   .qbadge.exp{background:color-mix(in srgb, var(--danger) 16%, transparent); color:var(--danger)}
+  .stbadge{font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; margin-left:4px; vertical-align:middle}
+  .stbadge.won{background:color-mix(in srgb,var(--ok) 16%,transparent); color:var(--ok)}
+  .stbadge.lost{background:color-mix(in srgb,var(--danger) 16%,transparent); color:var(--danger)}
+  .statussel{background:var(--card); color:var(--ink); border:1px solid var(--line2); border-radius:8px; padding:6px 8px; font:inherit; font-size:12px; font-weight:600}
+  .statussel.st-won{border-color:var(--ok); color:var(--ok)}
+  .statussel.st-lost{border-color:var(--danger); color:var(--danger)}
+  .spendchart{background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:0 0 14px}
+  .spendhead{display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap}
+  .spendhead .sh-title{font-size:12px; font-weight:700}
+  .spendhead .sh-sub{font-size:11.5px; color:var(--muted); flex:1; min-width:0}
+  .spendrow{display:grid; grid-template-columns:96px 1fr auto; align-items:center; gap:10px; margin-bottom:7px}
+  .spendrow:last-child{margin-bottom:0}
+  .spendname{font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .spendbar{background:var(--card); border:1px solid var(--line); border-radius:6px; height:16px; overflow:hidden}
+  .spendbar i{display:block; height:100%; border-radius:6px; background:var(--accent)}
+  .spendbar i.wl-won{background:var(--ok)} .spendbar i.wl-lost{background:var(--danger)} .spendbar i.wl-open{background:var(--muted)}
+  .spendval{font-variant-numeric:tabular-nums; font-weight:600; font-size:12.5px; white-space:nowrap}
 
   /* ---- dialogs ---- */
   dialog{border:none; border-radius:12px; padding:0; background:transparent; max-width:92vw}
@@ -935,7 +952,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v52 · 2026-09-26';
+const APP_VER='v53 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
@@ -980,6 +997,7 @@ function normalize(s){
     const kind=['po','inv','quote'].includes(e.kind)?e.kind:'po';
     return { id:clean(e.id)||('d'+Date.now()+Math.random().toString(36).slice(2,6)),
       kind, ref:clean(e.ref), party:clean(e.party), date:clean(e.date),
+      status:(e.status==='won'||e.status==='lost')?e.status:'open',
       total:num(e.total), savedAt:+e.savedAt||Date.now(), snapshot:normalizeDoc(e.snapshot, kind!=='po') };
   }):[];
   s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
@@ -1921,28 +1939,82 @@ function convertQuoteToInvoice(){
   state.inv=inv; save(); setTab('inv');
   toast('Invoice drafted from '+(clean(q.ref)||'quotation')+' — Save or Print to number it.');
 }
+function savedStatus(e){ return (e.status==='won'||e.status==='lost')?e.status:'open'; }
+function setSavedStatus(id,val){ const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return; e.status=(val==='won'||val==='lost')?val:'open'; save(); renderSavedDocs(e.kind); }
+function snapGoods(snap){ return (snap.lines||[]).reduce((s,l)=>s+(int(l.qty)||0)*(num(l.price)||0),0); }
+function quoteSummary(list){
+  let won=0,lost=0,open=0,wonN=0,lostN=0,openN=0;
+  list.forEach(e=>{ const v=snapGoods(e.snapshot), s=savedStatus(e);
+    if(s==='won'){won+=v;wonN++;} else if(s==='lost'){lost+=v;lostN++;} else {open+=v;openN++;} });
+  const decided=wonN+lostN;
+  return {won,lost,open,wonN,lostN,openN,rate:decided?Math.round(wonN/decided*100):null};
+}
+function quoteSpend(list){ const map={}; list.forEach(e=>{ const nm=clean(e.party)||'—'; map[nm]=(map[nm]||0)+snapGoods(e.snapshot); }); return Object.entries(map).map(([name,total])=>({name,total})).sort((a,b)=>b.total-a.total); }
+function quoteChartsHtml(list){
+  const s=quoteSummary(list);
+  const wlMax=Math.max(s.won,s.lost,s.open,1);
+  const wlRow=(cls,lab,val,n)=>`<div class="spendrow"><div class="spendname">${lab} · ${n}</div><div class="spendbar"><i class="wl-${cls}" style="width:${Math.max(3,Math.round(val/wlMax*100))}%"></i></div><div class="spendval">${money(val)}</div></div>`;
+  let html=`<div class="spendchart"><div class="spendhead"><span class="sh-title">Sales — won / lost</span><span class="sh-sub">win rate ${s.rate==null?'—':s.rate+'%'} · goods excl. delivery &amp; VAT</span></div>${wlRow('won','Won',s.won,s.wonN)}${wlRow('lost','Lost',s.lost,s.lostN)}${wlRow('open','Open',s.open,s.openN)}</div>`;
+  const data=quoteSpend(list);
+  if(data.length && !data.every(d=>d.total===0)){
+    const max=Math.max(...data.map(d=>d.total),1), grand=data.reduce((a,d)=>a+d.total,0);
+    html+=`<div class="spendchart"><div class="spendhead"><span class="sh-title">Spend by customer</span><span class="sh-sub">goods only, excl. delivery &amp; VAT · total ${money(grand)}</span><button class="btn ghost sm" onclick="printQuoteReport()">🖨 Print</button></div>${data.map(d=>`<div class="spendrow"><div class="spendname" title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</div><div class="spendbar"><i style="width:${Math.max(3,Math.round(d.total/max*100))}%"></i></div><div class="spendval">${money(d.total)}</div></div>`).join('')}</div>`;
+  }
+  return html;
+}
+function printQuoteReport(){
+  const list=(state.savedDocs||[]).filter(x=>x.kind==='quote');
+  if(!list.length){ toast('No saved quotations to report.'); return; }
+  const s=quoteSummary(list), data=quoteSpend(list), grand=data.reduce((a,d)=>a+d.total,0);
+  const biz=state.biz||{}, when=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const logoSrc=clean(biz.logo)||DEFAULT_LOGO;
+  let html='<div class="plet"><div class="pfrom">'+(logoSrc?'<img class="plogo" src="'+logoSrc+'" alt="">':'')+'</div>'
+    +'<div class="pdoc"><div class="pdtitle">Sales Report</div><table class="pmeta2"><tr><td>Date</td><th>'+escapeHtml(when)+'</th></tr>'+(s.rate==null?'':'<tr><td>Win rate</td><th>'+s.rate+'%</th></tr>')+'</table></div></div>';
+  html+='<table><thead><tr><th>Outcome</th><th class="n">Quotes</th><th class="n">Goods £</th></tr></thead><tbody>'
+    +'<tr><td>Won</td><td class="n">'+s.wonN+'</td><td class="n">'+money(s.won)+'</td></tr>'
+    +'<tr><td>Lost</td><td class="n">'+s.lostN+'</td><td class="n">'+money(s.lost)+'</td></tr>'
+    +'<tr class="totrow"><td class="lbl">Open</td><td class="n">'+s.openN+'</td><td class="n">'+money(s.open)+'</td></tr>'
+    +'</tbody></table>';
+  html+='<div style="height:18px"></div>';
+  html+='<table><thead><tr><th>Customer</th><th class="n">Goods £</th></tr></thead><tbody>'
+    +data.map(d=>'<tr><td>'+escapeHtml(d.name)+'</td><td class="n">'+money(d.total)+'</td></tr>').join('')
+    +'<tr class="totrow"><td class="lbl">Total</td><td class="n">'+money(grand)+'</td></tr>'
+    +'</tbody></table>';
+  html+='<div class="pfooter">Goods only — excludes delivery &amp; VAT'+(clean(biz.name)?' · '+escapeHtml(biz.name):'')+'</div>';
+  const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
+  setTimeout(()=>window.print(),80);
+}
 function renderSavedDocs(kind){
   const box=$(kind+'Saved'); if(!box) return;
   const list=(state.savedDocs||[]).filter(x=>x.kind===kind).sort((a,b)=>b.savedAt-a.savedAt);
   if(!list.length){ box.innerHTML='<div class="assign-empty" style="padding:12px 0">Nothing saved yet — build a '+docLabel(kind)+' and tap <b>Save</b> to recall it later.</div>'; return; }
   const today=todayISO();
-  box.innerHTML=list.map(e=>{
+  let html = kind==='quote' ? quoteChartsHtml(list) : '';
+  html += list.map(e=>{
     const dt=e.date?new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
     const sub=[clean(e.party)||'—', dt, (e.snapshot.lines||[]).length+' line'+((e.snapshot.lines||[]).length===1?'':'s')].filter(Boolean).join(' · ');
-    let badge='';
+    let badge='', statusLine='';
     if(kind==='quote'){
-      const vu=clean(e.snapshot.validUntil);
-      if(vu){
-        const days=Math.round((new Date(vu+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
-        if(days<0) badge=' <span class="qbadge exp">Expired</span>';
-        else if(days===0) badge=' <span class="qbadge soon">Expires today</span>';
-        else if(days<=7) badge=' <span class="qbadge soon">'+days+'d left</span>';
-        else badge=' <span class="qbadge ok">Valid</span>';
+      const st=savedStatus(e);
+      if(st==='won') badge=' <span class="stbadge won">Won</span>';
+      else if(st==='lost') badge=' <span class="stbadge lost">Lost</span>';
+      else {
+        const vu=clean(e.snapshot.validUntil);
+        if(vu){ const days=Math.round((new Date(vu+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+          if(days<0) badge=' <span class="qbadge exp">Expired</span>';
+          else if(days===0) badge=' <span class="qbadge soon">Expires today</span>';
+          else if(days<=7) badge=' <span class="qbadge soon">'+days+'d left</span>';
+          else badge=' <span class="qbadge ok">Valid</span>'; }
       }
+      statusLine=`<div style="margin-top:7px"><select class="statussel st-${st}" onchange="setSavedStatus('${e.id}',this.value)" title="Mark this quote won or lost">
+        <option value="open"${st==='open'?' selected':''}>Open</option>
+        <option value="won"${st==='won'?' selected':''}>Won</option>
+        <option value="lost"${st==='lost'?' selected':''}>Lost</option></select></div>`;
     }
-    return `<div class="mv-row"><div class="mv-l"><div class="mv-name">${escapeHtml(e.ref)} <span style="color:var(--muted);font-weight:600">${money(e.total)}</span>${badge}</div><div class="mv-sub">${escapeHtml(sub)}</div></div>
+    return `<div class="mv-row"><div class="mv-l"><div class="mv-name">${escapeHtml(e.ref)} <span style="color:var(--muted);font-weight:600">${money(e.total)}</span>${badge}</div><div class="mv-sub">${escapeHtml(sub)}</div>${statusLine}</div>
       <span style="display:flex; gap:6px; flex:none"><button class="btn ghost sm" onclick="recallDoc('${e.id}')">Recall</button><button class="btn ghost sm" onclick="duplicateSavedDoc('${e.id}')">Duplicate</button><button class="btn ghost sm" onclick="deleteSavedDoc('${e.id}')" aria-label="Delete saved">✕</button></span></div>`;
   }).join('');
+  box.innerHTML=html;
 }
 function openPick(kind){ pickTarget=kind; const s=$('pickSearch'); if(s) s.value=''; renderPick(); $('pickDlg').showModal(); }
 function renderPick(){
