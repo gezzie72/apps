@@ -939,6 +939,13 @@
         <div><label>Sale price £</label><input id="cePrice" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
       </div>
       <div><label>Supplier</label><input id="ceSup" list="supOpts" autocomplete="off" placeholder="optional"></div>
+      <div>
+        <label>Barcode <span class="muted" style="font-weight:500">(EAN, if different to SKU)</span></label>
+        <div class="inputbtn">
+          <input id="ceBarcode" placeholder="scan or type a barcode" autocomplete="off">
+          <button type="button" class="btn ghost" onclick="openScanner('assign','ceBarcode')"><svg class="ico sm" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg> Scan</button>
+        </div>
+      </div>
       <div class="duo" style="margin-top:4px">
         <button class="btn ghost" onclick="catEditDlg.close()">Cancel</button>
         <button class="btn" onclick="saveCatEdit()">Save</button>
@@ -972,7 +979,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v62 · 2026-09-26';
+const APP_VER='v63 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1027,7 +1034,7 @@ function normalize(s){
   s.catalogue=Array.isArray(s.catalogue)?s.catalogue.map(c=>({          // price list for quotes/orders (not held stock)
     id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
     name:clean(c.name), sku:clean(c.sku), colour:clean(c.colour),
-    category:clean(c.category), supplier:clean(c.supplier),
+    category:clean(c.category), supplier:clean(c.supplier), barcode:clean(c.barcode),
     cost:num(c.cost), price:num(c.price)
   })):[];
   s.items.forEach(it=>{
@@ -1551,11 +1558,12 @@ function mergeCatalogue(incoming){
       if(clean(inc.colour)) c.colour=clean(inc.colour);
       if(clean(inc.category)) c.category=clean(inc.category);
       if(clean(inc.supplier)) c.supplier=clean(inc.supplier);
+      if(clean(inc.barcode)) c.barcode=clean(inc.barcode);
       if(clean(inc.sku) && !clean(c.sku)) c.sku=clean(inc.sku);
       if(clean(inc.name) && !clean(c.name)) c.name=clean(inc.name);
       upd++;
     } else {
-      const nc={ id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name:clean(inc.name), sku:clean(inc.sku), colour:clean(inc.colour), category:clean(inc.category), supplier:clean(inc.supplier), cost:num(inc.cost), price:num(inc.price) };
+      const nc={ id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name:clean(inc.name), sku:clean(inc.sku), colour:clean(inc.colour), category:clean(inc.category), supplier:clean(inc.supplier), barcode:clean(inc.barcode), cost:num(inc.cost), price:num(inc.price) };
       state.catalogue.push(nc); index(nc); add++;
     }
   });
@@ -1587,7 +1595,7 @@ function importCatalogueListCSV(file){
     const incoming=[];
     for(let ri=1;ri<rows.length;ri++){ const row=rows[ri];
       const name=get(row,'name'), sku=get(row,'sku'); if(!name && !sku) continue;
-      incoming.push({ name, sku, colour:get(row,'colour'), category:get(row,'category'), supplier:get(row,'supplier'), cost:num(get(row,'cost')), price:num(get(row,'price')) });
+      incoming.push({ name, sku, colour:get(row,'colour'), category:get(row,'category'), supplier:get(row,'supplier'), barcode:get(row,'barcode'), cost:num(get(row,'cost')), price:num(get(row,'price')) });
     }
     if(!incoming.length){ toast('No usable rows found in that CSV.'); return; }
     const existing=(state.catalogue||[]).length;
@@ -1599,8 +1607,8 @@ function importCatalogueListCSV(file){
   r.readAsText(file);
 }
 function downloadCatalogueListTemplate(){
-  const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier'];
-  const example=['CISA C2000 Cylinder (example row)','CIS-C2000','Satin Chrome','Cylinders','8.50','14.00','LockCo'];
+  const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier','Barcode'];
+  const example=['CISA C2000 Cylinder (example row)','CIS-C2000','Satin Chrome','Cylinders','8.50','14.00','LockCo','5012345678900'];
   const csv=[header,example].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='catalogue-template.csv'; a.click();
 }
@@ -1624,7 +1632,7 @@ function openCatEdit(id){
   $('catEditTitle').textContent = c ? 'Edit catalogue item' : 'New catalogue item';
   $('ceName').value=c?c.name:''; $('ceSku').value=c?c.sku:''; $('ceCat').value=c?c.category:'';
   $('ceColour').value=c?c.colour:''; $('ceCost').value=c&&num(c.cost)?num(c.cost).toFixed(2):''; $('cePrice').value=c&&num(c.price)?num(c.price).toFixed(2):'';
-  $('ceSup').value=c?c.supplier:'';
+  $('ceSup').value=c?c.supplier:''; $('ceBarcode').value=c?c.barcode||'':'';
   $('ceDelete').style.display=c?'block':'none';
   fillOptionLists();
   $('catEditDlg').showModal();
@@ -1634,7 +1642,7 @@ function saveCatEdit(){
   const name=clean($('ceName').value), sku=clean($('ceSku').value);
   if(!name && !sku){ $('ceName').focus(); toast('Give it a name or a SKU.'); return; }
   const rec={ name, sku, category:clean($('ceCat').value), colour:clean($('ceColour').value),
-    cost:Math.max(0,num($('ceCost').value)), price:Math.max(0,num($('cePrice').value)), supplier:clean($('ceSup').value) };
+    cost:Math.max(0,num($('ceCost').value)), price:Math.max(0,num($('cePrice').value)), supplier:clean($('ceSup').value), barcode:clean($('ceBarcode').value) };
   state.catalogue=state.catalogue||[];
   if(catEditId){ const c=state.catalogue.find(x=>x.id===catEditId); if(c) Object.assign(c,rec); }
   else{ state.catalogue.push(Object.assign({id:'c'+Date.now()+Math.random().toString(36).slice(2,6)},rec)); }
@@ -1658,8 +1666,8 @@ function catFiltered(){
 function exportCatalogueCSV(){
   const list=catFiltered();
   if(!list.length){ toast('Catalogue is empty — nothing to export.'); return; }
-  const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier'];
-  const rows=[header].concat(list.map(c=>[c.name,c.sku,c.colour,c.category,(num(c.cost)||0).toFixed(2),(num(c.price)||0).toFixed(2),c.supplier]));
+  const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier','Barcode'];
+  const rows=[header].concat(list.map(c=>[c.name,c.sku,c.colour,c.category,(num(c.cost)||0).toFixed(2),(num(c.price)||0).toFixed(2),c.supplier,c.barcode]));
   const csv=rows.map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='catalogue-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
   toast('Exported '+list.length+' item'+(list.length===1?'':'s')+'.');
@@ -2394,10 +2402,11 @@ function prefillFromCode(code){
     else toast('Barcode captured: '+code);
     return;
   }
-  // match the catalogue by SKU (exact, then ignoring punctuation)
+  // match the catalogue by barcode, then SKU (exact, then ignoring punctuation)
   const cat=state.catalogue||[];
-  let c=cat.find(x=>norm(x.sku)===lc);
-  if(!c && loose(code)) c=cat.find(x=>loose(x.sku)===loose(code));
+  let c=cat.find(x=>clean(x.barcode) && norm(x.barcode)===lc);
+  if(!c) c=cat.find(x=>norm(x.sku)===lc);
+  if(!c && loose(code)) c=cat.find(x=>loose(x.barcode)===loose(code) || loose(x.sku)===loose(code));
   if(!c){ toast('Barcode captured: '+code+' — no catalogue match'); return; }
   const box=$('addBox'); if(box && !box.open) box.open=true;
   const setIf=(id,val)=>{ const el=$(id); if(el && !clean(el.value) && clean(val)) el.value=clean(val); };
