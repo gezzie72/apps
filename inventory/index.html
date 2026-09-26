@@ -334,7 +334,23 @@
     #printArea .dochead .blk .nm{font-weight:700; font-size:13px}
     #printArea .docref{text-align:right}
     #printArea .dochead .blk .acct{font-size:10.5px; color:#555; margin-top:3px}
-    #printArea .docnotes{margin-top:16px; font-size:11.5px; color:#333; white-space:pre-line; border-top:1px solid #ddd; padding-top:8px}
+    #printArea .docnotes{margin-top:14px; font-size:11.5px; color:#333; white-space:pre-line; border-top:1px solid #ddd; padding-top:8px}
+    /* invoice / PO letterhead */
+    #printArea .plet{display:flex; justify-content:space-between; align-items:flex-start; gap:24px; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:16px}
+    #printArea .pbiz{font-size:22px; font-weight:800; letter-spacing:-.3px}
+    #printArea .paddr{font-size:11px; color:#444; white-space:pre-line; margin-top:3px; line-height:1.45}
+    #printArea .pdoc{text-align:right; min-width:44%}
+    #printArea .pdtitle{font-size:20px; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px}
+    #printArea .pmeta2{margin-left:auto; border-collapse:collapse; font-size:11.5px}
+    #printArea .pmeta2 td{border:none; color:#666; text-transform:uppercase; letter-spacing:.5px; font-size:9.5px; padding:1px 8px 1px 0; text-align:right; white-space:nowrap}
+    #printArea .pmeta2 th{border:none; text-align:right; font-weight:700; padding:1px 0}
+    #printArea .pparties{display:flex; gap:24px; margin:0 0 14px}
+    #printArea .pparty{flex:1; font-size:12px; line-height:1.5; white-space:pre-line}
+    #printArea .pparty .lbl{font-size:9px; text-transform:uppercase; letter-spacing:.6px; color:#666; font-weight:700; margin-bottom:2px}
+    #printArea .pparty .nm{font-weight:700; font-size:13px}
+    #printArea td.muted{color:#999}
+    #printArea .pdue{margin-top:12px; text-align:right; font-size:15px; font-weight:800}
+    #printArea .pfooter{margin-top:22px; border-top:1px solid #ddd; padding-top:8px; font-size:10.5px; color:#777; text-align:center; white-space:pre-line}
   }
   svg.bc rect{fill:#000}
 </style>
@@ -845,7 +861,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v36 · 2026-09-26';
+const APP_VER='v37 · 2026-09-26';
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toFixed(2);
 const money0=n=>'£'+Math.round(+n||0).toLocaleString();
@@ -1759,6 +1775,14 @@ function recallDoc(id){
   if(e.kind==='po') state.po=doc; else state.inv=doc;
   save(); setTab(e.kind); toast('Loaded '+e.ref);
 }
+function duplicateSavedDoc(id){
+  const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return;
+  const doc=normalizeDoc(JSON.parse(JSON.stringify(e.snapshot)), e.kind==='inv');
+  doc.ref=''; doc.date=todayISO();                 // fresh copy: new number, today's date
+  if(e.kind==='po') state.po=doc; else state.inv=doc;
+  save(); setTab(e.kind);
+  toast('Copied '+e.ref+' → new '+(e.kind==='po'?'purchase order':'invoice')+' (unsaved). Save or Print to assign a number.');
+}
 function deleteSavedDoc(id){
   const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return;
   if(!confirm('Delete saved '+(e.kind==='po'?'purchase order':'invoice')+' '+e.ref+'? (Only the saved copy — anything on screen stays.)')) return;
@@ -1773,7 +1797,7 @@ function renderSavedDocs(kind){
     const dt=e.date?new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
     const sub=[clean(e.party)||'—', dt, (e.snapshot.lines||[]).length+' line'+((e.snapshot.lines||[]).length===1?'':'s')].filter(Boolean).join(' · ');
     return `<div class="mv-row"><div class="mv-l"><div class="mv-name">${escapeHtml(e.ref)} <span style="color:var(--muted);font-weight:600">${money(e.total)}</span></div><div class="mv-sub">${escapeHtml(sub)}</div></div>
-      <span style="display:flex; gap:6px; flex:none"><button class="btn ghost sm" onclick="recallDoc('${e.id}')">Recall</button><button class="btn ghost sm" onclick="deleteSavedDoc('${e.id}')" aria-label="Delete saved">✕</button></span></div>`;
+      <span style="display:flex; gap:6px; flex:none"><button class="btn ghost sm" onclick="recallDoc('${e.id}')">Recall</button><button class="btn ghost sm" onclick="duplicateSavedDoc('${e.id}')">Duplicate</button><button class="btn ghost sm" onclick="deleteSavedDoc('${e.id}')" aria-label="Delete saved">✕</button></span></div>`;
   }).join('');
 }
 function openPick(kind){ pickTarget=kind; const s=$('pickSearch'); if(s) s.value=''; renderPick(); $('pickDlg').showModal(); }
@@ -1820,23 +1844,36 @@ function printDoc(kind){
   const t=docTotals(kind), biz=state.biz||{};
   const title=isInv?'Invoice':'Purchase Order';
   const dateStr=d.date ? new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  const fromBlk='<div class="blk"><div class="lbl">From</div><div class="nm">'+escapeHtml(biz.name||'Your business')+'</div>'+(biz.address?escapeHtml(biz.address):'')+'</div>';
-  const acctLine = clean(d.account) ? '<div class="acct">Account: '+escapeHtml(d.account)+(clean(d.accountStatus)?' · '+escapeHtml(d.accountStatus):'')+'</div>' : (clean(d.accountStatus)?'<div class="acct">'+escapeHtml(d.accountStatus)+'</div>':'');
-  const toBlk='<div class="blk"><div class="lbl">'+(isInv?'Invoice to':'Supplier')+'</div><div class="nm">'+escapeHtml(d.party||'—')+'</div>'+(d.address?escapeHtml(d.address):'')+acctLine+'</div>';
-  const shipBlk = clean(d.deliverTo) ? '<div class="blk"><div class="lbl">Deliver to</div>'+escapeHtml(d.deliverTo)+'</div>' : '';
-  const refBlk='<div class="blk docref"><div class="lbl">'+title+'</div><div class="nm">'+escapeHtml(d.ref)+'</div>Date: '+escapeHtml(dateStr)+'</div>';
+  const totalItems=d.lines.reduce((s,l)=>s+(int(l.qty)||0),0);
+  // letterhead: business (left) + document meta (right)
+  let meta='<tr><td>Number</td><th>'+escapeHtml(d.ref)+'</th></tr><tr><td>Date</td><th>'+escapeHtml(dateStr)+'</th></tr>';
+  if(clean(d.account)) meta+='<tr><td>Account</td><th>'+escapeHtml(d.account)+'</th></tr>';
+  if(clean(d.accountStatus)) meta+='<tr><td>Status</td><th>'+escapeHtml(d.accountStatus)+'</th></tr>';
+  let html='<div class="plet">'
+    +'<div class="pfrom"><div class="pbiz">'+escapeHtml(biz.name||'Your business')+'</div>'+(clean(biz.address)?'<div class="paddr">'+escapeHtml(biz.address)+'</div>':'')+'</div>'
+    +'<div class="pdoc"><div class="pdtitle">'+title+'</div><table class="pmeta2">'+meta+'</table></div>'
+    +'</div>';
+  // parties: to + deliver-to
+  html+='<div class="pparties">'
+    +'<div class="pparty"><div class="lbl">'+(isInv?'Invoice to':'Supplier')+'</div><div class="nm">'+escapeHtml(d.party||'—')+'</div>'+(clean(d.address)?'<div>'+escapeHtml(d.address)+'</div>':'')+'</div>'
+    +(clean(d.deliverTo)?'<div class="pparty"><div class="lbl">Deliver to</div><div>'+escapeHtml(d.deliverTo)+'</div></div>':'<div class="pparty"><div class="lbl">Deliver to</div><div style="color:#999">As above</div></div>')
+    +'</div>';
+  // line items
   let rows='';
-  d.lines.forEach(l=>{ const amt=(int(l.qty)||0)*(num(l.price)||0);
-    rows+='<tr><td class="n">'+(int(l.qty)||0)+'</td><td>'+escapeHtml(l.name)+'</td><td>'+escapeHtml(l.sku||'')+'</td><td class="n">'+money(l.price)+'</td><td class="n">'+money(amt)+'</td></tr>'; });
-  let tot='<tr class="subrow"><td class="lbl" colspan="4">Subtotal</td><td class="n">'+money(t.goods)+'</td></tr>';
-  if(t.deliv>0) tot+='<tr class="subrow"><td class="lbl" colspan="4">Delivery</td><td class="n">'+money(t.deliv)+'</td></tr>';
-  if(d.vatOn) tot+='<tr class="subrow"><td class="lbl" colspan="4">VAT @ '+(num(d.vatRate)||0)+'%</td><td class="n">'+money(t.vat)+'</td></tr>';
-  tot+='<tr class="totrow"><td class="lbl" colspan="4">Total</td><td class="n">'+money(t.total)+'</td></tr>';
-  let html='<h2>'+title+'</h2><div class="dochead">'+fromBlk+toBlk+refBlk+'</div>';
-  if(shipBlk) html+='<div class="dochead" style="margin-top:0">'+shipBlk+'</div>';
-  html+='<table><thead><tr><th class="n">Qty</th><th>Description</th><th>SKU</th><th class="n">Unit £</th><th class="n">Amount £</th></tr></thead><tbody>'+rows+tot+'</tbody></table>';
-  if(clean(d.payment)) html+='<div class="docnotes"><b>Payment:</b> '+escapeHtml(d.payment)+'</div>';
-  if(d.notes) html+='<div class="docnotes">'+escapeHtml(d.notes)+'</div>';
+  d.lines.forEach((l,idx)=>{ const amt=(int(l.qty)||0)*(num(l.price)||0);
+    rows+='<tr><td class="n muted">'+(idx+1)+'</td><td class="n">'+(int(l.qty)||0)+'</td><td>'+escapeHtml(l.name)+'</td><td>'+escapeHtml(l.sku||'')+'</td><td class="n">'+money(l.price)+'</td><td class="n">'+money(amt)+'</td></tr>'; });
+  let tot='<tr class="subrow"><td class="lbl" colspan="5">Subtotal</td><td class="n">'+money(t.goods)+'</td></tr>';
+  if(t.deliv>0) tot+='<tr class="subrow"><td class="lbl" colspan="5">Delivery</td><td class="n">'+money(t.deliv)+'</td></tr>';
+  if(d.vatOn) tot+='<tr class="subrow"><td class="lbl" colspan="5">VAT @ '+(num(d.vatRate)||0)+'%</td><td class="n">'+money(t.vat)+'</td></tr>';
+  tot+='<tr class="totrow"><td class="lbl" colspan="5">Total</td><td class="n">'+money(t.total)+'</td></tr>';
+  html+='<table><thead><tr><th class="n">#</th><th class="n">Qty</th><th>Description</th><th>SKU</th><th class="n">Unit £</th><th class="n">Amount £</th></tr></thead><tbody>'+rows+tot+'</tbody></table>';
+  html+='<div class="pdue">'+(isInv?'Amount due':'Order total')+': '+money(t.total)+(d.vatOn?'':'  <span style="font-size:10px;font-weight:600;color:#777">(no VAT)</span>')+'</div>';
+  if(clean(d.payment)) html+='<div class="docnotes"><b>Payment terms:</b> '+escapeHtml(d.payment)+'</div>';
+  if(clean(d.notes)) html+='<div class="docnotes"><b>Notes:</b> '+escapeHtml(d.notes)+'</div>';
+  const footer = isInv
+    ? 'Thank you for your business.'+(clean(biz.name)?'  '+escapeHtml(biz.name):'')
+    : 'Please supply the '+totalItems+' item'+(totalItems===1?'':'s')+' above to the delivery address shown.';
+  html+='<div class="pfooter">'+footer+'</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
   setTimeout(()=>window.print(),80);
