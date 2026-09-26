@@ -549,6 +549,12 @@
   </div>
 
   <div class="card pad">
+    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Prices from Door Quote</span></div>
+    <div class="hint" style="margin:0 0 14px">Pull unit cost &amp; sale price from your Door Quote catalogue, matched by <b>SKU / stock code</b>. Open Door Quote on this device first so its catalogue is available. Only items whose SKU matches are updated — quantities aren't touched.</div>
+    <button class="btn" onclick="importDoorQuotePrices()">Import prices from Door Quote</button>
+  </div>
+
+  <div class="card pad">
     <div class="listhead" style="margin:0 0 10px"><span class="ttl">Backup</span></div>
     <div class="hint" style="margin:0 0 14px">Save a copy of your whole inventory to a file on this device — a safety net that doesn't depend on GitHub. Keep it somewhere safe; restore anytime.</div>
     <div class="syncrow">
@@ -1154,6 +1160,32 @@ function docDeliv(kind,val){ docState(kind).delivery=Math.max(0,num(val)); save(
 function docVat(kind,on){ docState(kind).vatOn=!!on; save(); renderDocTotals(kind); }
 function docRate(kind,val){ docState(kind).vatRate=Math.max(0,num(val)); save(); renderDocTotals(kind); }
 function bizField(key,val){ state.biz[key]=clean(val); save(); }
+function importDoorQuotePrices(){
+  let cat=[];
+  try{ cat=JSON.parse(localStorage.getItem('dhq.catalogue.v1'))||[]; }catch(e){ cat=[]; }
+  if(!Array.isArray(cat)||!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
+  // index catalogue by stock code (SKU)
+  const bySku={};
+  cat.forEach(c=>{ const k=clean(c.code).toLowerCase(); if(k) bySku[k]=c; });
+  const withSku=state.items.filter(i=>clean(i.sku));
+  let matched=0, updated=0;
+  const changes=[];
+  withSku.forEach(i=>{
+    const c=bySku[clean(i.sku).toLowerCase()]; if(!c) return;
+    matched++;
+    const newCost=num(c.cost), newPrice=num(c.unit);
+    let ch=false;
+    if(newCost>0 && newCost!==i.cost) ch=true;
+    if(newPrice>0 && newPrice!==i.price) ch=true;
+    if(ch) changes.push({i, newCost, newPrice});
+  });
+  if(!matched){ toast('No SKUs matched your Door Quote catalogue ('+cat.length+' catalogue item'+(cat.length===1?'':'s')+').'); return; }
+  if(!changes.length){ toast(matched+' item'+(matched===1?'':'s')+' matched — prices already up to date.'); return; }
+  if(!confirm('Door Quote catalogue: '+cat.length+' items.\n'+matched+' of your items match by SKU.\nUpdate cost & sale price on '+changes.length+' item'+(changes.length===1?'':'s')+'?')) return;
+  changes.forEach(({i,newCost,newPrice})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; updated++; });
+  save(); render();
+  toast('Updated '+updated+' item'+(updated===1?'':'s')+' from Door Quote.');
+}
 function fillBiz(){ const n=$('bizName'), a=$('bizAddr'); if(n&&document.activeElement!==n) n.value=state.biz.name||''; if(a&&document.activeElement!==a) a.value=state.biz.address||''; }
 function docTotals(kind){
   const d=docState(kind);
