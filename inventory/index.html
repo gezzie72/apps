@@ -443,13 +443,14 @@
           <div class="trio">
             <div><label>In stock</label><input id="fQty" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
             <div><label>Reorder at</label><input id="fReorder" type="number" inputmode="numeric" step="1" min="0" placeholder="0"></div>
-            <div><label>Unit cost £</label><input id="fCost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+            <div><label>Unit cost £</label><input id="fCost" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" oninput="autoPrice('fCost','fPrice')"></div>
           </div>
           <div class="duo">
+            <div><label>Sale price £</label><input id="fPrice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="auto from markup"><div class="hint" id="fPriceHint" style="margin:4px 0 0"></div></div>
             <div><label>Location</label><input id="fLoc" placeholder="e.g. Bay A3" autocomplete="off"></div>
-            <div><label>Supplier</label><input id="fSup" placeholder="optional" autocomplete="off"></div>
           </div>
-          <button class="btn full" onclick="addItem()">Add to inventory</button>
+          <div><label>Supplier</label><input id="fSup" placeholder="optional" autocomplete="off"></div>
+          <button class="btn full" style="margin-top:4px" onclick="addItem()">Add to inventory</button>
         </div>
       </div>
     </details>
@@ -720,6 +721,16 @@
   </div>
 
   <div class="card pad">
+    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Pricing</span></div>
+    <div class="hint" style="margin:0 0 12px">When you add or edit an item with a <b>cost</b> but leave the <b>sale price</b> blank, it's set automatically as cost + this markup.</div>
+    <div class="duo">
+      <div><label>Default markup %</label><input id="mkPct" type="number" step="1" min="0" inputmode="decimal" oninput="markupField(this.value)"></div>
+      <div style="display:flex; align-items:flex-end"><button class="btn ghost sm full" onclick="applyMarkupAll()">Price items with no sale price</button></div>
+    </div>
+    <div class="hint" id="mkExample" style="margin:10px 0 0"></div>
+  </div>
+
+  <div class="card pad">
     <div class="listhead" style="margin:0 0 10px"><span class="ttl">Catalogue (price list)</span><span class="chip2" id="catCount">0</span></div>
     <div class="hint" style="margin:0 0 14px">Your full product list for <b>quotes &amp; orders</b> — you don't have to keep any of it in stock. Import it from Door Quote (or a CSV) in one go, then add lines straight onto a <b>purchase order</b> or <b>invoice</b> from the catalogue. Great when items go <b>direct supplier → customer</b>.</div>
     <div class="syncrow">
@@ -787,10 +798,10 @@
       <div class="trio">
         <div><label>In stock</label><input id="eQty" type="number" step="1" min="0" inputmode="numeric"></div>
         <div><label>Reorder at</label><input id="eReorder" type="number" step="1" min="0" inputmode="numeric"></div>
-        <div><label>Unit cost £</label><input id="eCost" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div><label>Unit cost £</label><input id="eCost" type="number" step="0.01" min="0" inputmode="decimal" oninput="autoPrice('eCost','ePrice')"></div>
       </div>
       <div class="duo">
-        <div><label>Sale price £</label><input id="ePrice" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div><label>Sale price £</label><input id="ePrice" type="number" step="0.01" min="0" inputmode="decimal"><div class="hint" id="ePriceHint" style="margin:4px 0 0"></div></div>
         <div><label>Location</label><input id="eLoc" autocomplete="off"></div>
       </div>
       <div><label>Supplier</label><input id="eSup" autocomplete="off"></div>
@@ -956,7 +967,7 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v56 · 2026-09-26';
+const APP_VER='v57 · 2026-09-26';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1006,6 +1017,7 @@ function normalize(s){
   }):[];
   s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
   Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address),account:clean(v.account),accountStatus:clean(v.accountStatus),payment:clean(v.payment),deliverTo:clean(v.deliverTo)}; });
+  s.markup = isFinite(+s.markup) ? +s.markup : 40;   // default markup % on cost for auto-pricing
   s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
   s.catalogue=Array.isArray(s.catalogue)?s.catalogue.map(c=>({          // price list for quotes/orders (not held stock)
     id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
@@ -1045,26 +1057,44 @@ function renderCatChips(){
 function pickCat(i){ const c=_chipCats[i]; if(c==null) return; $('fCat').value=c; renderCatChips(); }
 
 /* ---------- ADD / EDIT ---------- */
+function markupPrice(cost){ const c=num(cost); return c>0 ? +(c*(1+(num(state.markup)||0)/100)).toFixed(2) : 0; }
+function markupField(v){ state.markup=Math.max(0,num(v)); save(); const ex=$('mkExample'); if(ex) ex.innerHTML='e.g. cost '+money(10)+' → sale <b>'+money(markupPrice(10))+'</b>'; }
+function applyMarkupAll(){
+  const targets=state.items.filter(i=>num(i.cost)>0 && !(num(i.price)>0));
+  if(!targets.length){ toast('No items need pricing — all priced already.'); return; }
+  if(!confirm('Set a sale price on '+targets.length+' item'+(targets.length===1?'':'s')+' with a cost but no sale price, using '+(num(state.markup)||0)+'% markup?')) return;
+  targets.forEach(i=>{ i.price=markupPrice(i.cost); });
+  save(); render(); toast('Priced '+targets.length+' item'+(targets.length===1?'':'s')+'.');
+}
+function autoPrice(costId, priceId){   // show a markup hint under the (blank) sale-price field
+  const costEl=$(costId), priceEl=$(priceId), hint=$(priceId+'Hint'); if(!costEl||!priceEl) return;
+  const c=num(costEl.value);
+  if(hint) hint.textContent = (priceEl.value==='' && c>0) ? 'Auto: '+money(markupPrice(c))+' ('+(num(state.markup)||0)+'% markup) — type to override' : '';
+}
 function addItem(){
   const name=clean($('fName').value);
   if(!name){ $('fName').focus(); return; }
   const qty=Math.max(0,int($('fQty').value));
+  const cost=Math.max(0,num($('fCost').value));
+  let price=Math.max(0,num($('fPrice').value));
+  if(!price && cost>0) price=markupPrice(cost);   // no sale price entered → apply default markup
   const it={
     id:Date.now()+''+Math.random().toString(36).slice(2,6),
     name, sku:clean($('fSku').value), category:clean($('fCat').value), colour:clean($('fColour').value),
-    qty, reorder:Math.max(0,int($('fReorder').value)), cost:Math.max(0,num($('fCost').value)),
-    price:0, location:clean($('fLoc').value), supplier:clean($('fSup').value),
+    qty, reorder:Math.max(0,int($('fReorder').value)), cost,
+    price, location:clean($('fLoc').value), supplier:clean($('fSup').value),
     barcode:clean($('fBarcode').value), notes:''
   };
   state.items.push(it);
   if(qty>0) addLog(it, qty, qty, 'added');
   save();
-  ['fName','fSku','fCat','fColour','fReorder','fCost','fLoc','fSup','fBarcode'].forEach(id=>$(id).value='');
+  ['fName','fSku','fCat','fColour','fReorder','fCost','fPrice','fLoc','fSup','fBarcode'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
   $('fQty').value='0';
+  const ph=$('fPriceHint'); if(ph) ph.textContent='';
   renderCatChips();
   $('fName').focus();
   render();
-  toast('Added “'+name+'”');
+  toast('Added “'+name+'” — sale '+money(price));
 }
 function openEdit(id){
   const it=state.items.find(i=>i.id===id); if(!it) return;
@@ -1075,6 +1105,7 @@ function openEdit(id){
   $('eQty').value=it.qty; $('eReorder').value=it.reorder; $('eCost').value=it.cost?num(it.cost).toFixed(2):'';
   $('ePrice').value=it.price?num(it.price).toFixed(2):''; $('eLoc').value=it.location||''; $('eSup').value=it.supplier||'';
   $('eBarcode').value=it.barcode||''; $('eNotes').value=it.notes||'';
+  autoPrice('eCost','ePrice');
   $('editDlg').showModal();
 }
 function saveEdit(){
@@ -1084,7 +1115,8 @@ function saveEdit(){
   it.name=clean($('eName').value)||it.name;
   it.sku=clean($('eSku').value); it.category=clean($('eCat').value); it.colour=clean($('eColour').value);
   it.reorder=Math.max(0,int($('eReorder').value)); it.cost=Math.max(0,num($('eCost').value));
-  it.price=Math.max(0,num($('ePrice').value)); it.location=clean($('eLoc').value);
+  let ep=Math.max(0,num($('ePrice').value)); if(!ep && it.cost>0) ep=markupPrice(it.cost);   // blank price → apply default markup
+  it.price=ep; it.location=clean($('eLoc').value);
   it.supplier=clean($('eSup').value); it.barcode=clean($('eBarcode').value); it.notes=clean($('eNotes').value);
   it.qty=newQty;
   if(diff!==0) addLog(it, diff, newQty, 'set count');
@@ -2233,7 +2265,9 @@ function renderLastBackup(){
 }
 renderLastBackup();
 
-function renderSetup(){ renderSync(); renderAppearance(); renderLastBackup(); fillBiz(); const cc=$('catCount'); if(cc) cc.textContent=(state.catalogue||[]).length; }
+function renderSetup(){ renderSync(); renderAppearance(); renderLastBackup(); fillBiz(); const cc=$('catCount'); if(cc) cc.textContent=(state.catalogue||[]).length;
+  const mk=$('mkPct'); if(mk && document.activeElement!==mk) mk.value=(num(state.markup)||0);
+  const ex=$('mkExample'); if(ex) ex.innerHTML='e.g. cost '+money(10)+' → sale <b>'+money(markupPrice(10))+'</b>'; }
 
 /* ---------- APPEARANCE ---------- */
 const THEME_KEY='inventory.theme', SIZE_KEY='inventory.tsize';
