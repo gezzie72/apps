@@ -1,5 +1,5 @@
 /* Inventory service worker - offline app shell, network-first so updates land. */
-const CACHE = "inventory-v22";
+const CACHE = "inventory-v23";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
