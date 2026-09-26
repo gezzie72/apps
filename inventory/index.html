@@ -274,6 +274,8 @@
   .doctotals .tl.grand{font-weight:700; font-size:16px; border-top:1px solid var(--line); margin-top:4px; padding-top:8px}
   .doctotals .tl span:last-child{font-variant-numeric:tabular-nums}
   .docempty{color:var(--muted); font-size:13px; font-weight:500; padding:6px 2px}
+  .delivrow{display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:14px; font-weight:500}
+  .delivrow input{width:96px; text-align:right; padding:7px 10px; font-size:13.5px}
 
   #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--bg);
     padding:10px 16px; border-radius:8px; font-size:13px; font-weight:500; opacity:0; pointer-events:none; transition:.2s; z-index:100;
@@ -466,6 +468,7 @@
           <button class="btn ghost sm" onclick="addReorder('po')">Add reorder items</button>
         </span></div>
       <div id="poLines"></div>
+      <div class="delivrow"><span>Delivery charge £</span><input id="poDeliv" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" oninput="docDeliv('po',this.value)"></div>
       <div id="poTotals" class="doctotals"></div>
     </div>
     <div class="card pad">
@@ -482,7 +485,7 @@
     <div class="card pad">
       <div class="row">
         <div class="duo">
-          <div><label>Customer (to)</label><input id="invParty" placeholder="Customer name" autocomplete="off" oninput="docField('inv','party',this.value)"></div>
+          <div><label>Customer (to)</label><input id="invParty" list="custList" placeholder="Customer name" autocomplete="off" oninput="docField('inv','party',this.value)"></div>
           <div><label>Invoice number</label><input id="invRef" placeholder="auto" autocomplete="off" oninput="docField('inv','ref',this.value)"></div>
         </div>
         <div><label>Customer address / details</label><textarea id="invAddr" rows="2" oninput="docField('inv','address',this.value)"></textarea></div>
@@ -496,6 +499,7 @@
       <div class="listhead" style="margin:0 0 10px"><span class="ttl">Items</span>
         <span class="right"><button class="btn ghost sm" onclick="openPick('inv')">＋ Add item</button></span></div>
       <div id="invLines"></div>
+      <div class="delivrow"><span>Delivery charge £</span><input id="invDeliv" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" oninput="docDeliv('inv',this.value)"></div>
       <div id="invTotals" class="doctotals"></div>
     </div>
     <div class="card pad">
@@ -507,6 +511,7 @@
     </div>
   </div>
   <datalist id="supList"></datalist>
+  <datalist id="custList"></datalist>
 </section>
 
 <!-- ============ SETUP VIEW ============ -->
@@ -732,6 +737,7 @@ function normalizeDoc(d, defVatOn){
     party:clean(d.party), address:clean(d.address), ref:clean(d.ref), date:clean(d.date), notes:clean(d.notes),
     vatOn: d.vatOn==null ? !!defVatOn : !!d.vatOn,
     vatRate: d.vatRate==null ? 20 : num(d.vatRate),
+    delivery: num(d.delivery),
     lines: Array.isArray(d.lines) ? d.lines.map(l=>({ itemId:clean(l.itemId), name:clean(l.name), sku:clean(l.sku), qty:int(l.qty)||1, price:num(l.price) })) : []
   };
 }
@@ -745,6 +751,8 @@ function normalize(s){
   s.po=normalizeDoc(s.po,false);
   s.inv=normalizeDoc(s.inv,true);
   s.seqPO=int(s.seqPO); s.seqInv=int(s.seqInv);
+  s.parties=(s.parties&&typeof s.parties==='object')?s.parties:{};
+  Object.keys(s.parties).forEach(k=>{ const v=s.parties[k]||{}; s.parties[k]={name:clean(v.name),address:clean(v.address)}; });
   s.items.forEach(it=>{
     it.qty=int(it.qty); it.reorder=int(it.reorder);
     it.cost=num(it.cost); it.price=num(it.price);
@@ -1131,25 +1139,41 @@ function printItemLabel(id){
 let pickTarget='po';
 function docState(kind){ return kind==='po' ? state.po : state.inv; }
 function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function docField(kind,key,val){ docState(kind)[key]=clean(val); save(); }
+function docField(kind,key,val){
+  const d=docState(kind); d[key]=clean(val);
+  if(key==='party'){
+    const saved=state.parties[d.party.toLowerCase()];
+    if(saved && !clean(d.address)){ d.address=saved.address; const P=kind==='po'?'po':'inv'; const a=$(P+'Addr'); if(a) a.value=d.address; }
+  }
+  if((key==='party'||key==='address') && clean(d.party)){
+    state.parties[d.party.toLowerCase()]={name:clean(d.party),address:clean(d.address)};
+  }
+  save();
+}
+function docDeliv(kind,val){ docState(kind).delivery=Math.max(0,num(val)); save(); renderDocTotals(kind); }
 function docVat(kind,on){ docState(kind).vatOn=!!on; save(); renderDocTotals(kind); }
 function docRate(kind,val){ docState(kind).vatRate=Math.max(0,num(val)); save(); renderDocTotals(kind); }
 function bizField(key,val){ state.biz[key]=clean(val); save(); }
 function fillBiz(){ const n=$('bizName'), a=$('bizAddr'); if(n&&document.activeElement!==n) n.value=state.biz.name||''; if(a&&document.activeElement!==a) a.value=state.biz.address||''; }
 function docTotals(kind){
   const d=docState(kind);
-  const sub=d.lines.reduce((s,l)=>s+(int(l.qty)||0)*(num(l.price)||0),0);
-  const vat=d.vatOn ? sub*(num(d.vatRate)||0)/100 : 0;
-  return { sub, vat, total:sub+vat };
+  const goods=d.lines.reduce((s,l)=>s+(int(l.qty)||0)*(num(l.price)||0),0);
+  const deliv=num(d.delivery)||0;
+  const net=goods+deliv;
+  const vat=d.vatOn ? net*(num(d.vatRate)||0)/100 : 0;
+  return { goods, deliv, net, vat, total:net+vat };
 }
 function renderDoc(kind){
   const d=docState(kind), P=kind==='po'?'po':'inv';
   const setVal=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value=v; };
   if(!d.date) d.date=todayISO();
   setVal(P+'Party',d.party); setVal(P+'Ref',d.ref); setVal(P+'Addr',d.address); setVal(P+'Date',d.date); setVal(P+'Notes',d.notes);
+  setVal(P+'Deliv', d.delivery||'');
   const vc=$(P+'Vat'); if(vc) vc.checked=d.vatOn;
   const vr=$(P+'VatRate'); if(vr && document.activeElement!==vr) vr.value=d.vatRate;
-  if(kind==='po'){ const dl=$('supList'); if(dl) dl.innerHTML=suppliers().map(s=>`<option value="${escapeHtml(s)}">`).join(''); }
+  const partyNames=Object.values(state.parties).map(x=>x.name).filter(Boolean);
+  if(kind==='po'){ const dl=$('supList'); if(dl){ const names=[...new Set([...suppliers(), ...partyNames])].sort((a,b)=>a.localeCompare(b)); dl.innerHTML=names.map(s=>`<option value="${escapeHtml(s)}">`).join(''); } }
+  else{ const dl=$('custList'); if(dl){ const names=[...new Set(partyNames)].sort((a,b)=>a.localeCompare(b)); dl.innerHTML=names.map(s=>`<option value="${escapeHtml(s)}">`).join(''); } }
   const box=$(P+'Lines');
   if(!d.lines.length){ box.innerHTML='<div class="docempty">No items yet — tap <b>Add item</b> to pull them from your inventory.</div>'; }
   else{
@@ -1167,7 +1191,8 @@ function renderDoc(kind){
 function renderDocTotals(kind){
   const d=docState(kind), t=docTotals(kind), P=kind==='po'?'po':'inv';
   const el=$(P+'Totals'); if(!el) return;
-  let h='<div class="tl"><span>Subtotal</span><span>'+money(t.sub)+'</span></div>';
+  let h='<div class="tl"><span>Subtotal</span><span>'+money(t.goods)+'</span></div>';
+  if(t.deliv>0) h+='<div class="tl"><span>Delivery</span><span>'+money(t.deliv)+'</span></div>';
   if(d.vatOn) h+='<div class="tl"><span>VAT @ '+(num(d.vatRate)||0)+'%</span><span>'+money(t.vat)+'</span></div>';
   h+='<div class="tl grand"><span>Total</span><span>'+money(t.total)+'</span></div>';
   el.innerHTML=h;
@@ -1234,7 +1259,8 @@ function printDoc(kind){
   let rows='';
   d.lines.forEach(l=>{ const amt=(int(l.qty)||0)*(num(l.price)||0);
     rows+='<tr><td class="n">'+(int(l.qty)||0)+'</td><td>'+escapeHtml(l.name)+'</td><td>'+escapeHtml(l.sku||'')+'</td><td class="n">'+money(l.price)+'</td><td class="n">'+money(amt)+'</td></tr>'; });
-  let tot='<tr class="totrow"><td class="lbl" colspan="4">Subtotal</td><td class="n">'+money(t.sub)+'</td></tr>';
+  let tot='<tr class="subrow"><td class="lbl" colspan="4">Subtotal</td><td class="n">'+money(t.goods)+'</td></tr>';
+  if(t.deliv>0) tot+='<tr class="subrow"><td class="lbl" colspan="4">Delivery</td><td class="n">'+money(t.deliv)+'</td></tr>';
   if(d.vatOn) tot+='<tr class="subrow"><td class="lbl" colspan="4">VAT @ '+(num(d.vatRate)||0)+'%</td><td class="n">'+money(t.vat)+'</td></tr>';
   tot+='<tr class="totrow"><td class="lbl" colspan="4">Total</td><td class="n">'+money(t.total)+'</td></tr>';
   let html='<h2>'+title+'</h2><div class="dochead">'+fromBlk+toBlk+refBlk+'</div>';
