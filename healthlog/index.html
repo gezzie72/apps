@@ -413,6 +413,32 @@
       <div class="scrollx"><table class="hist" id="bpHist"><tbody></tbody></table></div>
       <p class="disc">Categories use UK NICE home-monitoring ranges (Normal under 135/85, High from 135/85, stage 2 from 150/95) and reflect your recent <b>average</b>, not a single reading — a general guide, not a diagnosis. Follow your clinician's advice.</p>
     </div>
+
+    <div class="panel">
+      <h2>Log an oxygen saturation reading</h2>
+      <div class="row" style="align-items:flex-end">
+        <label class="fld">SpO₂ (%)
+          <input type="number" step="1" id="oxSpo2" style="width:100px" placeholder="e.g. 98">
+        </label>
+        <label class="fld">Pulse (bpm)
+          <input type="number" step="1" id="oxPulse" style="width:100px" placeholder="optional">
+        </label>
+        <label class="fld">When
+          <input type="datetime-local" id="oxWhen">
+        </label>
+        <label class="fld" style="flex:1; min-width:160px">Note
+          <input type="text" id="oxNote" placeholder="optional">
+        </label>
+        <button class="btn primary" id="oxAdd">Add reading</button>
+      </div>
+      <div class="cards" id="oxStats" style="margin-top:14px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Oxygen saturation history</h2>
+      <div class="scrollx"><table class="hist" id="oxHist"><tbody></tbody></table></div>
+      <p class="disc">SpO₂ bands are a rough general guide (95–100% normal, 91–94% low, 90% or below is often a concern). Home pulse-oximeter readings can be affected by cold hands, nail varnish and movement — this is general information, not medical advice. If you feel breathless or your reading is persistently low, seek medical help.</p>
+    </div>
   </section>
 
   <!-- ============ BOWEL ============ -->
@@ -681,7 +707,7 @@
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = "2026-09-10 · v12 goals";
+const APP_VERSION = "2026-09-27 · v13 spo2+bloodform";
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -717,6 +743,7 @@ function defaultState(){
     activity:[],                // personal activity log: ["YYYY-MM-DD", ...] (duplicates = multiple per day)
     bloodType:"",               // "" | "A+" | "O-" | ...
     bp:[],                      // {id, dt:"YYYY-MM-DDTHH:MM", sys, dia, pulse, note}
+    spo2:[],                    // {id, dt:"YYYY-MM-DDTHH:MM", spo2, pulse, note}
     appts:[],                   // {id, type, who, date:"YYYY-MM-DD", time, loc, notes, results}
     bloodTestReminder:{ enabled:false, weeks:12, fromDate:"" },
     dob:"",                     // "YYYY-MM-DD"
@@ -735,7 +762,7 @@ function normalize(s){
   if(!s.nebido || typeof s.nebido!=="object") s.nebido={intervalWeeks:12,history:[]};
   if(!Array.isArray(s.nebido.history)) s.nebido.history=[];
   if(!Array.isArray(s.measureFields) || !s.measureFields.length) s.measureFields=[...defaultFields];
-  ["glucose","hba1c","meds","measurements","bp","appts","weights","bowel","activity","goals"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ["glucose","hba1c","meds","measurements","bp","spo2","appts","weights","bowel","activity","goals"].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   if(typeof s.bloodType!=="string") s.bloodType="";
   if(!s.bloodTestReminder || typeof s.bloodTestReminder!=="object") s.bloodTestReminder={enabled:false,weeks:12,fromDate:""};
   s.bloodTestReminder.enabled=!!s.bloodTestReminder.enabled;
@@ -865,6 +892,7 @@ function renderToday(){
   g.innerHTML=[
     card("Latest glucose", lastG?`${gRound(toDisplayGlucose(lastG.value,lastG.unit))} <span class="muted" style="font-size:.6em">${gUnitLabel()}</span>`:"—", lastG?fmtDT(lastG.dt):"no readings yet"),
     card("Latest BP", lastBP?`${lastBP.sys}/${lastBP.dia}`:"—", lastBP?fmtDT(lastBP.dt):"no readings yet"),
+    (()=>{ const lo=[...state.spo2].sort((a,b)=>a.dt<b.dt?1:-1)[0]; return card("Latest SpO₂", lo?`${lo.spo2}%`:"—", lo?fmtDT(lo.dt):"no readings yet"); })(),
     card("Latest weight", latestWeightKg()!=null?fmtWeight(latestWeightKg()):"—", latestWeightKg()!=null?"":"none yet"),
     card("Next appointment", nextAp?fmtDateShort(nextAp):"—", nextApObj?`${nextApObj.type}${nextApObj.who?" · "+nextApObj.who:""}`:"none booked"),
     card("Medications", String(state.meds.length), state.meds.length?"on your list":"none listed yet"),
@@ -1141,7 +1169,8 @@ function renderNebidoUI(){
     const msg = diff<0?`<b>Overdue by ${-diff} day${diff===-1?"":"s"}</b> — was due ${fmtDate(due)}`
       : diff===0?`<b>Due today</b> (${fmtDate(due)})`
       : `Next injection <b>${fmtDate(due)}</b> — in ${diff} day${diff===1?"":"s"}`;
-    el.innerHTML=`<div class="banner ${cls}"><span class="em">💉</span><div class="grow">${msg}</div><button class="btn sm primary" id="nbLogToday">Log injection today</button></div>`;
+    el.innerHTML=`<div class="banner ${cls}"><span class="em">💉</span><div class="grow">${msg}</div><button class="btn sm primary" id="nbLogToday">Log injection today</button></div>`
+      +`<div class="banner"><span class="em">🩸</span><div class="grow">Remember to pick up a <b>blood work form</b> for your next blood test before this injection.</div></div>`;
     el.querySelector("#nbLogToday").onclick=()=>{ addInjection(todayISO()); toast("Injection logged"); };
   }
   renderNebidoCal();
@@ -1372,6 +1401,29 @@ function renderVitals(){
         return `<tr><td>${fmtDT(r.dt)}</td><td><b>${r.sys}/${r.dia}</b></td><td>${r.pulse||"—"}</td><td><span class="pill ${c.cls}">${c.label}</span></td><td>${(r.note||"").replace(/</g,"&lt;")}</td><td><button class="btn sm danger" data-bpdel="${r.id}">✕</button></td></tr>`; }).join("");
     tb.querySelectorAll("[data-bpdel]").forEach(b=> b.onclick=()=>{ state.bp=state.bp.filter(x=>x.id!==b.dataset.bpdel); save(); renderVitals(); });
   }
+  renderSpo2();
+}
+function spo2Cat(v){                      // rough general guide, not a diagnosis
+  if(v>=95) return {label:"Normal",cls:"good"};
+  if(v>=91) return {label:"Low",cls:"low"};
+  return {label:"Very low",cls:"high"};
+}
+function renderSpo2(){
+  if(!$("#oxWhen").value) $("#oxWhen").value=nowLocalInput();
+  const last=[...state.spo2].sort((a,b)=>a.dt<b.dt?1:-1)[0];
+  const lc=last?spo2Cat(last.spo2):null;
+  $("#oxStats").innerHTML=[
+    card("Readings logged", String(state.spo2.length), "all time"),
+    card("Latest SpO₂", last?`${last.spo2}%`:"—", lc?`<span class="pill ${lc.cls}">${lc.label}</span>`:"no readings yet"),
+    card("Latest pulse", last&&last.pulse?`${last.pulse} <span class="muted" style="font-size:.55em">bpm</span>`:"—", last?fmtDT(last.dt):"—")
+  ].join("");
+  const hist=[...state.spo2].sort((a,b)=>a.dt<b.dt?1:-1);
+  const tb=$("#oxHist").querySelector("tbody");
+  if(!hist.length){ tb.innerHTML=`<tr><td class="muted">No readings yet.</td></tr>`; return; }
+  tb.innerHTML=`<tr><th>When</th><th>SpO₂</th><th>Pulse</th><th>Level</th><th>Note</th><th></th></tr>`+
+    hist.map(r=>{ const c=spo2Cat(r.spo2);
+      return `<tr><td>${fmtDT(r.dt)}</td><td><b>${r.spo2}%</b></td><td>${r.pulse||"—"}</td><td><span class="pill ${c.cls}">${c.label}</span></td><td>${(r.note||"").replace(/</g,"&lt;")}</td><td><button class="btn sm danger" data-oxdel="${r.id}">✕</button></td></tr>`; }).join("");
+  tb.querySelectorAll("[data-oxdel]").forEach(b=> b.onclick=()=>{ state.spo2=state.spo2.filter(x=>x.id!==b.dataset.oxdel); save(); renderVitals(); });
 }
 
 /* ---------- APPOINTMENTS ---------- */
@@ -1616,6 +1668,15 @@ $("#bpAdd").onclick=()=>{
   const when=$("#bpWhen").value || nowLocalInput();
   state.bp.push({id:uid(), dt:when, sys, dia, pulse:pulseV, note:$("#bpNote").value.trim()});
   $("#bpSys").value=""; $("#bpDia").value=""; $("#bpPulse").value=""; $("#bpNote").value=""; $("#bpWhen").value=nowLocalInput();
+  save(); renderVitals(); toast("Reading added");
+};
+$("#oxAdd").onclick=()=>{
+  const spo2=Math.round(Number($("#oxSpo2").value));
+  if(!spo2 || spo2<=0 || spo2>100){ toast("Enter SpO₂ (1–100%)"); return; }
+  const pulseV=$("#oxPulse").value?Math.round(Number($("#oxPulse").value)):null;
+  const when=$("#oxWhen").value || nowLocalInput();
+  state.spo2.push({id:uid(), dt:when, spo2, pulse:pulseV, note:$("#oxNote").value.trim()});
+  $("#oxSpo2").value=""; $("#oxPulse").value=""; $("#oxNote").value=""; $("#oxWhen").value=nowLocalInput();
   save(); renderVitals(); toast("Reading added");
 };
 
@@ -1886,6 +1947,7 @@ function initAll(){
   $("#actDate").value=todayISO();
   $("#msDate").value=todayISO();
   $("#bpWhen").value=nowLocalInput();
+  $("#oxWhen").value=nowLocalInput();
   $("#apDate").value=todayISO();
   $("#bwWhen").value=nowLocalInput();
   $("#wDate").value=todayISO();
