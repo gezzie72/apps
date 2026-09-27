@@ -1170,7 +1170,7 @@ function renderNebidoUI(){
       : diff===0?`<b>Due today</b> (${fmtDate(due)})`
       : `Next injection <b>${fmtDate(due)}</b> — in ${diff} day${diff===1?"":"s"}`;
     el.innerHTML=`<div class="banner ${cls}"><span class="em">💉</span><div class="grow">${msg}</div><button class="btn sm primary" id="nbLogToday">Log injection today</button></div>`
-      +`<div class="banner"><span class="em">🩸</span><div class="grow">Remember to pick up a <b>blood work form</b> for your next blood test before this injection.</div></div>`;
+      +`<div class="banner"><span class="em">🩸</span><div class="grow">Reminder: pick a <b>blood work form</b> for the next blood test.</div></div>`;
     el.querySelector("#nbLogToday").onclick=()=>{ addInjection(todayISO()); toast("Injection logged"); };
   }
   renderNebidoCal();
