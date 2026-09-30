@@ -526,7 +526,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-09-20 · synced-fitcoach-exercises";
+const APP_VERSION = "2026-09-30 · treadmill-countdown";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -796,6 +796,7 @@ function renderDayBody(){
     const card = document.createElement("div"); card.className="ex";
     const isCardio = ex.type==="cardio";
     const mets = metricsFor(ex);
+    const isTreadmill = ex.name==="Treadmill";
     let head = `<div class="ex-head">
         <span class="pill ${ex.type}">${isCardio?"Cardio":"Weights"}</span>
         <span class="name">${ex.name}</span>
@@ -806,7 +807,7 @@ function renderDayBody(){
         <td>${si+1}</td>
         ${mets.map(m=>`<td><input type="number" step="${m.step||'any'}" data-e="${ei}" data-s="${si}" data-f="${m.key}" value="${st[m.key]??""}"></td>`).join("")}
         <td><input type="checkbox" class="set-done" data-e="${ei}" data-s="${si}" ${st.done?"checked":""}></td>
-        <td>${ex.sets.length>1?`<button class="btn sm danger set-del" data-e="${ei}" data-s="${si}" title="Remove this set">✕</button>`:``}</td>
+        <td>${isTreadmill?`<button class="btn sm tm-timer" data-e="${ei}" data-s="${si}" title="Start countdown from this set's duration">▶</button> `:``}${ex.sets.length>1?`<button class="btn sm danger set-del" data-e="${ei}" data-s="${si}" title="Remove this set">✕</button>`:``}</td>
       </tr>`).join("");
     card.innerHTML = head + `<table class="sets">${cols}${rows}</table>
       <button class="btn sm" data-addset="${ei}" style="margin-top:8px">+ Add set</button>`;
@@ -837,6 +838,14 @@ function renderDayBody(){
       if(ex.sets.length<=1) return;            // never remove the last set
       ex.sets.splice(Number(b.dataset.s),1);
       save(); renderDayBody();
+    };
+  });
+  body.querySelectorAll(".tm-timer").forEach(b=>{
+    b.onclick = ()=>{
+      const st = state.sessions[openDate].exercises[b.dataset.e].sets[b.dataset.s];
+      const mins = Number(st.mins)||0;
+      if(mins<=0){ toast("Set a duration first"); return; }
+      startRest(mins*60, "Treadmill");
     };
   });
   body.querySelectorAll("[data-addset]").forEach(b=>{
@@ -1666,10 +1675,12 @@ function restFinished(){
   beep();
   clearTimeout(el._hide); el._hide=setTimeout(stopRest, 5000);
 }
-function startRest(secs){
+function startRest(secs, label){
   primeAudio();
   restEnd = Date.now() + (secs||restSecsPref())*1000;
-  const el=$("#restTimer"); el.classList.add("show"); el.classList.remove("done"); clearTimeout(el._hide);
+  const el=$("#restTimer");
+  const lab=el.querySelector(".rt-label"); if(lab) lab.textContent = label || "Rest";
+  el.classList.add("show"); el.classList.remove("done"); clearTimeout(el._hide);
   rtRender(); clearInterval(restTick); restTick=setInterval(rtRender, 250);
 }
 function stopRest(){ clearInterval(restTick); restTick=null; const el=$("#restTimer"); el.classList.remove("show","done"); clearTimeout(el._hide); }
