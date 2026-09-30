@@ -170,6 +170,7 @@
   table.sets th{color:var(--muted); font-weight:600; text-align:left; padding:4px 6px; font-size:calc(12px * var(--tscale))}
   table.sets td{padding:3px 6px}
   table.sets input{width:100%; min-width:52px}
+  table.sets td .btn+.btn{margin-left:4px}
   .set-done{width:22px;height:22px;cursor:pointer}
   /* Stats */
   .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px}
@@ -526,7 +527,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-09-30 · treadmill-countdown";
+const APP_VERSION = "2026-09-30 · treadmill-start-stop";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -807,7 +808,7 @@ function renderDayBody(){
         <td>${si+1}</td>
         ${mets.map(m=>`<td><input type="number" step="${m.step||'any'}" data-e="${ei}" data-s="${si}" data-f="${m.key}" value="${st[m.key]??""}"></td>`).join("")}
         <td><input type="checkbox" class="set-done" data-e="${ei}" data-s="${si}" ${st.done?"checked":""}></td>
-        <td>${isTreadmill?`<button class="btn sm tm-timer" data-e="${ei}" data-s="${si}" title="Start countdown from this set's duration">▶</button> `:``}${ex.sets.length>1?`<button class="btn sm danger set-del" data-e="${ei}" data-s="${si}" title="Remove this set">✕</button>`:``}</td>
+        <td>${isTreadmill?`<button class="btn sm tm-start" data-e="${ei}" data-s="${si}" title="Start countdown from this set's duration">Start</button><button class="btn sm tm-stop" title="Stop the countdown">Stop</button>`:``}${ex.sets.length>1?`<button class="btn sm danger set-del" data-e="${ei}" data-s="${si}" title="Remove this set">✕</button>`:``}</td>
       </tr>`).join("");
     card.innerHTML = head + `<table class="sets">${cols}${rows}</table>
       <button class="btn sm" data-addset="${ei}" style="margin-top:8px">+ Add set</button>`;
@@ -840,7 +841,7 @@ function renderDayBody(){
       save(); renderDayBody();
     };
   });
-  body.querySelectorAll(".tm-timer").forEach(b=>{
+  body.querySelectorAll(".tm-start").forEach(b=>{
     b.onclick = ()=>{
       const st = state.sessions[openDate].exercises[b.dataset.e].sets[b.dataset.s];
       const mins = Number(st.mins)||0;
@@ -848,6 +849,7 @@ function renderDayBody(){
       startRest(mins*60, "Treadmill");
     };
   });
+  body.querySelectorAll(".tm-stop").forEach(b=>{ b.onclick = ()=> stopRest(); });
   body.querySelectorAll("[data-addset]").forEach(b=>{
     b.onclick = ()=>{
       const ex = state.sessions[openDate].exercises[b.dataset.addset];
