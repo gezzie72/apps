@@ -1355,7 +1355,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v70 · 2026-10-01';
+const APP_VER='v71 · 2026-10-01';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -2471,7 +2471,7 @@ function printQuoteReport(){
     +data.map(d=>'<tr><td>'+escapeHtml(d.name)+'</td><td class="n">'+money(d.total)+'</td></tr>').join('')
     +'<tr class="totrow"><td class="lbl">Total</td><td class="n">'+money(grand)+'</td></tr>'
     +'</tbody></table>';
-  html+='<div class="pfooter">Goods only — excludes delivery &amp; VAT'+(clean(biz.name)?' · '+escapeHtml(biz.name):'')+'</div>';
+  html+='<div class="pfooter">Goods only — excludes delivery &amp; VAT · Safe Secure Wales</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   setTimeout(()=>window.print(),80);
 }
@@ -2593,8 +2593,8 @@ function printDoc(kind){
   const footer = kind==='po'
     ? 'Please supply the '+totalItems+' item'+(totalItems===1?'':'s')+' above to the delivery address shown.'
     : kind==='quote'
-    ? 'Thank you for your enquiry — we look forward to your order.'+(clean(biz.name)?'  '+escapeHtml(biz.name):'')
-    : 'Thank you for your business.'+(clean(biz.name)?'  '+escapeHtml(biz.name):'');
+    ? 'Thank you for your enquiry — we look forward to your order.  Safe Secure Wales'
+    : 'Thank you for your business.  Safe Secure Wales';
   html+='<div class="pfooter">'+footer+'</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
@@ -2860,7 +2860,7 @@ function printPacking(){
   html+='<table><thead><tr><th class="n">#</th><th class="n">Qty</th><th>Item</th><th>Code / SKU</th><th class="n" style="width:14%">Checked</th></tr></thead><tbody>'+rows+'</tbody></table>';
   if(clean(p.notes)) html+='<div class="docnotes"><b>Notes:</b> '+escapeHtml(p.notes)+'</div>';
   html+='<div class="psign"><div class="sb">Packed by</div><div class="sb">Received by</div><div class="sb">Date</div></div>';
-  html+='<div class="pfooter">'+escapeHtml(BRAND)+(clean(biz.name)?'  ·  '+escapeHtml(biz.name):'')+'  —  scan the QR to confirm '+escapeHtml(p.ref)+'</div>';
+  html+='<div class="pfooter">'+escapeHtml(BRAND)+'  —  scan the QR to confirm '+escapeHtml(p.ref)+'</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   setTimeout(()=>window.print(),80);
 }
