@@ -635,6 +635,7 @@
         <button class="btn" onclick="printDoc('quote')">Print / PDF</button>
       </div>
       <button class="btn ghost full sm" style="margin-top:8px" onclick="convertQuoteToInvoice()">Convert to invoice →</button>
+      <button class="btn ghost full sm" style="margin-top:8px" onclick="packingFromDoc('quote')">Create packing list →</button>
     </div>
     <div class="card pad">
       <div class="listhead" style="margin:0 0 6px"><span class="ttl">Saved quotations</span></div>
@@ -677,6 +678,7 @@
         <button class="btn ghost" onclick="saveDoc('inv')">Save</button>
         <button class="btn" onclick="printDoc('inv')">Print / PDF</button>
       </div>
+      <button class="btn ghost full sm" style="margin-top:8px" onclick="packingFromDoc('inv')">Create packing list →</button>
     </div>
     <div class="card pad">
       <div class="listhead" style="margin:0 0 6px"><span class="ttl">Saved invoices</span></div>
@@ -1352,7 +1354,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v68 · 2026-10-01';
+const APP_VER='v69 · 2026-10-01';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2407,6 +2409,24 @@ function convertQuoteToInvoice(){
   inv.ref=''; inv.date=todayISO(); inv.validUntil='';   // invoices don't carry a quote expiry
   state.inv=inv; save(); setTab('inv');
   toast('Invoice drafted from '+(clean(q.ref)||'quotation')+' — Save or Print to number it.');
+}
+function packingFromDoc(kind){
+  const d=docState(kind); const label=docLabel(kind);
+  if(!d.lines.length){ toast('Add items to the '+label+' first.'); return; }
+  const existing=(state.packing&&state.packing.lines||[]).length;
+  const msg='Create a packing list from this '+label+'?\n\nCopies the customer, delivery address & items (quantities only — no prices).'
+    + (existing?'\n\nThis replaces the current packing list ('+existing+' line'+(existing===1?'':'s')+').':'');
+  if(!confirm(msg)) return;
+  state.packing={
+    ref:'', date:todayISO(),
+    party:clean(d.party),
+    orderRef:clean(d.ref),                         // link back to the source QUO/INV number
+    deliverTo:clean(d.deliverTo)||clean(d.address),
+    notes:'',
+    lines:(d.lines||[]).map(l=>({name:clean(l.name), sku:clean(l.sku), qty:int(l.qty)||0}))
+  };
+  save(); setTab('packing');
+  toast('Packing list drafted from '+(clean(d.ref)||label)+' — Print to number it.');
 }
 function savedStatus(e){ return (e.status==='won'||e.status==='lost')?e.status:'open'; }
 function setSavedStatus(id,val){ const e=(state.savedDocs||[]).find(x=>x.id===id); if(!e) return; e.status=(val==='won'||val==='lost')?val:'open'; save(); renderSavedDocs(e.kind); }
