@@ -529,7 +529,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-10-01 · treadmill-pause";
+const APP_VERSION = "2026-10-01 · treadmill-auto-advance";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -827,9 +827,19 @@ function renderDayBody(){
   body.querySelectorAll(".set-done").forEach(cb=>{
     cb.onchange = ()=>{
       const {e,s}=cb.dataset;
-      state.sessions[openDate].exercises[e].sets[s].done = cb.checked;
+      const ex = state.sessions[openDate].exercises[e];
+      ex.sets[s].done = cb.checked;
       save();
-      if(cb.checked && state.restAuto!==false) startRest();   // rest timer after a completed set
+      if(!cb.checked) return;
+      if(ex.name==="Treadmill"){
+        // no rest between treadmill sets — auto-start the next set's countdown, chaining through
+        const next = ex.sets[Number(s)+1];
+        const nmins = next ? Number(next.mins)||0 : 0;
+        if(next && nmins>0) startRest(nmins*60, "Treadmill");
+        else stopRest();   // last set (or next has no duration) — clear the timer
+      } else if(state.restAuto!==false){
+        startRest();        // rest timer after a completed non-treadmill set
+      }
     };
   });
   body.querySelectorAll("[data-del]").forEach(b=>{
