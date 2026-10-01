@@ -394,6 +394,10 @@
     #printArea td.muted{color:#999}
     #printArea .pdue{margin-top:12px; text-align:right; font-size:15px; font-weight:800}
     #printArea .pfooter{margin-top:22px; border-top:1px solid #ddd; padding-top:8px; font-size:10.5px; color:#777; text-align:center; white-space:pre-line}
+    #printArea .pqr{margin-top:8px; display:flex; justify-content:flex-end}
+    #printArea .pqr svg{width:30mm; height:30mm; display:block}
+    #printArea .psign{display:flex; gap:24px; margin-top:26px}
+    #printArea .psign .sb{flex:1; border-top:1px solid #000; padding-top:4px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:#555}
   }
   svg.bc rect{fill:#000}
 </style>
@@ -429,6 +433,7 @@
     <button id="tabPO" onclick="setTab('po')">Purchase order</button>
     <button id="tabInv" onclick="setTab('inv')">Invoice</button>
     <button id="tabOrders" onclick="setTab('orders')">Orders</button>
+    <button id="tabPacking" onclick="setTab('packing')">Packing list</button>
   </div>
 
   <!-- STOCK TAB -->
@@ -732,6 +737,67 @@
     <div id="ordList"></div>
     <div class="hint c">Track each INS stock code through <b>Ordered → Purchased → Invoiced</b>. Tap a row's status to move it on. Import your spreadsheet (keyed by INS stock code) with <b>Import CSV</b>.</div>
   </div>
+
+  <!-- PACKING LIST TAB -->
+  <div id="panePacking" hidden>
+    <div class="card pad" style="margin-bottom:12px">
+      <div class="row">
+        <div class="duo">
+          <div><label>Customer</label><input id="pkParty" list="custList" placeholder="who it's going to" autocomplete="off" oninput="packField('party',this.value)"></div>
+          <div><label>Packing list no.</label><input id="pkRef" placeholder="auto (PL-0001)" autocomplete="off" oninput="packField('ref',this.value)"></div>
+        </div>
+        <div class="duo">
+          <div><label>Date</label><input id="pkDate" type="date" oninput="packField('date',this.value)"></div>
+          <div><label>Order ref (optional)</label><input id="pkOrderRef" placeholder="e.g. PO-0004" autocomplete="off" oninput="packField('orderRef',this.value)"></div>
+        </div>
+        <div><label>Deliver to <span class="muted" style="font-weight:500">(if different)</span></label><input id="pkDeliverTo" placeholder="delivery address" autocomplete="off" oninput="packField('deliverTo',this.value)"></div>
+        <div><label>Notes</label><input id="pkNotes" placeholder="e.g. 2 boxes + 1 pallet" autocomplete="off" oninput="packField('notes',this.value)"></div>
+      </div>
+    </div>
+
+    <details class="addbox" id="pkFromOrdersBox">
+      <summary><svg class="ico sm" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg> Add lines from Orders</summary>
+      <div class="inner">
+        <div class="row">
+          <div><label>Pull order lines for</label>
+            <select id="pkPullCust" aria-label="Pick whose order lines to add"></select>
+          </div>
+          <div class="duo">
+            <div><label>Status</label>
+              <select id="pkPullStatus" aria-label="Filter order lines by status">
+                <option value="all">Any status</option>
+                <option value="ordered">Ordered</option>
+                <option value="purchased">Purchased</option>
+                <option value="invoiced">Invoiced</option>
+              </select>
+            </div>
+            <div style="align-self:end"><button class="btn full" onclick="pullPackFromOrders()">Add to packing list</button></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="addbox" id="pkAddBox">
+      <summary><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add a line by hand</summary>
+      <div class="inner">
+        <div class="row">
+          <div><label>Item</label><input id="pkName" list="pkItemOpts" placeholder="what it is" autocomplete="off"></div>
+          <div class="duo">
+            <div><label>Code / SKU</label><input id="pkSku" list="insOpts" placeholder="optional" autocomplete="off"></div>
+            <div><label>Qty</label><input id="pkQty" type="number" inputmode="numeric" step="1" min="0" value="1"></div>
+          </div>
+          <button class="btn full" onclick="addPackLine()">Add line</button>
+        </div>
+      </div>
+    </details>
+
+    <div class="syncrow" style="margin:0 0 12px">
+      <button class="btn" onclick="printPacking()">Print / PDF</button>
+      <button class="btn ghost sm" onclick="newPacking()">New packing list</button>
+    </div>
+    <div id="pkList"></div>
+    <div class="hint c">Headed <b>Safe Secure Wales</b> with a scannable <b>QR code</b> (list no., customer &amp; totals). Build it from an <b>order</b> or add lines by hand, then <b>Print / PDF</b>.</div>
+  </div>
   <datalist id="supList"></datalist>
   <datalist id="custList"></datalist>
   <datalist id="insOpts"></datalist>
@@ -740,6 +806,7 @@
   <datalist id="colourOpts"></datalist>
   <datalist id="supOpts"></datalist>
   <datalist id="locOpts"></datalist>
+  <datalist id="pkItemOpts"></datalist>
 </section>
 
 <!-- ============ SETUP VIEW ============ -->
@@ -1048,7 +1115,244 @@
 <div id="printArea"></div>
 
 <script>
-const APP_VER='v66 · 2026-09-30';
+/* ---- Inline QR Code generator (byte mode, ECL L/M/Q/H). Validated against segno + OpenCV decode. ---- */
+/* Dependency-free QR encoder (byte mode, versions 1-40, ECL L/M/Q/H).
+   Faithful port of Project Nayuki's QR Code generator (MIT). modules[y][x], x=column.
+   QR.generate(text, ecl) -> {version, level, mask, matrix:[[0/1,...],...]}. */
+(function(root){
+  var ECC = { L:0, M:1, Q:2, H:3 };            // our index
+  var ECC_FMT = { L:1, M:0, Q:3, H:2 };         // format-info value
+  // ECC codewords per block  [version][ecl]
+  var ECC_CODEWORDS_PER_BLOCK = [
+    // L, M, Q, H  (version 1..40)
+    [7,10,13,17],[10,16,22,28],[15,26,18,22],[20,18,26,16],[26,24,18,22],[18,16,24,28],[20,18,18,26],[24,22,22,26],[30,22,20,24],[18,26,24,28],
+    [20,30,28,24],[24,22,26,28],[26,22,24,22],[30,24,20,24],[22,24,30,24],[24,28,24,30],[28,28,28,28],[30,26,28,28],[28,26,26,26],[28,26,30,28],
+    [28,26,28,30],[28,28,30,24],[30,28,30,30],[30,28,30,30],[26,28,30,30],[28,28,28,30],[30,28,30,30],[30,28,30,30],[30,28,30,30],[30,28,30,30],
+    [30,28,30,30],[30,28,30,30],[30,28,30,30],[30,28,30,30],[30,28,30,30],[30,28,30,30],[30,28,30,30],[30,28,30,30],[30,28,30,30],[30,28,30,30]
+  ];
+  var NUM_ERROR_CORRECTION_BLOCKS = [
+    [1,1,1,1],[1,1,1,1],[1,1,2,2],[1,2,2,4],[1,2,4,4],[2,4,4,4],[2,4,6,5],[2,4,6,6],[2,5,8,8],[4,5,8,8],
+    [4,8,8,11],[4,9,10,11],[4,9,12,16],[4,10,16,16],[6,10,12,18],[6,10,17,16],[6,11,16,19],[6,13,18,21],[7,14,21,25],[8,16,20,25],
+    [8,17,23,25],[9,17,23,34],[9,18,25,30],[10,20,27,32],[12,21,29,35],[12,23,34,37],[12,25,34,40],[13,26,35,42],[14,28,38,45],[15,29,40,48],
+    [16,31,43,51],[17,33,45,54],[18,35,48,57],[19,37,51,60],[19,38,53,63],[20,40,56,66],[21,43,59,70],[22,45,62,74],[24,47,65,77],[25,49,68,81]
+  ];
+
+  function getNumRawDataModules(ver){
+    var result = (16*ver+128)*ver+64;
+    if(ver>=2){ var numAlign=Math.floor(ver/7)+2; result -= (25*numAlign-10)*numAlign-55; if(ver>=7) result -= 36; }
+    return result;
+  }
+  function getNumDataCodewords(ver,ecl){
+    return Math.floor(getNumRawDataModules(ver)/8)
+      - ECC_CODEWORDS_PER_BLOCK[ver-1][ecl] * NUM_ERROR_CORRECTION_BLOCKS[ver-1][ecl];
+  }
+
+  // GF(256) Reed-Solomon
+  function reedSolomonComputeDivisor(degree){
+    var result=[]; for(var i=0;i<degree-1;i++) result.push(0); result.push(1);
+    var root=1;
+    for(i=0;i<degree;i++){
+      for(var j=0;j<result.length;j++){
+        result[j]=reedSolomonMultiply(result[j],root);
+        if(j+1<result.length) result[j]^=result[j+1];
+      }
+      root=reedSolomonMultiply(root,0x02);
+    }
+    return result;
+  }
+  function reedSolomonComputeRemainder(data,divisor){
+    var result=divisor.map(function(){return 0;});
+    data.forEach(function(b){
+      var factor=b ^ result.shift(); result.push(0);
+      divisor.forEach(function(coef,i){ result[i]^=reedSolomonMultiply(coef,factor); });
+    });
+    return result;
+  }
+  function reedSolomonMultiply(x,y){
+    var z=0; for(var i=7;i>=0;i--){ z=(z<<1)^((z>>>7)*0x11D); z^=((y>>>i)&1)*x; } return z&0xFF;
+  }
+
+  function addEccAndInterleave(data,ver,ecl){
+    var numBlocks=NUM_ERROR_CORRECTION_BLOCKS[ver-1][ecl];
+    var blockEccLen=ECC_CODEWORDS_PER_BLOCK[ver-1][ecl];
+    var rawCodewords=Math.floor(getNumRawDataModules(ver)/8);
+    var numShortBlocks=numBlocks - rawCodewords % numBlocks;
+    var shortBlockLen=Math.floor(rawCodewords/numBlocks);
+    var blocks=[]; var rsDiv=reedSolomonComputeDivisor(blockEccLen);
+    for(var i=0,k=0;i<numBlocks;i++){
+      var dat=data.slice(k, k + shortBlockLen - blockEccLen + (i<numShortBlocks?0:1));
+      k+=dat.length;
+      var ecc=reedSolomonComputeRemainder(dat,rsDiv);
+      if(i<numShortBlocks) dat.push(0);
+      blocks.push(dat.concat(ecc));
+    }
+    var result=[];
+    for(i=0;i<blocks[0].length;i++){
+      blocks.forEach(function(block,j){
+        if(i!==shortBlockLen-blockEccLen || j>=numShortBlocks) result.push(block[i]);
+      });
+    }
+    return result;
+  }
+
+  function Qr(ver,ecl,dataCodewords,mask){
+    this.version=ver; this.size=ver*4+17; this.ecl=ecl;
+    this.modules=[]; this.isFunction=[];
+    for(var i=0;i<this.size;i++){ this.modules.push(new Array(this.size).fill(false)); this.isFunction.push(new Array(this.size).fill(false)); }
+    this.drawFunctionPatterns();
+    var allCodewords=addEccAndInterleave(dataCodewords,ver,ecl);
+    this.drawCodewords(allCodewords);
+    if(mask===-1){ var minPen=Infinity; for(var m=0;m<8;m++){ this.applyMask(m); this.drawFormatBits(m); var pen=this.getPenaltyScore(); if(pen<minPen){ mask=m; minPen=pen; } this.applyMask(m); } }
+    this.mask=mask; this.applyMask(mask); this.drawFormatBits(mask);
+  }
+  Qr.prototype.getModule=function(x,y){ return this.modules[y][x]; };
+  Qr.prototype.setFunctionModule=function(x,y,isDark){ this.modules[y][x]=isDark; this.isFunction[y][x]=true; };
+  Qr.prototype.drawFunctionPatterns=function(){
+    var size=this.size,i;
+    for(i=0;i<size;i++){ this.setFunctionModule(6,i,i%2===0); this.setFunctionModule(i,6,i%2===0); }
+    this.drawFinderPattern(3,3); this.drawFinderPattern(size-4,3); this.drawFinderPattern(3,size-4);
+    var alignPatPos=this.getAlignmentPatternPositions(); var numAlign=alignPatPos.length;
+    for(i=0;i<numAlign;i++) for(var j=0;j<numAlign;j++){
+      if(!((i===0&&j===0)||(i===0&&j===numAlign-1)||(i===numAlign-1&&j===0)))
+        this.drawAlignmentPattern(alignPatPos[i],alignPatPos[j]);
+    }
+    this.drawFormatBits(0); this.drawVersion();
+  };
+  Qr.prototype.drawFormatBits=function(mask){
+    var size=this.size;
+    var data=[1,0,3,2][this.ecl]<<3 | mask;   // L,M,Q,H format values
+    var rem=data; for(var i=0;i<10;i++) rem=(rem<<1) ^ ((rem>>>9)*0x537);
+    var bits=(data<<10 | rem) ^ 0x5412;
+    function getBit(x,i){ return ((x>>>i)&1)!==0; }
+    for(i=0;i<=5;i++) this.setFunctionModule(8,i,getBit(bits,i));
+    this.setFunctionModule(8,7,getBit(bits,6));
+    this.setFunctionModule(8,8,getBit(bits,7));
+    this.setFunctionModule(7,8,getBit(bits,8));
+    for(i=9;i<15;i++) this.setFunctionModule(14-i,8,getBit(bits,i));
+    for(i=0;i<8;i++) this.setFunctionModule(size-1-i,8,getBit(bits,i));
+    for(i=8;i<15;i++) this.setFunctionModule(8,size-15+i,getBit(bits,i));
+    this.setFunctionModule(8,size-8,true);
+  };
+  Qr.prototype.drawVersion=function(){
+    if(this.version<7) return;
+    var rem=this.version; for(var i=0;i<12;i++) rem=(rem<<1) ^ ((rem>>>11)*0x1F25);
+    var bits=this.version<<12 | rem;
+    for(i=0;i<18;i++){ var bit=((bits>>>i)&1)!==0; var a=this.size-11+i%3, b=Math.floor(i/3);
+      this.setFunctionModule(a,b,bit); this.setFunctionModule(b,a,bit); }
+  };
+  Qr.prototype.drawFinderPattern=function(x,y){
+    for(var dy=-4;dy<=4;dy++) for(var dx=-4;dx<=4;dx++){
+      var dist=Math.max(Math.abs(dx),Math.abs(dy)), xx=x+dx, yy=y+dy;
+      if(0<=xx&&xx<this.size&&0<=yy&&yy<this.size) this.setFunctionModule(xx,yy,dist!==2&&dist!==4);
+    }
+  };
+  Qr.prototype.drawAlignmentPattern=function(x,y){
+    for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++)
+      this.setFunctionModule(x+dx,y+dy,Math.max(Math.abs(dx),Math.abs(dy))!==1);
+  };
+  Qr.prototype.getAlignmentPatternPositions=function(){
+    if(this.version===1) return [];
+    var numAlign=Math.floor(this.version/7)+2;
+    var step=(this.version===32)?26:Math.ceil((this.version*4+4)/(numAlign*2-2))*2;
+    var result=[6]; for(var pos=this.size-7;result.length<numAlign;pos-=step) result.splice(1,0,pos);
+    return result;
+  };
+  Qr.prototype.drawCodewords=function(data){
+    var size=this.size,i=0;
+    for(var right=size-1;right>=1;right-=2){
+      if(right===6) right=5;
+      for(var vert=0;vert<size;vert++){
+        for(var j=0;j<2;j++){
+          var x=right-j; var upward=((right+1)&2)===0; var y=upward?size-1-vert:vert;
+          if(!this.isFunction[y][x] && i<data.length*8){
+            this.modules[y][x]=((data[i>>>3]>>>(7-(i&7)))&1)!==0; i++;
+          }
+        }
+      }
+    }
+  };
+  Qr.prototype.applyMask=function(mask){
+    for(var y=0;y<this.size;y++) for(var x=0;x<this.size;x++){
+      var invert;
+      switch(mask){
+        case 0: invert=(x+y)%2===0; break;
+        case 1: invert=y%2===0; break;
+        case 2: invert=x%3===0; break;
+        case 3: invert=(x+y)%3===0; break;
+        case 4: invert=(Math.floor(x/3)+Math.floor(y/2))%2===0; break;
+        case 5: invert=x*y%2 + x*y%3 ===0; break;
+        case 6: invert=(x*y%2 + x*y%3)%2===0; break;
+        case 7: invert=((x+y)%2 + x*y%3)%2===0; break;
+      }
+      if(!this.isFunction[y][x] && invert) this.modules[y][x]=!this.modules[y][x];
+    }
+  };
+  Qr.prototype.getPenaltyScore=function(){
+    var size=this.size,result=0,x,y;
+    for(y=0;y<size;y++){ var runColor=false,runX=0,runHistory=[0,0,0,0,0,0,0];
+      for(x=0;x<size;x++){ if(this.modules[y][x]===runColor){ runX++; if(runX===5) result+=3; else if(runX>5) result++; }
+        else { this.finderPenaltyAddHistory(runX,runHistory); if(!runColor) result+=this.finderPenaltyCountPatterns(runHistory)*40; runColor=this.modules[y][x]; runX=1; } }
+      result+=this.finderPenaltyTerminateAndCount(runColor,runX,runHistory)*40;
+    }
+    for(x=0;x<size;x++){ var rc=false,ry=0,rh=[0,0,0,0,0,0,0];
+      for(y=0;y<size;y++){ if(this.modules[y][x]===rc){ ry++; if(ry===5) result+=3; else if(ry>5) result++; }
+        else { this.finderPenaltyAddHistory(ry,rh); if(!rc) result+=this.finderPenaltyCountPatterns(rh)*40; rc=this.modules[y][x]; ry=1; } }
+      result+=this.finderPenaltyTerminateAndCount(rc,ry,rh)*40;
+    }
+    for(y=0;y<size-1;y++) for(x=0;x<size-1;x++){ var c=this.modules[y][x];
+      if(c===this.modules[y][x+1]&&c===this.modules[y+1][x]&&c===this.modules[y+1][x+1]) result+=3; }
+    var dark=0; for(y=0;y<size;y++) for(x=0;x<size;x++) if(this.modules[y][x]) dark++;
+    var total=size*size;
+    var k=Math.ceil(Math.abs(dark*20-total*10)/total)-1; result+=k*10;
+    return result;
+  };
+  Qr.prototype.finderPenaltyCountPatterns=function(rh){
+    var n=rh[1];
+    var core=n>0 && rh[2]===n && rh[3]===n*3 && rh[4]===n && rh[5]===n;
+    return (core && rh[0]>=n*4 && rh[6]>=n ?1:0) + (core && rh[6]>=n*4 && rh[0]>=n ?1:0);
+  };
+  Qr.prototype.finderPenaltyTerminateAndCount=function(currentRunColor,currentRunLength,rh){
+    if(currentRunColor){ this.finderPenaltyAddHistory(currentRunLength,rh); currentRunLength=0; }
+    currentRunLength+=this.size; this.finderPenaltyAddHistory(currentRunLength,rh);
+    return this.finderPenaltyCountPatterns(rh);
+  };
+  Qr.prototype.finderPenaltyAddHistory=function(currentRunLength,rh){
+    if(rh[0]===0) currentRunLength+=this.size;
+    rh.pop(); rh.unshift(currentRunLength);
+  };
+
+  function encodeText(text,eclName,forceMask){
+    var ecl=ECC[eclName];
+    // utf-8 bytes
+    var bytes=[]; for(var i=0;i<text.length;i++){ var c=text.charCodeAt(i);
+      if(c<0x80) bytes.push(c);
+      else if(c<0x800){ bytes.push(0xc0|(c>>6),0x80|(c&0x3f)); }
+      else { bytes.push(0xe0|(c>>12),0x80|((c>>6)&0x3f),0x80|(c&0x3f)); } }
+    // choose version
+    var ver=0;
+    for(var v=1;v<=40;v++){ var cap=getNumDataCodewords(v,ecl)*8; var cci=(v<=9)?8:(v<=26?16:16);
+      var need=4+cci+bytes.length*8; if(need<=cap){ ver=v; break; } }
+    if(!ver) throw new Error('data too long');
+    var cci=(ver<=9)?8:16;
+    // build bit buffer
+    var bb=[];
+    function append(val,len){ for(var k=len-1;k>=0;k--) bb.push((val>>>k)&1); }
+    append(4,4); append(bytes.length,cci);
+    for(i=0;i<bytes.length;i++) append(bytes[i],8);
+    var dataCap=getNumDataCodewords(ver,ecl)*8;
+    append(0,Math.min(4,dataCap-bb.length));
+    append(0,(8-bb.length%8)%8);
+    for(var pad=0xEC;bb.length<dataCap;pad^=0xEC^0x11) append(pad,8);
+    var dataCodewords=[]; for(i=0;i<bb.length;i+=8){ var b=0; for(var q=0;q<8;q++) b=(b<<1)|bb[i+q]; dataCodewords.push(b); }
+    var qr=new Qr(ver,ecl,dataCodewords,(forceMask==null?-1:forceMask));
+    var matrix=qr.modules.map(function(row){ return row.map(function(d){ return d?1:0; }); });
+    return {version:ver, level:eclName, mask:qr.mask, matrix:matrix};
+  }
+
+  root.QR={ generate:encodeText };
+})(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
+
+const APP_VER='v67 · 2026-10-01';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5NiIgZm9udC1zaXplPSI2NCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+SU5TLU4tT1VUUzwvdGV4dD4gPHRleHQgeD0iMTkzIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMjIuNSIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzVFNzY5MCIgbGV0dGVyLXNwYWNpbmc9IjMuNCI+RE9PUiBIQVJEV0FSRSBTT0xVVElPTlM8L3RleHQ+IDwvc3ZnPg==";  // Ins-N-Outs default letterhead logo (used until a custom logo is uploaded)
 const $=id=>document.getElementById(id);
 const money=n=>'£'+(+n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1106,6 +1410,11 @@ function normalize(s){
     status:['ordered','purchased','invoiced'].includes(o.status)?o.status:'ordered',
     date:clean(o.date)||'', notes:clean(o.notes), savedAt:+o.savedAt||Date.now()
   })) : [];
+  s.seqPack=int(s.seqPack);
+  s.packing=(s.packing&&typeof s.packing==='object')?s.packing:{};
+  s.packing={ ref:clean(s.packing.ref), date:clean(s.packing.date), party:clean(s.packing.party),
+    orderRef:clean(s.packing.orderRef), deliverTo:clean(s.packing.deliverTo), notes:clean(s.packing.notes),
+    lines:Array.isArray(s.packing.lines)?s.packing.lines.map(l=>({name:clean(l.name),sku:clean(l.sku),qty:int(l.qty)||0})):[] };
   s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
   s.catalogue=Array.isArray(s.catalogue)?s.catalogue.map(c=>({          // price list for quotes/orders (not held stock)
     id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
@@ -1146,6 +1455,11 @@ function fillOptionLists(){
     (state.catalogue||[]).forEach(c=>{ if(clean(c.barcode)) s.add(clean(c.barcode)); if(clean(c.sku)) s.add(clean(c.sku)); });
     (state.orders||[]).forEach(o=>{ if(clean(o.ins)) s.add(clean(o.ins)); });
     io.innerHTML=[...s].sort((a,b)=>a.localeCompare(b)).map(c=>`<option value="${escapeHtml(c)}">`).join(''); }
+  const pk=$('pkItemOpts'); if(pk){ const s=new Set();
+    state.items.forEach(i=>{ if(clean(i.name)) s.add(clean(i.name)); });
+    (state.catalogue||[]).forEach(c=>{ if(clean(c.name)) s.add(clean(c.name)); });
+    (state.orders||[]).forEach(o=>{ if(clean(o.desc)) s.add(clean(o.desc)); });
+    pk.innerHTML=[...s].sort((a,b)=>a.localeCompare(b)).map(c=>`<option value="${escapeHtml(c)}">`).join(''); }
 }
 function suppliers(){ return [...new Set(state.items.map(i=>clean(i.supplier)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function renderCatChips(){
@@ -1284,6 +1598,7 @@ function setTab(t){
   $('tabPO').classList.toggle('on', t==='po');
   $('tabInv').classList.toggle('on', t==='inv');
   $('tabOrders').classList.toggle('on', t==='orders');
+  $('tabPacking').classList.toggle('on', t==='packing');
   $('paneStock').hidden=t!=='stock';
   $('paneCatalogue').hidden=t!=='catalogue';
   $('paneReports').hidden=t!=='reports';
@@ -1291,6 +1606,7 @@ function setTab(t){
   $('panePO').hidden=t!=='po';
   $('paneInv').hidden=t!=='inv';
   $('paneOrders').hidden=t!=='orders';
+  $('panePacking').hidden=t!=='packing';
   render();
 }
 function cycleSort(){
@@ -1337,6 +1653,7 @@ function render(){
   if(tab==='po'){ renderDoc('po'); return; }
   if(tab==='inv'){ renderDoc('inv'); return; }
   if(tab==='orders'){ renderOrders(); return; }
+  if(tab==='packing'){ renderPacking(); return; }
 
   const list=visibleItems();
   $('listPill').textContent=list.length+' item'+(list.length===1?'':'s');
@@ -2430,6 +2747,99 @@ function renderOrders(){
     </div>`;
   }).join('');
 }
+/* ---------- PACKING LIST ---------- */
+function packField(key,val){ state.packing[key]=clean(val); save(); }
+function newPacking(){
+  if((state.packing.lines||[]).length && !confirm('Start a new packing list? This clears the current lines.')) return;
+  state.packing={ref:'',date:'',party:'',orderRef:'',deliverTo:'',notes:'',lines:[]};
+  save(); renderPacking();
+}
+function addPackLine(){
+  const name=clean($('pkName').value), sku=clean($('pkSku').value), qty=int($('pkQty').value)||0;
+  if(!name && !sku){ toast('Add an item name or code first.'); return; }
+  state.packing.lines=state.packing.lines||[];
+  state.packing.lines.push({name:name||sku, sku, qty:qty||1});
+  $('pkName').value=''; $('pkSku').value=''; $('pkQty').value='1';
+  save(); renderPacking(); $('pkName').focus();
+}
+function removePackLine(i){ state.packing.lines.splice(i,1); save(); renderPacking(); }
+function setPackQty(i,v){ const n=int(v); if(state.packing.lines[i]){ state.packing.lines[i].qty=n>0?n:0; save(); renderPacking(); } }
+function pullPackFromOrders(){
+  const cust=$('pkPullCust').value, st=$('pkPullStatus').value;
+  let rows=(state.orders||[]).slice();
+  if(cust!=='__all__') rows=rows.filter(o=>clean(o.customer)===cust);
+  if(st!=='all') rows=rows.filter(o=>o.status===st);
+  if(!rows.length){ toast('No matching order lines.'); return; }
+  state.packing.lines=state.packing.lines||[];
+  rows.forEach(o=>state.packing.lines.push({name:clean(o.desc)||clean(o.ins)||'(item)', sku:clean(o.ins), qty:int(o.qty)||1}));
+  if(cust!=='__all__' && !clean(state.packing.party)) state.packing.party=cust;
+  save(); renderPacking(); toast('Added '+rows.length+' line'+(rows.length===1?'':'s')+' from Orders.');
+}
+function renderPacking(){
+  const p=state.packing||{};
+  const set=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value=v||''; };
+  set('pkParty',p.party); set('pkRef',p.ref); set('pkDate',p.date); set('pkOrderRef',p.orderRef); set('pkDeliverTo',p.deliverTo); set('pkNotes',p.notes);
+  const sel=$('pkPullCust');
+  if(sel){ const custs=[...new Set((state.orders||[]).map(o=>clean(o.customer)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const cur=sel.value;
+    sel.innerHTML='<option value="__all__">— All order lines —</option>'+custs.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    if(cur) sel.value=cur; }
+  const box=$('pkList'); if(!box) return;
+  const lines=p.lines||[];
+  if(!lines.length){ box.innerHTML='<div class="assign-empty" style="padding:16px 0">No lines yet — add from <b>Orders</b> or by hand above.</div>'; return; }
+  const totalUnits=lines.reduce((s,l)=>s+(int(l.qty)||0),0);
+  box.innerHTML='<div class="listhead" style="margin:0 0 10px"><span class="ttl">Lines</span><span class="chip2">'+lines.length+' line'+(lines.length===1?'':'s')+' · '+totalUnits+' unit'+(totalUnits===1?'':'s')+'</span></div>'
+    + lines.map((l,i)=>`<div class="ordrow">
+        <div class="ord-main">
+          <div class="ord-top"><span class="ord-ins">${escapeHtml(clean(l.name)||'—')}</span></div>
+          ${clean(l.sku)?`<div class="ord-sub">#${escapeHtml(l.sku)}</div>`:''}
+        </div>
+        <div class="ord-acts">
+          <input type="number" min="0" step="1" value="${int(l.qty)||0}" style="width:66px;text-align:right" onchange="setPackQty(${i},this.value)" aria-label="Quantity">
+          <button class="btn ghost sm" onclick="removePackLine(${i})" aria-label="Remove">✕</button>
+        </div>
+      </div>`).join('');
+}
+function qrSVG(text, ecl){
+  let r; try{ r=(window.QR||QR).generate(text, ecl||'M'); }catch(e){ return '<div class="paddr">[QR unavailable]</div>'; }
+  const m=r.matrix, n=m.length, q=4, dim=n+q*2;
+  let rects='';
+  for(let y=0;y<n;y++){ let x=0; while(x<n){ if(m[y][x]){ let w=1; while(x+w<n && m[y][x+w]) w++; rects+='<rect x="'+(x+q)+'" y="'+(y+q)+'" width="'+w+'" height="1"/>'; x+=w; } else x++; } }
+  return '<svg viewBox="0 0 '+dim+' '+dim+'" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect width="'+dim+'" height="'+dim+'" fill="#fff"/><g fill="#000">'+rects+'</g></svg>';
+}
+function printPacking(){
+  const p=state.packing||{};
+  const lines=(p.lines||[]).filter(l=>clean(l.name)||clean(l.sku));
+  if(!lines.length){ toast('Add at least one line first.'); return; }
+  const fmtDate=iso=> iso ? new Date(iso+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '';
+  if(!clean(p.ref)){ state.seqPack=(int(state.seqPack)||0)+1; p.ref='PL-'+String(state.seqPack).padStart(4,'0'); save(); renderPacking(); }
+  const dateStr = p.date ? fmtDate(p.date) : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const biz=state.biz||{};
+  const totalUnits=lines.reduce((s,l)=>s+(int(l.qty)||0),0);
+  const BRAND='Safe Secure Wales';
+  const payload=BRAND+'\nPacking '+p.ref+'\nTo: '+(clean(p.party)||'—')+'\n'+lines.length+' items / '+totalUnits+' units\n'+(p.date||new Date().toISOString().slice(0,10));
+  const logoImg = clean(biz.logo) ? '<img class="plogo" src="'+clean(biz.logo)+'" alt="">' : '';   // custom logo only — default is Ins-N-Outs
+  let meta='<tr><td>Number</td><th>'+escapeHtml(p.ref)+'</th></tr><tr><td>Date</td><th>'+escapeHtml(dateStr)+'</th></tr>';
+  if(clean(p.orderRef)) meta+='<tr><td>Order ref</td><th>'+escapeHtml(p.orderRef)+'</th></tr>';
+  const contact=[];
+  if(clean(biz.phone)||clean(biz.email)) contact.push([clean(biz.phone)?'Tel '+clean(biz.phone):'', clean(biz.email)].filter(Boolean).join('  ·  '));
+  let html='<div class="plet"><div class="pfrom">'+logoImg+'<div class="pbiz">'+escapeHtml(BRAND)+'</div>'
+    +(clean(biz.address)?'<div class="paddr">'+escapeHtml(biz.address)+'</div>':'')
+    +contact.map(c=>'<div class="paddr">'+escapeHtml(c)+'</div>').join('')
+    +'</div>'
+    +'<div class="pdoc"><div class="pdtitle">Packing List</div><table class="pmeta2">'+meta+'</table><div class="pqr">'+qrSVG(payload,'M')+'</div></div></div>';
+  html+='<div class="pparties"><div class="pparty"><div class="lbl">Deliver to</div><div class="nm">'+escapeHtml(clean(p.party)||'—')+'</div>'+(clean(p.deliverTo)?'<div>'+escapeHtml(p.deliverTo)+'</div>':'')+'</div></div>';
+  let rows='';
+  lines.forEach((l,idx)=>{ rows+='<tr><td class="n muted">'+(idx+1)+'</td><td class="n">'+(int(l.qty)||0)+'</td><td>'+escapeHtml(l.name)+'</td><td>'+escapeHtml(l.sku||'')+'</td><td></td></tr>'; });
+  rows+='<tr class="totrow"><td class="lbl"></td><td class="n">'+totalUnits+'</td><td class="lbl" colspan="2">'+lines.length+' line'+(lines.length===1?'':'s')+'</td><td></td></tr>';
+  html+='<table><thead><tr><th class="n">#</th><th class="n">Qty</th><th>Item</th><th>Code / SKU</th><th class="n" style="width:14%">Checked</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  if(clean(p.notes)) html+='<div class="docnotes"><b>Notes:</b> '+escapeHtml(p.notes)+'</div>';
+  html+='<div class="psign"><div class="sb">Packed by</div><div class="sb">Received by</div><div class="sb">Date</div></div>';
+  html+='<div class="pfooter">'+escapeHtml(BRAND)+(clean(biz.name)?'  ·  '+escapeHtml(biz.name):'')+'  —  scan the QR to confirm '+escapeHtml(p.ref)+'</div>';
+  const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
+  setTimeout(()=>window.print(),80);
+}
+
 const ORD_ALIAS={
   ins:['ins','stock code','stockcode','stock no','stock','ins code','ins number','code','ref'],
   desc:['description','desc','product','name','item'],
