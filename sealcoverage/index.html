@@ -114,7 +114,7 @@
   .indep:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
   /* Result tiles */
-  .results { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2px; }
+  .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 2px; }
   .rtile { background: var(--panel-in); border: 1px solid var(--line); border-radius: 4px; padding: 13px 14px; }
   .rlab { font-family: var(--mono); font-weight: 500; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin-bottom: 9px; }
   .rmet { font-family: var(--mono); font-weight: 700; font-size: 26px; line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; }
@@ -251,15 +251,15 @@
   function defaults() {
     return {
       products: [
-        { id:"25x2", name:"25 × 2 TFPS", badge:"100M ROLL", rollLen:100, unit:"rolls", qty:0,
+        { id:"25x2", name:"25 × 2 TFPS", badge:"100M ROLL", rollLen:100, unit:"rolls", qty:0, price:112.56,
           edges:[ {lab:"Leaf width (mm)", size:1000, count:0}, {lab:"Leaf height (mm)", size:2100, count:1} ] },
-        { id:"20x2", name:"20 × 2 TFPS", badge:"200M ROLL", rollLen:200, unit:"rolls", qty:0,
+        { id:"20x2", name:"20 × 2 TFPS", badge:"200M ROLL", rollLen:200, unit:"rolls", qty:0, price:288.72,
           edges:[ {lab:"Leaf height (mm)", size:2100, count:1} ] },
-        { id:"flood", name:"Flood Seal", badge:"6305/001 · 50M ROLL", rollLen:50, unit:"rolls", qty:0,
+        { id:"flood", name:"Flood Seal", badge:"6305/001 · 50M ROLL", rollLen:50, unit:"rolls", qty:0, price:126.10,
           edges:[ {lab:"Leaf width (mm)", size:1300, count:2}, {lab:"Leaf height (mm)", size:3000, count:2} ] },
-        { id:"15x2", name:"15 × 2 TFPS", badge:"200M ROLL", rollLen:200, unit:"rolls", qty:0, syncQty:true,
+        { id:"15x2", name:"15 × 2 TFPS", badge:"200M ROLL", rollLen:200, unit:"rolls", qty:0, price:221.76, syncQty:true,
           edges:[ {lab:"Leaf height (mm)", size:2100, count:1} ] },
-        { id:"flipper", name:"Flipper TFPS", badge:"2.1M LENGTHS", rollLen:2.1, unit:"lengths", qty:0, syncQty:true,
+        { id:"flipper", name:"Flipper TFPS", badge:"2.1M LENGTHS", rollLen:2.1, unit:"lengths", qty:0, price:2.21, syncQty:true,
           edges:[ {lab:"Leaf width (mm)", size:1000, count:2} ] }
       ]
     };
@@ -271,7 +271,14 @@
       var raw = localStorage.getItem(LS);
       if (raw) {
         var p = JSON.parse(raw);
-        if (p && p.products && p.products.length) return p;
+        if (p && p.products && p.products.length) {
+          // backfill prices for state saved before prices existed
+          var dp = defaults().products;
+          p.products.forEach(function (prod) {
+            if (prod.price == null) { var d = dp.filter(function (x){ return x.id === prod.id; })[0]; prod.price = d ? d.price : 0; }
+          });
+          return p;
+        }
       }
     } catch (e) {}
     return defaults();
@@ -297,9 +304,16 @@
     var q = effQty(p);
     var metres = total * q / 1000;
     var exact = p.rollLen ? metres / p.rollLen : 0;
-    var units = Math.ceil(exact - 1e-9); if (units < 0) units = 0;
-    return { per: per, extra: extra, total: total, metres: metres, exact: exact, units: units };
+    var units = Math.ceil(exact - 1e-9); if (!(units > 0)) units = 0;
+    var price = p.price || 0;                       // price per roll/length
+    var perM = p.rollLen ? price / p.rollLen : 0;   // price per metre
+    var orderCost = units * price;                  // whole rolls/lengths bought
+    var matCost = metres * perM;                     // value of metres actually used
+    return { per: per, extra: extra, total: total, metres: metres, exact: exact, units: units,
+             price: price, perM: perM, orderCost: orderCost, matCost: matCost };
   }
+  function money(n) { return "£" + fmt((n || 0) + 0, 2); }
+  function perMetre(n) { return "£" + fmt((n || 0) + 0, 4) + " /m"; }
   function fmt(n, dp) { dp = dp || 0; return (Math.round(n * Math.pow(10,dp)) / Math.pow(10,dp)).toLocaleString(undefined, {minimumFractionDigits:dp, maximumFractionDigits:dp}); }
 
   function leafSVG(p) {
@@ -349,22 +363,33 @@
       var card = document.createElement("div");
       card.className = "card";
       card.dataset.pid = p.id;
+      var unitWord = p.unit === "lengths" ? "length" : "roll";
+      var priceBlock =
+        '<div class="edge" style="grid-template-columns:1fr">' +
+          '<div><div class="flab">Price per ' + unitWord + ' (£)</div>' +
+            '<input class="in" type="number" min="0" step="0.01" inputmode="decimal" value="' + (p.price || 0) +
+              '" data-p="'+pi+'" data-f="price" aria-label="'+p.name+' price per '+unitWord+'"></div>' +
+        '</div>';
+
       card.innerHTML =
         '<div class="chead">' +
           '<div><span class="badge">' + p.badge + '</span><div class="cname">' + p.name + '</div></div>' +
           leafSVG(p) +
         '</div>' +
         edgesHtml +
+        priceBlock +
         '<div class="sep"></div>' +
         '<div class="calc">' +
           '<div class="crow"><span class="lbl">Per doorset</span><span class="val o-per">' + fmt(c.per) + '<i>mm</i></span></div>' +
           '<div class="crow"><span class="lbl">+5% extra</span><span class="val o-extra">' + fmt(c.extra) + '<i>mm</i></span></div>' +
           '<div class="crow total"><span class="lbl">Total per doorset</span><span class="val o-total">' + fmt(c.total) + '<i>mm</i></span></div>' +
+          '<div class="crow"><span class="lbl">Price / metre</span><span class="val o-perm">' + perMetre(c.perM) + '</span></div>' +
         '</div>' +
         qtyBlock +
         '<div class="results">' +
           '<div class="rtile"><div class="rlab">Metres to order</div><div class="rmet o-met">' + fmt(c.metres,2) + '</div></div>' +
           '<div class="rtile"><div class="rlab">' + unitLabel + '</div><div class="rnum o-num">' + c.units + '</div><div class="rexact o-exact">exact: ' + fmt(c.exact,2) + '</div></div>' +
+          '<div class="rtile"><div class="rlab">Order cost</div><div class="rnum o-cost">' + money(c.orderCost) + '</div><div class="rexact o-matx">material: ' + money(c.matCost) + '</div></div>' +
         '</div>';
       cardsEl.appendChild(card);
     });
@@ -378,9 +403,12 @@
       set(card, ".o-per", fmt(c.per) + '<i>mm</i>', true);
       set(card, ".o-extra", fmt(c.extra) + '<i>mm</i>', true);
       set(card, ".o-total", fmt(c.total) + '<i>mm</i>', true);
+      set(card, ".o-perm", perMetre(c.perM));
       set(card, ".o-met", fmt(c.metres,2));
       set(card, ".o-num", String(c.units));
       set(card, ".o-exact", "exact: " + fmt(c.exact,2));
+      set(card, ".o-cost", money(c.orderCost));
+      set(card, ".o-matx", "material: " + money(c.matCost));
       if (p.syncQty) {
         var qi = card.querySelector(".qtyin");
         if (qi && document.activeElement !== qi) qi.value = mq;
@@ -399,6 +427,7 @@
     var p = state.products[+el.dataset.p]; var f = el.dataset.f;
     if (f === "size" || f === "count") p.edges[+el.dataset.e][f] = clampNum(el.value);
     else if (f === "qty") p.qty = clampNum(el.value);
+    else if (f === "price") p.price = clampNum(el.value);
     save(); recompute();
   });
   cardsEl.addEventListener("click", function (e) {
