@@ -845,8 +845,7 @@ function exportCsv(){
   const cell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const csv="﻿"+[cols.map(c=>cell(c[0])).join(",")].concat(shown.map(r=>cols.map(c=>cell(c[1](r))).join(","))).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`incidents_${todayISO()}.csv`;
-  document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+  bkSaveFile(`officereport_incidents_${todayISO()}.csv`, blob);
 }
 
 /* ================= Appearance (per-device) ================= */
@@ -1093,8 +1092,7 @@ function bind(){
 
   // this-device buttons
   $("#exportJson").onclick=()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`officereport_backup_${todayISO()}.json`;
-    document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(a.href); };
+    bkSaveFile(`officereport_backup_${todayISO()}.json`, blob); };
   $("#importJsonBtn").onclick=()=>$("#importJson").click();
   $("#importJson").onchange=(e)=>{ const file=e.target.files[0]; if(!file) return;
     const rd=new FileReader(); rd.onload=()=>{ try{ const obj=JSON.parse(rd.result); state=normalise(obj); touch(); refreshAll(); toast("Backup imported"); }catch(err){ alert("Invalid backup file."); } }; rd.readAsText(file); };
@@ -1219,6 +1217,29 @@ document.addEventListener("DOMContentLoaded",bind);
   g('bk-file').onchange=function(){ restore(this.files[0]); this.value=''; };
   g('bk-close').onclick=function(){ g('bk-panel').hidden=true; };
 })();
+</script>
+<script>
+/* Save an exported file into the backup folder chosen on the My Apps hub
+   (shared IndexedDB "hub-backup", Chrome/Edge desktop); otherwise download it. */
+function bkSaveFile(name, blob){
+  function dl(){ var a=document.createElement('a'), u=URL.createObjectURL(blob); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); },4000); }
+  function note(msg){ var t=document.createElement('div'); t.textContent=msg; t.style.cssText='position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:99999;background:rgba(17,17,17,.85);color:#fff;padding:10px 16px;border-radius:12px;font:600 13px/1.4 system-ui,sans-serif;max-width:88%;text-align:center;pointer-events:none'; document.body.appendChild(t); setTimeout(function(){ t.remove(); },3500); }
+  return new Promise(function(res){
+    if(typeof window.showDirectoryPicker!=='function'||!window.indexedDB) return res('');
+    var o; try{ o=indexedDB.open('hub-backup',1); }catch(e){ return res(''); }
+    o.onupgradeneeded=function(){ o.result.createObjectStore('kv'); };
+    o.onerror=function(){ res(''); };
+    o.onsuccess=function(){ try{ var q=o.result.transaction('kv').objectStore('kv').get('dir');
+      q.onerror=function(){ res(''); };
+      q.onsuccess=function(){ var h=q.result, opt={mode:'readwrite'}; if(!h) return res('');
+        h.queryPermission(opt).then(function(p){ return p==='granted'?p:h.requestPermission(opt); }).then(function(p){
+          if(p!=='granted') return '';
+          return h.getFileHandle(name,{create:true}).then(function(f){ return f.createWritable(); }).then(function(w){
+            return w.write(blob).then(function(){ return w.close(); }); }).then(function(){ return h.name; });
+        }).then(res,function(){ res(''); }); };
+    }catch(e){ res(''); } };
+  }).then(function(dir){ if(dir) note('\uD83D\uDCC1 Saved to \u201c'+dir+'\u201d as '+name); else dl(); return dir; });
+}
 </script>
 </body>
 </html>

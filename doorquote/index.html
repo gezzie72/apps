@@ -766,8 +766,7 @@ function exportCatalogueCSV(){
     rows.push([c.desc||"", c.code||"", c.finish||"", "", (Number(c.cost)||0), (Number(c.unit)||0), "", "", "", "", ""]);
   });
   const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
-  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download="door-quote-catalogue-"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+  bkSaveFile("door-quote-catalogue-"+new Date().toISOString().slice(0,10)+".csv", new Blob([csv],{type:"text/csv"}));
   toast("Catalogue exported ("+catalogue.length+" items)");
 }
 function openCatalogue(){
@@ -1397,11 +1396,7 @@ function exportBackup(){
   const payload = { app:"door-hardware-quote", version:5, exported:new Date().toISOString(),
                     catalogue, quote, savedQuotes, customers, company, seq:nextSeq };
   const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = `door-quote-backup-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  bkSaveFile(`door-quote-backup-${new Date().toISOString().slice(0,10)}.json`, blob);
   try{ localStorage.setItem(LS_LASTBACKUP, String(Date.now())); }catch(e){}
   try{ localStorage.removeItem(LS_BACKUP_SNOOZE); }catch(e){}
   checkBackupReminder();
@@ -2115,6 +2110,29 @@ if('serviceWorker' in navigator){
   g('bk-file').onchange=function(){ restore(this.files[0]); this.value=''; };
   g('bk-close').onclick=function(){ g('bk-panel').hidden=true; };
 })();
+</script>
+<script>
+/* Save an exported file into the backup folder chosen on the My Apps hub
+   (shared IndexedDB "hub-backup", Chrome/Edge desktop); otherwise download it. */
+function bkSaveFile(name, blob){
+  function dl(){ var a=document.createElement('a'), u=URL.createObjectURL(blob); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); },4000); }
+  function note(msg){ var t=document.createElement('div'); t.textContent=msg; t.style.cssText='position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:99999;background:rgba(17,17,17,.85);color:#fff;padding:10px 16px;border-radius:12px;font:600 13px/1.4 system-ui,sans-serif;max-width:88%;text-align:center;pointer-events:none'; document.body.appendChild(t); setTimeout(function(){ t.remove(); },3500); }
+  return new Promise(function(res){
+    if(typeof window.showDirectoryPicker!=='function'||!window.indexedDB) return res('');
+    var o; try{ o=indexedDB.open('hub-backup',1); }catch(e){ return res(''); }
+    o.onupgradeneeded=function(){ o.result.createObjectStore('kv'); };
+    o.onerror=function(){ res(''); };
+    o.onsuccess=function(){ try{ var q=o.result.transaction('kv').objectStore('kv').get('dir');
+      q.onerror=function(){ res(''); };
+      q.onsuccess=function(){ var h=q.result, opt={mode:'readwrite'}; if(!h) return res('');
+        h.queryPermission(opt).then(function(p){ return p==='granted'?p:h.requestPermission(opt); }).then(function(p){
+          if(p!=='granted') return '';
+          return h.getFileHandle(name,{create:true}).then(function(f){ return f.createWritable(); }).then(function(w){
+            return w.write(blob).then(function(){ return w.close(); }); }).then(function(){ return h.name; });
+        }).then(res,function(){ res(''); }); };
+    }catch(e){ res(''); } };
+  }).then(function(dir){ if(dir) note('\uD83D\uDCC1 Saved to \u201c'+dir+'\u201d as '+name); else dl(); return dir; });
+}
 </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 /* Quality Report service worker - offline app shell, network-first so updates land. */
-const CACHE = "qualityreport-v6";
+const CACHE = "qualityreport-v7";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{

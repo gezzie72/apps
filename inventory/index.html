@@ -1834,7 +1834,7 @@ function exportCSV(){
   list.forEach(i=>rows.push([i.name,i.sku,i.colour,i.barcode,i.category,i.supplier,i.location,i.qty,i.reorder,i.cost,i.price,(i.qty*i.cost).toFixed(2),statusOf(i),i.notes]));
   const csv=rows.map(r=>r.map(c=>`"${(c==null?'':c).toString().replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob([csv],{type:'text/csv'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventory-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  bkSaveFile('inventory-'+new Date().toISOString().slice(0,10)+'.csv', blob);
   $('shareDlg').close();
 }
 
@@ -2035,7 +2035,7 @@ function downloadCatalogueListTemplate(){
   const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier','Barcode'];
   const example=['CISA C2000 Cylinder (example row)','CIS-C2000','Satin Chrome','Cylinders','8.50','14.00','LockCo','5012345678900'];
   const csv=[header,example].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='catalogue-template.csv'; a.click();
+  bkSaveFile('catalogue-template.csv', new Blob([csv],{type:'text/csv'}));
 }
 function clearCatalogue(){
   if(!(state.catalogue||[]).length){ toast('Catalogue is already empty.'); return; }
@@ -2094,7 +2094,7 @@ function exportCatalogueCSV(){
   const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier','Barcode'];
   const rows=[header].concat(list.map(c=>[c.name,c.sku,c.colour,c.category,(num(c.cost)||0).toFixed(2),(num(c.price)||0).toFixed(2),c.supplier,c.barcode]));
   const csv=rows.map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='catalogue-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  bkSaveFile('catalogue-'+new Date().toISOString().slice(0,10)+'.csv', new Blob([csv],{type:'text/csv'}));
   toast('Exported '+list.length+' item'+(list.length===1?'':'s')+'.');
 }
 function printCatalogue(){
@@ -2267,7 +2267,7 @@ function downloadCatalogueTemplate(){
   const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier','Qty','Reorder','Location','Barcode'];
   const example=['M6 x 20 bolt (example row)','B0002','Zinc','Fixings','2.24','4.00','BoltCo','100','20','Bay A1',''];
   const csv=[header,example].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='catalogue-template.csv'; a.click();
+  bkSaveFile('catalogue-template.csv', new Blob([csv],{type:'text/csv'}));
 }
 function importCatalogueCSV(file){
   if(!file) return;
@@ -2985,7 +2985,7 @@ function downloadOrdersTemplate(){
   const header=['INS stock code','Description','Customer','Supplier','Qty','Cost','Sale price','Status'];
   const example=['INS-0001','CISA C2000 40mm Cylinder','J. Smith Builders','LockCo','2','8.50','14.00','ordered'];
   const csv=[header,example].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='orders-template.csv'; a.click();
+  bkSaveFile('orders-template.csv', new Blob([csv],{type:'text/csv'}));
 }
 function exportOrdersCSV(){
   const list=state.orders||[];
@@ -2993,7 +2993,7 @@ function exportOrdersCSV(){
   const header=['INS stock code','Description','Customer','Supplier','Qty','Cost','Sale price','Status','Date'];
   const rows=[header].concat(list.map(o=>[o.ins,o.desc,o.customer,o.supplier,int(o.qty)||0,(num(o.cost)||0).toFixed(2),(num(o.price)||0).toFixed(2),o.status,o.date]));
   const csv=rows.map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='orders-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  bkSaveFile('orders-'+new Date().toISOString().slice(0,10)+'.csv', new Blob([csv],{type:'text/csv'}));
   toast('Exported '+list.length+' line'+(list.length===1?'':'s')+'.');
 }
 function renderSetup(){ renderSync(); renderAppearance(); renderLastBackup(); fillBiz(); const cc=$('catCount'); if(cc) cc.textContent=(state.catalogue||[]).length;
@@ -3356,6 +3356,29 @@ if(GH.connected) syncPull(false,true).catch(()=>{});
   function boot(){ run(); try{ new MutationObserver(run).observe(document.body,{childList:true,subtree:true}); }catch(e){} }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();
+</script>
+<script>
+/* Save an exported file into the backup folder chosen on the My Apps hub
+   (shared IndexedDB "hub-backup", Chrome/Edge desktop); otherwise download it. */
+function bkSaveFile(name, blob){
+  function dl(){ var a=document.createElement('a'), u=URL.createObjectURL(blob); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); },4000); }
+  function note(msg){ var t=document.createElement('div'); t.textContent=msg; t.style.cssText='position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:99999;background:rgba(17,17,17,.85);color:#fff;padding:10px 16px;border-radius:12px;font:600 13px/1.4 system-ui,sans-serif;max-width:88%;text-align:center;pointer-events:none'; document.body.appendChild(t); setTimeout(function(){ t.remove(); },3500); }
+  return new Promise(function(res){
+    if(typeof window.showDirectoryPicker!=='function'||!window.indexedDB) return res('');
+    var o; try{ o=indexedDB.open('hub-backup',1); }catch(e){ return res(''); }
+    o.onupgradeneeded=function(){ o.result.createObjectStore('kv'); };
+    o.onerror=function(){ res(''); };
+    o.onsuccess=function(){ try{ var q=o.result.transaction('kv').objectStore('kv').get('dir');
+      q.onerror=function(){ res(''); };
+      q.onsuccess=function(){ var h=q.result, opt={mode:'readwrite'}; if(!h) return res('');
+        h.queryPermission(opt).then(function(p){ return p==='granted'?p:h.requestPermission(opt); }).then(function(p){
+          if(p!=='granted') return '';
+          return h.getFileHandle(name,{create:true}).then(function(f){ return f.createWritable(); }).then(function(w){
+            return w.write(blob).then(function(){ return w.close(); }); }).then(function(){ return h.name; });
+        }).then(res,function(){ res(''); }); };
+    }catch(e){ res(''); } };
+  }).then(function(dir){ if(dir) note('\uD83D\uDCC1 Saved to \u201c'+dir+'\u201d as '+name); else dl(); return dir; });
+}
 </script>
 </body>
 </html>

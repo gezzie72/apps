@@ -1161,7 +1161,7 @@ $("#addDebt").onclick = ()=>{ state.debts.push({id:uid(), name:"", balance:0, ap
 $$("#bFilter button").forEach(b=> b.onclick = ()=>{ budgetFilter=b.dataset.f; try{ localStorage.setItem("finance.budgetFilter", budgetFilter); }catch(e){} renderBudget(); });
 
 /* ============ Export / import / reset ============ */
-function download(fn, text, type){ const b=new Blob([text],{type:type||"application/json"}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=fn; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(u); a.remove();},400); }
+function download(fn, text, type){ bkSaveFile(fn, new Blob([text],{type:type||"application/json"})); }
 $("#exportJson").onclick = ()=>{ download("finance-backup-"+new Date().toISOString().slice(0,10)+".json", JSON.stringify(state,null,2)); toast("Exported"); };
 function csvCell(v){ v=String(v==null?"":v); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
 function exportCsv(){
@@ -1565,6 +1565,29 @@ if(GH.connected && GH.auto) syncPull(false).catch(e=>{ spin(false); markSync("Pu
   g('bk-file').onchange=function(){ restore(this.files[0]); this.value=''; };
   g('bk-close').onclick=function(){ g('bk-panel').hidden=true; };
 })();
+</script>
+<script>
+/* Save an exported file into the backup folder chosen on the My Apps hub
+   (shared IndexedDB "hub-backup", Chrome/Edge desktop); otherwise download it. */
+function bkSaveFile(name, blob){
+  function dl(){ var a=document.createElement('a'), u=URL.createObjectURL(blob); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); },4000); }
+  function note(msg){ var t=document.createElement('div'); t.textContent=msg; t.style.cssText='position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:99999;background:rgba(17,17,17,.85);color:#fff;padding:10px 16px;border-radius:12px;font:600 13px/1.4 system-ui,sans-serif;max-width:88%;text-align:center;pointer-events:none'; document.body.appendChild(t); setTimeout(function(){ t.remove(); },3500); }
+  return new Promise(function(res){
+    if(typeof window.showDirectoryPicker!=='function'||!window.indexedDB) return res('');
+    var o; try{ o=indexedDB.open('hub-backup',1); }catch(e){ return res(''); }
+    o.onupgradeneeded=function(){ o.result.createObjectStore('kv'); };
+    o.onerror=function(){ res(''); };
+    o.onsuccess=function(){ try{ var q=o.result.transaction('kv').objectStore('kv').get('dir');
+      q.onerror=function(){ res(''); };
+      q.onsuccess=function(){ var h=q.result, opt={mode:'readwrite'}; if(!h) return res('');
+        h.queryPermission(opt).then(function(p){ return p==='granted'?p:h.requestPermission(opt); }).then(function(p){
+          if(p!=='granted') return '';
+          return h.getFileHandle(name,{create:true}).then(function(f){ return f.createWritable(); }).then(function(w){
+            return w.write(blob).then(function(){ return w.close(); }); }).then(function(){ return h.name; });
+        }).then(res,function(){ res(''); }); };
+    }catch(e){ res(''); } };
+  }).then(function(dir){ if(dir) note('\uD83D\uDCC1 Saved to \u201c'+dir+'\u201d as '+name); else dl(); return dir; });
+}
 </script>
 </body>
 </html>
