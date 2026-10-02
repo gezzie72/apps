@@ -384,12 +384,13 @@
           '<div class="crow"><span class="lbl">+5% extra</span><span class="val o-extra">' + fmt(c.extra) + '<i>mm</i></span></div>' +
           '<div class="crow total"><span class="lbl">Total per doorset</span><span class="val o-total">' + fmt(c.total) + '<i>mm</i></span></div>' +
           '<div class="crow"><span class="lbl">Price / metre</span><span class="val o-perm">' + perMetre(c.perM) + '</span></div>' +
+          '<div class="crow"><span class="lbl">Seal used</span><span class="val o-used">' + fmt(c.metres,2) + ' m<i>' + money(c.matCost) + '</i></span></div>' +
         '</div>' +
         qtyBlock +
         '<div class="results">' +
-          '<div class="rtile"><div class="rlab">Metres to order</div><div class="rmet o-met">' + fmt(c.metres,2) + '</div></div>' +
+          '<div class="rtile"><div class="rlab">Seal used</div><div class="rmet o-met">' + fmt(c.metres,2) + '</div><div class="rexact o-usedcost">' + money(c.matCost) + ' of seal</div></div>' +
           '<div class="rtile"><div class="rlab">' + unitLabel + '</div><div class="rnum o-num">' + c.units + '</div><div class="rexact o-exact">exact: ' + fmt(c.exact,2) + '</div></div>' +
-          '<div class="rtile"><div class="rlab">Order cost</div><div class="rnum o-cost">' + money(c.orderCost) + '</div><div class="rexact o-matx">material: ' + money(c.matCost) + '</div></div>' +
+          '<div class="rtile"><div class="rlab">Order cost</div><div class="rnum o-cost">' + money(c.orderCost) + '</div><div class="rexact o-ordx">' + c.units + ' × ' + money(c.price) + '</div></div>' +
         '</div>';
       cardsEl.appendChild(card);
     });
@@ -404,11 +405,13 @@
       set(card, ".o-extra", fmt(c.extra) + '<i>mm</i>', true);
       set(card, ".o-total", fmt(c.total) + '<i>mm</i>', true);
       set(card, ".o-perm", perMetre(c.perM));
+      set(card, ".o-used", fmt(c.metres,2) + ' m<i>' + money(c.matCost) + '</i>', true);
       set(card, ".o-met", fmt(c.metres,2));
+      set(card, ".o-usedcost", money(c.matCost) + " of seal");
       set(card, ".o-num", String(c.units));
       set(card, ".o-exact", "exact: " + fmt(c.exact,2));
       set(card, ".o-cost", money(c.orderCost));
-      set(card, ".o-matx", "material: " + money(c.matCost));
+      set(card, ".o-ordx", c.units + " × " + money(c.price));
       if (p.syncQty) {
         var qi = card.querySelector(".qtyin");
         if (qi && document.activeElement !== qi) qi.value = mq;
