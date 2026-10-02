@@ -121,6 +121,14 @@
   .rnum { font-family: var(--mono); font-weight: 700; font-size: 30px; line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; }
   .rexact { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--faint); margin-top: 7px; font-variant-numeric: tabular-nums; }
 
+  /* Whole-job grand total */
+  .total { margin-top: 22px; background: var(--panel); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 6px; padding: 20px; }
+  .total-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .total-title { font-family: var(--sans); font-weight: 800; font-size: 18px; color: #fff; }
+  .total-sub { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+  .total-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .total .rtile.cost { border-color: var(--amber-brd); border-left: 2px solid var(--amber); background: rgba(245,166,35,.06); }
+
   /* Sync panel */
   .sync { margin-top: 22px; background: var(--panel); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 6px; padding: 20px; }
   .sync-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
@@ -183,6 +191,9 @@
   </header>
 
   <main class="grid" id="cards"></main>
+
+  <!-- Whole-job grand total -->
+  <section class="total" id="jobTotal" aria-live="polite"></section>
 
   <!-- Sync (hidden until Setup is opened) -->
   <section class="sync" id="syncPanel" aria-labelledby="syncTitle" hidden>
@@ -395,6 +406,7 @@
         '</div>';
       cardsEl.appendChild(card);
     });
+    renderTotals();
   }
 
   function recompute() {
@@ -419,6 +431,29 @@
         if (qi && document.activeElement !== qi) qi.value = mq;
       }
     });
+    renderTotals();
+  }
+  function renderTotals() {
+    var el = document.getElementById("jobTotal"); if (!el) return;
+    var oc = 0, mc = 0, rolls = 0, lengths = 0, metres = 0, lines = 0;
+    state.products.forEach(function (p) {
+      var c = calc(p);
+      oc += c.orderCost; mc += c.matCost; metres += c.metres;
+      if (p.unit === "lengths") lengths += c.units; else rolls += c.units;
+      if (c.units > 0) lines++;
+    });
+    var ordUnits = (rolls ? rolls + " roll" + (rolls === 1 ? "" : "s") : "") +
+                   (rolls && lengths ? " + " : "") +
+                   (lengths ? lengths + " length" + (lengths === 1 ? "" : "s") : "") || "0";
+    el.innerHTML =
+      '<div class="total-head"><span class="total-title">Whole-job total</span>' +
+        '<span class="total-sub">' + lines + ' seal type' + (lines === 1 ? "" : "s") + ' to order · incl. 5% cutting allowance</span></div>' +
+      '<div class="total-grid">' +
+        '<div class="rtile"><div class="rlab">To order</div><div class="rnum">' + ordUnits + '</div></div>' +
+        '<div class="rtile"><div class="rlab">Seal used</div><div class="rnum">' + fmt(metres,2) + '<span style="font-size:14px;color:var(--faint)"> m</span></div></div>' +
+        '<div class="rtile"><div class="rlab">Material cost</div><div class="rnum">' + money(mc) + '</div></div>' +
+        '<div class="rtile cost"><div class="rlab">Order cost (what you buy)</div><div class="rnum">' + money(oc) + '</div></div>' +
+      '</div>';
   }
   function set(card, sel, html, isHtml) {
     var el = card.querySelector(sel); if (!el) return;
