@@ -600,10 +600,10 @@ async function emailEntry(e){
   try{ if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:subject, text}); return; } }
   catch(err){ if(err && err.name==='AbortError') return; }
   // Fallback (desktop / no file sharing): download the PDF, then open the mail client
-  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=file.name; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url), 4000);
-  toast('PDF saved — attach it to your email');
-  window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text+'\n\n(The PDF has been saved to this device — attach it to this email.)');
+  const dir=await bkSaveFile(file.name, blob);
+  const where=dir?'the “'+dir+'” folder':'this device';
+  toast('PDF saved to '+(dir?'“'+dir+'”':'this device')+' — attach it to your email');
+  window.location.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text+'\n\n(The PDF has been saved to '+where+' — attach it to this email.)');
 }
 $('pdfBtn').onclick=()=>{
   saveDraft();
