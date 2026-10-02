@@ -596,8 +596,10 @@ async function emailEntry(e){
   const text=lines.join('\n');
   let blob; try{ toast('Building PDF…'); blob=await buildEntryPdf(e); }catch(err){ toast('Could not build the PDF'); return; }
   const file=new File([blob], pdfFilename(e), {type:'application/pdf'});
-  // Best path (mostly mobile): share the PDF straight to Mail / other apps
-  try{ if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:subject, text}); return; } }
+  // Phones: share the PDF straight to Mail / other apps. Desktop Chrome/Edge
+  // (folder picking available) skips this so the PDF lands in the backup folder.
+  const isPc=typeof window.showDirectoryPicker==='function';
+  try{ if(!isPc && navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:subject, text}); return; } }
   catch(err){ if(err && err.name==='AbortError') return; }
   // Fallback (desktop / no file sharing): download the PDF, then open the mail client
   const dir=await bkSaveFile(file.name, blob);
