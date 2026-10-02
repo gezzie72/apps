@@ -116,6 +116,7 @@
   /* Result tiles */
   .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 2px; }
   .rtile { background: var(--panel-in); border: 1px solid var(--line); border-radius: 4px; padding: 13px 14px; }
+  .rtile.cost { grid-column: 1 / -1; border-color: var(--amber-brd); border-left: 2px solid var(--amber); background: rgba(245,166,35,.05); }
   .rlab { font-family: var(--mono); font-weight: 500; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin-bottom: 9px; }
   .rmet { font-family: var(--mono); font-weight: 700; font-size: 26px; line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; }
   .rnum { font-family: var(--mono); font-weight: 700; font-size: 30px; line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; }
@@ -390,7 +391,7 @@
         '<div class="results">' +
           '<div class="rtile"><div class="rlab">Seal used</div><div class="rmet o-met">' + fmt(c.metres,2) + '</div><div class="rexact o-usedcost">' + money(c.matCost) + ' of seal</div></div>' +
           '<div class="rtile"><div class="rlab">' + unitLabel + '</div><div class="rnum o-num">' + c.units + '</div><div class="rexact o-exact">exact: ' + fmt(c.exact,2) + '</div></div>' +
-          '<div class="rtile"><div class="rlab">Order cost</div><div class="rnum o-cost">' + money(c.orderCost) + '</div><div class="rexact o-ordx">' + c.units + ' × ' + money(c.price) + '</div></div>' +
+          '<div class="rtile cost"><div class="rlab">Order cost</div><div class="rnum o-cost">' + money(c.orderCost) + '</div><div class="rexact o-ordx">' + c.units + ' × ' + money(c.price) + '</div></div>' +
         '</div>';
       cardsEl.appendChild(card);
     });
