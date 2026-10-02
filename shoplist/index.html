@@ -596,6 +596,27 @@ function show(v){
 }
 
 /* ---------- BACKUP / RESTORE ---------- */
+(function(){
+  /* Save into the backup folder chosen on the My Apps hub (shared IndexedDB
+     "hub-backup", Chrome/Edge desktop). Resolves to the folder name, or "" so
+     the caller falls back to a normal download. */
+  function bkSaveToFolder(name,text){ return new Promise(function(res){
+    if(typeof window.showDirectoryPicker!=='function'||!window.indexedDB) return res('');
+    var o; try{ o=indexedDB.open('hub-backup',1); }catch(e){ return res(''); }
+    o.onupgradeneeded=function(){ o.result.createObjectStore('kv'); };
+    o.onerror=function(){ res(''); };
+    o.onsuccess=function(){ try{ var q=o.result.transaction('kv').objectStore('kv').get('dir');
+      q.onerror=function(){ res(''); };
+      q.onsuccess=function(){ var h=q.result, opt={mode:'readwrite'}; if(!h) return res('');
+        h.queryPermission(opt).then(function(p){ return p==='granted'?p:h.requestPermission(opt); }).then(function(p){
+          if(p!=='granted') return '';
+          return h.getFileHandle(name,{create:true}).then(function(f){ return f.createWritable(); }).then(function(w){
+            return w.write(new Blob([text],{type:'application/json'})).then(function(){ return w.close(); }); }).then(function(){ return h.name; });
+        }).then(res,function(){ res(''); }); };
+    }catch(e){ res(''); } };
+  }); }
+  window.bkSaveToFolder=bkSaveToFolder;
+})();
 var BACKUP_PREFIX='shoplist';
 function backupData(){
   try{
@@ -609,7 +630,10 @@ function backupData(){
     var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     var pad=function(n){return (n<10?'0':'')+n;};
     var stamp=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
-    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=BACKUP_PREFIX+'-backup-'+stamp+'.json'; a.click();
+    var fname=BACKUP_PREFIX+'-backup-'+stamp+'.json';
+    bkSaveToFolder(fname, JSON.stringify(payload,null,2)).then(function(dir){
+      if(dir){ toast('Backup saved to \u201c'+dir+'\u201d'); return; }
+      var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); });
     try{ localStorage.setItem(BACKUP_PREFIX+'.lastBackup', now.toISOString()); }catch(e){}
     renderLastBackup();
     toast('Backup saved');
