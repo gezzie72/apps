@@ -172,8 +172,9 @@ function bkIdb(mode, fn){
 function getBkDir(){ return canPickFolder ? bkIdb("readonly",function(st){ return st.get("dir"); }).catch(function(){ return null; }) : Promise.resolve(null); }
 function setBkDir(h){ return bkIdb("readwrite",function(st){ return h ? st.put(h,"dir") : st.delete("dir"); }); }
 async function chooseBkFolder(){
+  // The picker must open straight from the click: an alert() first uses up the
+  // click and the browser then refuses ("Must be handling a user gesture").
   try{
-    alert("Pick (or create) the “"+BK_FOLDER_NAME+"” folder on your Desktop.\n\nIn the next window: open Desktop → select “"+BK_FOLDER_NAME+"” (use New folder if it isn't there) → Select Folder → Allow.");
     var h=await window.showDirectoryPicker({id:"hub-backups", mode:"readwrite", startIn:"desktop"});
     await setBkDir(h); renderBkDir();
     return h;
@@ -189,7 +190,7 @@ async function renderBkDir(){
   if(!canPickFolder){ el.hidden=true; return; }
   var h=await getBkDir(); el.hidden=false;
   if(h){ el.innerHTML="📁 Saving to: <b></b> · <button class='bklink' onclick='chooseBkFolder()'>Change</button> · <button class='bklink' onclick='forgetBkFolder()'>Use Downloads</button>"; el.querySelector("b").textContent=h.name; }
-  else { el.innerHTML="📁 Saving to: <b>Downloads</b> · <button class='bklink' onclick='chooseBkFolder()'>Choose “"+BK_FOLDER_NAME+"” folder…</button>"; }
+  else { el.innerHTML="📁 Saving to: <b>Downloads</b> · <button class='bklink' onclick='chooseBkFolder()'>Choose “"+BK_FOLDER_NAME+"” folder…</button><br>In the window that opens: Desktop → “"+BK_FOLDER_NAME+"” → <b>Select Folder</b> → <b>Allow</b>."; }
 }
 /* Write to the chosen folder; returns the folder name, or "" to fall back to a download. */
 async function saveToBkFolder(name, text){
