@@ -174,6 +174,25 @@
   }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
+<style>
+  /* Printable job summary */
+  #printArea { display: none; }
+  @media print {
+    html, body { background: #fff !important; background-image: none !important; color: #000 !important; }
+    body > .wrap, .redline, #bk-btn, #bk-panel { display: none !important; }
+    #printArea { display: block !important; }
+  }
+  #printArea { font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; color: #000; padding: 6px 10px; }
+  #printArea .ps-head { border-bottom: 3px solid #000; padding-bottom: 8px; margin-bottom: 14px; }
+  #printArea .ps-title { font-size: 20px; font-weight: 800; }
+  #printArea .ps-meta { font-size: 12px; color: #555; margin-top: 2px; }
+  #printArea table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  #printArea th { text-align: left; border-bottom: 2px solid #000; padding: 6px 6px; text-transform: uppercase; font-size: 9.5px; letter-spacing: .5px; }
+  #printArea td { border-bottom: 1px solid #ddd; padding: 6px 6px; }
+  #printArea td.n, #printArea th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  #printArea tr.tot td { font-weight: 800; font-size: 13px; border-top: 2px solid #000; border-bottom: none; padding-top: 8px; }
+  #printArea .ps-foot { margin-top: 16px; font-size: 10.5px; color: #777; border-top: 1px solid #ddd; padding-top: 8px; }
+</style>
 </head>
 <body>
 <div class="redline" aria-hidden="true"></div>
@@ -186,6 +205,7 @@
     </div>
     <div class="head-actions">
       <button class="reset" id="setupBtn" type="button" aria-expanded="false" aria-controls="syncPanel">Setup</button>
+      <button class="reset" id="printBtn" type="button">Print summary</button>
       <button class="reset" id="resetBtn" type="button">Reset to defaults</button>
     </div>
   </header>
@@ -483,6 +503,37 @@
     var d = defaults(); state.products = d.products; save(); renderCards();
   });
 
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+  function printSummary() {
+    var rows = "", oc = 0, mc = 0, metres = 0, rolls = 0, lengths = 0, any = false;
+    state.products.forEach(function (p) {
+      var c = calc(p), q = effQty(p);
+      if (q <= 0 && c.units <= 0) return;      // skip seal types not on this job
+      any = true; oc += c.orderCost; mc += c.matCost; metres += c.metres;
+      if (p.unit === "lengths") lengths += c.units; else rolls += c.units;
+      var toOrder = c.units + " " + (p.unit === "lengths" ? ("length" + (c.units === 1 ? "" : "s")) : ("roll" + (c.units === 1 ? "" : "s")));
+      rows += "<tr><td>" + esc(p.name) + "</td><td class='n'>" + q + "</td><td class='n'>" + fmt(c.metres,2) + "</td><td class='n'>" + toOrder +
+        "</td><td class='n'>" + perMetre(c.perM) + "</td><td class='n'>" + money(c.matCost) + "</td><td class='n'>" + money(c.orderCost) + "</td></tr>";
+    });
+    if (!any) { alert("Enter door quantities first, then print the summary."); return; }
+    var ordUnits = (rolls ? rolls + " roll" + (rolls === 1 ? "" : "s") : "") + (rolls && lengths ? " + " : "") +
+                   (lengths ? lengths + " length" + (lengths === 1 ? "" : "s") : "");
+    var date = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    var html =
+      "<div class='ps-head'><div class='ps-title'>Seal Coverage — Material Takeoff</div>" +
+        "<div class='ps-meta'>" + esc(date) + " · fire-door intumescent seals · incl. 5% cutting allowance</div></div>" +
+      "<table><thead><tr><th>Seal type</th><th class='n'>Doors</th><th class='n'>Seal used (m)</th><th class='n'>To order</th>" +
+        "<th class='n'>Price / m</th><th class='n'>Material</th><th class='n'>Order cost</th></tr></thead><tbody>" +
+        rows +
+        "<tr class='tot'><td>Whole job</td><td class='n'></td><td class='n'>" + fmt(metres,2) + "</td><td class='n'>" + (ordUnits || "0") +
+          "</td><td class='n'></td><td class='n'>" + money(mc) + "</td><td class='n'>" + money(oc) + "</td></tr>" +
+      "</tbody></table>" +
+      "<div class='ps-foot'>Material = value of seal used (metres × price/metre). Order cost = whole rolls/lengths to buy × price. Prices exclude VAT &amp; delivery.</div>";
+    var pa = document.getElementById("printArea"); pa.innerHTML = html;
+    setTimeout(function () { window.print(); }, 60);
+  }
+  document.getElementById("printBtn").addEventListener("click", printSummary);
+
   // Setup button — show/hide the sync panel
   (function () {
     var setupBtn = document.getElementById("setupBtn");
@@ -721,6 +772,7 @@ if ("serviceWorker" in navigator) {
   else boot();
 })();
 </script>
+<div id="printArea"></div>
 <!-- ===== Universal backup widget (self-contained) ===== -->
 <style>
 #bk-btn{position:fixed;left:14px;bottom:14px;z-index:99990;width:44px;height:44px;border-radius:50%;border:1px solid rgba(128,128,128,.35);background:#ff2d78;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(255,45,120,.55);display:flex;align-items:center;justify-content:center;opacity:1}
