@@ -788,6 +788,7 @@ function openCatalogue(){
         Your saved hardware. Star (⭐) the items that make up the <b>standard setup</b>.
         Stored on this device.</p>
       <div class="field"><input id="catSearchIn" placeholder="🔍 Search description, code or finish…" value="${esc(catSearch)}" autocomplete="off"></div>
+      <div id="catBulk" style="display:flex;align-items:center;gap:10px;justify-content:flex-end;margin:0 0 8px"></div>
       <div class="catlist" id="catListBox"></div>
       <div style="border-top:1px solid var(--line);margin:16px 0 14px"></div>
       <div class="field"><label>Description</label><input id="ncDesc" placeholder="e.g. Lever handle set (SSS)"></div>
@@ -811,6 +812,7 @@ function openCatalogue(){
   </div>`;
   bindOverlayClose();
   renderCatListBox();
+  updateCatLockAllBtn();
   const eb = $("catExport"); if(eb) eb.onclick = exportCatalogueCSV;
   const si = $("catSearchIn"); if(si) si.oninput = e=>{ catSearch = e.target.value; renderCatListBox(); };
   linkCostMarkupSale("ncCost","ncMarkup","ncUnit");
@@ -864,6 +866,24 @@ function renderCatListBox(){
   box.innerHTML = rows.length ? rows.map(catRowHtml).join("")
     : `<div class="empty">${q ? "No items match your search." : "No items yet. Add your first hardware item below."}</div>`;
   wireCatList();
+  updateCatLockAllBtn();
+}
+function updateCatLockAllBtn(){
+  const el = $("catBulk"); if(!el) return;
+  if(!catalogue.length){ el.innerHTML = ""; return; }
+  const lockedN = catalogue.filter(c=>c.locked).length;
+  const allLocked = lockedN === catalogue.length;
+  el.innerHTML = `<span style="color:var(--muted);font-size:12px">${lockedN}/${catalogue.length} locked</span>`
+    + `<button class="btn" id="catLockAll">${allLocked?"🔓 Unlock all":"🔒 Lock all"}</button>`;
+  const b = $("catLockAll"); if(b) b.onclick = ()=>toggleAllCatLocks(!allLocked);
+}
+function toggleAllCatLocks(lock){
+  if(!catalogue.length) return;
+  if(!lock && !confirm("Unlock ALL catalogue items?\n\nThey will no longer be protected from edit or delete.")) return;
+  const now = Date.now();
+  catalogue.forEach(c=>{ c.locked = !!lock; c.updated = now; });
+  saveCat(); renderCatListBox();
+  toast(lock ? "🔒 All items locked" : "🔓 All items unlocked");
 }
 function wireCatList(){
   const box = $("catListBox"); if(!box) return;
@@ -2045,7 +2065,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v54 · 2026-10-05 · hide backup btn on print";
+const VERSION = "v55 · 2026-10-05 · catalogue lock-all";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
