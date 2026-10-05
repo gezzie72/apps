@@ -1107,6 +1107,7 @@ function openQuotesList(){
                       : "No saved quotes yet — build a quote and hit 💾 Save."}</p>
       ${salesSummaryHtml()}
       ${spendChartHtml()}
+      ${rows.length ? '<div id="quoteBulk" style="display:flex;align-items:center;gap:10px;justify-content:flex-end;margin:0 0 8px"></div>' : ''}
       <div class="catlist" id="quoteListBox">
         ${rows.map(quoteRowHtml).join("")}
       </div>
@@ -1123,6 +1124,25 @@ function openQuotesList(){
   box.querySelectorAll("[data-lock]").forEach(b=>b.onclick=()=>toggleLock(b.dataset.lock));
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteSaved(b.dataset.del));
   box.querySelectorAll("[data-status]").forEach(s=>s.onchange=()=>setQuoteStatus(s.dataset.status, s.value));
+  updateQuoteLockAllBtn();
+}
+function updateQuoteLockAllBtn(){
+  const el = $("quoteBulk"); if(!el) return;
+  if(!savedQuotes.length){ el.innerHTML = ""; return; }
+  const lockedN = savedQuotes.filter(q=>q.locked).length;
+  const allLocked = lockedN === savedQuotes.length;
+  el.innerHTML = `<span style="color:var(--muted);font-size:12px">${lockedN}/${savedQuotes.length} locked</span>`
+    + `<button class="btn" id="quoteLockAll">${allLocked?"🔓 Unlock all":"🔒 Lock all"}</button>`;
+  const b = $("quoteLockAll"); if(b) b.onclick = ()=>toggleAllQuoteLocks(!allLocked);
+}
+function toggleAllQuoteLocks(lock){
+  if(!savedQuotes.length) return;
+  if(!lock && !confirm("Unlock ALL saved quotes?\n\nThey will no longer be protected from overwrite or delete.")) return;
+  const now = Date.now();
+  savedQuotes.forEach(q=>{ q.locked = !!lock; q.updated = now; });
+  if(quote.savedId){ const cur = savedQuotes.find(x=>x.savedId===quote.savedId); if(cur) quote.locked = cur.locked; }
+  saveQuotes(); openQuotesList();
+  toast(lock ? "🔒 All quotes locked" : "🔓 All quotes unlocked");
 }
 /* sales outcome per saved quote: open (default) | won | lost */
 const qStatus = q => (q && (q.status==="won" || q.status==="lost")) ? q.status : "open";
@@ -1598,6 +1618,7 @@ function openCustomers(){
       <h2>👥 Customers</h2>
       <p style="color:var(--muted);font-size:13px;margin:-8px 0 16px;line-height:1.5">
         Saved from your quotes. Edit a name or email, or remove one — used to auto-fill the email when you enter a customer.</p>
+      <div id="custBulk" style="display:flex;align-items:center;gap:10px;justify-content:flex-end;margin:0 0 8px"></div>
       <div class="catlist" id="custMgrBox">
         ${rows.length ? rows.map(custRowHtml).join("") : '<div class="empty">No customers yet.</div>'}
       </div>
@@ -1656,6 +1677,25 @@ function wireCustMgr(){
     if(c.locked){ alert(`🔒 “${c.name}” is locked.\n\nUnlock it (🔓) first to delete.`); return; }
     if(confirm(`Delete “${c.name}” from your customers?`)){ tombstone("cust", b.dataset.cdel); delete customers[b.dataset.cdel]; saveCustomers(); fillCustomerList(); openCustomers(); }
   });
+  updateCustLockAllBtn();
+}
+function updateCustLockAllBtn(){
+  const el = $("custBulk"); if(!el) return;
+  const vals = Object.values(customers);
+  if(!vals.length){ el.innerHTML = ""; return; }
+  const lockedN = vals.filter(c=>c.locked).length;
+  const allLocked = lockedN === vals.length;
+  el.innerHTML = `<span style="color:var(--muted);font-size:12px">${lockedN}/${vals.length} locked</span>`
+    + `<button class="btn" id="custLockAll">${allLocked?"🔓 Unlock all":"🔒 Lock all"}</button>`;
+  const b = $("custLockAll"); if(b) b.onclick = ()=>toggleAllCustLocks(!allLocked);
+}
+function toggleAllCustLocks(lock){
+  const vals = Object.values(customers); if(!vals.length) return;
+  if(!lock && !confirm("Unlock ALL customers?\n\nThey will no longer be protected from edit or delete.")) return;
+  const now = Date.now();
+  vals.forEach(c=>{ c.locked = !!lock; c.updated = now; });
+  saveCustomers(); openCustomers();
+  toast(lock ? "🔒 All customers locked" : "🔓 All customers unlocked");
 }
 function editCustomer(key){
   const c = customers[key]; if(!c) return;
@@ -2065,7 +2105,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v55 · 2026-10-05 · catalogue lock-all";
+const VERSION = "v56 · 2026-10-05 · lock-all everywhere";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
