@@ -90,7 +90,7 @@
   .catrow.qrow .cdesc{flex:1 1 100%}
   .stbadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
   .lockmark{font-size:12px;margin-left:2px}
-  .catrow.qrow.locked{border-left:3px solid var(--accent, #6ea8fe)}
+  .catrow.locked{border-left:3px solid var(--accent, #6ea8fe)}
   .stbadge.won{background:rgba(22,163,74,.18);color:#4ade80}
   .stbadge.lost{background:rgba(255,107,107,.18);color:#ff9b9b}
   .statussel{width:auto;flex-shrink:0;padding:7px 8px;font-size:12px;font-weight:600}
@@ -557,7 +557,14 @@ function loadAll(){
   nextSeq = Number.isFinite(s) && s>0 ? s : 1001;
 }
 function saveSeq(){ try{ localStorage.setItem(LS_SEQ, String(nextSeq)); }catch(e){} }
-const previewRef = () => (company.quotePrefix||"") + nextSeq;
+function quoteNum(ref){ const m = String(ref||"").match(/(\d+)\s*$/); return m ? parseInt(m[1],10) : NaN; }
+function nextQuoteNumber(){
+  let n = (Number.isFinite(nextSeq) && nextSeq>0) ? nextSeq : 1001;
+  savedQuotes.forEach(q=>{ const m = quoteNum(q.ref); if(Number.isFinite(m) && m>=n) n = m+1; });   // never collide with a saved number
+  return n;
+}
+function bumpSeqFor(ref){ const n = quoteNum(ref); if(Number.isFinite(n) && n>=nextSeq){ nextSeq = n+1; saveSeq(); schedulePush(); } }
+const previewRef = () => (company.quotePrefix||"") + nextQuoteNumber();
 function fixQuote(q){
   if(!Array.isArray(q.lines)) q.lines = [];
   if(typeof q.vatRate !== "number") q.vatRate = 20;
@@ -829,10 +836,11 @@ function linkCostMarkupSale(costId, mkId, saleId){
   sale.oninput = ()=>{ const c=num(cost); mk.value = c>0 ? (((num(sale)/c)-1)*100).toFixed(1) : ""; };
 }
 function catRowHtml(c){
-  return `<div class="catrow" data-id="${c.id}">
+  const lk = c.locked ? ' <span class="lockmark" title="Locked — protected from edit &amp; delete">🔒</span>' : "";
+  return `<div class="catrow${c.locked?" locked":""}" data-id="${c.id}">
     <button class="star ${c.standard?"on":""}" data-star="${c.id}" title="Toggle standard setup">★</button>
     <div class="cdesc">
-      <div class="n" title="${esc(c.desc)}">${esc(c.desc)} ${c.standard?'<span class="stdtag">standard</span>':''}</div>
+      <div class="n" title="${esc(c.desc)}">${esc(c.desc)}${lk} ${c.standard?'<span class="stdtag">standard</span>':''}</div>
       <div class="srow">
         <span class="price${(Number(c.unit)||0)<=1?' zero':''}">${money(c.unit)}</span>
         <span class="s">${c.code?esc(c.code)+' · ':''}${c.finish?esc(c.finish)+' · ':''}cost ${money(c.cost||0)}</span>
@@ -841,7 +849,8 @@ function catRowHtml(c){
     <span class="acts">
       <button class="icon" data-copy="${c.id}" title="Duplicate">📋</button>
       <button class="icon" data-edit="${c.id}" title="Edit">✏️</button>
-      <button class="icon" data-del="${c.id}" title="Delete">🗑</button>
+      <button class="icon" data-catlock="${c.id}" title="${c.locked?'Unlock (allow edit &amp; delete)':'Lock (protect from edit &amp; delete)'}">${c.locked?'🔒':'🔓'}</button>
+      <button class="icon" data-del="${c.id}" title="${c.locked?'Locked — unlock to delete':'Delete'}">🗑</button>
     </span>
   </div>`;
 }
@@ -868,7 +877,15 @@ function wireCatList(){
     saveCat(); fillCatPick(); renderCatListBox(); toast("Item duplicated");
   });
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    const c=catalogue.find(x=>x.id===b.dataset.del);
+    if(c && c.locked){ alert(`🔒 “${c.desc}” is locked.\n\nUnlock it (🔓) first to delete.`); return; }
     tombstone("cat", b.dataset.del); catalogue = catalogue.filter(x=>x.id!==b.dataset.del); saveCat(); fillCatPick(); renderCatListBox();
+  });
+  box.querySelectorAll("[data-catlock]").forEach(b=>b.onclick=()=>{
+    const c=catalogue.find(x=>x.id===b.dataset.catlock); if(!c) return;
+    if(c.locked){ if(!confirm(`Unlock “${c.desc}”?\n\nIt will no longer be protected from edit or delete.`)) return; c.locked=false; toast("🔓 Unlocked"); }
+    else { c.locked=true; toast("🔒 Locked — protected from edit & delete"); }
+    c.updated=Date.now(); saveCat(); renderCatListBox();
   });
   box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editCatItem(b.dataset.edit));
 }
@@ -900,6 +917,7 @@ function editCatItem(id){
   bindOverlayClose();
   linkCostMarkupSale("ecCost","ecMarkup","ecUnit");
   $("ecSave").onclick = ()=>{
+    if(c.locked){ alert(`🔒 “${c.desc}” is locked.\n\nUnlock it (🔓) in the list to edit.`); return; }
     c.desc = $("ecDesc").value.trim() || c.desc;
     c.code = $("ecCode").value.trim();
     c.finish = $("ecFinish").value.trim();
@@ -910,6 +928,7 @@ function editCatItem(id){
     saveCat(); fillCatPick(); openCatalogue(); toast("Saved");
   };
   $("ecDel").onclick = ()=>{
+    if(c.locked){ alert(`🔒 “${c.desc}” is locked.\n\nUnlock it (🔓) in the list to delete.`); return; }
     tombstone("cat", id); catalogue = catalogue.filter(x=>x.id!==id); saveCat(); fillCatPick(); openCatalogue();
   };
 }
@@ -1033,10 +1052,6 @@ const quoteName = q => (q.ref || q.customer || q.project || "Untitled quote").tr
 
 function saveCurrentQuote(){
   if(!quote.lines.length && !quote.customer && !quote.ref){ toast("Nothing to save yet"); return; }
-  // consume the auto number on first save, only if the ref is still the untouched preview
-  if(!quote.savedId && quote.ref === previewRef()){
-    nextSeq++; saveSeq(); schedulePush();
-  }
   rememberCustomer(quote.customer, quote.email);   // build the customer directory
   quote.updated = Date.now();
   const snapshot = JSON.parse(JSON.stringify(quote));
@@ -1050,15 +1065,15 @@ function saveCurrentQuote(){
         snapshot.savedId = uid(); snapshot.created = Date.now(); snapshot.locked = false;
         snapshot.ref = (snapshot.ref||"") + " (copy)";
         quote.savedId = snapshot.savedId; quote.ref = snapshot.ref; quote.locked = false;
-        savedQuotes.push(snapshot); saveQuotes(); saveQuote();
+        savedQuotes.push(snapshot); bumpSeqFor(snapshot.ref); saveQuotes(); saveQuote();
         toast(`Saved copy “${quoteName(snapshot)}”`); return;
       }
-      savedQuotes[i] = snapshot; saveQuotes(); toast(`Updated “${quoteName(snapshot)}”`); return;
+      savedQuotes[i] = snapshot; bumpSeqFor(snapshot.ref); saveQuotes(); toast(`Updated “${quoteName(snapshot)}”`); return;
     }
   }
   snapshot.savedId = uid(); snapshot.created = Date.now(); snapshot.locked = false;
   quote.savedId = snapshot.savedId;
-  savedQuotes.push(snapshot); saveQuotes(); saveQuote();
+  savedQuotes.push(snapshot); bumpSeqFor(snapshot.ref); saveQuotes(); saveQuote();
   toast(`Saved “${quoteName(snapshot)}”`);
 }
 function openQuotesList(){
@@ -1583,7 +1598,8 @@ function openCustomers(){
     const n=$("ncustName").value.trim(), em=$("ncustEmail").value.trim();
     if(!n){ toast("Enter a name"); return; }
     const ak=custKey(n), aprev=customers[ak]||{};
-    customers[ak] = { name:n, email:em, proforma:!!aprev.proforma, updated:Date.now() };
+    if(aprev.locked){ alert(`🔒 “${aprev.name}” is locked.\n\nUnlock it (🔓) first to change it.`); return; }
+    customers[ak] = { name:n, email:em, proforma:!!aprev.proforma, locked:false, updated:Date.now() };
     saveCustomers(); fillCustomerList(); openCustomers();
   };
 }
@@ -1591,11 +1607,13 @@ window.openCustomers = openCustomers;
 function custRowHtml(c){
   const k = custKey(c.name);
   const pf = !!c.proforma;
-  return `<div class="catrow" data-k="${esc(k)}">
-    <div class="cdesc"><div class="n">${esc(c.name)}${pf?'<span class="pftag">PROFORMA</span>':''}</div><div class="s">${esc(c.email||"—")}</div></div>
+  const lk = c.locked ? ' <span class="lockmark" title="Locked — protected from edit &amp; delete">🔒</span>' : "";
+  return `<div class="catrow${c.locked?" locked":""}" data-k="${esc(k)}">
+    <div class="cdesc"><div class="n">${esc(c.name)}${lk}${pf?'<span class="pftag">PROFORMA</span>':''}</div><div class="s">${esc(c.email||"—")}</div></div>
     <button class="pfbtn${pf?' on':''}" data-cpf="${esc(k)}" title="${pf?'Account approved — remove proforma status':'Mark this account as proforma'}">${pf?'Proforma ✓':'Proforma?'}</button>
     <button class="icon" data-cedit="${esc(k)}" title="Edit">✏️</button>
-    <button class="icon" data-cdel="${esc(k)}" title="Delete">🗑</button>
+    <button class="icon" data-custlock="${esc(k)}" title="${c.locked?'Unlock (allow edit &amp; delete)':'Lock (protect from edit &amp; delete)'}">${c.locked?'🔒':'🔓'}</button>
+    <button class="icon" data-cdel="${esc(k)}" title="${c.locked?'Locked — unlock to delete':'Delete'}">🗑</button>
   </div>`;
 }
 function wireCustMgr(){
@@ -1607,9 +1625,16 @@ function wireCustMgr(){
     toast(c.proforma ? "Marked proforma" : "Proforma removed — account approved");
   });
   box.querySelectorAll("[data-cedit]").forEach(b=>b.onclick=()=>editCustomer(b.dataset.cedit));
+  box.querySelectorAll("[data-custlock]").forEach(b=>b.onclick=()=>{
+    const c=customers[b.dataset.custlock]; if(!c) return;
+    if(c.locked){ if(!confirm(`Unlock “${c.name}”?\n\nIt will no longer be protected from edit or delete.`)) return; c.locked=false; toast("🔓 Unlocked"); }
+    else { c.locked=true; toast("🔒 Locked — protected from edit & delete"); }
+    c.updated=Date.now(); saveCustomers(); openCustomers();
+  });
   box.querySelectorAll("[data-cdel]").forEach(b=>b.onclick=()=>{
-    const c=customers[b.dataset.cdel];
-    if(c && confirm(`Delete “${c.name}” from your customers?`)){ tombstone("cust", b.dataset.cdel); delete customers[b.dataset.cdel]; saveCustomers(); fillCustomerList(); openCustomers(); }
+    const c=customers[b.dataset.cdel]; if(!c) return;
+    if(c.locked){ alert(`🔒 “${c.name}” is locked.\n\nUnlock it (🔓) first to delete.`); return; }
+    if(confirm(`Delete “${c.name}” from your customers?`)){ tombstone("cust", b.dataset.cdel); delete customers[b.dataset.cdel]; saveCustomers(); fillCustomerList(); openCustomers(); }
   });
 }
 function editCustomer(key){
@@ -1629,13 +1654,17 @@ function editCustomer(key){
   </div>`;
   bindOverlayClose();
   $("ecustSave").onclick = ()=>{
+    if(c.locked){ alert(`🔒 “${c.name}” is locked.\n\nUnlock it (🔓) in the list to edit.`); return; }
     const n=$("ecustName").value.trim()||c.name, em=$("ecustEmail").value.trim();
     const nk=custKey(n), wasPf=!!c.proforma;
     if(nk!==key){ tombstone("cust", key); delete customers[key]; }   // renamed — drop & tombstone the old key
-    customers[nk] = { name:n, email:em, proforma:wasPf, updated:Date.now() };
+    customers[nk] = { name:n, email:em, proforma:wasPf, locked:false, updated:Date.now() };
     saveCustomers(); fillCustomerList(); openCustomers(); toast("Customer saved");
   };
-  $("ecustDel").onclick = ()=>{ tombstone("cust", key); delete customers[key]; saveCustomers(); fillCustomerList(); openCustomers(); };
+  $("ecustDel").onclick = ()=>{
+    if(c.locked){ alert(`🔒 “${c.name}” is locked.\n\nUnlock it (🔓) in the list to delete.`); return; }
+    tombstone("cust", key); delete customers[key]; saveCustomers(); fillCustomerList(); openCustomers();
+  };
   $("ecustName").focus();
 }
 
@@ -2016,7 +2045,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v52 · 2026-10-05 · quote lock";
+const VERSION = "v53 · 2026-10-05 · locks + auto no.";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
