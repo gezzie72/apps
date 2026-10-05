@@ -2045,7 +2045,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v53 · 2026-10-05 · locks + auto no.";
+const VERSION = "v54 · 2026-10-05 · hide backup btn on print";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
@@ -2110,6 +2110,7 @@ if('serviceWorker' in navigator){
 #bk-restore{background:transparent;color:inherit;border:1px solid rgba(128,128,128,.4)}
 #bk-close{background:transparent;color:#98a0ae;border:none;font-weight:500}
 #bk-last{color:#98a0ae;font-size:12px;margin:8px 0 2px}
+@media print{#bk-btn,#bk-panel{display:none!important}}
 </style>
 <button id="bk-btn" title="Back up this app" aria-label="Back up this app">&#x2B07;</button>
 <div id="bk-panel" hidden>
