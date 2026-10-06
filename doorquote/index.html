@@ -577,9 +577,16 @@ function fixQuote(q){
   if(typeof q.locked !== "boolean") q.locked = false;
   return q;
 }
+// Local calendar date (YYYY-MM-DD) — avoids the UTC off-by-one that
+// toISOString() can cause near midnight / under BST.
+function todayLocal(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,"0");
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate());
+}
 function blankQuote(){
   const deliv = (company && Number.isFinite(company.defaultDelivery)) ? company.defaultDelivery : 30;
-  return { customer:"", ref:"", email:"", project:"", date:new Date().toISOString().slice(0,10),
+  return { customer:"", ref:"", email:"", project:"", date:todayLocal(),
            delivery:deliv, vatRate:(quote?quote.vatRate:20), vatOn:(quote?quote.vatOn:true),
            invoiceNo:"", trackingNo:"", notes:"", lines:[], savedId:null, locked:false };
 }
@@ -2105,7 +2112,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v56 · 2026-10-05 · lock-all everywhere";
+const VERSION = "v57 · 2026-10-06 · new quote dates to today";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
