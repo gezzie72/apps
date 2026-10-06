@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e3b3e">
+<meta name="description" content="Plan when to order, collect and process stock, with reminders for what is due.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Stock Planner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..700&display=swap">
+<style>
+/* Layout: a deep petrol band across the top carries today's date and the reminder tickets;
+   below it an open wall-planner grid on paper (stickers mark the days) with one white panel for the chosen day. */
+:root{
+  --paper:#f4f6f2; --panel:#ffffff; --field:#ffffff; --ink:#0f2322; --muted:#566b68; --line:#d3dbd6;
+  --band:#0e3b3e; --band-2:#195155; --band-ink:#f2f7f5; --band-muted:#a8c6c2;
+  --pop:#ffcc33; --pop-ink:#1c1a05;
+  --order:#2456d6; --collect:#d9530a; --process:#7a45d1; --late:#cf2e28; --on-color:#ffffff;
+  --display:"Bricolage Grotesque","Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0b1514; --panel:#132120; --field:#0e1a19; --ink:#e8f0ee; --muted:#8fa6a2; --line:#253f3c;
+    --band:#103f42; --band-2:#1b585c; --band-ink:#f2f7f5; --band-muted:#a8c6c2;
+    --pop:#ffcc33; --pop-ink:#1c1a05;
+    --order:#86a6ff; --collect:#ff9652; --process:#b899ff; --late:#ff7d76; --on-color:#0b1514;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0b1514; --panel:#132120; --field:#0e1a19; --ink:#e8f0ee; --muted:#8fa6a2; --line:#253f3c;
+  --band:#103f42; --band-2:#1b585c; --band-ink:#f2f7f5; --band-muted:#a8c6c2;
+  --pop:#ffcc33; --pop-ink:#1c1a05;
+  --order:#86a6ff; --collect:#ff9652; --process:#b899ff; --late:#ff7d76; --on-color:#0b1514;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+html[data-size="s"]{font-size:14px}
+html[data-size="l"]{font-size:18px}
+html[data-size="xl"]{font-size:20px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--pop);outline-offset:2px}
+.paper :focus-visible,.sheet :focus-visible{outline-color:var(--order)}
+h1,h2,h3,p{margin:0}
+svg{display:block;flex:none}
+
+/* type colours: one class sets --t for stickers, ticks and labels */
+.t-order{--t:var(--order)} .t-collect{--t:var(--collect)} .t-process{--t:var(--process)}
+.shape{display:inline-block;width:.7rem;height:.7rem;background:var(--t);flex:none}
+.t-order .shape,.shape.t-order{border-radius:50%}
+.t-collect .shape,.shape.t-collect{border-radius:2px}
+.t-process .shape,.shape.t-process{border-radius:1px;transform:rotate(45deg) scale(.82)}
+
+/* ---------- band ---------- */
+.band{background:var(--band);color:var(--band-ink);padding-top:env(safe-area-inset-top,0px)}
+.inner{max-width:76rem;margin:0 auto;padding-inline:20px}
+.bar{display:flex;align-items:center;gap:.75rem;padding-block:.9rem}
+.brand{font-family:var(--display);font-weight:700;font-size:1.125rem;letter-spacing:-.01em;display:flex;align-items:center;gap:.55rem}
+.brand .mark{display:grid;grid-template-columns:repeat(2,.45rem);gap:.14rem}
+.brand .mark i{width:.45rem;height:.45rem;background:var(--band-ink);border-radius:1px}
+.brand .mark i:first-child{background:var(--pop);border-radius:50%}
+.ver{font-size:.75rem;color:var(--band-muted);font-variant-numeric:tabular-nums}
+.sync{margin-left:auto;font-size:.8125rem;color:var(--band-muted);display:flex;align-items:center;gap:.35rem;min-width:0}
+.sync span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bbtn{border:1px solid color-mix(in srgb,var(--band-ink) 35%,transparent);background:transparent;color:var(--band-ink);border-radius:999px;
+  padding:.5rem .95rem;font-weight:600;font-size:.9375rem;display:inline-flex;align-items:center;gap:.4rem;transition:background-color .15s}
+.bbtn:hover{background:var(--band-2)}
+.bbtn.pop{background:var(--pop);color:var(--pop-ink);border-color:var(--pop)}
+.bbtn.pop:hover{background:color-mix(in srgb,var(--pop) 86%,#fff)}
+
+.hero{padding-block:1.25rem 2rem;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:1.5rem 3rem;align-items:start}
+.hero h2{font-family:var(--display);font-weight:700;font-size:clamp(2.1rem,1.2rem + 3.6vw,3.6rem);line-height:.98;letter-spacing:-.035em;text-wrap:balance}
+.hero .sum{margin-top:.7rem;font-size:1.125rem;color:var(--band-muted)}
+.hero .sum b{color:var(--pop);font-weight:600}
+.hero .week{margin-top:1rem;display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;font-size:.9375rem;color:var(--band-muted)}
+.hero .week span{display:inline-flex;align-items:center;gap:.4rem}
+.hero .week b{color:var(--band-ink);font-weight:600;font-variant-numeric:tabular-nums}
+.band .t-order{--t:#8fb0ff}.band .t-collect{--t:#ffa565}.band .t-process{--t:#c4a8ff}
+.tickets{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.ticket{--t:var(--order);background:var(--panel);color:var(--ink);border-radius:14px;display:flex;align-items:center;gap:.8rem;padding:.7rem .9rem .7rem .7rem;min-width:0}
+.ticket.t-order{--t:var(--order)}.ticket.t-collect{--t:var(--collect)}.ticket.t-process{--t:var(--process)}
+.ticket .go{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;display:flex;flex-direction:column;gap:.05rem}
+.ticket .what{font-weight:600;font-size:1.0625rem;line-height:1.25;overflow-wrap:anywhere}
+.ticket .how{font-size:.875rem;color:var(--muted);display:flex;align-items:center;gap:.4rem;min-width:0}
+.due{font-size:.8125rem;font-weight:600;border-radius:999px;padding:.2rem .6rem;white-space:nowrap;background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.due.late{background:var(--late);color:var(--on-color)}
+.calm{border:1px dashed color-mix(in srgb,var(--band-ink) 35%,transparent);border-radius:14px;padding:1rem 1.1rem;color:var(--band-muted)}
+.calm b{display:block;color:var(--band-ink);font-weight:600;font-size:1.0625rem}
+.under{margin-top:.75rem;font-size:.9375rem;color:var(--band-muted);display:flex;flex-wrap:wrap;gap:.5rem .9rem;align-items:center}
+.under button{background:none;border:0;padding:0;color:var(--band-ink);text-decoration:underline;text-underline-offset:3px;font-weight:600}
+
+/* the tick: one control everywhere a job can be finished */
+.tick{width:2rem;height:2rem;border-radius:50%;border:2px solid var(--t);background:transparent;color:transparent;display:grid;place-items:center;flex:none;padding:0;
+  transition:background-color .15s,color .15s,transform .15s}
+.tick:hover{background:color-mix(in srgb,var(--t) 18%,transparent);color:var(--t)}
+.tick:active{transform:scale(.9)}
+.done .tick{background:var(--t);color:var(--on-color)}
+
+/* ---------- paper ---------- */
+.paper{padding-block:1.75rem calc(6rem + env(safe-area-inset-bottom,0px))}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 23rem;gap:2.25rem;align-items:start}
+.calhead{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem}
+.calhead h2{font-family:var(--display);font-weight:700;font-size:1.9rem;letter-spacing:-.03em;line-height:1.1;margin-right:auto}
+.calhead h2 span{color:var(--muted);font-weight:500}
+.rbtn{width:2.4rem;height:2.4rem;border-radius:50%;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;padding:0;transition:border-color .15s}
+.rbtn:hover{border-color:var(--ink)}
+.pbtn{height:2.4rem;border-radius:999px;border:1px solid var(--line);background:var(--panel);padding:0 1rem;font-weight:600;font-size:.9375rem;transition:border-color .15s}
+.pbtn:hover{border-color:var(--ink)}
+.filters{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+.fbtn{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:.35rem .8rem .35rem .65rem;font-size:.875rem;font-weight:600;display:inline-flex;align-items:center;gap:.45rem;transition:opacity .15s,border-color .15s}
+.fbtn:hover{border-color:var(--ink)}
+.fbtn b{font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.fbtn[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
+
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.dow{font-size:.8125rem;font-weight:600;color:var(--muted);padding:.45rem .55rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.day{appearance:none;background:transparent;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;min-height:6.6rem;padding:.4rem .4rem .5rem;
+  display:flex;flex-direction:column;gap:.3rem;align-items:stretch;text-align:left;min-width:0;position:relative;transition:background-color .12s}
+.day:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.day.out .n{color:color-mix(in srgb,var(--muted) 55%,transparent)}
+.day.out .evs{opacity:.5}
+.day .n{font-family:var(--display);font-weight:600;font-size:1rem;line-height:1;font-variant-numeric:tabular-nums;width:1.75rem;height:1.75rem;display:grid;place-items:center;border-radius:50%}
+.day.today .n{background:var(--pop);color:var(--pop-ink);font-weight:700}
+.day.late:not(.today) .n{color:var(--late);font-weight:800}
+.day.sel{background:var(--panel);box-shadow:inset 0 0 0 2px var(--ink);z-index:1}
+.evs{display:flex;flex-direction:column;gap:.2rem;min-width:0}
+.ev{display:flex;align-items:center;gap:.4rem;font-size:.8125rem;font-weight:500;line-height:1.2;min-width:0;background:color-mix(in srgb,var(--t) 13%,transparent);border-radius:6px;padding:.22rem .4rem}
+.ev .shape{width:.55rem;height:.55rem}
+.ev span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ev.done{background:transparent;color:var(--muted)}
+.ev.done span{text-decoration:line-through}
+.ev.done .shape{background:transparent;box-shadow:inset 0 0 0 1.5px var(--t)}
+.more{font-size:.75rem;color:var(--muted);padding-left:.4rem}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:1.25rem;position:sticky;top:1rem;display:flex;flex-direction:column;gap:1rem;min-width:0}
+.panel header{display:flex;align-items:flex-end;gap:.75rem}
+.panel h2{font-family:var(--display);font-weight:700;font-size:1.5rem;letter-spacing:-.025em;line-height:1.1;flex:1;min-width:0}
+.panel h2 small{display:block;font-family:var(--body);font-size:.875rem;font-weight:500;letter-spacing:0;color:var(--muted);margin-bottom:.2rem}
+.btn{border:0;background:var(--ink);color:var(--panel);border-radius:999px;padding:.6rem 1.1rem;font-weight:600;font-size:.9375rem;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;transition:opacity .15s,transform .1s}
+.btn:hover{opacity:.86}.btn:active{transform:scale(.97)}
+.btn.line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.btn.line:hover{opacity:1;box-shadow:inset 0 0 0 1px var(--ink)}
+.btn.red{background:var(--late);color:var(--on-color)}
+.jobs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.job{display:flex;gap:.8rem;align-items:flex-start;padding:.85rem 0;border-top:1px solid var(--line)}
+.job:first-child{border-top:0;padding-top:0}
+.jbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem}
+.jtitle{font-weight:600;font-size:1.0625rem;line-height:1.3;overflow-wrap:anywhere}
+.job.done .jtitle{text-decoration:line-through;color:var(--muted)}
+.jmeta{display:flex;flex-wrap:wrap;gap:.15rem .8rem;font-size:.875rem;color:var(--muted)}
+.jmeta span{display:inline-flex;align-items:center;gap:.4rem}
+.jmeta .type{color:var(--t);font-weight:600}
+.jmeta .lt{color:var(--late);font-weight:600}
+.jnote{font-size:.9375rem;color:var(--muted);overflow-wrap:anywhere}
+.jact{display:flex;gap:.1rem;flex:none}
+.ibtn{width:2.1rem;height:2.1rem;border-radius:50%;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;padding:0;transition:background-color .15s,color .15s}
+.ibtn:hover{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink)}
+.ibtn.sure{background:var(--late);color:var(--on-color);width:auto;padding:0 .7rem;font-size:.8125rem;font-weight:600}
+.empty{color:var(--muted);padding:.4rem 0 .2rem}
+.next h3{font-size:.9375rem;font-weight:600;color:var(--muted);margin-bottom:.35rem}
+.next ul{list-style:none;margin:0;padding:0}
+.next button{width:100%;background:none;border:0;border-radius:8px;padding:.45rem .4rem;margin-inline:-.4rem;display:flex;align-items:center;gap:.6rem;text-align:left;transition:background-color .12s}
+.next button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.next .when{width:5.4rem;flex:none;font-size:.875rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.next .it{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+
+.fab{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:3.6rem;height:3.6rem;border-radius:50%;border:0;background:var(--pop);color:var(--pop-ink);
+  display:none;place-items:center;box-shadow:0 6px 20px rgba(0,0,0,.28);z-index:4}
+
+/* ---------- sheets ---------- */
+.overlay{position:fixed;inset:0;background:rgba(6,20,20,.6);z-index:10;display:flex;align-items:center;justify-content:center;padding:16px}
+.sheet{background:var(--panel);color:var(--ink);border-radius:20px;width:min(30rem,100%);max-height:100%;overflow:auto;padding:1.4rem;display:flex;flex-direction:column;gap:1rem}
+.sheet h2{font-family:var(--display);font-weight:700;font-size:1.6rem;letter-spacing:-.03em;line-height:1.1}
+.sheet h3{font-size:.9375rem;font-weight:600;margin-top:.35rem}
+.sheet p{font-size:.875rem;color:var(--muted)}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem}
+.seg button{border:1.5px solid var(--line);background:transparent;border-radius:12px;padding:.7rem .3rem;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:.45rem;transition:border-color .15s,background-color .15s}
+.seg button .shape{width:.95rem;height:.95rem}
+.seg button[aria-pressed="true"]{border-color:var(--t);background:color-mix(in srgb,var(--t) 12%,transparent)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+label.f{display:flex;flex-direction:column;gap:.3rem;font-size:.875rem;font-weight:600;min-width:0}
+input[type=text],input[type=date],input[type=password],select,textarea{background:var(--field);border:1px solid var(--line);border-radius:10px;padding:.65rem .75rem;width:100%;min-width:0;font-size:1rem;font-weight:400;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--order);box-shadow:0 0 0 3px color-mix(in srgb,var(--order) 22%,transparent)}
+textarea{resize:vertical;min-height:4.2rem}
+::placeholder{color:color-mix(in srgb,var(--muted) 55%,transparent);opacity:1}
+.msg{color:var(--late);font-weight:600;font-size:.9375rem}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.row .sp{flex:1}
+.opts{display:flex;flex-wrap:wrap;gap:.4rem}
+.opts button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:.45rem .9rem;font-weight:600;font-size:.9375rem}
+.opts button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+#setupMsg{color:var(--ink);font-weight:600}
+.sheet a{color:var(--order);font-weight:600}
+.sheet h3{border-top:1px solid var(--line);padding-top:1rem}
+.sheet h3:first-of-type{border-top:0;padding-top:0}
+.stack{display:flex;flex-direction:column;gap:.75rem}
+.check{display:flex;align-items:center;gap:.5rem;font-weight:600;font-size:.9375rem}
+.check input{width:1.15rem;height:1.15rem;accent-color:var(--order)}
+.kv{font-size:.9375rem;color:var(--muted);overflow-wrap:anywhere}
+.kv b{color:var(--ink);font-weight:600}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(1.25rem + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);
+  padding:.7rem .8rem .7rem 1.1rem;border-radius:999px;display:flex;gap:.75rem;align-items:center;max-width:calc(100% - 32px);z-index:20;font-weight:500;box-shadow:0 8px 28px rgba(0,0,0,.3)}
+.toast button{border:0;background:var(--pop);color:var(--pop-ink);border-radius:999px;padding:.4rem .85rem;font-weight:700;white-space:nowrap}
+
+@media (prefers-reduced-motion:no-preference){
+  .overlay:not([hidden]){animation:fade .18s ease-out}
+  .overlay:not([hidden]) .sheet{animation:rise .24s cubic-bezier(.2,.8,.2,1)}
+  .toast:not([hidden]){animation:pop .22s cubic-bezier(.2,.8,.2,1)}
+  .done .tick svg{animation:tickin .25s cubic-bezier(.2,1.4,.4,1)}
+}
+@keyframes fade{from{opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}}
+@keyframes pop{from{opacity:0;transform:translate(-50%,12px)}}
+@keyframes tickin{from{transform:scale(.3)}}
+
+@media (max-width:900px){
+  .hero{grid-template-columns:minmax(0,1fr);padding-block:.5rem 1.5rem}
+  .cols{grid-template-columns:minmax(0,1fr);gap:1.5rem}
+  .panel{position:static}
+  .inner{padding-inline:16px}
+  #addTop{display:none}
+  .fab{display:grid}
+}
+@media (max-width:700px){
+  .paper{padding-top:1.25rem}
+  .calhead h2{font-size:1.6rem}
+  .dow{text-align:center;padding:.4rem 0}
+  .day{min-height:3.9rem;padding:.3rem .15rem;align-items:center;gap:.25rem}
+  .evs{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:.22rem}
+  .ev{background:transparent;padding:0}
+  .ev span{display:none}
+  .ev .shape{width:.6rem;height:.6rem}
+  .more{padding:0;line-height:.6rem}
+  .sync span{display:none}
+  .overlay{align-items:flex-end;padding:0}
+  .sheet{width:100%;border-radius:22px 22px 0 0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom,0px));max-height:92%}
+}
+</style>
+</head>
+<body>
+
+<div class="band">
+  <div class="inner">
+    <div class="bar">
+      <h1 class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Stock Planner</h1>
+      <span class="ver">v0.05</span>
+      <span class="sync" id="syncState"></span>
+      <button class="bbtn" id="openSetup" type="button">Setup</button>
+      <button class="bbtn pop" id="addTop" type="button" data-act="new">Add job</button>
+    </div>
+    <section class="hero" aria-live="polite">
+      <div id="heroLeft"></div>
+      <div id="heroRight"></div>
+    </section>
+  </div>
+</div>
+
+<main class="paper">
+  <div class="inner cols">
+    <section aria-label="Calendar">
+      <div class="calhead">
+        <h2 id="monthName"></h2>
+        <button class="rbtn" type="button" data-act="prev" aria-label="Previous month"></button>
+        <button class="pbtn" type="button" data-act="today">Today</button>
+        <button class="rbtn" type="button" data-act="next" aria-label="Next month"></button>
+      </div>
+      <div class="filters" id="filters"></div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <aside class="panel" aria-label="Selected day">
+      <header>
+        <h2 id="dayName"></h2>
+        <button class="btn" type="button" data-act="new">Add job</button>
+      </header>
+      <ul class="jobs" id="jobs"></ul>
+      <div class="next" id="next"></div>
+    </aside>
+  </div>
+</main>
+
+<button class="fab" type="button" data-act="new" aria-label="Add job"></button>
+
+<div class="overlay" id="jobSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle">Add job</h2>
+    <div class="seg" id="typeSeg" role="group" aria-label="Job type">
+      <button type="button" class="t-order" data-type="order"><i class="shape"></i>Order</button>
+      <button type="button" class="t-collect" data-type="collect"><i class="shape"></i>Collect</button>
+      <button type="button" class="t-process" data-type="process"><i class="shape"></i>Process</button>
+    </div>
+    <label class="f" for="fItem">Stock item<input type="text" id="fItem" maxlength="120" placeholder="e.g. Euro cylinders 35/35" list="itemList" autocomplete="off"></label>
+    <div class="two">
+      <label class="f" for="fSupplier">Supplier<input type="text" id="fSupplier" maxlength="80" list="supList" autocomplete="off"></label>
+      <label class="f" for="fDate">Date<input type="date" id="fDate"></label>
+    </div>
+    <label class="f" for="fRepeat">Repeat
+      <select id="fRepeat">
+        <option value="">Does not repeat</option>
+        <option value="w">Every week</option>
+        <option value="f">Every 2 weeks</option>
+        <option value="m">Every month</option>
+      </select>
+    </label>
+    <label class="f" for="fNote">Note<textarea id="fNote" maxlength="400" placeholder="Quantity, PO number, who to ask for"></textarea></label>
+    <datalist id="itemList"></datalist><datalist id="supList"></datalist>
+    <p class="msg" id="formMsg" role="alert" hidden></p>
+    <div class="row">
+      <button class="btn" type="button" id="saveBtn">Add job</button>
+      <button class="btn line" type="button" data-act="closeSheets">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="setup" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <h2 id="setupTitle">Setup</h2>
+    <h3>Appearance</h3>
+    <div class="opts" id="themeChoice">
+      <button type="button" data-theme-set="system">System</button>
+      <button type="button" data-theme-set="light">Light</button>
+      <button type="button" data-theme-set="dark">Dark</button>
+    </div>
+    <h3>Text size</h3>
+    <div class="opts" id="sizeChoice">
+      <button type="button" data-size="s">Small</button>
+      <button type="button" data-size="m">Medium</button>
+      <button type="button" data-size="l">Large</button>
+      <button type="button" data-size="xl">Extra large</button>
+    </div>
+
+    <h3>Sync across devices</h3>
+    <div class="stack" id="syncOff">
+      <p>Keeps your devices in step through a private GitHub gist. Your token is stored only in this browser and is sent only to GitHub.</p>
+      <label class="f" for="ghToken">GitHub token<input type="password" id="ghToken" spellcheck="false" autocomplete="off" placeholder="Classic token with gist scope"></label>
+      <label class="f" for="ghGist">Gist ID<input type="text" id="ghGist" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Optional. Blank finds or creates one"></label>
+      <p><a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Stock%20Planner%20sync" target="_blank" rel="noopener">Create a token</a>. Use a classic token and tick only gist.</p>
+      <div class="row"><button class="btn" type="button" id="ghConnect">Connect</button></div>
+    </div>
+    <div class="stack" id="syncOn" hidden>
+      <p class="kv">Connected as <b id="syncUser"></b><br>Gist <a id="syncGistLink" target="_blank" rel="noopener"></a><br>Last synced <b id="syncLast"></b></p>
+      <label class="check" for="ghAuto"><input type="checkbox" id="ghAuto">Sync automatically</label>
+      <div class="row"><button class="btn" type="button" id="ghSyncNow">Sync now</button><button class="btn line" type="button" id="ghDisconnect">Disconnect</button></div>
+    </div>
+
+    <h3>Sync encryption</h3>
+    <p class="kv">Encryption is <b id="encStatus"></b></p>
+    <p>Encrypts the copy in your gist so it cannot be read without the passphrase. Use the same passphrase on every device. It cannot be recovered if you forget it.</p>
+    <label class="f" for="ghPass">Passphrase<input type="password" id="ghPass" autocomplete="off" spellcheck="false"></label>
+    <div class="row"><button class="btn" type="button" id="ghPassSet">Encrypt cloud copy</button><button class="btn line" type="button" id="ghPassClear" hidden>Remove encryption</button></div>
+    <p id="setupMsg" aria-live="polite" hidden></p>
+
+    <h3>Data</h3>
+    <p>Export saves every job to a file. Import merges a file into what is already here and never overwrites newer changes.</p>
+    <div class="row"><button class="btn line" type="button" id="exportBtn">Export JSON</button><button class="btn line" type="button" id="importBtn">Import JSON</button></div>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+
+    <h3>My apps</h3>
+    <p>Open on any device, then use your browser menu to install it or add it to the home screen. <a href="https://gezzie72.github.io/apps/" target="_blank" rel="noopener">Open the App Launcher</a> for all your apps in one place.</p>
+
+    <div class="row">
+      <button class="btn" type="button" data-act="closeSheets">Close</button>
+      <span class="sp"></span>
+      <p>Stock Planner v0.05</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(function(){
+'use strict';
+var P='stockplanner.', KEY=P+'data', FILE='stockplanner.json', GIST_DESC='Stock Planner sync';
+var TYPES={order:'Order',collect:'Collect',process:'Process'}, ORDER=['order','collect','process'];
+var VERB={order:'Order',collect:'Collect',process:'Process'};
+var NEXT={order:'collect',collect:'process'};
+var REP={w:'Every week',f:'Every 2 weeks',m:'Every month'};
+var $=function(id){return document.getElementById(id)};
+function svg(d,s){return '<svg width="'+(s||18)+'" height="'+(s||18)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>'}
+var IC={
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>', plus:'<path d="M12 5v14M5 12h14"/>',
+  left:'<path d="M15 5l-7 7 7 7"/>', right:'<path d="M9 5l7 7-7 7"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16v4z"/>', bin:'<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
+  cloud:'<path d="M7 18a4 4 0 0 1-.5-8 5.5 5.5 0 0 1 10.6 1.2A3.5 3.5 0 0 1 17 18z"/>',
+  loop:'<path d="M4 11a7 7 0 0 1 12-4l2 2M18 5v4h-4M20 13a7 7 0 0 1-12 4l-2-2M6 19v-4h4"/>'
+};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function pad(n){return n<10?'0'+n:''+n}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function parse(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+function addDays(s,n){var d=parse(s);d.setDate(d.getDate()+n);return ymd(d)}
+function addMonth(s){var d=parse(s),day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+1);
+  var last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return ymd(d)}
+function gap(a,b){return Math.round((parse(b)-parse(a))/864e5)}
+function fmt(s,o){return parse(s).toLocaleDateString('en-GB',o)}
+function short(s){return fmt(s,{weekday:'short',day:'numeric',month:'short'})}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function load(k,def){try{var v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}}
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+var today=ymd(new Date());
+var jobs=load(KEY,null);if(!Array.isArray(jobs))jobs=null;
+var sel=today, view=monthOf(today), editing=null, formType='order', hide={}, syncTimer=null, syncing=false, dirty=false;
+function monthOf(s){var p=parse(s);return new Date(p.getFullYear(),p.getMonth(),1)}
+
+if(!jobs){ // first run: marked examples so the planner shows how it works
+  var t=Date.now();
+  jobs=[
+    {id:uid(),type:'order',item:'Euro cylinders 35/35',supplier:'Example supplier',date:addDays(today,-1),note:'Example job. 40 needed.',repeat:'',done:false,updated:t,example:true},
+    {id:uid(),type:'collect',item:'Stainless hinges, 100 mm',supplier:'Example supplier',date:today,note:'Example job.',repeat:'',done:false,updated:t+1,example:true},
+    {id:uid(),type:'process',item:'Book in lever handles',supplier:'',date:addDays(today,3),note:'Example job.',repeat:'w',done:false,updated:t+2,example:true}
+  ];
+  store(KEY,jobs);
+}
+function live(){return jobs.filter(function(j){return !j.deleted})}
+function save(){store(KEY,jobs);render();queueSync()}
+function find(id){for(var i=0;i<jobs.length;i++)if(jobs[i].id===id)return jobs[i]}
+function byDate(a,b){return a.date<b.date?-1:a.date>b.date?1:(a.updated||0)-(b.updated||0)}
+function plural(n,w){return n+' '+w+(n===1?'':'s')}
+
+/* ---------- look ---------- */
+function lsGet(k){try{return localStorage.getItem(k)||''}catch(e){return ''}}
+function lsSet(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}}
+function applyLook(){
+  var th=lsGet(P+'theme')||'system', sz=lsGet(P+'textScale')||'m', r=document.documentElement;
+  if(th==='light'||th==='dark')r.setAttribute('data-theme',th);else r.removeAttribute('data-theme');
+  r.setAttribute('data-size',sz);
+  var dark=th==='dark'||(th==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches);
+  var mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.setAttribute('content',dark?'#103f42':'#0e3b3e');
+  [].forEach.call(document.querySelectorAll('#sizeChoice button'),function(b){b.setAttribute('aria-pressed',b.dataset.size===sz)});
+  [].forEach.call(document.querySelectorAll('#themeChoice button'),function(b){b.setAttribute('aria-pressed',b.dataset.themeSet===th)});
+}
+
+/* ---------- render ---------- */
+function renderHero(){
+  var open=live().filter(function(j){return !j.done}).sort(byDate);
+  var late=open.filter(function(j){return j.date<today}), now=open.filter(function(j){return j.date===today});
+  var due=late.concat(now), tmr=addDays(today,1), soon=open.filter(function(j){return j.date===tmr});
+  var weekEnd=addDays(today,6), wk=open.filter(function(j){return j.date<=weekEnd});
+  var sum;
+  if(due.length){var bits=[];if(late.length)bits.push('<b>'+late.length+' overdue</b>');if(now.length)bits.push(now.length+' due today');sum=bits.join(' and ')}
+  else sum='Nothing due today';
+  var l='<h2>'+fmt(today,{weekday:'long'})+'<br>'+fmt(today,{day:'numeric',month:'long'})+'</h2><p class="sum">'+sum+'</p>';
+  if(wk.length){
+    l+='<div class="week">';
+    ORDER.forEach(function(ty){var n=wk.filter(function(j){return j.type===ty}).length;
+      if(n)l+='<span class="t-'+ty+'"><i class="shape"></i><b>'+n+'</b> to '+VERB[ty].toLowerCase()+'</span>'});
+    l+='<span>in the next 7 days</span></div>';
+  }
+  $('heroLeft').innerHTML=l;
+
+  var r='';
+  if(due.length){
+    r+='<ul class="tickets">';
+    due.slice(0,5).forEach(function(j){
+      var d=gap(j.date,today);
+      r+='<li class="ticket t-'+j.type+'"><button class="tick" type="button" data-act="done" data-id="'+j.id+'" aria-label="Mark '+esc(j.item)+' done">'+svg(IC.check,16)+'</button>'+
+         '<button class="go" type="button" data-act="goto" data-date="'+j.date+'"><span class="what">'+esc(j.item)+'</span>'+
+         '<span class="how"><i class="shape"></i>'+VERB[j.type]+(j.supplier?(j.type==='process'?', ':' from ')+esc(j.supplier):'')+'</span></button>'+
+         '<span class="due'+(d>0?' late':'')+'">'+(d>0?plural(d,'day')+' late':'Today')+'</span></li>';
+    });
+    r+='</ul>';
+  }else{
+    r+='<div class="calm"><b>You are up to date</b>'+(open.length?'Next job: '+VERB[open[0].type].toLowerCase()+' '+esc(open[0].item)+' on '+short(open[0].date)+'.':'Add a job and it will show here on the day it is due.')+'</div>';
+  }
+  var u='';
+  if(due.length>5)u+='<span>and '+(due.length-5)+' more on the calendar</span>';
+  if(soon.length)u+='<span>Tomorrow: '+soon.map(function(j){return VERB[j.type].toLowerCase()+' '+esc(j.item)}).join(', ')+'</span>';
+  if(live().some(function(j){return j.example}))u+='<span>These are example jobs. <button type="button" data-act="clearEg">Clear examples</button></span>';
+  if(u)r+='<div class="under">'+u+'</div>';
+  $('heroRight').innerHTML=r;
+}
+function shown(){return live().filter(function(j){return !hide[j.type]})}
+function renderCal(){
+  $('monthName').innerHTML=view.toLocaleDateString('en-GB',{month:'long'})+' <span>'+view.getFullYear()+'</span>';
+  var mk=ymd(view).slice(0,7), f='';
+  ORDER.forEach(function(ty){var n=live().filter(function(j){return j.type===ty&&!j.done&&j.date.slice(0,7)===mk}).length;
+    f+='<button class="fbtn t-'+ty+'" type="button" data-act="filter" data-type="'+ty+'" aria-pressed="'+(!hide[ty])+'"><i class="shape"></i>'+TYPES[ty]+' <b>'+n+'</b></button>'});
+  $('filters').innerHTML=f;
+  var by={};shown().forEach(function(j){(by[j.date]=by[j.date]||[]).push(j)});
+  var h='';['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d){h+='<div class="dow">'+d+'</div>'});
+  var off=(view.getDay()+6)%7, d=new Date(view);d.setDate(1-off);
+  var cells=Math.ceil((off+new Date(view.getFullYear(),view.getMonth()+1,0).getDate())/7)*7;
+  for(var i=0;i<cells;i++){
+    var k=ymd(d), list=(by[k]||[]).slice().sort(function(a,b){return (a.done-b.done)||ORDER.indexOf(a.type)-ORDER.indexOf(b.type)});
+    var open=list.filter(function(j){return !j.done}).length;
+    var cls='day'+(d.getMonth()!==view.getMonth()?' out':'')+(k===today?' today':'')+(k===sel?' sel':'')+(open&&k<today?' late':'');
+    var ev='';list.slice(0,3).forEach(function(j){ev+='<span class="ev t-'+j.type+(j.done?' done':'')+'"><i class="shape"></i><span>'+esc(j.item)+'</span></span>'});
+    if(list.length>3)ev+='<span class="more">+'+(list.length-3)+'</span>';
+    var label=fmt(k,{weekday:'long',day:'numeric',month:'long'})+(list.length?', '+open+' to do'+(list.length-open?', '+(list.length-open)+' done':''):'')+(open&&k<today?', overdue':'');
+    h+='<button type="button" class="'+cls+'" data-act="pick" data-date="'+k+'" aria-label="'+esc(label)+'"'+(k===sel?' aria-current="date"':'')+'><span class="n">'+d.getDate()+'</span>'+(ev?'<span class="evs">'+ev+'</span>':'')+'</button>';
+    d.setDate(d.getDate()+1);
+  }
+  $('grid').innerHTML=h;
+}
+function renderDay(){
+  var rel=sel===today?'Today':sel===addDays(today,1)?'Tomorrow':sel===addDays(today,-1)?'Yesterday':fmt(sel,{weekday:'long'});
+  $('dayName').innerHTML='<small>'+rel+'</small>'+fmt(sel,{day:'numeric',month:'long'});
+  var list=live().filter(function(j){return j.date===sel}).sort(function(a,b){return (a.done-b.done)||ORDER.indexOf(a.type)-ORDER.indexOf(b.type)||(a.updated-b.updated)});
+  var h='';
+  list.forEach(function(j){
+    var d=gap(j.date,today);
+    h+='<li class="job t-'+j.type+(j.done?' done':'')+'"><button class="tick" type="button" data-act="done" data-id="'+j.id+'" aria-label="'+(j.done?'Mark not done':'Mark done')+'">'+svg(IC.check,16)+'</button>'+
+       '<div class="jbody"><div class="jtitle">'+esc(j.item)+'</div><div class="jmeta"><span class="type"><i class="shape"></i>'+TYPES[j.type]+'</span>'+
+       (j.supplier?'<span>'+esc(j.supplier)+'</span>':'')+(j.repeat?'<span>'+svg(IC.loop,13)+REP[j.repeat]+'</span>':'')+
+       (!j.done&&d>0?'<span class="lt">'+plural(d,'day')+' late</span>':'')+'</div>'+(j.note?'<div class="jnote">'+esc(j.note)+'</div>':'')+'</div>'+
+       '<div class="jact"><button class="ibtn" type="button" data-act="edit" data-id="'+j.id+'" aria-label="Edit">'+svg(IC.edit,17)+'</button>'+
+       '<button class="ibtn" type="button" data-act="del" data-id="'+j.id+'" aria-label="Delete">'+svg(IC.bin,17)+'</button></div></li>';
+  });
+  $('jobs').innerHTML=h||'<li class="empty">Nothing planned for this day.</li>';
+  var up=live().filter(function(j){return !j.done&&j.date>today&&j.date!==sel}).sort(byDate).slice(0,5), n='';
+  if(up.length){
+    n='<h3>Coming up</h3><ul>';
+    up.forEach(function(j){n+='<li><button type="button" class="t-'+j.type+'" data-act="goto" data-date="'+j.date+'"><span class="when">'+short(j.date)+'</span><i class="shape"></i><span class="it">'+esc(j.item)+'</span></button></li>'});
+    n+='</ul>';
+  }
+  $('next').innerHTML=n;$('next').hidden=!n;
+}
+function render(){renderHero();renderCal();renderDay()}
+
+/* ---------- sheets ---------- */
+function openSheet(id,focus){$(id).hidden=false;document.body.style.overflow='hidden';if(focus)setTimeout(function(){try{$(focus).focus()}catch(e){}},60)}
+function closeSheets(){$('jobSheet').hidden=true;$('setup').hidden=true;document.body.style.overflow='';editing=null}
+function setType(t){formType=t;[].forEach.call(document.querySelectorAll('#typeSeg button'),function(b){b.setAttribute('aria-pressed',b.dataset.type===t)})}
+function formMsg(t){var m=$('formMsg');m.textContent=t||'';m.hidden=!t}
+function openJob(o,isEdit){
+  editing=isEdit?o.id:null;setType(o.type||'order');formMsg('');
+  $('fItem').value=o.item||'';$('fSupplier').value=o.supplier||'';$('fDate').value=o.date||sel;$('fRepeat').value=o.repeat||'';$('fNote').value=o.note||'';
+  $('sheetTitle').textContent=isEdit?'Edit job':'Add job';$('saveBtn').textContent=isEdit?'Save changes':'Add job';
+  function uniq(k){var s={};live().forEach(function(j){if(j[k]&&!j.example)s[j[k]]=1});return Object.keys(s).sort().map(function(v){return '<option value="'+esc(v)+'">'}).join('')}
+  $('itemList').innerHTML=uniq('item');$('supList').innerHTML=uniq('supplier');
+  openSheet('jobSheet',isEdit?null:'fItem');
+}
+function submitJob(){
+  var item=$('fItem').value.trim(), date=$('fDate').value;
+  if(!item){formMsg('Type the stock item first.');$('fItem').focus();return}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){formMsg('Pick a date.');$('fDate').focus();return}
+  var data={type:formType,item:item,supplier:$('fSupplier').value.trim(),date:date,repeat:$('fRepeat').value,note:$('fNote').value.trim(),updated:Date.now()};
+  var j=editing?find(editing):null;
+  if(j){Object.keys(data).forEach(function(k){j[k]=data[k]});delete j.example}
+  else{data.id=uid();data.done=false;jobs.push(data)}
+  sel=date;view=monthOf(sel);closeSheets();save();toast(j?'Changes saved':'Added to '+short(date));
+}
+var toastTimer;
+function toast(msg,btn,fn){
+  var t=$('toast');t.innerHTML='<span>'+esc(msg)+'</span>'+(btn?'<button type="button">'+esc(btn)+'</button>':'');
+  if(btn)t.querySelector('button').onclick=function(){t.hidden=true;fn()};
+  t.hidden=true;void t.offsetWidth;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.hidden=true},btn?9000:3000);
+}
+function toggleDone(j){
+  j.done=!j.done;j.updated=Date.now();
+  var msg=null,follow=null;
+  if(j.done){
+    msg='Done';
+    if(j.repeat){
+      var nd=j.repeat==='m'?addMonth(j.date):addDays(j.date,j.repeat==='w'?7:14);
+      jobs.push({id:uid(),type:j.type,item:j.item,supplier:j.supplier,date:nd,note:j.note,repeat:j.repeat,done:false,updated:Date.now()});
+      j.repeat='';msg='Done. Next one is '+short(nd);
+    }else if(NEXT[j.type]){follow=NEXT[j.type];msg=j.type==='order'?'Ordered. Plan the collection?':'Collected. Plan the processing?'}
+  }
+  save();
+  if(follow)toast(msg,'Plan it',function(){openJob({type:follow,item:j.item,supplier:j.supplier,date:today},false);$('fDate').focus()});
+  else if(msg)toast(msg);
+}
+
+document.addEventListener('click',function(e){
+  if(e.target.classList&&e.target.classList.contains('overlay')){closeSheets();return}
+  var b=e.target.closest('[data-act]');if(!b)return;
+  var act=b.dataset.act, j=b.dataset.id?find(b.dataset.id):null;
+  if(act==='prev'||act==='next'){view=new Date(view.getFullYear(),view.getMonth()+(act==='next'?1:-1),1);renderCal()}
+  else if(act==='today'){sel=today;view=monthOf(today);render()}
+  else if(act==='pick'||act==='goto'){sel=b.dataset.date;view=monthOf(sel);render();
+    if(act==='goto'||window.innerWidth<=900)$('dayName').scrollIntoView({block:'nearest',behavior:'smooth'})}
+  else if(act==='filter'){hide[b.dataset.type]=!hide[b.dataset.type];renderCal()}
+  else if(act==='new')openJob({type:'order',date:sel},false);
+  else if(act==='closeSheets')closeSheets();
+  else if(act==='done'&&j)toggleDone(j);
+  else if(act==='edit'&&j)openJob(j,true);
+  else if(act==='del'&&j){
+    if(b.classList.contains('sure')){j.deleted=true;j.updated=Date.now();save();toast('Deleted')}
+    else{b.classList.add('sure');b.textContent='Delete?';setTimeout(function(){if(b.isConnected){b.classList.remove('sure');b.innerHTML=svg(IC.bin,17)}},4000)}
+  }
+  else if(act==='clearEg'){jobs.forEach(function(x){if(x.example&&!x.deleted){x.deleted=true;x.updated=Date.now()}});save()}
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape')closeSheets();
+  else if(e.key==='Enter'&&!$('jobSheet').hidden&&e.target.tagName==='INPUT'){e.preventDefault();submitJob()}
+});
+$('typeSeg').addEventListener('click',function(e){var b=e.target.closest('[data-type]');if(b)setType(b.dataset.type)});
+$('saveBtn').addEventListener('click',submitJob);
+
+/* ---------- setup ---------- */
+function setupMsg(t){var m=$('setupMsg');m.textContent=t||'';m.hidden=!t}
+$('openSetup').addEventListener('click',function(){setupMsg('');renderSync();openSheet('setup')});
+$('sizeChoice').addEventListener('click',function(e){var b=e.target.closest('[data-size]');if(!b)return;lsSet(P+'textScale',b.dataset.size);applyLook()});
+$('themeChoice').addEventListener('click',function(e){var b=e.target.closest('[data-theme-set]');if(!b)return;lsSet(P+'theme',b.dataset.themeSet);applyLook()});
+if(window.matchMedia)try{matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyLook)}catch(e){}
+/* a second tap confirms: browser confirm boxes are not available everywhere */
+function twoTap(btn,ask,fn){
+  if(btn.dataset.sure){delete btn.dataset.sure;btn.textContent=btn.dataset.label;btn.classList.remove('red');fn();return}
+  btn.dataset.label=btn.textContent;btn.dataset.sure='1';btn.textContent=ask;btn.classList.add('red');
+  setTimeout(function(){if(btn.dataset.sure){delete btn.dataset.sure;btn.textContent=btn.dataset.label;btn.classList.remove('red')}},4000);
+}
+
+/* ---------- sync (GitHub gist), same scheme as the other apps: shared token, one gist per app ---------- */
+function connected(){return !!(lsGet('gh.token')&&lsGet(P+'gh.gist'))}
+function autoOn(){return lsGet(P+'gh.auto')!=='0'}
+function pass(){return lsGet(P+'gh.pass')}
+function b64(buf){var u=new Uint8Array(buf),s='';for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s)}
+function unb64(s){var b=atob(s),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+async function keyFor(p,salt){
+  var base=await crypto.subtle.importKey('raw',new TextEncoder().encode(p),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:200000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function encodeForGist(obj){
+  var plain=JSON.stringify(obj);if(!pass())return plain;
+  var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  var ct=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},await keyFor(pass(),salt),new TextEncoder().encode(plain));
+  return JSON.stringify({__enc:1,alg:'AES-GCM-PBKDF2-200k',salt:b64(salt),iv:b64(iv),data:b64(ct),updatedAt:obj.updatedAt});
+}
+async function decodeEnvelope(env){
+  var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(env.iv)},await keyFor(pass(),unb64(env.salt)),unb64(env.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function ghApi(method,path,body){
+  var res;
+  try{res=await fetch('https://api.github.com'+path,{method:method,cache:'no-store',headers:{'Authorization':'Bearer '+lsGet('gh.token'),'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:body?JSON.stringify(body):undefined})}
+  catch(e){throw new Error('Cannot reach GitHub. Jobs are safe on this device.')}
+  if(!res.ok){
+    if(res.status===401)throw new Error('GitHub refused the token. Create a new classic token with gist scope.');
+    if(res.status===403)throw new Error('GitHub refused the request. The token needs gist scope.');
+    if(res.status===404)throw new Error('Gist not found. Check the Gist ID, and use a classic token.');
+    throw new Error('GitHub error '+res.status+'.');
+  }
+  return res.json();
+}
+async function readRemote(){
+  var g=await ghApi('GET','/gists/'+lsGet(P+'gh.gist')), f=g.files&&g.files[FILE];
+  if(!f||!f.content)return {data:null,enc:false};
+  var r;
+  try{r=JSON.parse(f.truncated&&f.raw_url?await (await fetch(f.raw_url)).text():f.content)}catch(e){throw new Error('The synced copy could not be read.')}
+  if(r&&r.__enc===1){
+    if(!pass())throw new Error('This sync is encrypted. Enter your passphrase under Sync encryption.');
+    try{r=await decodeEnvelope(r)}catch(e){throw new Error('Wrong passphrase. Nothing was changed.')}
+    return {data:r,enc:true};
+  }
+  return {data:r,enc:false};
+}
+function merge(remote){
+  var map={};jobs.forEach(function(j){map[j.id]=j});
+  (remote||[]).forEach(function(r){if(!r||!r.id)return;var l=map[r.id];if(!l||(r.updated||0)>(l.updated||0))map[r.id]=r});
+  var cutoff=Date.now()-90*864e5; // delete markers are dropped after 90 days
+  jobs=Object.keys(map).map(function(k){return map[k]}).filter(function(j){return !(j.deleted&&(j.updated||0)<cutoff)});
+}
+function syncLabel(t){$('syncState').innerHTML=svg(IC.cloud,15)+'<span>'+esc(t||(connected()?'Sync on':'On this device only'))+'</span>'}
+async function syncNow(force){
+  if(!connected())return 'Sync is not connected.';
+  if(!(window.crypto&&crypto.subtle)&&pass())return 'This browser cannot encrypt here. Open the app over https.';
+  if(syncing)return 'Already syncing.';
+  syncing=true;syncLabel('Syncing…');
+  try{
+    var r=await readRemote(), rj=(r.data&&Array.isArray(r.data.jobs))?r.data.jobs:[], rmap={};
+    rj.forEach(function(j){if(j&&j.id)rmap[j.id]=j});
+    var need=force||dirty||!r.data||r.enc!==!!pass()||jobs.some(function(j){return !rmap[j.id]||(j.updated||0)>(rmap[j.id].updated||0)});
+    var before=JSON.stringify(jobs);merge(rj);
+    if(JSON.stringify(jobs)!==before){store(KEY,jobs);render()}
+    if(need){
+      dirty=false;
+      try{await ghApi('PATCH','/gists/'+lsGet(P+'gh.gist'),{files:(function(o,c){o[FILE]={content:c};return o})({},await encodeForGist({jobs:jobs,updatedAt:Date.now()}))})}
+      catch(e){dirty=true;throw e}
+    }
+    lsSet(P+'gh.lastSync',String(Date.now()));
+    var m='Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    syncLabel(m);renderSync();return m+(pass()?', encrypted.':'.');
+  }catch(e){syncLabel('Sync problem');return e.message||'Sync failed.'}
+  finally{syncing=false}
+}
+function queueSync(){dirty=true;if(!connected()||!autoOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,1800)}
+async function findGist(){
+  var list=await ghApi('GET','/gists?per_page=100');
+  var mine=(list||[]).filter(function(g){return (g.files&&g.files[FILE])||g.description===GIST_DESC});
+  if(!mine.length)return '';
+  mine.sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at)});return mine[0].id;
+}
+function renderSync(){
+  var on=connected();$('syncOff').hidden=on;$('syncOn').hidden=!on;
+  if(on){
+    var id=lsGet(P+'gh.gist'), t=Number(lsGet(P+'gh.lastSync'))||0;
+    $('syncUser').textContent=lsGet(P+'gh.user')||'your GitHub account';
+    $('syncGistLink').textContent=id;$('syncGistLink').href='https://gist.github.com/'+id;
+    $('syncLast').textContent=t?new Date(t).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'never';
+    $('ghAuto').checked=autoOn();
+  }else{
+    $('ghToken').placeholder=lsGet('gh.token')?'Saved on this device. Leave blank to use it':'Classic token with gist scope';
+  }
+  $('encStatus').textContent=pass()?'on':'off. The cloud copy is plain text';
+  $('ghPassSet').textContent=pass()?'Update passphrase':'Encrypt cloud copy';$('ghPassClear').hidden=!pass();
+}
+$('ghConnect').addEventListener('click',async function(){
+  var t=$('ghToken').value.trim()||lsGet('gh.token'), gid=$('ghGist').value.trim().split('/').pop(), prev=lsGet('gh.token');
+  if(!t){setupMsg('Paste your GitHub token first.');return}
+  lsSet('gh.token',t);this.disabled=true;setupMsg('Connecting…');
+  try{
+    if(!gid)gid=await findGist();
+    if(gid){lsSet(P+'gh.gist',gid);await ghApi('GET','/gists/'+gid)}
+    else{
+      var g=await ghApi('POST','/gists',{description:GIST_DESC,public:false,files:(function(o,c){o[FILE]={content:c};return o})({},await encodeForGist({jobs:jobs,updatedAt:Date.now()}))});
+      lsSet(P+'gh.gist',g.id);
+    }
+    try{var u=await ghApi('GET','/user');lsSet(P+'gh.user',u.login)}catch(e){}
+    $('ghToken').value='';$('ghGist').value='';renderSync();
+    setupMsg('Connected. '+await syncNow(true));
+  }catch(e){lsSet('gh.token',prev);lsSet(P+'gh.gist','');renderSync();syncLabel();setupMsg('Could not connect. '+e.message)}
+  finally{this.disabled=false}
+});
+$('ghSyncNow').addEventListener('click',async function(){this.disabled=true;setupMsg('Syncing…');setupMsg(await syncNow(true));this.disabled=false});
+$('ghAuto').addEventListener('change',function(){lsSet(P+'gh.auto',this.checked?'1':'0');if(this.checked&&dirty)queueSync()});
+$('ghDisconnect').addEventListener('click',function(){twoTap(this,'Tap again to disconnect',function(){
+  lsSet(P+'gh.gist','');lsSet(P+'gh.user','');renderSync();syncLabel();setupMsg('Disconnected on this device. Your jobs stay here and the gist is untouched.')})});
+$('ghPassSet').addEventListener('click',async function(){
+  var p=$('ghPass').value;
+  if(p.length<6){setupMsg('Use a passphrase of at least 6 characters.');return}
+  if(!(window.crypto&&crypto.subtle)){setupMsg('This browser cannot encrypt here. Open the app over https.');return}
+  var old=pass();lsSet(P+'gh.pass',p);$('ghPass').value='';renderSync();
+  if(!connected()){setupMsg('Passphrase saved. Connect sync to use it.');return}
+  this.disabled=true;setupMsg('Applying passphrase…');
+  var m=await syncNow(true);
+  if(/^Wrong passphrase/.test(m)){lsSet(P+'gh.pass',old);renderSync();m='That passphrase does not match the encrypted copy in your gist. Nothing was changed.'}
+  setupMsg(m);this.disabled=false;
+});
+$('ghPassClear').addEventListener('click',function(){twoTap(this,'Tap again to remove',async function(){
+  lsSet(P+'gh.pass','');renderSync();
+  setupMsg(connected()?'Encryption removed. '+await syncNow(true):'Passphrase removed.')})});
+
+/* ---------- export / import ---------- */
+$('exportBtn').addEventListener('click',function(){
+  var now=new Date(), name='stockplanner-'+ymd(now)+'.json';
+  var text=JSON.stringify({app:'stockplanner',version:1,exported:now.toISOString(),data:{jobs:jobs}},null,2);
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setupMsg('Exported '+live().length+' jobs as '+name+'.');
+});
+$('importBtn').addEventListener('click',function(){$('importFile').click()});
+$('importFile').addEventListener('change',function(){
+  var f=this.files&&this.files[0];this.value='';if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var p=JSON.parse(r.result), inc=p&&p.data&&p.data.jobs;
+      if(!p||p.app!=='stockplanner'||!Array.isArray(inc)){setupMsg('That file is not a Stock Planner export.');return}
+      var n=live().length;merge(inc);save();setupMsg('Imported. '+(live().length-n)+' new jobs added.');
+    }catch(e){setupMsg('That file could not be read.')}
+  };
+  r.readAsText(f);
+});
+
+/* ---------- start ---------- */
+document.querySelector('[data-act=prev]').innerHTML=svg(IC.left,18);
+document.querySelector('[data-act=next]').innerHTML=svg(IC.right,18);
+document.querySelector('.fab').innerHTML=svg(IC.plus,26);
+$('addTop').insertAdjacentHTML('afterbegin',svg(IC.plus,16));
+applyLook();render();syncLabel();renderSync();
+if(connected()&&autoOn())syncNow();
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden)return;
+  var n=ymd(new Date());if(n!==today){today=n;render()}
+  if(connected()&&autoOn())syncNow();
+});
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      document.addEventListener('visibilitychange',function(){if(!document.hidden)reg.update().catch(function(){})});
+    }).catch(function(){});
+  });
+}
+})();
+</script>
+</body>
+</html>
