@@ -258,7 +258,7 @@ textarea{resize:vertical;min-height:4.2rem}
   <div class="inner">
     <div class="bar">
       <h1 class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Stock Planner</h1>
-      <span class="ver">v0.07</span>
+      <span class="ver">v0.08</span>
       <span class="sync" id="syncState"></span>
       <button class="bbtn" id="saveNow" type="button">Save</button>
       <button class="bbtn" id="openSetup" type="button">Setup</button>
@@ -363,9 +363,13 @@ textarea{resize:vertical;min-height:4.2rem}
     <h3>Sync encryption</h3>
     <p class="kv">Encryption is <b id="encStatus"></b></p>
     <p>Encrypts the copy in your gist so it cannot be read without the passphrase. Use the same passphrase on every device. It cannot be recovered if you forget it.</p>
-    <label class="f" for="ghPass">Passphrase<input type="password" id="ghPass" autocomplete="off" spellcheck="false"></label>
-    <div class="row"><button class="btn" type="button" id="ghPassSet">Encrypt cloud copy</button><button class="btn line" type="button" id="ghPassClear" hidden>Remove encryption</button></div>
+    <label class="f" for="ghPass">Passphrase<input type="password" id="ghPass" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <div class="row"><button class="btn" type="button" id="ghPassSet">Encrypt cloud copy</button><button class="btn line" type="button" id="ghPassShow">Show</button><button class="btn line" type="button" id="ghPassClear" hidden>Remove encryption</button></div>
     <p id="setupMsg" aria-live="polite" hidden></p>
+    <div class="stack" id="resetBox" hidden>
+      <p>If the passphrase cannot be matched, this device can start the cloud copy again from the jobs it holds. Jobs that exist only on another device and never reached this one will not be in it.</p>
+      <div class="row"><button class="btn line" type="button" id="ghPassReset">Replace cloud copy with this device's jobs</button></div>
+    </div>
 
     <h3>Data</h3>
     <p>Export saves every job to a file. Import merges a file into what is already here and never overwrites newer changes.</p>
@@ -378,7 +382,7 @@ textarea{resize:vertical;min-height:4.2rem}
     <div class="row">
       <button class="btn" type="button" data-act="closeSheets">Close</button>
       <span class="sp"></span>
-      <p>Stock Planner v0.07</p>
+      <p>Stock Planner v0.08</p>
     </div>
   </div>
 </div>
@@ -418,7 +422,7 @@ function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 
 var today=ymd(new Date());
 var jobs=load(KEY,null);if(!Array.isArray(jobs))jobs=null;
-var sel=today, view=monthOf(today), editing=null, formType='order', hide={}, syncTimer=null, retryTimer=null, syncing=false, dirty=false, again=false, syncErr='';
+var sel=today, view=monthOf(today), editing=null, formType='order', hide={}, syncTimer=null, retryTimer=null, syncing=false, dirty=false, again=false, syncErr='', altPass='';
 function monthOf(s){var p=parse(s);return new Date(p.getFullYear(),p.getMonth(),1)}
 
 if(!jobs){ // first run: marked examples so the planner shows how it works
@@ -618,7 +622,7 @@ $('saveBtn').addEventListener('click',submitJob);
 
 /* ---------- setup ---------- */
 function setupMsg(t){var m=$('setupMsg');m.textContent=t||'';m.hidden=!t}
-$('openSetup').addEventListener('click',function(){setupMsg('');renderSync();openSheet('setup')});
+$('openSetup').addEventListener('click',function(){setupMsg(connected()?syncErr:'');$('resetBox').hidden=!(connected()&&passProblem(syncErr));renderSync();openSheet('setup')});
 $('sizeChoice').addEventListener('click',function(e){var b=e.target.closest('[data-size]');if(!b)return;lsSet(P+'textScale',b.dataset.size);applyLook()});
 $('themeChoice').addEventListener('click',function(e){var b=e.target.closest('[data-theme-set]');if(!b)return;lsSet(P+'theme',b.dataset.themeSet);applyLook()});
 if(window.matchMedia)try{matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyLook)}catch(e){}
@@ -645,8 +649,8 @@ async function encodeForGist(obj){
   var ct=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},await keyFor(pass(),salt),new TextEncoder().encode(plain));
   return JSON.stringify({__enc:1,alg:'AES-GCM-PBKDF2-200k',salt:b64(salt),iv:b64(iv),data:b64(ct),updatedAt:obj.updatedAt});
 }
-async function decodeEnvelope(env){
-  var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(env.iv)},await keyFor(pass(),unb64(env.salt)),unb64(env.data));
+async function decodeEnvelope(env,p){
+  var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(env.iv)},await keyFor(p,unb64(env.salt)),unb64(env.data));
   return JSON.parse(new TextDecoder().decode(pt));
 }
 async function ghApi(method,path,body){
@@ -669,9 +673,11 @@ async function readRemote(){
   var r;
   try{r=JSON.parse(f.truncated&&f.raw_url?await (await fetch(f.raw_url)).text():f.content)}catch(e){throw new Error('The synced copy could not be read.')}
   if(r&&r.__enc===1){
-    if(!pass())throw new Error('This sync is encrypted. Enter your passphrase under Sync encryption.');
-    try{r=await decodeEnvelope(r)}catch(e){throw new Error('Wrong passphrase. Nothing was changed.')}
-    return {data:r,enc:true};
+    /* altPass is the previous passphrase while one is being changed or removed, so the old copy can still be opened */
+    var tries=[pass(),altPass].filter(function(x,i,a){return x&&a.indexOf(x)===i});
+    if(!tries.length)throw new Error('This sync is encrypted. Enter your passphrase under Sync encryption.');
+    for(var i=0;i<tries.length;i++){try{return {data:await decodeEnvelope(r,tries[i]),enc:true}}catch(e){}}
+    throw new Error('Wrong passphrase. Nothing was changed.');
   }
   return {data:r,enc:false};
 }
@@ -692,14 +698,16 @@ function saveBtnState(){
   else txt=on?'Synced':'Saved';
   b.className=cls;b.innerHTML=(txt==='Synced'||txt==='Saved'?svg(IC.check,15):'')+txt;
 }
-async function syncNow(force){
+function passProblem(m){return /passphrase|encrypted\. Enter/i.test(m||'')}
+async function syncWhenFree(force,opts){while(syncing)await new Promise(function(r){setTimeout(r,150)});return syncNow(force,opts)}
+async function syncNow(force,opts){
   if(!connected())return 'Sync is not connected.';
   if(!(window.crypto&&crypto.subtle)&&pass())return 'This browser cannot encrypt here. Open the app over https.';
   if(syncing){again=true;return 'Already syncing.'}
   clearTimeout(syncTimer);clearTimeout(retryTimer);
   syncing=true;again=false;syncLabel('Syncing…');
   try{
-    var r=await readRemote(), rj=(r.data&&Array.isArray(r.data.jobs))?r.data.jobs:[], rmap={};
+    var r=(opts&&opts.overwrite)?{data:null,enc:false}:await readRemote(), rj=(r.data&&Array.isArray(r.data.jobs))?r.data.jobs:[], rmap={};
     rj.forEach(function(j){if(j&&j.id)rmap[j.id]=j});
     var need=force||dirty||!r.data||r.enc!==!!pass()||jobs.some(function(j){return !rmap[j.id]||(j.updated||0)>(rmap[j.id].updated||0)});
     var before=JSON.stringify(jobs);merge(rj);
@@ -714,12 +722,12 @@ async function syncNow(force){
     syncErr='';syncing=false;syncLabel(m);renderSync();if(dirty||again)queueSync();return m+(pass()?', encrypted.':'.');
   }catch(e){
     syncErr=e.message||'Sync failed.';syncing=false;syncLabel('Sync problem');
-    if(autoOn())retryTimer=setTimeout(syncNow,30000); // try again by itself; the jobs are still safe on this device
+    if(autoOn()&&!passProblem(syncErr))retryTimer=setTimeout(function(){syncNow()},30000); // try again by itself; the jobs are still safe on this device
     return syncErr;
   }
   finally{syncing=false}
 }
-function queueSync(){dirty=true;saveBtnState();if(!connected()||!autoOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,500)}
+function queueSync(){dirty=true;saveBtnState();if(!connected()||!autoOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(function(){syncNow()},500)}
 async function findGist(){
   var list=await ghApi('GET','/gists?per_page=100');
   var mine=(list||[]).filter(function(g){return (g.files&&g.files[FILE])||g.description===GIST_DESC});
@@ -757,24 +765,44 @@ $('ghConnect').addEventListener('click',async function(){
   }catch(e){lsSet('gh.token',prev);lsSet(P+'gh.gist','');renderSync();syncLabel();setupMsg('Could not connect. '+e.message)}
   finally{this.disabled=false}
 });
-$('ghSyncNow').addEventListener('click',async function(){this.disabled=true;setupMsg('Syncing…');setupMsg(await syncNow(true));this.disabled=false});
+$('ghSyncNow').addEventListener('click',async function(){this.disabled=true;setupMsg('Syncing…');afterPass(await syncWhenFree(true));this.disabled=false});
 $('ghAuto').addEventListener('change',function(){lsSet(P+'gh.auto',this.checked?'1':'0');if(this.checked&&dirty)queueSync()});
 $('ghDisconnect').addEventListener('click',function(){twoTap(this,'Tap again to disconnect',function(){
   lsSet(P+'gh.gist','');lsSet(P+'gh.user','');renderSync();syncLabel();setupMsg('Disconnected on this device. Your jobs stay here and the gist is untouched.')})});
+var WRONG='That passphrase does not unlock the copy in your gist. It has to be exactly what was typed on the device that turned encryption on. Capitals and spaces count. Nothing was changed.';
+function afterPass(m){$('resetBox').hidden=!(connected()&&passProblem(m));setupMsg(/^Wrong passphrase/.test(m)?WRONG:m)}
+$('ghPassShow').addEventListener('click',function(){var i=$('ghPass'),show=i.type==='password';i.type=show?'text':'password';this.textContent=show?'Hide':'Show'});
 $('ghPassSet').addEventListener('click',async function(){
-  var p=$('ghPass').value;
+  var p=$('ghPass').value.trim();
   if(p.length<6){setupMsg('Use a passphrase of at least 6 characters.');return}
   if(!(window.crypto&&crypto.subtle)){setupMsg('This browser cannot encrypt here. Open the app over https.');return}
-  var old=pass();lsSet(P+'gh.pass',p);$('ghPass').value='';renderSync();
-  if(!connected()){setupMsg('Passphrase saved. Connect sync to use it.');return}
+  var old=pass();
+  if(!connected()){lsSet(P+'gh.pass',p);$('ghPass').value='';renderSync();setupMsg('Passphrase saved. Connect sync to use it.');return}
   this.disabled=true;setupMsg('Applying passphrase…');
-  var m=await syncNow(true);
-  if(/^Wrong passphrase/.test(m)){lsSet(P+'gh.pass',old);renderSync();m='That passphrase does not match the encrypted copy in your gist. Nothing was changed.'}
-  setupMsg(m);this.disabled=false;
+  altPass=old;lsSet(P+'gh.pass',p);
+  var m=await syncWhenFree(true);altPass='';
+  if(/^Synced/.test(m)){$('ghPass').value='';if(old&&old!==p)m+=' Passphrase changed. Enter the new one on your other devices.'}
+  else lsSet(P+'gh.pass',old); // not applied: keep whatever worked before, and leave the box filled so it can be checked with Show
+  renderSync();afterPass(m);this.disabled=false;
 });
 $('ghPassClear').addEventListener('click',function(){twoTap(this,'Tap again to remove',async function(){
-  lsSet(P+'gh.pass','');renderSync();
-  setupMsg(connected()?'Encryption removed. '+await syncNow(true):'Passphrase removed.')})});
+  var old=pass();
+  if(!connected()){lsSet(P+'gh.pass','');renderSync();setupMsg('Passphrase removed.');return}
+  altPass=old;lsSet(P+'gh.pass','');
+  var m=await syncWhenFree(true);altPass='';
+  if(/^Synced/.test(m))m='Encryption removed. '+m;else lsSet(P+'gh.pass',old);
+  renderSync();afterPass(m)})});
+$('ghPassReset').addEventListener('click',function(){
+  var p=$('ghPass').value.trim();
+  if(p&&p.length<6){setupMsg('Use a passphrase of at least 6 characters.');return}
+  if(!p&&!pass()){setupMsg('Type the passphrase you want to use first.');$('ghPass').focus();return}
+  twoTap(this,'Tap again. The cloud copy will be overwritten',async function(){
+    var old=pass();if(p)lsSet(P+'gh.pass',p);
+    setupMsg('Replacing the cloud copy…');
+    var m=await syncWhenFree(true,{overwrite:true}), n=live().length;
+    if(/^Synced/.test(m)){$('ghPass').value='';m='Cloud copy replaced with the '+n+(n===1?' job':' jobs')+' on this device, encrypted with this passphrase. Enter the same passphrase on your other devices.'}
+    else lsSet(P+'gh.pass',old);
+    renderSync();afterPass(m)})});
 
 /* ---------- Save button ---------- */
 $('saveNow').addEventListener('click',async function(){
@@ -782,9 +810,10 @@ $('saveNow').addEventListener('click',async function(){
   if(!ok){syncLabel();toast('Could not save on this device');return}
   if(!connected()){syncLabel();toast('Saved on this device only, '+count()+'. Connect sync in Setup to see them on your other devices','Setup',function(){$('openSetup').click()});return}
   this.disabled=true;
-  var m=await syncNow(true);this.disabled=false;
+  var m=await syncWhenFree(true);this.disabled=false;
   if(/^Synced/.test(m))toast('Saved and synced, '+count());
   else if(m==='Already syncing.')toast('Saved. Sync is finishing');
+  else if(passProblem(m))toast('Saved on this device, not synced. The passphrase needs entering','Setup',function(){$('openSetup').click()});
   else toast('Saved on this device, not synced. '+m);
 });
 window.addEventListener('storage',function(e){if(e.key===KEY)reloadFromDisk()});

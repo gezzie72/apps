@@ -1,5 +1,5 @@
 /* Stock Planner service worker - offline app shell, network-first so updates land. */
-const CACHE = "stockplanner-v3";
+const CACHE = "stockplanner-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e=>{
