@@ -63,7 +63,8 @@ svg{display:block;flex:none}
 /* ---------- band ---------- */
 .band{background:var(--band);color:var(--band-ink);padding-top:env(safe-area-inset-top,0px)}
 .inner{max-width:76rem;margin:0 auto;padding-inline:20px}
-.bar{display:flex;align-items:center;gap:.75rem;padding-block:.9rem}
+.bar{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem .75rem;padding-block:.9rem}
+.warn{background:var(--late);color:var(--on-color);font-weight:600;border-radius:12px;padding:.75rem 1rem;margin-bottom:.75rem}
 .brand{font-family:var(--display);font-weight:700;font-size:1.125rem;letter-spacing:-.01em;display:flex;align-items:center;gap:.55rem}
 .brand .mark{display:grid;grid-template-columns:repeat(2,.45rem);gap:.14rem}
 .brand .mark i{width:.45rem;height:.45rem;background:var(--band-ink);border-radius:1px}
@@ -242,6 +243,8 @@ textarea{resize:vertical;min-height:4.2rem}
   .ev .shape{width:.6rem;height:.6rem}
   .more{padding:0;line-height:.6rem}
   .sync span{display:none}
+  .ver{display:none}
+  .bbtn{padding:.5rem .8rem}
   .overlay{align-items:flex-end;padding:0}
   .sheet{width:100%;border-radius:22px 22px 0 0;padding-bottom:calc(1.4rem + env(safe-area-inset-bottom,0px));max-height:92%}
 }
@@ -253,11 +256,13 @@ textarea{resize:vertical;min-height:4.2rem}
   <div class="inner">
     <div class="bar">
       <h1 class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Stock Planner</h1>
-      <span class="ver">v0.05</span>
+      <span class="ver">v0.06</span>
       <span class="sync" id="syncState"></span>
+      <button class="bbtn" id="saveNow" type="button">Save</button>
       <button class="bbtn" id="openSetup" type="button">Setup</button>
       <button class="bbtn pop" id="addTop" type="button" data-act="new">Add job</button>
     </div>
+    <p class="warn" id="saveWarn" role="alert" hidden>Jobs are not being saved on this device. The browser is blocking storage for this page, which happens in previews and private windows. Open Stock Planner from your App Launcher and they will be kept.</p>
     <section class="hero" aria-live="polite">
       <div id="heroLeft"></div>
       <div id="heroRight"></div>
@@ -371,7 +376,7 @@ textarea{resize:vertical;min-height:4.2rem}
     <div class="row">
       <button class="btn" type="button" data-act="closeSheets">Close</button>
       <span class="sp"></span>
-      <p>Stock Planner v0.05</p>
+      <p>Stock Planner v0.06</p>
     </div>
   </div>
 </div>
@@ -424,7 +429,16 @@ if(!jobs){ // first run: marked examples so the planner shows how it works
   store(KEY,jobs);
 }
 function live(){return jobs.filter(function(j){return !j.deleted})}
-function save(){store(KEY,jobs);render();queueSync()}
+var saveOk=true;
+/* Write jobs to this device. First fold in whatever is already stored, so a second tab
+   or the installed app cannot overwrite entries it has not seen; then read back to prove it stuck. */
+function persist(){
+  var disk=load(KEY,null);if(Array.isArray(disk))merge(disk);
+  var ok=false;try{var t=JSON.stringify(jobs);localStorage.setItem(KEY,t);ok=localStorage.getItem(KEY)===t}catch(e){}
+  saveOk=ok;var w=$('saveWarn');if(w)w.hidden=ok;return ok;
+}
+function reloadFromDisk(){var disk=load(KEY,null);if(!Array.isArray(disk))return;var b=JSON.stringify(jobs);merge(disk);if(JSON.stringify(jobs)!==b)render()}
+function save(){persist();render();queueSync()}
 function find(id){for(var i=0;i<jobs.length;i++)if(jobs[i].id===id)return jobs[i]}
 function byDate(a,b){return a.date<b.date?-1:a.date>b.date?1:(a.updated||0)-(b.updated||0)}
 function plural(n,w){return n+' '+w+(n===1?'':'s')}
@@ -663,7 +677,7 @@ function merge(remote){
   var cutoff=Date.now()-90*864e5; // delete markers are dropped after 90 days
   jobs=Object.keys(map).map(function(k){return map[k]}).filter(function(j){return !(j.deleted&&(j.updated||0)<cutoff)});
 }
-function syncLabel(t){$('syncState').innerHTML=svg(IC.cloud,15)+'<span>'+esc(t||(connected()?'Sync on':'On this device only'))+'</span>'}
+function syncLabel(t){$('syncState').innerHTML=svg(IC.cloud,15)+'<span>'+esc(t||(!saveOk?'Not saving':connected()?'Sync on':'Saved on this device'))+'</span>'}
 async function syncNow(force){
   if(!connected())return 'Sync is not connected.';
   if(!(window.crypto&&crypto.subtle)&&pass())return 'This browser cannot encrypt here. Open the app over https.';
@@ -674,7 +688,7 @@ async function syncNow(force){
     rj.forEach(function(j){if(j&&j.id)rmap[j.id]=j});
     var need=force||dirty||!r.data||r.enc!==!!pass()||jobs.some(function(j){return !rmap[j.id]||(j.updated||0)>(rmap[j.id].updated||0)});
     var before=JSON.stringify(jobs);merge(rj);
-    if(JSON.stringify(jobs)!==before){store(KEY,jobs);render()}
+    if(JSON.stringify(jobs)!==before){persist();render()}
     if(need){
       dirty=false;
       try{await ghApi('PATCH','/gists/'+lsGet(P+'gh.gist'),{files:(function(o,c){o[FILE]={content:c};return o})({},await encodeForGist({jobs:jobs,updatedAt:Date.now()}))})}
@@ -682,7 +696,7 @@ async function syncNow(force){
     }
     lsSet(P+'gh.lastSync',String(Date.now()));
     var m='Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    syncLabel(m);renderSync();return m+(pass()?', encrypted.':'.');
+    syncLabel(m);renderSync();if(dirty)queueSync();return m+(pass()?', encrypted.':'.');
   }catch(e){syncLabel('Sync problem');return e.message||'Sync failed.'}
   finally{syncing=false}
 }
@@ -743,6 +757,17 @@ $('ghPassClear').addEventListener('click',function(){twoTap(this,'Tap again to r
   lsSet(P+'gh.pass','');renderSync();
   setupMsg(connected()?'Encryption removed. '+await syncNow(true):'Passphrase removed.')})});
 
+/* ---------- Save button ---------- */
+$('saveNow').addEventListener('click',async function(){
+  var ok=persist(), n=live().length, what=n+(n===1?' job':' jobs');
+  if(!ok){syncLabel();toast('Could not save on this device');return}
+  if(!connected()){syncLabel();toast('Saved on this device, '+what);return}
+  this.disabled=true;toast('Saving…');
+  var m=await syncNow(true);this.disabled=false;
+  toast(/^Synced/.test(m)?'Saved and synced, '+what:'Saved on this device. Sync did not finish');
+});
+window.addEventListener('storage',function(e){if(e.key===KEY)reloadFromDisk()});
+
 /* ---------- export / import ---------- */
 $('exportBtn').addEventListener('click',function(){
   var now=new Date(), name='stockplanner-'+ymd(now)+'.json';
@@ -769,10 +794,11 @@ document.querySelector('[data-act=prev]').innerHTML=svg(IC.left,18);
 document.querySelector('[data-act=next]').innerHTML=svg(IC.right,18);
 document.querySelector('.fab').innerHTML=svg(IC.plus,26);
 $('addTop').insertAdjacentHTML('afterbegin',svg(IC.plus,16));
-applyLook();render();syncLabel();renderSync();
+applyLook();persist();render();syncLabel();renderSync();
 if(connected()&&autoOn())syncNow();
 document.addEventListener('visibilitychange',function(){
   if(document.hidden)return;
+  reloadFromDisk();
   var n=ymd(new Date());if(n!==today){today=n;render()}
   if(connected()&&autoOn())syncNow();
 });
