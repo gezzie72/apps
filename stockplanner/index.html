@@ -77,6 +77,8 @@ svg{display:block;flex:none}
 .bbtn:hover{background:var(--band-2)}
 .bbtn.pop{background:var(--pop);color:var(--pop-ink);border-color:var(--pop)}
 .bbtn.pop:hover{background:color-mix(in srgb,var(--pop) 86%,#fff)}
+.bbtn.bad{background:var(--late);color:var(--on-color);border-color:var(--late)}
+.bbtn:disabled{opacity:.7}
 
 .hero{padding-block:1.25rem 2rem;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:1.5rem 3rem;align-items:start}
 .hero h2{font-family:var(--display);font-weight:700;font-size:clamp(2.1rem,1.2rem + 3.6vw,3.6rem);line-height:.98;letter-spacing:-.035em;text-wrap:balance}
@@ -256,7 +258,7 @@ textarea{resize:vertical;min-height:4.2rem}
   <div class="inner">
     <div class="bar">
       <h1 class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Stock Planner</h1>
-      <span class="ver">v0.06</span>
+      <span class="ver">v0.07</span>
       <span class="sync" id="syncState"></span>
       <button class="bbtn" id="saveNow" type="button">Save</button>
       <button class="bbtn" id="openSetup" type="button">Setup</button>
@@ -376,7 +378,7 @@ textarea{resize:vertical;min-height:4.2rem}
     <div class="row">
       <button class="btn" type="button" data-act="closeSheets">Close</button>
       <span class="sp"></span>
-      <p>Stock Planner v0.06</p>
+      <p>Stock Planner v0.07</p>
     </div>
   </div>
 </div>
@@ -416,7 +418,7 @@ function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 
 var today=ymd(new Date());
 var jobs=load(KEY,null);if(!Array.isArray(jobs))jobs=null;
-var sel=today, view=monthOf(today), editing=null, formType='order', hide={}, syncTimer=null, syncing=false, dirty=false;
+var sel=today, view=monthOf(today), editing=null, formType='order', hide={}, syncTimer=null, retryTimer=null, syncing=false, dirty=false, again=false, syncErr='';
 function monthOf(s){var p=parse(s);return new Date(p.getFullYear(),p.getMonth(),1)}
 
 if(!jobs){ // first run: marked examples so the planner shows how it works
@@ -649,7 +651,9 @@ async function decodeEnvelope(env){
 }
 async function ghApi(method,path,body){
   var res;
-  try{res=await fetch('https://api.github.com'+path,{method:method,cache:'no-store',headers:{'Authorization':'Bearer '+lsGet('gh.token'),'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:body?JSON.stringify(body):undefined})}
+  var text=body?JSON.stringify(body):undefined;
+  /* keepalive lets a sync that starts as the app is closed still finish; browsers cap those bodies at 64 KB */
+  try{res=await fetch('https://api.github.com'+path,{method:method,cache:'no-store',keepalive:!text||text.length<60000,headers:{'Authorization':'Bearer '+lsGet('gh.token'),'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:text})}
   catch(e){throw new Error('Cannot reach GitHub. Jobs are safe on this device.')}
   if(!res.ok){
     if(res.status===401)throw new Error('GitHub refused the token. Create a new classic token with gist scope.');
@@ -677,12 +681,23 @@ function merge(remote){
   var cutoff=Date.now()-90*864e5; // delete markers are dropped after 90 days
   jobs=Object.keys(map).map(function(k){return map[k]}).filter(function(j){return !(j.deleted&&(j.updated||0)<cutoff)});
 }
-function syncLabel(t){$('syncState').innerHTML=svg(IC.cloud,15)+'<span>'+esc(t||(!saveOk?'Not saving':connected()?'Sync on':'Saved on this device'))+'</span>'}
+function syncLabel(t){$('syncState').innerHTML=svg(IC.cloud,15)+'<span>'+esc(t||(!saveOk?'Not saving':connected()?'Sync on':'Saved on this device'))+'</span>';saveBtnState()}
+/* The Save button doubles as the status light, so it can be read on a phone where the text label is hidden. */
+function saveBtnState(){
+  var b=$('saveNow'), on=connected(), cls='bbtn', txt;
+  if(!saveOk){txt='Not saved';cls+=' bad'}
+  else if(on&&syncing)txt='Syncing…';
+  else if(on&&syncErr){txt='Retry sync';cls+=' bad'}
+  else if(on&&dirty){txt='Save now';cls+=' pop'}
+  else txt=on?'Synced':'Saved';
+  b.className=cls;b.innerHTML=(txt==='Synced'||txt==='Saved'?svg(IC.check,15):'')+txt;
+}
 async function syncNow(force){
   if(!connected())return 'Sync is not connected.';
   if(!(window.crypto&&crypto.subtle)&&pass())return 'This browser cannot encrypt here. Open the app over https.';
-  if(syncing)return 'Already syncing.';
-  syncing=true;syncLabel('Syncing…');
+  if(syncing){again=true;return 'Already syncing.'}
+  clearTimeout(syncTimer);clearTimeout(retryTimer);
+  syncing=true;again=false;syncLabel('Syncing…');
   try{
     var r=await readRemote(), rj=(r.data&&Array.isArray(r.data.jobs))?r.data.jobs:[], rmap={};
     rj.forEach(function(j){if(j&&j.id)rmap[j.id]=j});
@@ -696,11 +711,15 @@ async function syncNow(force){
     }
     lsSet(P+'gh.lastSync',String(Date.now()));
     var m='Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    syncLabel(m);renderSync();if(dirty)queueSync();return m+(pass()?', encrypted.':'.');
-  }catch(e){syncLabel('Sync problem');return e.message||'Sync failed.'}
+    syncErr='';syncing=false;syncLabel(m);renderSync();if(dirty||again)queueSync();return m+(pass()?', encrypted.':'.');
+  }catch(e){
+    syncErr=e.message||'Sync failed.';syncing=false;syncLabel('Sync problem');
+    if(autoOn())retryTimer=setTimeout(syncNow,30000); // try again by itself; the jobs are still safe on this device
+    return syncErr;
+  }
   finally{syncing=false}
 }
-function queueSync(){dirty=true;if(!connected()||!autoOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,1800)}
+function queueSync(){dirty=true;saveBtnState();if(!connected()||!autoOn())return;clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,500)}
 async function findGist(){
   var list=await ghApi('GET','/gists?per_page=100');
   var mine=(list||[]).filter(function(g){return (g.files&&g.files[FILE])||g.description===GIST_DESC});
@@ -759,12 +778,14 @@ $('ghPassClear').addEventListener('click',function(){twoTap(this,'Tap again to r
 
 /* ---------- Save button ---------- */
 $('saveNow').addEventListener('click',async function(){
-  var ok=persist(), n=live().length, what=n+(n===1?' job':' jobs');
+  var ok=persist(), count=function(){var n=live().length;return n+(n===1?' job':' jobs')};
   if(!ok){syncLabel();toast('Could not save on this device');return}
-  if(!connected()){syncLabel();toast('Saved on this device, '+what);return}
-  this.disabled=true;toast('Saving…');
+  if(!connected()){syncLabel();toast('Saved on this device only, '+count()+'. Connect sync in Setup to see them on your other devices','Setup',function(){$('openSetup').click()});return}
+  this.disabled=true;
   var m=await syncNow(true);this.disabled=false;
-  toast(/^Synced/.test(m)?'Saved and synced, '+what:'Saved on this device. Sync did not finish');
+  if(/^Synced/.test(m))toast('Saved and synced, '+count());
+  else if(m==='Already syncing.')toast('Saved. Sync is finishing');
+  else toast('Saved on this device, not synced. '+m);
 });
 window.addEventListener('storage',function(e){if(e.key===KEY)reloadFromDisk()});
 
@@ -796,8 +817,14 @@ document.querySelector('.fab').innerHTML=svg(IC.plus,26);
 $('addTop').insertAdjacentHTML('afterbegin',svg(IC.plus,16));
 applyLook();persist();render();syncLabel();renderSync();
 if(connected()&&autoOn())syncNow();
+/* Leaving the app: push anything not yet synced straight away, without waiting for the timer. */
+function flush(){if(dirty&&connected()&&autoOn())syncNow()}
+window.addEventListener('pagehide',flush);
+window.addEventListener('online',function(){if(connected()&&autoOn())syncNow()});
+/* Left open on a desk: check for the other device's changes every 45 seconds. */
+setInterval(function(){if(!document.hidden&&connected()&&autoOn())syncNow()},45000);
 document.addEventListener('visibilitychange',function(){
-  if(document.hidden)return;
+  if(document.hidden){flush();return}
   reloadFromDisk();
   var n=ymd(new Date());if(n!==today){today=n;render()}
   if(connected()&&autoOn())syncNow();
