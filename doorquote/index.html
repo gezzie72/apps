@@ -899,6 +899,7 @@ function wireCatList(){
   });
   box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
     const c=catalogue.find(x=>x.id===b.dataset.copy); if(!c) return;
+    if(c.locked){ alert(`🔒 “${c.desc}” is locked.\n\nUnlock it (🔓) first to make a copy.`); return; }
     catalogue.push({id:uid(), desc:(c.desc||"")+" (copy)", code:c.code||"", finish:c.finish||"", cost:c.cost||0, unit:c.unit||0, standard:false, updated:Date.now()});
     saveCat(); fillCatPick(); renderCatListBox(); toast("Item duplicated");
   });
@@ -1332,6 +1333,7 @@ function openSavedQuote(id){
 }
 function duplicateSaved(id){
   const q = savedQuotes.find(x=>x.savedId===id); if(!q) return;
+  if(q.locked){ alert(`🔒 “${quoteName(q)}” is locked.\n\nUnlock it first (🔓) to make a copy.`); return; }
   const copy = fixQuote(JSON.parse(JSON.stringify(q)));
   copy.savedId = uid(); copy.created = copy.updated = Date.now();
   copy.ref = (q.ref||"") + " (copy)";
@@ -2111,7 +2113,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v58 · 2026-10-07 · INV badge greyed until invoice allocated";
+const VERSION = "v59 · 2026-10-07 · locked cards can't be copied";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
