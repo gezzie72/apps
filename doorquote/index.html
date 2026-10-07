@@ -1086,14 +1086,8 @@ function saveCurrentQuote(){
     const i = savedQuotes.findIndex(x=>x.savedId===quote.savedId);
     if(i>=0){
       if(savedQuotes[i].locked){
-        if(!confirm(`🔒 “${quoteName(savedQuotes[i])}” is locked.\n\nSave your changes as a NEW copy instead?\n(Unlock it first if you want to overwrite the original.)`)){
-          toast("🔒 Locked — not overwritten"); return;
-        }
-        snapshot.savedId = uid(); snapshot.created = Date.now(); snapshot.locked = false;
-        snapshot.ref = (snapshot.ref||"") + " (copy)";
-        quote.savedId = snapshot.savedId; quote.ref = snapshot.ref; quote.locked = false;
-        savedQuotes.push(snapshot); bumpSeqFor(snapshot.ref); saveQuotes(); saveQuote();
-        toast(`Saved copy “${quoteName(snapshot)}”`); return;
+        alert(`🔒 “${quoteName(savedQuotes[i])}” is locked.\n\nUnlock it first (🔓) to save your changes.`);
+        toast("🔒 Locked — not saved"); return;
       }
       savedQuotes[i] = snapshot; bumpSeqFor(snapshot.ref); saveQuotes(); toast(`Updated “${quoteName(snapshot)}”`); return;
     }
@@ -2113,7 +2107,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v59 · 2026-10-07 · locked cards can't be copied";
+const VERSION = "v60 · 2026-10-07 · locked quote save asks to unlock, no copy";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
