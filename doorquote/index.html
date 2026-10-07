@@ -100,7 +100,6 @@
   .ind{font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:5px;white-space:nowrap}
   .ind.on{background:rgba(22,163,74,.2);color:#4ade80}
   .ind.off{background:rgba(255,255,255,.04);color:var(--faint);border:1px dashed var(--line)}
-  .ind.inv.off{background:rgba(255,183,77,.16);color:#ffb74d;border:1px solid rgba(255,183,77,.45)}
   .catrow .cdesc .inds{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
   /* backup reminder banner */
   .backupbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -2112,7 +2111,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v57 · 2026-10-06 · new quote dates to today";
+const VERSION = "v58 · 2026-10-07 · INV badge greyed until invoice allocated";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
