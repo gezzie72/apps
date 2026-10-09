@@ -1375,7 +1375,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v72 · 2026-10-01';
+const APP_VER='v73 · 2026-10-09 · Uncategorised filter';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -1651,6 +1651,7 @@ function visibleItems(){
   const q=clean($('fSearch') ? $('fSearch').value : '').toLowerCase();
   let list=state.items;
   if(filterCat==='low') list=list.filter(i=>statusOf(i)!=='ok');
+  else if(filterCat==='__uncat__') list=list.filter(i=>!clean(i.category));
   else if(filterCat!=='all') list=list.filter(i=>(i.category||'')===filterCat);
   if(filterSupplier!=='all') list=list.filter(i=>clean(i.supplier)===filterSupplier);
   if(q) list=list.filter(i=>[i.name,i.sku,i.category,i.colour,i.location,i.supplier,i.barcode].some(v=>(v||'').toLowerCase().includes(q)));
@@ -1714,9 +1715,11 @@ function renderFilterChips(){
   const el=$('filterChips'); if(!el) return;
   const cats=categories();
   const lowN=state.items.filter(i=>statusOf(i)!=='ok').length;
+  const uncatN=state.items.filter(i=>!clean(i.category)).length;
   let html=`<button class="${filterCat==='all'?'on':''}" onclick="setFilter('all')">All</button>`;
   html+=`<button class="low ${filterCat==='low'?'on':''}" onclick="setFilter('low')">Low / out${lowN?' ('+lowN+')':''}</button>`;
   html+=cats.map(c=>`<button class="${filterCat===c?'on':''}" onclick="setFilter('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`).join('');
+  if(uncatN) html+=`<button class="${filterCat==='__uncat__'?'on':''}" onclick="setFilter('__uncat__')">Uncategorised (${uncatN})</button>`;
   el.innerHTML=html;
 }
 function setFilter(c){ filterCat=c; render(); }
