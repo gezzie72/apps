@@ -224,6 +224,10 @@
     .grid2,.grid3{grid-template-columns:1fr}
     header.top{gap:8px}
     .btn{padding:9px 11px;font-size:13px}
+    /* on narrow phones drop the action buttons onto their own row so the
+       description keeps the full card width and words don't break mid-word */
+    .catrow{flex-wrap:wrap}
+    .catrow .acts{flex:1 1 100%;justify-content:flex-end;margin-top:6px}
     /* line items become stacked, labelled cards so nothing runs off-screen */
     table.lines,table.lines tbody{display:block;width:100%}
     table.lines thead{display:none}
@@ -2107,7 +2111,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v60 · 2026-10-07 · locked quote save asks to unlock, no copy";
+const VERSION = "v61 · 2026-10-09 · mobile: list buttons on own row, no word breaks";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
