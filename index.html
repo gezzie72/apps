@@ -158,7 +158,10 @@ function askLocalUrl(app){
    IndexedDB so backups save straight into it. Elsewhere we fall back to a
    normal download into the Downloads folder. */
 var BK_FOLDER_NAME="App Backups";
-var canPickFolder = typeof window.showDirectoryPicker==="function";
+var IS_PHONE = /Mobi|iPhone|iPod/i.test(navigator.userAgent||"") || !!(navigator.userAgentData && navigator.userAgentData.mobile);
+// Folder picker is a desktop-only convenience; never offer it on phones, even
+// if the browser exposes the API (some Android Chrome builds do).
+var canPickFolder = (typeof window.showDirectoryPicker==="function") && !IS_PHONE;
 function bkIdb(mode, fn){
   return new Promise(function(res,rej){
     var o=indexedDB.open("hub-backup",1);
@@ -243,7 +246,6 @@ function restoreAll(file){
   }catch(e){ alert("Could not read that file: "+(e&&e.message?e.message:e)); } };
   r.readAsText(file);
 }
-var IS_PHONE = /Mobi|iPhone|iPod/i.test(navigator.userAgent||"") || !!(navigator.userAgentData && navigator.userAgentData.mobile);
 function renderBackupBanner(){
   var card=document.getElementById("bkCard"), meta=document.getElementById("bkMeta"), icon=document.getElementById("bkIcon");
   if(!card) return;
