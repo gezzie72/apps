@@ -209,6 +209,7 @@ async function saveToBkFolder(name, text){
 }
 
 async function backupAll(){
+  if(IS_PHONE){ alert("Backups are done on desktop. Your phone stays in sync automatically — open My Apps on a computer to save a backup file."); return; }
   try{
     var data={};
     for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k && k!=="gh.token") data[k]=localStorage.getItem(k); }
@@ -242,9 +243,18 @@ function restoreAll(file){
   }catch(e){ alert("Could not read that file: "+(e&&e.message?e.message:e)); } };
   r.readAsText(file);
 }
+var IS_PHONE = /Mobi|iPhone|iPod/i.test(navigator.userAgent||"") || !!(navigator.userAgentData && navigator.userAgentData.mobile);
 function renderBackupBanner(){
   var card=document.getElementById("bkCard"), meta=document.getElementById("bkMeta"), icon=document.getElementById("bkIcon");
   if(!card) return;
+  if(IS_PHONE){
+    // Backups are a desktop-only task; on a phone the apps stay safe through Sync.
+    card.className="bk"; icon.textContent="💾";
+    meta.innerHTML="Backups are done on <b>desktop</b>. On your phone your apps are kept safe by <b>Sync</b> (green dot above) — open <b>My Apps</b> on a computer to save or restore a backup file.";
+    var row=card.querySelector(".bkrow"); if(row) row.style.display="none";
+    var dir=document.getElementById("bkDir"); if(dir) dir.hidden=true;
+    return;
+  }
   var t=""; try{ t=localStorage.getItem("hub.lastBackupAll")||""; }catch(e){}
   if(!t){ card.className="bk warn"; icon.textContent="⚠️"; meta.innerHTML="You haven't made a full backup yet. Tap <b>Back up everything</b> to save all your apps to one file."; return; }
   var days=Math.floor((Date.now()-new Date(t).getTime())/86400000), dateStr=new Date(t).toLocaleDateString("en-GB");
