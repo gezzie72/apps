@@ -12,6 +12,7 @@ can be added to a phone's home screen and installed as standalone apps:
 - **HealthLog** — `/healthlog/` — personal health tracker (glucose, meds, measurements).
 - **Vault** — `/vault/` — encrypted password manager.
 - **RecipeBox** — `/recipebox/` — diabetic-friendly cookbook with carbs-forward nutrition, allergen/diet filters, and a daily plate tracker.
+- **Take Me Off Hold** — [own repo](https://github.com/gezzie72/take-me-off-hold), at `gezzie72.github.io/take-me-off-hold/` — monthly "Add projects" reminder and on-hold notes, with encrypted Gist sync.
 - **Office Report** — `/officereport/` — office-staff disciplinary log & management reports.
 - **Shopfloor Report** — `/shopfloorreport/` — shopfloor disciplinary log & reports (Operators / Lines / Team Leaders).
 - **Mastic Calc** — `/masticcalc/` — sealant coverage & tubes-to-order calculator: doorset perimeter, bead size, tube volume, waste, and materials cost (total + per-doorset).
