@@ -97,6 +97,8 @@ nav.tabs button[aria-selected="true"]{color:var(--primary)}
   padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:calc(100% - 32px)}
 .toast.show{opacity:1}
 .editing{border:2px solid var(--accent)}
+.encbox{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+#encStatus.on{color:var(--ok);font-weight:700}#encStatus.off{color:var(--err);font-weight:700}
 .notes ul{margin:0 0 10px;padding-left:0;list-style:none}
 .notes li{padding:6px 0;border-bottom:1px solid var(--border)}
 .notes li:last-child{border-bottom:0}
@@ -222,6 +224,17 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:13p
         <button class="btn danger" id="disconnectBtn">Disconnect</button>
       </div>
       <div class="status" id="syncStatus">Not connected.</div>
+
+      <div class="encbox">
+        <div class="note"><b>Cloud encryption:</b> <span id="encStatus"></span></div>
+        <div class="row" style="margin-top:8px">
+          <input id="syncPass" class="plain" type="password" autocomplete="off" spellcheck="false" placeholder="Sync passphrase" style="flex:1;min-width:160px">
+          <button class="btn sm" id="passShow">Show</button>
+          <button class="btn primary sm" id="passSet">Encrypt cloud copy</button>
+          <button class="btn sm danger" id="passClear" hidden>Remove</button>
+        </div>
+        <p class="note" style="margin:8px 0 0;font-size:12px">Encrypts the copy stored in your GitHub gist so it can't be read without this passphrase. Use the <b>same</b> passphrase on every device. There's <b>no recovery</b> if you forget it — keep an <b>Export JSON</b> backup. Your data on this device stays readable regardless.</p>
+      </div>
     </div>
 
     <div class="card">
@@ -298,7 +311,8 @@ const cfg = {
   get token(){ return raw.get('gh.token'); },              set token(v){ raw.set('gh.token', v); },
   get gistId(){ return raw.get(APP + '.gh.gist'); },       set gistId(v){ raw.set(APP + '.gh.gist', v); },
   get autoSync(){ return raw.get(APP + '.gh.auto') !== '0'; }, set autoSync(v){ raw.set(APP + '.gh.auto', v ? '1' : '0'); },
-  get lastSync(){ return raw.get(APP + '.gh.lastSync'); }, set lastSync(v){ raw.set(APP + '.gh.lastSync', v); }
+  get lastSync(){ return raw.get(APP + '.gh.lastSync'); }, set lastSync(v){ raw.set(APP + '.gh.lastSync', v); },
+  get pass(){ return raw.get(APP + '.gh.pass'); },         set pass(v){ raw.set(APP + '.gh.pass', v); }
 };
 let editingId = null;
 const saveLocal = () => store.set(LS_DATA, data);
@@ -438,14 +452,34 @@ async function gh(path, opts={}){
   }
   return res.json();
 }
-async function readRemote(){
-  const g = await gh(`/gists/${encodeURIComponent(cfg.gistId)}`);
-  const f = g.files && g.files[GIST_FILE];
-  if (!f) return null;
-  let content = f.content;
-  if (f.truncated) content = await (await fetch(f.raw_url, { cache:'no-store' })).text();
-  try { return JSON.parse(content); } catch { throw new Error('Gist file is not valid JSON.'); }
+/* ---------- cloud-copy encryption: PBKDF2(200k) -> AES-GCM 256 ----------
+   Same format as the other hub apps. Only the gist copy is encrypted; data on the
+   device stays plain. Encrypted gist file = { __enc:1, alg, salt, iv, data, updatedAt }. */
+const _enc = new TextEncoder(), _dec = new TextDecoder();
+const _b64 = { enc:buf => btoa(String.fromCharCode(...new Uint8Array(buf))), dec:str => Uint8Array.from(atob(str), c => c.charCodeAt(0)) };
+async function _deriveKey(pass, salt){
+  const base = await crypto.subtle.importKey('raw', _enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:200000, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
 }
+// Gist file content for the current data: encrypted when a passphrase is set.
+async function encodeForGist(){
+  const plain = payload();
+  if (!cfg.pass) return plain;
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await _deriveKey(cfg.pass, salt);
+  const cipher = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, _enc.encode(plain));
+  return JSON.stringify({ __enc:1, alg:'AES-GCM-PBKDF2-200k', salt:_b64.enc(salt), iv:_b64.enc(iv), data:_b64.enc(cipher), updatedAt:now() });
+}
+class SyncLock extends Error {}   // 'locked' = encrypted and no passphrase here; 'badpass' = wrong one
+async function decodeEnvelope(env){
+  if (!cfg.pass) throw new SyncLock('locked');
+  try {
+    const key = await _deriveKey(cfg.pass, _b64.dec(env.salt));
+    const plain = await crypto.subtle.decrypt({ name:'AES-GCM', iv:_b64.dec(env.iv) }, key, _b64.dec(env.data));
+    return JSON.parse(_dec.decode(plain));
+  } catch { throw new SyncLock('badpass'); }
+}
+const readRemote = () => readGistFile(cfg.gistId, GIST_FILE);
 function merge(local, remote){
   if (!remote || !Array.isArray(remote.jobs)) return local;
   const byId = new Map(local.jobs.map(j => [j.id, j]));
@@ -483,7 +517,8 @@ async function readGistFile(id, file){
   const f = g.files && g.files[file];
   if (!f) return null;
   const content = f.truncated ? await (await fetch(f.raw_url, { cache:'no-store' })).text() : f.content;
-  try { return JSON.parse(content); } catch { return null; }
+  let obj; try { obj = JSON.parse(content); } catch { throw new Error('Gist file is not valid JSON.'); }
+  return obj && obj.__enc === 1 ? decodeEnvelope(obj) : obj;
 }
 /* If two devices each made their own gist (or one still ran the old version),
    every device settles on the OLDEST epdmcalc gist and merges the others into it.
@@ -495,8 +530,8 @@ async function converge(){
   const canonical = mine.length ? mine[0].id : '';
   const others = [...mine.filter(g => g.id !== canonical).map(g => [g.id, GIST_FILE]), ...legacy.map(g => [g.id, LEGACY_FILE])];
   for (const [id, file] of others){
-    const d = await readGistFile(id, file);
-    if (d) data = merge(data, d);
+    try { const d = await readGistFile(id, file); if (d) data = merge(data, d); }
+    catch { /* unreadable or locked with a different passphrase: skip it */ }
   }
   if (others.length) saveLocal();
   if (canonical && cfg.gistId !== canonical){ cfg.gistId = canonical; $('gistId').value = canonical; }
@@ -508,38 +543,46 @@ function scheduleSync(){
   clearTimeout(syncTimer); syncTimer = setTimeout(sync, 800);
 }
 async function sync(){
-  if (!cfg.token){ status('Add a GitHub token first.', 'err'); return; }
-  if (!navigator.onLine){ status('Offline — changes are saved on this device and will sync later.', 'err'); badge('Offline'); return; }
-  if (syncing){ syncQueued = true; return; }
+  if (!cfg.token){ status('Add a GitHub token first.', 'err'); return 'error'; }
+  if (!navigator.onLine){ status('Offline — changes are saved on this device and will sync later.', 'err'); badge('Offline'); return 'error'; }
+  if (syncing){ syncQueued = true; return 'busy'; }
   syncing = true; badge('Syncing…'); status('Syncing…');
+  let result = 'ok';
   try{
     if (!gistsChecked){ await converge(); renderJobs(); }
     if (!cfg.gistId){
-      const g = await gh('/gists', { method:'POST', body:JSON.stringify({ description:GIST_DESC, public:false, files:{ [GIST_FILE]:{ content:payload() } } }) });
+      const g = await gh('/gists', { method:'POST', body:JSON.stringify({ description:GIST_DESC, public:false, files:{ [GIST_FILE]:{ content:await encodeForGist() } } }) });
       cfg.gistId = g.id; $('gistId').value = g.id;
     } else {
       const remote = await readRemote();
       const before = JSON.stringify(data);
       data = merge(data, remote); saveLocal();
       if (JSON.stringify(data) !== before){ renderJobs(); }
-      await gh(`/gists/${encodeURIComponent(cfg.gistId)}`, { method:'PATCH', body:JSON.stringify({ files:{ [GIST_FILE]:{ content:payload() } } }) });
+      await gh(`/gists/${encodeURIComponent(cfg.gistId)}`, { method:'PATCH', body:JSON.stringify({ files:{ [GIST_FILE]:{ content:await encodeForGist() } } }) });
     }
     cfg.lastSync = now();
-    status(`Synced ${new Date(cfg.lastSync).toLocaleString()} · ${liveJobs().length} job(s) · Gist ${cfg.gistId}`, 'ok');
+    status(`Synced${cfg.pass ? ' 🔒' : ''} ${new Date(cfg.lastSync).toLocaleString()} · ${liveJobs().length} job(s) · Gist ${cfg.gistId}`, 'ok');
     badge();
   }catch(err){
-    status('Sync failed: ' + err.message, 'err'); badge('Sync error');
+    result = err instanceof SyncLock ? err.message : 'error';
+    if (err instanceof SyncLock){
+      // Nothing was written, so the cloud copy and this device's data are both safe.
+      status(err.message === 'locked' ? 'This sync is encrypted — enter your sync passphrase below to unlock it.'
+                                      : "That passphrase doesn't match this sync — nothing was changed. Check it and try again.", 'err');
+      badge('Locked 🔒');
+    } else { status('Sync failed: ' + err.message, 'err'); badge('Sync error'); }
   }finally{
     syncing = false;
     if (syncQueued){ syncQueued = false; sync(); }
   }
+  return result;
 }
 function status(msg, cls=''){ const s = $('syncStatus'); s.textContent = msg; s.className = 'status ' + cls; }
 function badge(text){
   const b = $('syncBadge');
   if (text) { b.textContent = text; return; }
   if (!cfg.token || !cfg.gistId) b.textContent = 'Local only';
-  else b.textContent = cfg.lastSync ? 'Synced ' + new Date(cfg.lastSync).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : 'Not synced';
+  else b.textContent = cfg.lastSync ? (cfg.pass ? '🔒 ' : '') + 'Synced ' + new Date(cfg.lastSync).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : 'Not synced';
 }
 $('syncBadge').onclick = () => (cfg.token && cfg.gistId) ? sync() : show('sync');
 $('connectBtn').onclick = () => {
@@ -556,6 +599,56 @@ $('disconnectBtn').onclick = () => {
   if (!confirm('Disconnect sync on this device? Your local data stays; the gist is untouched. Other apps stay connected.')) return;
   cfg.gistId = ''; cfg.lastSync = '';
   $('gistId').value = ''; status('Not connected.'); badge();
+};
+function renderEnc(){
+  const e = $('encStatus');
+  e.textContent = cfg.pass ? 'On 🔒' : 'Off — cloud copy is plain text'; e.className = cfg.pass ? 'on' : 'off';
+  $('passSet').textContent = cfg.pass ? 'Update passphrase' : 'Encrypt cloud copy';
+  $('passClear').hidden = !cfg.pass;
+}
+$('passShow').onclick = () => { const i = $('syncPass'), sh = i.type === 'password'; i.type = sh ? 'text' : 'password'; $('passShow').textContent = sh ? 'Hide' : 'Show'; };
+// Unlock the cloud copy with oldPass, merge it in, then write it back under newPass ('' = plain text).
+async function rekey(oldPass, newPass){
+  cfg.pass = oldPass;
+  const remote = await readRemote();          // throws SyncLock if oldPass can't open it
+  data = merge(data, remote); saveLocal(); renderJobs();
+  cfg.pass = newPass;
+  try {
+    await gh(`/gists/${encodeURIComponent(cfg.gistId)}`, { method:'PATCH', body:JSON.stringify({ files:{ [GIST_FILE]:{ content:await encodeForGist() } } }) });
+  } catch (err) { cfg.pass = oldPass; throw err; }
+  cfg.lastSync = now(); badge();
+}
+$('passSet').onclick = async () => {
+  const p = $('syncPass').value;
+  if (!p) return status('Enter a passphrase first.', 'err');
+  const prev = cfg.pass;
+  $('syncPass').value = ''; $('syncPass').type = 'password'; $('passShow').textContent = 'Show';
+  cfg.pass = p; renderEnc();
+  if (!cfg.token) return toast('Passphrase saved — connect sync to use it');
+  let r = await sync();   // reads (decrypts) the cloud copy first, then writes it back encrypted
+  if (r === 'badpass' && prev){
+    // Changing passphrase: the cloud copy is still locked with the old one.
+    try { await rekey(prev, p); r = 'changed'; }
+    catch (err) { r = err instanceof SyncLock ? 'badpass' : 'error'; if (r === 'error') status('Sync failed: ' + err.message, 'err'); }
+  }
+  if (r === 'badpass'){
+    cfg.pass = prev;
+    status("That passphrase doesn't match your existing encrypted sync — nothing was changed. Check it and try again.", 'err');
+  } else if (r === 'changed'){
+    status(`Passphrase changed 🔒 · ${liveJobs().length} job(s) · Gist ${cfg.gistId}`, 'ok'); toast('Passphrase changed 🔒');
+  } else if (r === 'ok') toast('Cloud copy encrypted 🔒');
+  renderEnc();
+};
+$('passClear').onclick = async () => {
+  if (!confirm('Remove cloud encryption? Your jobs will be written back to the gist as PLAIN TEXT.')) return;
+  const prev = cfg.pass;
+  if (!cfg.token || !cfg.gistId){ cfg.pass = ''; renderEnc(); return; }
+  try { await rekey(prev, ''); status('Cloud encryption removed — the gist copy is plain text again.', 'ok'); }
+  catch (err) {
+    cfg.pass = prev;
+    status(err instanceof SyncLock ? "Couldn't unlock the cloud copy with the saved passphrase — nothing was changed." : 'Sync failed: ' + err.message, 'err');
+  }
+  renderEnc();
 };
 // accept a full gist URL as well as a bare ID
 function parseGistId(v){ v = v.trim(); const m = v.match(/([0-9a-f]{20,})\/?$/i); return m ? m[1] : v; }
@@ -614,7 +707,7 @@ if (draft){
 } else writeInputs({ ...DEFAULTS, ...data.defaults });
 $('token').value = cfg.token; $('gistId').value = cfg.gistId; $('autoSync').checked = cfg.autoSync;
 if (cfg.lastSync) status(`Last synced ${new Date(cfg.lastSync).toLocaleString()} · Gist ${cfg.gistId}`, 'ok');
-render(); renderJobs(); badge();
+render(); renderJobs(); badge(); renderEnc();
 // Token already stored by another hub app: link up straight away (finds or creates this app's gist).
 if (cfg.autoSync && cfg.token) sync();
 
