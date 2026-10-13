@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EPDM Calc</title>
+<meta name="description" content="EPDM door seal coverage calculator with GitHub Gist sync between devices.">
+<meta name="theme-color" content="#1f3a5f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --surface-2:#eef2f7; --text:#18212d; --muted:#5d6b7c;
+  --border:#d7dee8; --primary:#1f3a5f; --primary-text:#ffffff; --accent:#e8a317;
+  --input-bg:#fff8db; --input-border:#e6cf6b; --result-bg:#e7f1ff; --ok:#1d7a46; --err:#b42318;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1520; --surface:#18212f; --surface-2:#202b3b; --text:#e6ebf2; --muted:#9aa7b8;
+    --border:#2c394c; --primary:#5b8fd1; --primary-text:#0b1220; --accent:#f0b43a;
+    --input-bg:#2a2614; --input-border:#6b5a1d; --result-bg:#16304f; --ok:#4cc38a; --err:#ff7a6e;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1520; --surface:#18212f; --surface-2:#202b3b; --text:#e6ebf2; --muted:#9aa7b8;
+  --border:#2c394c; --primary:#5b8fd1; --primary-text:#0b1220; --accent:#f0b43a;
+  --input-bg:#2a2614; --input-border:#6b5a1d; --result-bg:#16304f; --ok:#4cc38a; --err:#ff7a6e;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{zoom:var(--tzoom,1)}
+a.link{color:var(--primary);font-weight:600}
+body{background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+header{background:var(--primary);color:var(--primary-text);padding:14px 16px calc(14px);padding-top:calc(14px + env(safe-area-inset-top))}
+header .wrap{display:flex;align-items:center;gap:12px}
+header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px;flex:1}
+#syncBadge{font-size:12px;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.18);white-space:nowrap;cursor:pointer;border:0;color:inherit}
+.wrap{max-width:760px;margin:0 auto}
+main{padding:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 12px;font-weight:650}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+label.f>span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:480px){.grid.g-resp{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.inwrap{display:flex;align-items:center;background:var(--input-bg);border:1px solid var(--input-border);border-radius:8px}
+.inwrap input,.inwrap select{flex:1;min-width:0;background:transparent;border:0;padding:10px 10px;font:inherit;font-size:16px;color:var(--text);outline:none}
+.inwrap .u{padding:0 10px;color:var(--muted);font-size:13px}
+.inwrap:focus-within{outline:2px solid var(--primary);outline-offset:1px}
+input.plain,select.plain,textarea.plain{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;font:inherit;font-size:16px;color:var(--text)}
+textarea.plain{min-height:64px;resize:vertical}
+table.calc{width:100%;border-collapse:collapse}
+table.calc td{padding:8px 0;border-bottom:1px solid var(--border)}
+table.calc td.v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+table.calc td.u{width:44px;text-align:right;color:var(--muted);font-size:13px;padding-left:6px}
+table.calc tr.total td{border-bottom:0;font-weight:700}
+.kpis{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.kpi{background:var(--result-bg);border-radius:10px;padding:14px}
+.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .n{font-size:30px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi .n small{font-size:14px;font-weight:600;color:var(--muted);margin-left:4px}
+.btn{appearance:none;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-text)}
+.btn.danger{color:var(--err)}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--muted)}
+.note{font-size:13px;color:var(--muted)}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.pill.b{background:#fde3e1;color:#a3271b}
+.pill.e{background:#e2f2e8;color:#1d6b3e}
+:root[data-theme="dark"] .pill.b{background:#4a1f1b;color:#ffb4ab}
+:root[data-theme="dark"] .pill.e{background:#173a27;color:#8fe0b0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .pill.b{background:#4a1f1b;color:#ffb4ab}:root:not([data-theme="light"]) .pill.e{background:#173a27;color:#8fe0b0}}
+.job{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--surface)}
+.job .top{display:flex;gap:8px;align-items:flex-start}
+.job .name{font-weight:650;flex:1;word-break:break-word}
+.job .meta{font-size:13px;color:var(--muted);margin-top:4px}
+.job .res{font-variant-numeric:tabular-nums;font-weight:700;text-align:right;white-space:nowrap}
+.empty{text-align:center;color:var(--muted);padding:28px 8px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);
+  display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:10}
+nav.tabs .in{display:flex;max-width:760px;width:100%}
+nav.tabs button{flex:1;background:none;border:0;padding:10px 4px 12px;color:var(--muted);font:inherit;font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-selected="true"]{color:var(--primary)}
+.view{display:none}.view.active{display:block}
+.status{font-size:13px;padding:8px 10px;border-radius:8px;background:var(--surface-2);margin-top:10px;word-break:break-word}
+.status.ok{color:var(--ok)}.status.err{color:var(--err)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--text);color:var(--bg);
+  padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:calc(100% - 32px)}
+.toast.show{opacity:1}
+.editing{border:2px solid var(--accent)}
+.notes ul{margin:0 0 10px;padding-left:0;list-style:none}
+.notes li{padding:6px 0;border-bottom:1px solid var(--border)}
+.notes li:last-child{border-bottom:0}
+details summary{cursor:pointer;font-weight:600}
+code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:13px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>EPDM Calc</h1>
+  <button id="syncBadge" title="Sync now">Local only</button>
+</div></header>
+
+<main class="wrap">
+  <!-- CALCULATOR -->
+  <section class="view active" id="v-calc">
+    <div class="card" id="calcCard">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <h2 style="margin:0">1. Doorset dimensions</h2>
+        <span id="editFlag" class="pill" hidden>Editing saved job</span>
+      </div>
+      <div class="legend"><span><i style="background:var(--input-bg);border:1px solid var(--input-border)"></i>Input</span><span><i style="background:var(--result-bg)"></i>Key result</span></div>
+      <div class="grid">
+        <label class="f">Width<div class="inwrap"><input id="w" type="number" inputmode="decimal" min="0" step="1"><span class="u">mm</span></div></label>
+        <label class="f"><span class="t">× strips (top &amp; bottom)</span><div class="inwrap"><input id="sw" type="number" inputmode="numeric" min="0" step="1"></div></label>
+        <label class="f">Height<div class="inwrap"><input id="h" type="number" inputmode="decimal" min="0" step="1"><span class="u">mm</span></div></label>
+        <label class="f"><span class="t">× strips (left &amp; right)</span><div class="inwrap"><input id="sh" type="number" inputmode="numeric" min="0" step="1"></div></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. EPDM required per doorset</h2>
+      <label class="f" style="margin-bottom:8px;max-width:220px">Waste allowance<div class="inwrap"><input id="waste" type="number" inputmode="decimal" min="0" step="1"><span class="u">%</span></div></label>
+      <table class="calc">
+        <tr><td>Width allowance</td><td class="v" id="r-wa"></td><td class="u">mm</td></tr>
+        <tr><td>Height allowance</td><td class="v" id="r-ha"></td><td class="u">mm</td></tr>
+        <tr><td>Perimeter subtotal</td><td class="v" id="r-per"></td><td class="u">mm</td></tr>
+        <tr><td>Waste allowance</td><td class="v" id="r-wst"></td><td class="u">mm</td></tr>
+        <tr class="total"><td>Total EPDM per doorset</td><td class="v" id="r-tot"></td><td class="u">mm</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>3. Order quantity</h2>
+      <div class="grid" style="margin-bottom:14px">
+        <label class="f">Quantity of doors<div class="inwrap"><input id="qty" type="number" inputmode="numeric" min="0" step="1"></div></label>
+        <label class="f">Roll length<div class="inwrap"><input id="roll" type="number" inputmode="decimal" min="0.1" step="0.5"><span class="u">m</span></div></label>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Total to order</div><div class="n"><span id="r-m"></span><small>m</small></div></div>
+        <div class="kpi"><div class="l">Rolls to order</div><div class="n"><span id="r-rolls"></span><small>rolls</small></div></div>
+        <div class="kpi"><div class="l">Paste</div><div class="n">12<small>per job</small></div></div>
+        <div class="kpi"><div class="l">Primer</div><div class="n">1<small>per job</small></div></div>
+      </div>
+    </div>
+
+    <div class="card notes">
+      <h2>Notes</h2>
+      <ul>
+        <li><span class="pill b">Class B</span> = Fire Rated</li>
+        <li><span class="pill e">Class E</span> = None Fire Rated</li>
+        <li><b>12 paste &amp; 1 primer</b> per job</li>
+      </ul>
+      <p class="note" style="margin-bottom:0">Waste allowance and roll length are adjustable assumptions — update the yellow cells to suit your supplier's roll size and site wastage rate.</p>
+    </div>
+
+    <div class="card">
+      <h2>Save as job</h2>
+      <div class="grid g-resp">
+        <label class="f">Job / reference<input id="jobName" class="plain" placeholder="e.g. Plot 14 – ground floor"></label>
+        <label class="f">Fire class
+          <select id="fireClass" class="plain">
+            <option value="">— not set —</option>
+            <option value="B">Class B = Fire Rated</option>
+            <option value="E">Class E = None Fire Rated</option>
+          </select></label>
+      </div>
+      <label class="f" style="margin-top:12px">Notes<textarea id="jobNotes" class="plain" placeholder="Optional"></textarea></label>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="saveBtn">Save job</button>
+        <button class="btn" id="saveNewBtn" hidden>Save as new</button>
+        <button class="btn" id="resetBtn">Reset to defaults</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SAVED -->
+  <section class="view" id="v-jobs">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Saved jobs</h2>
+        <input id="search" class="plain" placeholder="Search…" style="max-width:200px;padding:7px 10px;font-size:14px">
+      </div>
+    </div>
+    <div id="jobList"></div>
+    <div class="card" id="totalsCard" hidden>
+      <h2>All listed jobs combined</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Total metres</div><div class="n"><span id="t-m"></span><small>m</small></div></div>
+        <div class="kpi"><div class="l">Rolls (ordered together)</div><div class="n"><span id="t-rolls"></span><small>rolls</small></div></div>
+        <div class="kpi"><div class="l">Paste</div><div class="n"><span id="t-paste"></span></div></div>
+        <div class="kpi"><div class="l">Primer</div><div class="n"><span id="t-primer"></span></div></div>
+      </div>
+      <p class="note" id="t-note" style="margin-bottom:0"></p>
+    </div>
+  </section>
+
+  <!-- SYNC -->
+  <section class="view" id="v-sync">
+    <div class="card">
+      <h2>GitHub Gist sync</h2>
+      <p class="note" style="margin-top:0">Saved jobs sync through a <b>private</b> GitHub gist. Create a <a class="link" href="https://github.com/settings/tokens/new?scopes=gist&amp;description=EPDM%20Calc%20sync" target="_blank" rel="noopener">classic token</a> with only the <b>gist</b> scope. It's the same token as your other apps, so if one of them is already connected on this device it's filled in for you. The token is stored only in this browser and is sent nowhere but GitHub.</p>
+      <label class="f">GitHub token<input id="token" class="plain" type="password" autocomplete="off" spellcheck="false" placeholder="Token with gist scope"></label>
+      <div class="note" style="margin-top:6px;font-size:12px">💾 Back up this token (e.g. in your password manager). GitHub shows it only once, and clearing browser data removes it here — you'll need it to reconnect.</div>
+      <label class="f" style="margin-top:12px">Gist ID (optional)<input id="gistId" class="plain" autocomplete="off" placeholder="Blank = find this app's gist, or create one"></label>
+      <label class="row note" style="margin-top:12px;gap:8px"><input type="checkbox" id="autoSync" checked> Auto-sync on open and after every change</label>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="connectBtn">Save &amp; sync</button>
+        <button class="btn" id="pullBtn">Sync now</button>
+        <button class="btn" id="copyIdBtn">Copy Gist ID</button>
+        <button class="btn danger" id="disconnectBtn">Disconnect</button>
+      </div>
+      <div class="status" id="syncStatus">Not connected.</div>
+    </div>
+
+    <div class="card">
+      <h2>Set-up</h2>
+      <ol class="note" style="padding-left:18px;margin:0">
+        <li>Paste your GitHub token (gist scope) and tap <b>Save &amp; sync</b>. Leave Gist ID blank — the app finds its own gist (<code>epdmcalc.json</code>) or creates one.</li>
+        <li>Do the same on your other device (desktop or Android). It finds the same gist automatically.</li>
+        <li>Changes merge per job (newest edit wins), so you can work offline on either device and sync later.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Appearance</h2>
+      <div class="grid">
+        <label class="f">Theme<select id="themeSel" class="plain">
+          <option value="">System</option><option value="light">Light</option><option value="dark">Dark</option>
+        </select></label>
+        <label class="f">Text size<select id="textSel" class="plain">
+          <option value="0.9">Small</option><option value="1">Medium</option><option value="1.15">Large</option><option value="1.3">Extra large</option>
+        </select></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Data</h2>
+      <div class="row">
+        <button class="btn" id="exportBtn">Export JSON</button>
+        <button class="btn" id="importBtn">Import JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <p class="note" style="margin-bottom:0">Import merges with what's here — it never overwrites newer edits.</p>
+    </div>
+
+    <div class="card">
+      <h2>My apps</h2>
+      <p class="note" style="margin:0">Open on any device, then use your browser menu → <b>Install</b> / <b>Add to Home screen</b>.</p>
+      <p class="note" style="margin:6px 0 0">🚀 <a class="link" href="https://gezzie72.github.io/apps/" target="_blank" rel="noopener">Open the App Launcher</a> — all your apps in one place.</p>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" role="tablist"><div class="in">
+  <button role="tab" data-v="calc" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/></svg>Calculator</button>
+  <button role="tab" data-v="jobs" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Saved <span id="jobCount"></span></button>
+  <button role="tab" data-v="sync" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5"/></svg>Sync</button>
+</div></nav>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const APP = 'epdmcalc', APP_NAME = 'EPDM Calc';
+const GIST_FILE = APP + '.json', GIST_DESC = APP_NAME + ' sync';
+const LS_DATA = APP + '.data', LS_THEME = APP + '.theme', LS_TEXT = APP + '.textScale', LS_DRAFT = APP + '.draft';
+const DEFAULTS = { w:1000, h:2100, sw:2, sh:2, waste:25, qty:1, roll:20 };
+const PASTE_PER_JOB = 12, PRIMER_PER_JOB = 1;   // fixed adhesive kit per job (sheet note: "12 paste & 1 primer")
+const $ = id => document.getElementById(id);
+const now = () => new Date().toISOString();
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+};
+
+// ---------- data ----------
+let data = store.get(LS_DATA, null) || { version:1, jobs:[], defaults:{...DEFAULTS}, defaultsUpdatedAt:'1970-01-01T00:00:00.000Z' };
+// Sync settings follow the My Apps hub: one GitHub token shared by every app
+// (gh.token), and this app's own gist ID / auto-sync / last-sync keys.
+const raw = {
+  get(k){ try{ return localStorage.getItem(k) || ''; }catch{ return ''; } },
+  set(k, v){ try{ v ? localStorage.setItem(k, v) : localStorage.removeItem(k); }catch{} }
+};
+const cfg = {
+  get token(){ return raw.get('gh.token'); },              set token(v){ raw.set('gh.token', v); },
+  get gistId(){ return raw.get(APP + '.gh.gist'); },       set gistId(v){ raw.set(APP + '.gh.gist', v); },
+  get autoSync(){ return raw.get(APP + '.gh.auto') !== '0'; }, set autoSync(v){ raw.set(APP + '.gh.auto', v ? '1' : '0'); },
+  get lastSync(){ return raw.get(APP + '.gh.lastSync'); }, set lastSync(v){ raw.set(APP + '.gh.lastSync', v); }
+};
+let editingId = null;
+const saveLocal = () => store.set(LS_DATA, data);
+const liveJobs = () => data.jobs.filter(j => !j.deleted);
+
+// ---------- calculation (mirrors the spreadsheet) ----------
+function calc(i){
+  const n = v => (isFinite(+v) ? +v : 0);
+  const wa = n(i.w) * n(i.sw);             // E13 = C8*F8
+  const ha = n(i.h) * n(i.sh);             // E14 = C9*F9
+  const per = wa + ha;                     // E15
+  const wst = per * n(i.waste) / 100;      // E16 = E15*C16
+  const tot = per + wst;                   // E17
+  const m = tot * n(i.qty) / 1000;         // E24
+  const roll = n(i.roll);
+  const rolls = roll > 0 ? Math.ceil(m / roll - 1e-9) : 0; // E25 = ROUNDUP(E24/C22,0)
+  return { wa, ha, per, wst, tot, m, rolls };
+}
+const fmt = (v, d=0) => v.toLocaleString(undefined, { minimumFractionDigits:d, maximumFractionDigits:d });
+const fmtM = v => v.toLocaleString(undefined, { maximumFractionDigits:2 });
+
+const FIELDS = ['w','h','sw','sh','waste','qty','roll'];
+const readInputs = () => Object.fromEntries(FIELDS.map(f => [f, $(f).value === '' ? 0 : +$(f).value]));
+const writeInputs = i => FIELDS.forEach(f => $(f).value = i[f] ?? DEFAULTS[f]);
+
+function render(){
+  const r = calc(readInputs());
+  $('r-wa').textContent = fmt(r.wa); $('r-ha').textContent = fmt(r.ha);
+  $('r-per').textContent = fmt(r.per); $('r-wst').textContent = fmt(r.wst);
+  $('r-tot').textContent = fmt(r.tot);
+  $('r-m').textContent = fmtM(r.m); $('r-rolls').textContent = fmt(r.rolls);
+  store.set(LS_DRAFT, { inputs:readInputs(), name:$('jobName').value, fireClass:$('fireClass').value, notes:$('jobNotes').value, editingId });
+}
+FIELDS.forEach(f => $(f).addEventListener('input', render));
+['jobName','fireClass','jobNotes'].forEach(f => $(f).addEventListener('input', render));
+
+function setEditing(id){
+  editingId = id;
+  $('editFlag').hidden = !id; $('saveNewBtn').hidden = !id;
+  $('calcCard').classList.toggle('editing', !!id);
+  $('saveBtn').textContent = id ? 'Update job' : 'Save job';
+}
+
+$('saveBtn').onclick = () => saveJob(false);
+$('saveNewBtn').onclick = () => saveJob(true);
+function saveJob(asNew){
+  const name = $('jobName').value.trim() || 'Untitled job';
+  const t = now();
+  const fields = { name, fireClass:$('fireClass').value, notes:$('jobNotes').value.trim(), inputs:readInputs(), updatedAt:t };
+  let job = !asNew && editingId && data.jobs.find(j => j.id === editingId);
+  if (job) Object.assign(job, fields, { deleted:false });
+  else { job = { id:uid(), createdAt:t, ...fields }; data.jobs.push(job); }
+  // remember waste/roll as the new defaults for next calculation
+  data.defaults = { ...data.defaults, waste:fields.inputs.waste, roll:fields.inputs.roll, sw:fields.inputs.sw, sh:fields.inputs.sh };
+  data.defaultsUpdatedAt = t;
+  saveLocal(); setEditing(job.id); renderJobs(); render();
+  toast(asNew || !editingId ? 'Job saved' : 'Job updated');
+  scheduleSync();
+}
+$('resetBtn').onclick = () => {
+  writeInputs({ ...DEFAULTS, ...data.defaults, w:DEFAULTS.w, h:DEFAULTS.h, qty:DEFAULTS.qty });
+  $('jobName').value = ''; $('fireClass').value = ''; $('jobNotes').value = '';
+  setEditing(null); render();
+};
+
+// ---------- saved jobs ----------
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function renderJobs(){
+  const q = $('search').value.trim().toLowerCase();
+  const jobs = liveJobs()
+    .filter(j => !q || (j.name + ' ' + (j.notes||'')).toLowerCase().includes(q))
+    .sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));
+  $('jobCount').textContent = liveJobs().length ? `(${liveJobs().length})` : '';
+  const list = $('jobList');
+  if (!jobs.length){
+    list.innerHTML = `<div class="card empty">${q ? 'No jobs match your search.' : 'No saved jobs yet.<br>Calculate a doorset and tap <b>Save job</b>.'}</div>`;
+    $('totalsCard').hidden = true; return;
+  }
+  list.innerHTML = jobs.map(j => {
+    const i = j.inputs, r = calc(i);
+    const pill = j.fireClass === 'B' ? '<span class="pill b">Class B · Fire rated</span>' : j.fireClass === 'E' ? '<span class="pill e">Class E · Non fire rated</span>' : '';
+    return `<div class="job" data-id="${esc(j.id)}">
+      <div class="top"><div class="name">${esc(j.name)}</div><div class="res">${fmtM(r.m)} m<br><span class="muted" style="font-weight:600">${r.rolls} roll${r.rolls===1?'':'s'}</span></div></div>
+      <div class="meta">${fmt(i.w)} × ${fmt(i.h)} mm · ${i.qty} door${i.qty==1?'':'s'} · ${i.waste}% waste · ${i.roll} m rolls · ${PASTE_PER_JOB} paste &amp; ${PRIMER_PER_JOB} primer</div>
+      ${pill || j.notes ? `<div class="meta">${pill} ${j.notes ? esc(j.notes) : ''}</div>` : ''}
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm" data-act="open">Open</button>
+        <button class="btn sm" data-act="dup">Duplicate</button>
+        <button class="btn sm danger" data-act="del">Delete</button>
+        <span class="note" style="margin-left:auto">${new Date(j.updatedAt).toLocaleDateString()}</span>
+      </div></div>`;
+  }).join('');
+  // Combined totals: metres add up; rolls are re-rounded if ordered together (only valid if roll length matches)
+  const totM = jobs.reduce((s,j) => s + calc(j.inputs).m, 0);
+  const rollLens = [...new Set(jobs.map(j => +j.inputs.roll))];
+  const sepRolls = jobs.reduce((s,j) => s + calc(j.inputs).rolls, 0);
+  $('totalsCard').hidden = false;
+  $('t-paste').textContent = jobs.length * PASTE_PER_JOB;
+  $('t-primer').textContent = jobs.length * PRIMER_PER_JOB;
+  $('t-m').textContent = fmtM(totM);
+  if (rollLens.length === 1 && rollLens[0] > 0){
+    const together = Math.ceil(totM / rollLens[0] - 1e-9);
+    $('t-rolls').textContent = together;
+    $('t-note').textContent = `${jobs.length} job${jobs.length===1?'':'s'}, ${rollLens[0]} m rolls. Ordered separately: ${sepRolls} rolls.`;
+  } else {
+    $('t-rolls').textContent = sepRolls;
+    $('t-note').textContent = `Jobs use different roll lengths, so rolls are summed per job.`;
+  }
+}
+$('search').addEventListener('input', renderJobs);
+$('jobList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const id = b.closest('.job').dataset.id, job = data.jobs.find(j => j.id === id); if (!job) return;
+  if (b.dataset.act === 'open' || b.dataset.act === 'dup'){
+    writeInputs(job.inputs); $('jobName').value = job.name + (b.dataset.act === 'dup' ? ' (copy)' : '');
+    $('fireClass').value = job.fireClass || ''; $('jobNotes').value = job.notes || '';
+    setEditing(b.dataset.act === 'open' ? job.id : null); render(); show('calc'); window.scrollTo(0,0);
+  } else if (b.dataset.act === 'del'){
+    if (!confirm(`Delete "${job.name}"?`)) return;
+    job.deleted = true; job.updatedAt = now();   // tombstone so the delete syncs to other devices
+    if (editingId === id) setEditing(null);
+    saveLocal(); renderJobs(); toast('Job deleted'); scheduleSync();
+  }
+});
+
+// ---------- gist sync ----------
+const API = 'https://api.github.com';
+const headers = () => ({ 'Accept':'application/vnd.github+json', 'Authorization':`Bearer ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28' });
+async function gh(path, opts={}){
+  const res = await fetch(API + path, { cache:'no-store', ...opts, headers:{ ...headers(), ...(opts.body ? {'Content-Type':'application/json'} : {}) } });
+  if (!res.ok){
+    let msg = `${res.status} ${res.statusText}`;
+    try{ const j = await res.json(); if (j.message) msg = `${res.status}: ${j.message}`; }catch{}
+    if (res.status === 401) msg += ' — check your token.';
+    if (res.status === 404) msg += ' — Gist not found, or token lacks access to it.';
+    throw new Error(msg);
+  }
+  return res.json();
+}
+async function readRemote(){
+  const g = await gh(`/gists/${encodeURIComponent(cfg.gistId)}`);
+  const f = g.files && g.files[GIST_FILE];
+  if (!f) return null;
+  let content = f.content;
+  if (f.truncated) content = await (await fetch(f.raw_url, { cache:'no-store' })).text();
+  try { return JSON.parse(content); } catch { throw new Error('Gist file is not valid JSON.'); }
+}
+function merge(local, remote){
+  if (!remote || !Array.isArray(remote.jobs)) return local;
+  const byId = new Map(local.jobs.map(j => [j.id, j]));
+  for (const rj of remote.jobs){
+    const lj = byId.get(rj.id);
+    if (!lj || (rj.updatedAt || '') > (lj.updatedAt || '')) byId.set(rj.id, rj);
+  }
+  const remoteDefsNewer = (remote.defaultsUpdatedAt || '') > (local.defaultsUpdatedAt || '');
+  return {
+    version:1,
+    jobs:[...byId.values()],
+    defaults: remoteDefsNewer ? { ...DEFAULTS, ...remote.defaults } : local.defaults,
+    defaultsUpdatedAt: remoteDefsNewer ? remote.defaultsUpdatedAt : local.defaultsUpdatedAt
+  };
+}
+const payload = () => JSON.stringify({ ...data, app:APP, savedAt:now() }, null, 2);
+// Find this app's gist on a new device so only the shared token is needed.
+async function findGist(){
+  for (let page = 1; page <= 5; page++){
+    const list = await gh(`/gists?per_page=100&page=${page}`);
+    const hit = list.find(g => g.files && g.files[GIST_FILE]);
+    if (hit) return hit.id;
+    if (list.length < 100) break;
+  }
+  return '';
+}
+
+let syncing = false, syncQueued = false, syncTimer = null;
+function scheduleSync(){
+  if (!cfg.token || !cfg.gistId || !cfg.autoSync) { badge(); return; }
+  clearTimeout(syncTimer); syncTimer = setTimeout(sync, 800);
+}
+async function sync(){
+  if (!cfg.token){ status('Add a GitHub token first.', 'err'); return; }
+  if (!navigator.onLine){ status('Offline — changes are saved on this device and will sync later.', 'err'); badge('Offline'); return; }
+  if (syncing){ syncQueued = true; return; }
+  syncing = true; badge('Syncing…'); status('Syncing…');
+  try{
+    if (!cfg.gistId){ cfg.gistId = await findGist(); $('gistId').value = cfg.gistId; }
+    if (!cfg.gistId){
+      const g = await gh('/gists', { method:'POST', body:JSON.stringify({ description:GIST_DESC, public:false, files:{ [GIST_FILE]:{ content:payload() } } }) });
+      cfg.gistId = g.id; $('gistId').value = g.id;
+    } else {
+      const remote = await readRemote();
+      const before = JSON.stringify(data);
+      data = merge(data, remote); saveLocal();
+      if (JSON.stringify(data) !== before){ renderJobs(); }
+      await gh(`/gists/${encodeURIComponent(cfg.gistId)}`, { method:'PATCH', body:JSON.stringify({ files:{ [GIST_FILE]:{ content:payload() } } }) });
+    }
+    cfg.lastSync = now();
+    status(`Synced ${new Date(cfg.lastSync).toLocaleString()} · ${liveJobs().length} job(s) · Gist ${cfg.gistId}`, 'ok');
+    badge();
+  }catch(err){
+    status('Sync failed: ' + err.message, 'err'); badge('Sync error');
+  }finally{
+    syncing = false;
+    if (syncQueued){ syncQueued = false; sync(); }
+  }
+}
+function status(msg, cls=''){ const s = $('syncStatus'); s.textContent = msg; s.className = 'status ' + cls; }
+function badge(text){
+  const b = $('syncBadge');
+  if (text) { b.textContent = text; return; }
+  if (!cfg.token || !cfg.gistId) b.textContent = 'Local only';
+  else b.textContent = cfg.lastSync ? 'Synced ' + new Date(cfg.lastSync).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : 'Not synced';
+}
+$('syncBadge').onclick = () => (cfg.token && cfg.gistId) ? sync() : show('sync');
+$('connectBtn').onclick = () => {
+  cfg.token = $('token').value.trim(); cfg.gistId = parseGistId($('gistId').value); cfg.autoSync = $('autoSync').checked;
+  $('gistId').value = cfg.gistId; sync();
+};
+$('pullBtn').onclick = () => sync();
+$('autoSync').onchange = () => { cfg.autoSync = $('autoSync').checked; };
+$('copyIdBtn').onclick = async () => {
+  if (!cfg.gistId) return toast('No Gist ID yet');
+  try { await navigator.clipboard.writeText(cfg.gistId); toast('Gist ID copied'); } catch { prompt('Gist ID:', cfg.gistId); }
+};
+$('disconnectBtn').onclick = () => {
+  if (!confirm('Disconnect sync on this device? Your local data stays; the gist is untouched. Other apps stay connected.')) return;
+  cfg.gistId = ''; cfg.lastSync = '';
+  $('gistId').value = ''; status('Not connected.'); badge();
+};
+// accept a full gist URL as well as a bare ID
+function parseGistId(v){ v = v.trim(); const m = v.match(/([0-9a-f]{20,})\/?$/i); return m ? m[1] : v; }
+window.addEventListener('online', scheduleSync);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && cfg.autoSync && cfg.token && cfg.gistId) sync(); });
+
+// ---------- backup / theme ----------
+$('exportBtn').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([payload()], { type:'application/json' }));
+  a.download = `epdm-jobs-${new Date().toISOString().slice(0,10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { data = merge(data, JSON.parse(await f.text())); saveLocal(); renderJobs(); toast('Imported & merged'); scheduleSync(); }
+  catch { toast('Could not read that file'); }
+  e.target.value = '';
+};
+function applyTheme(t){
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  const dark = t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name=theme-color]').content = dark ? '#18212f' : '#1f3a5f';
+}
+function applyText(z){ document.documentElement.style.setProperty('--tzoom', z || 1); }
+$('textSel').onchange = () => { raw.set(LS_TEXT, $('textSel').value); applyText($('textSel').value); };
+$('themeSel').onchange = () => { store.set(LS_THEME, $('themeSel').value); applyTheme($('themeSel').value); };
+
+// ---------- tabs / toast ----------
+function show(v){
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === 'v-' + v));
+  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.v === v));
+  if (v === 'jobs') renderJobs();
+}
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
+let toastT; function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800); }
+
+// ---------- init ----------
+const theme = store.get(LS_THEME, ''); $('themeSel').value = theme; applyTheme(theme);
+const textZ = raw.get(LS_TEXT) || '1'; $('textSel').value = textZ; applyText(textZ);
+const draft = store.get(LS_DRAFT, null);
+if (draft){
+  writeInputs({ ...DEFAULTS, ...draft.inputs }); $('jobName').value = draft.name || '';
+  $('fireClass').value = draft.fireClass || ''; $('jobNotes').value = draft.notes || '';
+  if (draft.editingId && data.jobs.some(j => j.id === draft.editingId && !j.deleted)) setEditing(draft.editingId);
+} else writeInputs({ ...DEFAULTS, ...data.defaults });
+$('token').value = cfg.token; $('gistId').value = cfg.gistId; $('autoSync').checked = cfg.autoSync;
+if (cfg.lastSync) status(`Last synced ${new Date(cfg.lastSync).toLocaleString()} · Gist ${cfg.gistId}`, 'ok');
+render(); renderJobs(); badge();
+// Token already stored by another hub app: link up straight away (finds or creates this app's gist).
+if (cfg.autoSync && cfg.token) sync();
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+<!-- ===== Universal backup widget (self-contained) ===== -->
+<style>
+#bk-btn{position:fixed;left:14px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:99990;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.5);background:#ff2d78;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(255,45,120,.55);display:flex;align-items:center;justify-content:center;opacity:1}
+#bk-btn:hover{transform:scale(1.06)}
+#bk-panel{position:fixed;left:14px;bottom:calc(132px + env(safe-area-inset-bottom));z-index:99991;width:252px;max-width:calc(100vw - 28px);background:#171a21;color:#e7e9ee;border:1px solid #2a2f3a;border-radius:14px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.45);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+@media (prefers-color-scheme:light){#bk-panel{background:#fff;color:#1b1f27;border-color:#dfe3ea}}
+#bk-panel h4{margin:0 0 6px;font-size:14px}
+#bk-panel p{margin:0 0 10px;color:#98a0ae;font-size:12.5px}
+#bk-panel button{display:block;width:100%;margin:6px 0;padding:9px 10px;border-radius:9px;border:1px solid transparent;font-size:13px;font-weight:600;cursor:pointer}
+#bk-save{background:#4bd07f;color:#04120a;border:none}
+#bk-restore{background:transparent;color:inherit;border:1px solid rgba(128,128,128,.4)}
+#bk-close{background:transparent;color:#98a0ae;border:none;font-weight:500}
+#bk-last{color:#98a0ae;font-size:12px;margin:8px 0 2px}
+</style>
+<button id="bk-btn" title="Back up this app" aria-label="Back up this app">&#x2B07;</button>
+<div id="bk-panel" hidden>
+  <h4>Backup</h4>
+  <p>Save a copy of EPDM Calc data to a file on this device.</p>
+  <button id="bk-save">&#x2B07; Back up my data</button>
+  <button id="bk-restore">Restore from file&#8230;</button>
+  <input id="bk-file" type="file" accept="application/json,.json" hidden>
+  <div id="bk-last"></div>
+  <button id="bk-close">Close</button>
+</div>
+<script>
+(function(){
+  /* Save into the backup folder chosen on the My Apps hub (shared IndexedDB
+     "hub-backup", Chrome/Edge desktop). Resolves to the folder name, or "" so
+     the caller falls back to a normal download. */
+  function bkSaveToFolder(name,text){ return new Promise(function(res){
+    if(typeof window.showDirectoryPicker!=='function'||!window.indexedDB) return res('');
+    var o; try{ o=indexedDB.open('hub-backup',1); }catch(e){ return res(''); }
+    o.onupgradeneeded=function(){ o.result.createObjectStore('kv'); };
+    o.onerror=function(){ res(''); };
+    o.onsuccess=function(){ try{ var q=o.result.transaction('kv').objectStore('kv').get('dir');
+      q.onerror=function(){ res(''); };
+      q.onsuccess=function(){ var h=q.result, opt={mode:'readwrite'}; if(!h) return res('');
+        h.queryPermission(opt).then(function(p){ return p==='granted'?p:h.requestPermission(opt); }).then(function(p){
+          if(p!=='granted') return '';
+          return h.getFileHandle(name,{create:true}).then(function(f){ return f.createWritable(); }).then(function(w){
+            return w.write(new Blob([text],{type:'application/json'})).then(function(){ return w.close(); }); }).then(function(){ return h.name; });
+        }).then(res,function(){ res(''); }); };
+    }catch(e){ res(''); } };
+  }); }
+  var PREFIX="epdmcalc", NAME="EPDM Calc";
+  function g(id){return document.getElementById(id);}
+  function last(){ var el=g('bk-last'); if(!el)return; var t=''; try{t=localStorage.getItem(PREFIX+'.lastBackup')||'';}catch(e){}
+    if(!t){el.textContent='No backup saved yet on this device.';return;}
+    var d=Math.floor((Date.now()-new Date(t).getTime())/86400000);
+    el.innerHTML='Last backup: <b>'+(d<=0?'today':(d===1?'yesterday':d+' days ago'))+'</b>'; }
+  function save(){ try{ var data={}; for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i); if(k&&k.indexOf(PREFIX)===0)data[k]=localStorage.getItem(k);}
+      var now=new Date(), pad=function(n){return(n<10?'0':'')+n;};
+      var payload={app:PREFIX,version:1,exported:now.toISOString(),data:data};
+      var fname=PREFIX+'-backup-'+now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'.json', text=JSON.stringify(payload,null,2);
+      bkSaveToFolder(fname,text).then(function(dir){
+        if(dir){ alert('Backup saved to \u201c'+dir+'\u201d as '+fname+'.'); return; }
+        var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'application/json'})); a.download=fname; a.click(); });
+      try{localStorage.setItem(PREFIX+'.lastBackup',now.toISOString());}catch(e){} last();
+    }catch(e){ alert('Backup failed: '+(e&&e.message?e.message:e)); } }
+  function restore(file){ if(!file)return; var r=new FileReader();
+    r.onload=function(){ try{ var p=JSON.parse(r.result);
+      if(!p||!p.data||p.app!==PREFIX){ alert('That file is not a '+NAME+' backup.'); return; }
+      var when=p.exported?new Date(p.exported).toLocaleString('en-GB'):'unknown date';
+      if(!confirm('Restore backup from '+when+'?\n\nThis replaces '+NAME+' current data on this device.')) return;
+      Object.keys(p.data).forEach(function(k){try{localStorage.setItem(k,p.data[k]);}catch(e){}});
+      alert('Restored. Reloading.'); location.reload();
+    }catch(e){ alert('Could not read that file: '+(e&&e.message?e.message:e)); } };
+    r.readAsText(file); }
+  var b=g('bk-btn'); if(!b) return;
+  b.onclick=function(){ var p=g('bk-panel'); p.hidden=!p.hidden; if(!p.hidden)last(); };
+  g('bk-save').onclick=save;
+  g('bk-restore').onclick=function(){ g('bk-file').click(); };
+  g('bk-file').onchange=function(){ restore(this.files[0]); this.value=''; };
+  g('bk-close').onclick=function(){ g('bk-panel').hidden=true; };
+})();
+</script>
+
+</body>
+</html>
