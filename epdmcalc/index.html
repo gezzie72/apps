@@ -463,14 +463,43 @@ function merge(local, remote){
 }
 const payload = () => JSON.stringify({ ...data, app:APP, savedAt:now() }, null, 2);
 // Find this app's gist on a new device so only the shared token is needed.
-async function findGist(){
+const LEGACY_FILE = 'epdm-calculator.json';   // gist file of the old stand-alone version
+// All of this app's gists (oldest first), plus any left by the old stand-alone version.
+async function listGists(){
+  const mine = [], legacy = [];
   for (let page = 1; page <= 5; page++){
     const list = await gh(`/gists?per_page=100&page=${page}`);
-    const hit = list.find(g => g.files && g.files[GIST_FILE]);
-    if (hit) return hit.id;
+    for (const g of list){
+      if (g.files && g.files[GIST_FILE]) mine.push(g);
+      else if (g.files && g.files[LEGACY_FILE]) legacy.push(g);
+    }
     if (list.length < 100) break;
   }
-  return '';
+  mine.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  return { mine, legacy };
+}
+async function readGistFile(id, file){
+  const g = await gh(`/gists/${encodeURIComponent(id)}`);
+  const f = g.files && g.files[file];
+  if (!f) return null;
+  const content = f.truncated ? await (await fetch(f.raw_url, { cache:'no-store' })).text() : f.content;
+  try { return JSON.parse(content); } catch { return null; }
+}
+/* If two devices each made their own gist (or one still ran the old version),
+   every device settles on the OLDEST epdmcalc gist and merges the others into it.
+   Done once per app start; the extra gists are left untouched, never deleted. */
+let gistsChecked = false;
+async function converge(){
+  const { mine, legacy } = await listGists();
+  gistsChecked = true;
+  const canonical = mine.length ? mine[0].id : '';
+  const others = [...mine.filter(g => g.id !== canonical).map(g => [g.id, GIST_FILE]), ...legacy.map(g => [g.id, LEGACY_FILE])];
+  for (const [id, file] of others){
+    const d = await readGistFile(id, file);
+    if (d) data = merge(data, d);
+  }
+  if (others.length) saveLocal();
+  if (canonical && cfg.gistId !== canonical){ cfg.gistId = canonical; $('gistId').value = canonical; }
 }
 
 let syncing = false, syncQueued = false, syncTimer = null;
@@ -484,7 +513,7 @@ async function sync(){
   if (syncing){ syncQueued = true; return; }
   syncing = true; badge('Syncing…'); status('Syncing…');
   try{
-    if (!cfg.gistId){ cfg.gistId = await findGist(); $('gistId').value = cfg.gistId; }
+    if (!gistsChecked){ await converge(); renderJobs(); }
     if (!cfg.gistId){
       const g = await gh('/gists', { method:'POST', body:JSON.stringify({ description:GIST_DESC, public:false, files:{ [GIST_FILE]:{ content:payload() } } }) });
       cfg.gistId = g.id; $('gistId').value = g.id;
@@ -566,6 +595,15 @@ document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show
 let toastT; function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800); }
 
 // ---------- init ----------
+/* One-off move from the old stand-alone version (same site, older keys): merge its
+   saved jobs, adopt its token if no hub token is stored, then remove the old keys
+   so the token copy doesn't end up in hub backup files. */
+(function migrateLegacy(){
+  const old = store.get('epdm.data.v1', null), oldCfg = store.get('epdm.sync.v1', null);
+  if (old && Array.isArray(old.jobs)){ data = merge(data, old); saveLocal(); }
+  if (oldCfg && oldCfg.token && !cfg.token) cfg.token = oldCfg.token;
+  ['epdm.data.v1', 'epdm.sync.v1', 'epdm.draft.v1', 'epdm.theme'].forEach(k => raw.set(k, ''));
+})();
 const theme = store.get(LS_THEME, ''); $('themeSel').value = theme; applyTheme(theme);
 const textZ = raw.get(LS_TEXT) || '1'; $('textSel').value = textZ; applyText(textZ);
 const draft = store.get(LS_DRAFT, null);
