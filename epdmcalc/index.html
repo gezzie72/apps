@@ -106,6 +106,7 @@ details summary{cursor:pointer;font-weight:600}
 code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:13px}
 .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:12px}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.appfoot{text-align:center;color:var(--muted);font-size:12px;padding:8px 0 4px;margin-top:4px}
 </style>
 </head>
 <body>
@@ -152,8 +153,8 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:13p
       <div class="kpis">
         <div class="kpi"><div class="l">Total to order</div><div class="n"><span id="r-m"></span><small>m</small></div></div>
         <div class="kpi"><div class="l">Rolls to order</div><div class="n"><span id="r-rolls"></span><small>rolls</small></div></div>
-        <div class="kpi"><div class="l">Paste</div><div class="n">12<small>per job</small></div></div>
-        <div class="kpi"><div class="l">Primer</div><div class="n">1<small>per job</small></div></div>
+        <div class="kpi"><div class="l">Paste</div><div class="n"><span id="r-paste"></span><small>× 600 ml</small></div></div>
+        <div class="kpi"><div class="l">Primer</div><div class="n"><span id="r-primer"></span><small>× 4 L</small></div></div>
       </div>
     </div>
 
@@ -162,9 +163,9 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:13p
       <ul>
         <li><span class="pill b">Class B</span> = Fire Rated</li>
         <li><span class="pill e">Class E</span> = None Fire Rated</li>
-        <li><b>12 paste &amp; 1 primer</b> per job</li>
+        <li><b>12 paste (600 ml) &amp; 1 primer (4 L)</b> per 20 m roll</li>
       </ul>
-      <p class="note" style="margin-bottom:0">Waste allowance and roll length are adjustable assumptions — update the yellow cells to suit your supplier's roll size and site wastage rate.</p>
+      <p class="note" style="margin-bottom:0">EPDM is ordered in rolls (20 m minimum). Paste and primer scale with the rolls needed. Waste allowance and roll length are adjustable assumptions — update the yellow cells to suit your supplier's roll size and site wastage rate.</p>
     </div>
 
     <div class="card">
@@ -201,8 +202,8 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:13p
       <div class="kpis">
         <div class="kpi"><div class="l">Total metres</div><div class="n"><span id="t-m"></span><small>m</small></div></div>
         <div class="kpi"><div class="l">Rolls (ordered together)</div><div class="n"><span id="t-rolls"></span><small>rolls</small></div></div>
-        <div class="kpi"><div class="l">Paste</div><div class="n"><span id="t-paste"></span></div></div>
-        <div class="kpi"><div class="l">Primer</div><div class="n"><span id="t-primer"></span></div></div>
+        <div class="kpi"><div class="l">Paste</div><div class="n"><span id="t-paste"></span><small>× 600 ml</small></div></div>
+        <div class="kpi"><div class="l">Primer</div><div class="n"><span id="t-primer"></span><small>× 4 L</small></div></div>
       </div>
       <p class="note" id="t-note" style="margin-bottom:0"></p>
     </div>
@@ -274,6 +275,8 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:13p
       <p class="note" style="margin:6px 0 0">🚀 <a class="link" href="https://gezzie72.github.io/apps/" target="_blank" rel="noopener">Open the App Launcher</a> — all your apps in one place.</p>
     </div>
   </section>
+
+  <footer class="appfoot">EPDM Calc · <span id="appVer"></span></footer>
 </main>
 
 <nav class="tabs" role="tablist"><div class="in">
@@ -290,7 +293,8 @@ const APP = 'epdmcalc', APP_NAME = 'EPDM Calc';
 const GIST_FILE = APP + '.json', GIST_DESC = APP_NAME + ' sync';
 const LS_DATA = APP + '.data', LS_THEME = APP + '.theme', LS_TEXT = APP + '.textScale', LS_DRAFT = APP + '.draft';
 const DEFAULTS = { w:1000, h:2100, sw:2, sh:2, waste:25, qty:1, roll:20 };
-const PASTE_PER_JOB = 12, PRIMER_PER_JOB = 1;   // fixed adhesive kit per job (sheet note: "12 paste & 1 primer")
+const PASTE_PER_ROLL = 12, PRIMER_PER_ROLL = 1;   // per 20m EPDM roll: 12 × 600ml paste + 1 × 4L primer
+const APP_VER = 'v2 · 2026-10-14';
 const $ = id => document.getElementById(id);
 const now = () => new Date().toISOString();
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
@@ -329,7 +333,9 @@ function calc(i){
   const m = tot * n(i.qty) / 1000;         // E24
   const roll = n(i.roll);
   const rolls = roll > 0 ? Math.ceil(m / roll - 1e-9) : 0; // E25 = ROUNDUP(E24/C22,0)
-  return { wa, ha, per, wst, tot, m, rolls };
+  const paste = rolls * PASTE_PER_ROLL;    // 12 × 600ml paste per roll
+  const primer = rolls * PRIMER_PER_ROLL;  // 1 × 4L primer per roll
+  return { wa, ha, per, wst, tot, m, rolls, paste, primer };
 }
 const fmt = (v, d=0) => v.toLocaleString(undefined, { minimumFractionDigits:d, maximumFractionDigits:d });
 const fmtM = v => v.toLocaleString(undefined, { maximumFractionDigits:2 });
@@ -344,6 +350,7 @@ function render(){
   $('r-per').textContent = fmt(r.per); $('r-wst').textContent = fmt(r.wst);
   $('r-tot').textContent = fmt(r.tot);
   $('r-m').textContent = fmtM(r.m); $('r-rolls').textContent = fmt(r.rolls);
+  $('r-paste').textContent = fmt(r.paste); $('r-primer').textContent = fmt(r.primer);
   store.set(LS_DRAFT, { inputs:readInputs(), name:$('jobName').value, fireClass:$('fireClass').value, notes:$('jobNotes').value, editingId });
 }
 FIELDS.forEach(f => $(f).addEventListener('input', render));
@@ -396,7 +403,7 @@ function renderJobs(){
     const pill = j.fireClass === 'B' ? '<span class="pill b">Class B · Fire rated</span>' : j.fireClass === 'E' ? '<span class="pill e">Class E · Non fire rated</span>' : '';
     return `<div class="job" data-id="${esc(j.id)}">
       <div class="top"><div class="name">${esc(j.name)}</div><div class="res">${fmtM(r.m)} m<br><span class="muted" style="font-weight:600">${r.rolls} roll${r.rolls===1?'':'s'}</span></div></div>
-      <div class="meta">${fmt(i.w)} × ${fmt(i.h)} mm · ${i.qty} door${i.qty==1?'':'s'} · ${i.waste}% waste · ${i.roll} m rolls · ${PASTE_PER_JOB} paste &amp; ${PRIMER_PER_JOB} primer</div>
+      <div class="meta">${fmt(i.w)} × ${fmt(i.h)} mm · ${i.qty} door${i.qty==1?'':'s'} · ${i.waste}% waste · ${i.roll} m rolls · ${r.paste} paste &amp; ${r.primer} primer</div>
       ${pill || j.notes ? `<div class="meta">${pill} ${j.notes ? esc(j.notes) : ''}</div>` : ''}
       <div class="row" style="margin-top:10px">
         <button class="btn sm" data-act="open">Open</button>
@@ -410,17 +417,20 @@ function renderJobs(){
   const rollLens = [...new Set(jobs.map(j => +j.inputs.roll))];
   const sepRolls = jobs.reduce((s,j) => s + calc(j.inputs).rolls, 0);
   $('totalsCard').hidden = false;
-  $('t-paste').textContent = jobs.length * PASTE_PER_JOB;
-  $('t-primer').textContent = jobs.length * PRIMER_PER_JOB;
   $('t-m').textContent = fmtM(totM);
+  let orderRolls;
   if (rollLens.length === 1 && rollLens[0] > 0){
-    const together = Math.ceil(totM / rollLens[0] - 1e-9);
-    $('t-rolls').textContent = together;
+    orderRolls = Math.ceil(totM / rollLens[0] - 1e-9);
+    $('t-rolls').textContent = orderRolls;
     $('t-note').textContent = `${jobs.length} job${jobs.length===1?'':'s'}, ${rollLens[0]} m rolls. Ordered separately: ${sepRolls} rolls.`;
   } else {
+    orderRolls = sepRolls;
     $('t-rolls').textContent = sepRolls;
     $('t-note').textContent = `Jobs use different roll lengths, so rolls are summed per job.`;
   }
+  // paste & primer follow the rolls actually ordered (12 paste + 1 primer per roll)
+  $('t-paste').textContent = orderRolls * PASTE_PER_ROLL;
+  $('t-primer').textContent = orderRolls * PRIMER_PER_ROLL;
 }
 $('search').addEventListener('input', renderJobs);
 $('jobList').addEventListener('click', e => {
@@ -707,6 +717,7 @@ if (draft){
 } else writeInputs({ ...DEFAULTS, ...data.defaults });
 $('token').value = cfg.token; $('gistId').value = cfg.gistId; $('autoSync').checked = cfg.autoSync;
 if (cfg.lastSync) status(`Last synced ${new Date(cfg.lastSync).toLocaleString()} · Gist ${cfg.gistId}`, 'ok');
+$('appVer').textContent = APP_VER;
 render(); renderJobs(); badge(); renderEnc();
 // Token already stored by another hub app: link up straight away (finds or creates this app's gist).
 if (cfg.autoSync && cfg.token) sync();
