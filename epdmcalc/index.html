@@ -163,9 +163,9 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:13p
       <ul>
         <li><span class="pill b">Class B</span> = Fire Rated</li>
         <li><span class="pill e">Class E</span> = None Fire Rated</li>
-        <li><b>12 paste (600 ml) &amp; 1 primer (4 L)</b> per 20 m roll</li>
+        <li><b>12 paste (600 ml) &amp; 1 primer (4 L)</b> per 20 m of seal</li>
       </ul>
-      <p class="note" style="margin-bottom:0">EPDM is ordered in rolls (20 m minimum). Paste and primer scale with the rolls needed. Waste allowance and roll length are adjustable assumptions — update the yellow cells to suit your supplier's roll size and site wastage rate.</p>
+      <p class="note" style="margin-bottom:0">EPDM is ordered in rolls (20 m minimum). Paste and primer scale with the actual metres of seal used (rounded up to whole packs). Waste allowance and roll length are adjustable assumptions — update the yellow cells to suit your supplier's roll size and site wastage rate.</p>
     </div>
 
     <div class="card">
@@ -293,8 +293,11 @@ const APP = 'epdmcalc', APP_NAME = 'EPDM Calc';
 const GIST_FILE = APP + '.json', GIST_DESC = APP_NAME + ' sync';
 const LS_DATA = APP + '.data', LS_THEME = APP + '.theme', LS_TEXT = APP + '.textScale', LS_DRAFT = APP + '.draft';
 const DEFAULTS = { w:1000, h:2100, sw:2, sh:2, waste:25, qty:1, roll:20 };
-const PASTE_PER_ROLL = 12, PRIMER_PER_ROLL = 1;   // per 20m EPDM roll: 12 × 600ml paste + 1 × 4L primer
-const APP_VER = 'v2 · 2026-10-14';
+const PASTE_PER_ROLL = 12, PRIMER_PER_ROLL = 1, ROLL_REF_M = 20; // 12 × 600ml paste + 1 × 4L primer cover 20 m of seal
+// Consumables scale with the actual metres of EPDM used (rounded up to whole packs — you order whole tubes/tubs).
+const pasteForM  = m => m > 0 ? Math.ceil(m * PASTE_PER_ROLL  / ROLL_REF_M - 1e-9) : 0;
+const primerForM = m => m > 0 ? Math.ceil(m * PRIMER_PER_ROLL / ROLL_REF_M - 1e-9) : 0;
+const APP_VER = 'v3 · 2026-10-14';
 const $ = id => document.getElementById(id);
 const now = () => new Date().toISOString();
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
@@ -333,8 +336,8 @@ function calc(i){
   const m = tot * n(i.qty) / 1000;         // E24
   const roll = n(i.roll);
   const rolls = roll > 0 ? Math.ceil(m / roll - 1e-9) : 0; // E25 = ROUNDUP(E24/C22,0)
-  const paste = rolls * PASTE_PER_ROLL;    // 12 × 600ml paste per roll
-  const primer = rolls * PRIMER_PER_ROLL;  // 1 × 4L primer per roll
+  const paste = pasteForM(m);    // scales with actual metres used
+  const primer = primerForM(m);
   return { wa, ha, per, wst, tot, m, rolls, paste, primer };
 }
 const fmt = (v, d=0) => v.toLocaleString(undefined, { minimumFractionDigits:d, maximumFractionDigits:d });
@@ -428,9 +431,9 @@ function renderJobs(){
     $('t-rolls').textContent = sepRolls;
     $('t-note').textContent = `Jobs use different roll lengths, so rolls are summed per job.`;
   }
-  // paste & primer follow the rolls actually ordered (12 paste + 1 primer per roll)
-  $('t-paste').textContent = orderRolls * PASTE_PER_ROLL;
-  $('t-primer').textContent = orderRolls * PRIMER_PER_ROLL;
+  // paste & primer scale with the total metres used (12 paste + 1 primer per 20 m)
+  $('t-paste').textContent = pasteForM(totM);
+  $('t-primer').textContent = primerForM(totM);
 }
 $('search').addEventListener('input', renderJobs);
 $('jobList').addEventListener('click', e => {
