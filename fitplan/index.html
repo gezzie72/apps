@@ -218,12 +218,29 @@
   #restTimer.done{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 16%, var(--panel))}
   #restTimer.paused .rt-time{opacity:.5}
   /* Printable report */
-  .report-sheet{ background:#fff; color:#111; border:1px solid var(--line); border-radius:8px; padding:20px; font-size:13px; line-height:1.5; max-height:60vh; overflow:auto }
+  .report-sheet{ background:#fff; color:#111; border:1px solid var(--line); border-radius:8px; padding:20px; font-size:13px; line-height:1.5; max-height:60vh; overflow:auto; -webkit-print-color-adjust:exact; print-color-adjust:exact }
   .report-sheet h1{ font-size:20px; margin:0 0 2px; color:#111 }
-  .report-sheet .rep-sub{ color:#555; font-size:12px; margin:0 0 14px }
-  .report-sheet .rep-summary{ display:flex; flex-wrap:wrap; gap:10px 24px; margin:0 0 6px }
-  .report-sheet .rep-summary div{ font-size:11px; color:#555 }
-  .report-sheet .rep-summary b{ font-size:16px; color:#111; display:block; font-weight:800 }
+  .report-sheet .rep-sub{ color:#555; font-size:12px; margin:0 0 12px }
+  .report-sheet .rep-head{ background:linear-gradient(120deg,#111,#2b2f3a); color:#fff; border-radius:12px; padding:14px 16px; margin:0 0 12px }
+  .report-sheet .rep-headline{ font-size:15px; font-weight:800; letter-spacing:.2px }
+  .report-sheet .rep-mood{ font-size:12px; color:#c9d2e3; margin-top:2px }
+  .report-sheet .rep-strip-wrap{ margin:0 0 14px }
+  .report-sheet .rep-strip{ display:flex; flex-wrap:wrap; gap:5px }
+  .report-sheet .rep-cell{ width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700 }
+  .report-sheet .rep-cell.trained{ background:#1a7f37; color:#fff }
+  .report-sheet .rep-cell.rest{ background:#fbe7c2; color:#9a6a12 }
+  .report-sheet .rep-cell.none{ background:#eef0f2; color:#aeb4bd }
+  .report-sheet .rep-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:10px; margin:0 0 16px }
+  .report-sheet .rep-card{ background:#f7f8fa; border:1px solid #ececf0; border-radius:12px; padding:12px 14px }
+  .report-sheet .rc-val{ font-size:21px; font-weight:800; color:#111; line-height:1.05 }
+  .report-sheet .rc-lab{ font-size:10px; color:#777; margin-top:3px; text-transform:uppercase; letter-spacing:.5px; font-weight:700 }
+  .report-sheet .rc-d{ font-size:11px; margin-top:7px; color:#999 }
+  .report-sheet .rc-vs{ color:#b4b9c2 }
+  .report-sheet .rep-delta{ font-weight:800; padding:1px 7px; border-radius:20px; font-size:11px; white-space:nowrap }
+  .report-sheet .rep-delta.up{ color:#0f7a34; background:#e3f6ea }
+  .report-sheet .rep-delta.down{ color:#c0392b; background:#fdebe8 }
+  .report-sheet .rep-delta.flat{ color:#777; background:#edeef0 }
+  .report-sheet .rep-h3{ font-size:13px; color:#333; margin:14px 0 2px; border-top:1px solid #e2e2e2; padding-top:12px }
   .report-sheet .rep-day{ border-top:1px solid #e2e2e2; padding:8px 0 }
   .report-sheet .rep-date{ font-weight:700; color:#111 }
   .report-sheet .rep-badge{ color:#1a7f37; font-weight:700 }
@@ -242,7 +259,7 @@
     #reportOverlay .modal{ border:none !important; box-shadow:none !important; max-width:none !important; width:auto !important; margin:0 !important; padding:0 !important; background:#fff !important }
     .report-sheet{ border:none !important; max-height:none !important; overflow:visible !important; padding:0 !important; font-size:12px }
     .no-print{ display:none !important }
-    .report-sheet .rep-chart, .report-sheet .rep-day{ break-inside:avoid }
+    .report-sheet .rep-chart, .report-sheet .rep-day, .report-sheet .rep-card, .report-sheet .rep-head{ break-inside:avoid }
     @page{ margin:14mm }
   }
   #restTimer .rt-label{color:var(--muted); font-size:calc(13px * var(--tscale))}
@@ -587,7 +604,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-10-20 · report charts";
+const APP_VERSION = "2026-10-20 · report recap";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -1806,63 +1823,114 @@ function repExLine(ex){
   return `<li><b>${repEsc(ex.name)}</b>${sets.length?`<div class="rep-sets">${sets.join("<br>")}</div>`:``}</li>`;
 }
 function repRangeTotal(map,s,e){ let t=0; for(const [d,v] of Object.entries(map||{})) if(d>=s&&d<=e) t+=Number(v)||0; return t; }
-// Daily bar chart (SVG) for the period; returns "" if the metric has no data.
-function repBar(title, map, start, end, color, fmt){
+// Smooth filled area (trend) chart (SVG) for the period; returns "" if the metric has no data.
+let repUid=0;
+function repArea(title, map, start, end, color, fmt, extra){
   const days=[]; for(let dt=new Date(start); dt<=end; dt.setDate(dt.getDate()+1)){ const k=iso(dt); days.push({d:new Date(dt), v:Number((map||{})[k])||0}); }
   if(days.reduce((a,b)=>a+b.v,0)<=0) return "";
   const max=Math.max(1,...days.map(d=>d.v));
-  const W=600,H=150,padL=8,padR=8,padT=10,padB=22, iw=W-padL-padR, ih=H-padT-padB;
-  const n=days.length, gap=n>14?1:3, bw=iw/n;
-  let bars="", labels="";
+  const W=600,H=160,padL=10,padR=10,padT=12,padB=22, iw=W-padL-padR, ih=H-padT-padB, base=padT+ih;
+  const n=days.length, X=i=> n===1? padL+iw/2 : padL+iw*i/(n-1), Y=v=> padT+ih*(1-v/max), clamp=y=>Math.max(padT,Math.min(base,y));
+  const pts=days.map((o,i)=>({x:X(i), y:Y(o.v)}));
+  let line = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
+    const c1x=p1.x+(p2.x-p0.x)/6, c1y=clamp(p1.y+(p2.y-p0.y)/6), c2x=p2.x-(p3.x-p1.x)/6, c2y=clamp(p2.y-(p3.y-p1.y)/6);
+    line+=` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  const area = line + ` L ${pts[pts.length-1].x.toFixed(1)} ${base} L ${pts[0].x.toFixed(1)} ${base} Z`;
+  const uid=++repUid;
+  let grid=""; for(let g=0;g<=2;g++){ const y=(padT+ih*g/2).toFixed(1); grid+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#eee" stroke-width="1"/>`; }
+  let dots="", labels="";
   days.forEach((o,i)=>{
-    const h=o.v>0?Math.max(2, ih*o.v/max):0, x=padL+i*bw, y=padT+ih-h;
-    if(o.v>0) bars+=`<rect x="${(x+gap/2).toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(1,bw-gap).toFixed(1)}" height="${h.toFixed(1)}" fill="${color}" rx="1"/>`;
-    let lab = n<=7 ? DOW[o.d.getDay()][0] : (i===0||i===n-1||o.d.getDate()%5===0 ? o.d.getDate() : "");
-    if(lab!=="") labels+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-7}" text-anchor="middle" font-size="9" fill="#999">${lab}</text>`;
+    if(o.v>0) dots+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(o.v).toFixed(1)}" r="2.6" fill="${color}"/>`;
+    const lab = n<=7 ? DOW[o.d.getDay()][0] : (i===0||i===n-1||o.d.getDate()%5===0 ? o.d.getDate() : "");
+    if(lab!=="") labels+=`<text x="${X(i).toFixed(1)}" y="${H-7}" text-anchor="middle" font-size="9" fill="#999">${lab}</text>`;
   });
   const maxLab = fmt ? fmt(max) : Math.round(max).toLocaleString();
-  return `<div class="rep-chart"><div class="rep-chart-h">${title} <span class="rep-chart-max">peak ${maxLab}</span></div>`
-    + `<svg viewBox="0 0 ${W} ${H}" class="rep-svg"><line x1="${padL}" y1="${padT+ih}" x2="${W-padR}" y2="${padT+ih}" stroke="#ddd" stroke-width="1"/>${bars}${labels}</svg></div>`;
+  return `<div class="rep-chart"><div class="rep-chart-h">${title} <span class="rep-chart-max">peak ${maxLab}</span>${extra?(' '+extra):''}</div>`
+    + `<svg viewBox="0 0 ${W} ${H}" class="rep-svg"><defs><linearGradient id="rg${uid}" x1="0" x2="0" y1="0" y2="1">`
+    + `<stop offset="0" stop-color="${color}" stop-opacity="0.33"/><stop offset="1" stop-color="${color}" stop-opacity="0.02"/></linearGradient></defs>`
+    + `${grid}<path d="${area}" fill="url(#rg${uid})"/><path d="${line}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${dots}${labels}</svg></div>`;
+}
+// The equivalent period immediately before the current one (prev week / prev month).
+function repPrevRange(start,end){
+  if(reportMode==="week"){ const s=new Date(start), e=new Date(end); s.setDate(s.getDate()-7); e.setDate(e.getDate()-7); return {start:s,end:e}; }
+  return {start:new Date(start.getFullYear(),start.getMonth()-1,1), end:new Date(start.getFullYear(),start.getMonth(),0)};
+}
+function repWorkoutCount(s,e){ let c=0; for(const [k,v] of Object.entries(state.sessions)){ if(k>=s&&k<=e && v && !v.rest && v.exercises.length) c++; } return c; }
+// Change badge vs the previous period. goodUp = true when a rise is a good thing.
+function repDelta(cur, prev, goodUp){
+  if(prev<=0) return cur>0 ? `<span class="rep-delta up">★ new</span>` : "";
+  const pct=Math.round((cur-prev)/prev*100);
+  if(pct===0) return `<span class="rep-delta flat">0%</span>`;
+  const up=pct>0, good = up===goodUp;
+  return `<span class="rep-delta ${good?'up':'down'}">${up?'▲':'▼'} ${Math.abs(pct)}%</span>`;
+}
+function repCard(label, valueHTML, cur, prev, goodUp){
+  return `<div class="rep-card"><div class="rc-val">${valueHTML}</div><div class="rc-lab">${label}</div>`
+    + `<div class="rc-d">${repDelta(cur,prev,goodUp)} <span class="rc-vs">vs last ${reportMode}</span></div></div>`;
 }
 function renderReport(){
+  repUid=0;
   $("#repWeek").classList.toggle("primary", reportMode==="week");
   $("#repMonth").classList.toggle("primary", reportMode==="month");
   const {start,end}=repRange(), sISO=iso(start), eISO=iso(end);
+  const pv=repPrevRange(start,end), pS=iso(pv.start), pE=iso(pv.end);
   const title = reportMode==="week" ? `${repDayLabel(start)} – ${repDayLabel(end)} ${end.getFullYear()}` : `${MON[start.getMonth()]} ${start.getFullYear()}`;
-  const vol=repRangeTotal(dailyVolumeMap(),sISO,eISO), car=repRangeTotal(dailyCardioMap(),sISO,eISO),
-        stp=repRangeTotal(dailyStepsMap(),sISO,eISO), dis=repRangeTotal(dailyDistanceMap(),sISO,eISO);
-  let dayHTML="", trainCount=0, restCount=0;
+  // current + previous totals for comparisons
+  const volM=dailyVolumeMap(), carM=dailyCardioMap(), stpM=dailyStepsMap(), disM=dailyDistanceMap();
+  const vol=repRangeTotal(volM,sISO,eISO), car=repRangeTotal(carM,sISO,eISO), stp=repRangeTotal(stpM,sISO,eISO), dis=repRangeTotal(disM,sISO,eISO);
+  const pvol=repRangeTotal(volM,pS,pE), pcar=repRangeTotal(carM,pS,pE), pstp=repRangeTotal(stpM,pS,pE), pdis=repRangeTotal(disM,pS,pE);
+  const work=repWorkoutCount(sISO,eISO), pwork=repWorkoutCount(pS,pE);
+  // consistency strip + day-by-day list
+  let dayHTML="", strip="";
   for(let dt=new Date(start); dt<=end; dt.setDate(dt.getDate()+1)){
     const k=iso(dt), s=state.sessions[k];
-    if(s && !s.rest && s.exercises.length){
-      trainCount++;
+    const trained = s && !s.rest && s.exercises.length;
+    const cls = trained ? "trained" : (s && s.rest ? "rest" : "none");
+    const cellLab = reportMode==="week" ? DOW[dt.getDay()][0] : dt.getDate();
+    strip += `<div class="rep-cell ${cls}" title="${k}">${cellLab}</div>`;
+    if(trained){
       const anyDone = s.done || s.exercises.some(e=>e.sets.some(x=>x.done));
       const note = (s.note&&s.note.trim())?`<div class="rep-note">📝 ${repEsc(s.note.trim())}</div>`:``;
       dayHTML += `<div class="rep-day"><div class="rep-date">${repDayLabel(new Date(dt))} ${anyDone?'<span class="rep-badge">✓ done</span>':''}</div><ul class="rep-ex">${s.exercises.map(repExLine).join("")}</ul>${note}</div>`;
-    } else if(s && s.rest){ restCount++; }
+    }
   }
   if(!dayHTML) dayHTML = `<div class="rep-day" style="color:#777">No training logged in this period.</div>`;
+  // headline + motivational line
+  const headline = [work+" workout"+(work===1?"":"s"), vol>0?Math.round(vol).toLocaleString()+" "+state.unit+" lifted":null, car>0?Math.round(car)+" cardio min":null].filter(Boolean).join("  ·  ");
+  const mood = work>=4?"Outstanding effort 🔥" : work>=2?"Solid week, keep it up 💪" : work>=1?"Good start — build the habit" : "No sessions yet this "+reportMode;
+  // weight card (down = good)
   const w=weightsSorted().filter(([d])=>d>=sISO&&d<=eISO);
-  let wTile="";
-  if(w.length){ const b=wDisp(w[w.length-1][1]), ch=b-wDisp(w[0][1]); const sign=(ch>0?"+":"")+ch.toFixed(bodyDp()); wTile=`<div><b>${b.toFixed(bodyDp())} ${bodyUnit()}</b>Weight (${sign})</div>`; }
-  const charts = repBar("Volume ("+state.unit+")", dailyVolumeMap(), start, end, "#8250df")
-    + repBar("Cardio minutes", dailyCardioMap(), start, end, "#2f6fed")
-    + repBar("Steps", dailyStepsMap(), start, end, "#1a7f37")
-    + repBar("Distance ("+distUnit()+")", dailyDistanceMap(), start, end, "#bf6a1a", v=>(+v.toFixed(1)).toLocaleString());
+  let wCard="";
+  if(w.length){
+    const b=wDisp(w[w.length-1][1]), a=wDisp(w[0][1]), ch=+(b-a).toFixed(bodyDp());
+    const badge = ch===0 ? `<span class="rep-delta flat">0 ${bodyUnit()}</span>`
+      : `<span class="rep-delta ${ch<0?'up':'down'}">${ch<0?'▼':'▲'} ${Math.abs(ch).toFixed(bodyDp())} ${bodyUnit()}</span>`;
+    wCard = `<div class="rep-card"><div class="rc-val">${b.toFixed(bodyDp())} <small style="font-size:13px">${bodyUnit()}</small></div><div class="rc-lab">Weight</div><div class="rc-d">${badge} <span class="rc-vs">in period</span></div></div>`;
+  }
+  // cards
+  const cards = repCard("Workouts", work, work, pwork, true)
+    + repCard("Volume ("+state.unit+")", Math.round(vol).toLocaleString(), vol, pvol, true)
+    + repCard("Cardio min", Math.round(car), car, pcar, true)
+    + repCard("Steps", Math.round(stp).toLocaleString(), stp, pstp, true)
+    + repCard("Distance", `${(+dis.toFixed(1)).toLocaleString()} <small style="font-size:13px">${distUnit()}</small>`, dis, pdis, true)
+    + wCard;
+  // area trend charts, each with a vs-previous badge
+  const charts = repArea("Volume ("+state.unit+")", volM, start, end, "#8250df", null, repDelta(vol,pvol,true))
+    + repArea("Cardio minutes", carM, start, end, "#2f6fed", null, repDelta(car,pcar,true))
+    + repArea("Steps", stpM, start, end, "#1a7f37", null, repDelta(stp,pstp,true))
+    + repArea("Distance ("+distUnit()+")", disM, start, end, "#bf6a1a", v=>(+v.toFixed(1)).toLocaleString(), repDelta(dis,pdis,true));
   const chartsBlock = charts ? `<div class="rep-charts">${charts}</div>` : "";
   $("#reportSheet").innerHTML = `
     <h1>${reportMode==="week"?"Weekly":"Monthly"} activity</h1>
     <p class="rep-sub">${title}  ·  generated ${repDayLabel(new Date())} ${new Date().getFullYear()}</p>
-    <div class="rep-summary">
-      <div><b>${trainCount}</b>Workouts</div>
-      <div><b>${restCount}</b>Rest days</div>
-      <div><b>${Math.round(vol).toLocaleString()}</b>Volume (${state.unit})</div>
-      <div><b>${Math.round(car)}</b>Cardio min</div>
-      <div><b>${Math.round(stp).toLocaleString()}</b>Steps</div>
-      <div><b>${(+dis.toFixed(1)).toLocaleString()} ${distUnit()}</b>Distance</div>
-      ${wTile}
-    </div>
+    <div class="rep-head"><div class="rep-headline">${headline||"No activity logged"}</div><div class="rep-mood">${mood}</div></div>
+    <div class="rep-strip-wrap"><div class="rep-strip">${strip}</div></div>
+    <div class="rep-cards">${cards}</div>
     ${chartsBlock}
+    <h3 class="rep-h3">Day by day</h3>
     ${dayHTML}`;
 }
 function openReport(){ reportMode="week"; reportAnchor=new Date(); renderReport(); $("#reportOverlay").classList.add("open"); }
