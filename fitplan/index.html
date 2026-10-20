@@ -217,6 +217,28 @@
   #restTimer.show{display:flex}
   #restTimer.done{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 16%, var(--panel))}
   #restTimer.paused .rt-time{opacity:.5}
+  /* Printable report */
+  .report-sheet{ background:#fff; color:#111; border:1px solid var(--line); border-radius:8px; padding:20px; font-size:13px; line-height:1.5; max-height:60vh; overflow:auto }
+  .report-sheet h1{ font-size:20px; margin:0 0 2px; color:#111 }
+  .report-sheet .rep-sub{ color:#555; font-size:12px; margin:0 0 14px }
+  .report-sheet .rep-summary{ display:flex; flex-wrap:wrap; gap:10px 24px; margin:0 0 6px }
+  .report-sheet .rep-summary div{ font-size:11px; color:#555 }
+  .report-sheet .rep-summary b{ font-size:16px; color:#111; display:block; font-weight:800 }
+  .report-sheet .rep-day{ border-top:1px solid #e2e2e2; padding:8px 0 }
+  .report-sheet .rep-date{ font-weight:700; color:#111 }
+  .report-sheet .rep-badge{ color:#1a7f37; font-weight:700 }
+  .report-sheet .rep-ex{ margin:4px 0 0; padding-left:18px }
+  .report-sheet .rep-ex li{ margin:2px 0 }
+  .report-sheet .rep-sets{ color:#444; font-size:12px }
+  .report-sheet .rep-note{ color:#555; font-style:italic; margin:4px 0 0 }
+  @media print{
+    body > *:not(#reportOverlay){ display:none !important }
+    #reportOverlay{ position:static !important; display:block !important; background:#fff !important; padding:0 !important; overflow:visible !important }
+    #reportOverlay .modal{ border:none !important; box-shadow:none !important; max-width:none !important; width:auto !important; margin:0 !important; padding:0 !important; background:#fff !important }
+    .report-sheet{ border:none !important; max-height:none !important; overflow:visible !important; padding:0 !important; font-size:12px }
+    .no-print{ display:none !important }
+    @page{ margin:14mm }
+  }
   #restTimer .rt-label{color:var(--muted); font-size:calc(13px * var(--tscale))}
   #restTimer .rt-time{font-weight:700; font-size:calc(21px * var(--tscale)); min-width:60px; text-align:center; font-variant-numeric:tabular-nums}
   #restTimer .rt-btn{background:var(--panel2); border:1px solid var(--line); color:var(--txt); border-radius:9px; padding:7px 9px; cursor:pointer; font-size:calc(14px * var(--tscale)); white-space:nowrap}
@@ -325,6 +347,11 @@
         <button class="btn sm" id="stGoalSave">Set goal</button>
       </div>
       <table class="hist" id="stepsHist" style="margin-top:12px"><tbody></tbody></table>
+    </div>
+    <div class="panel">
+      <h2>Printable report</h2>
+      <p class="muted" style="margin:0 0 10px">A weekly or monthly summary of your logged activities — print it or save as PDF.</p>
+      <button class="btn primary" id="openReportBtn">📄 Open report</button>
     </div>
   </section>
 
@@ -515,6 +542,28 @@
   </div>
 </div>
 
+<!-- Activity report modal -->
+<div class="overlay" id="reportOverlay">
+  <div class="modal" style="width:min(820px,100%)">
+    <div class="modal-head no-print">
+      <h2>Activity report</h2>
+      <button class="btn sm close" id="reportClose">✕</button>
+    </div>
+    <div class="row no-print" style="gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center">
+      <button class="btn sm" id="repWeek">Week</button>
+      <button class="btn sm" id="repMonth">Month</button>
+      <span style="flex:1"></span>
+      <button class="btn sm" id="repPrev">‹</button>
+      <button class="btn sm" id="repNext">›</button>
+    </div>
+    <div class="report-sheet" id="reportSheet"></div>
+    <div class="row no-print" style="margin-top:14px">
+      <button class="btn" id="reportClose2">Close</button>
+      <button class="btn primary" id="reportPrint" style="margin-left:auto">🖨 Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <div id="restTimer">
@@ -529,7 +578,7 @@
 "use strict";
 // Apply a saved theme immediately to avoid a flash of the wrong palette.
 try{ var _t0=localStorage.getItem("fitplan.theme"); if(_t0 && _t0!=="system") document.documentElement.setAttribute("data-theme",_t0); }catch(e){}
-const APP_VERSION = "2026-10-01 · treadmill-auto-advance";
+const APP_VERSION = "2026-10-20 · activity-report";
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MON = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const LS_KEY = "fitplan.v1";
@@ -1726,6 +1775,72 @@ $("#rtPlus").onclick  = ()=> bumpRest(15);
 $("#restBtn").onclick = ()=> startRest();
 $("#restSecsInp").onchange = ()=>{ const v=parseInt($("#restSecsInp").value,10); state.restSecs=(isNaN(v)||v<5)?90:v; $("#restSecsInp").value=state.restSecs; save(); };
 $("#restAutoChk").onchange = ()=>{ state.restAuto=$("#restAutoChk").checked; save(); };
+
+/* ---------- Printable activity report ---------- */
+let reportMode="week", reportAnchor=null;
+function mondayOf(d){ const x=new Date(d); x.setHours(0,0,0,0); const day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); return x; }
+function repRange(){
+  const a=reportAnchor||new Date();
+  if(reportMode==="week"){ const s=mondayOf(a); const e=new Date(s); e.setDate(s.getDate()+6); return {start:s,end:e}; }
+  return {start:new Date(a.getFullYear(),a.getMonth(),1), end:new Date(a.getFullYear(),a.getMonth()+1,0)};
+}
+function repDayLabel(d){ return DOW[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()].slice(0,3); }
+function unitShort(k){ return {weight:" "+state.unit, distance:" "+distUnit(), speed:" "+(distUnit()==="mi"?"mph":"km/h"), mins:" min", incline:"%", meters:" m", steps:" steps", reps:" reps"}[k]||""; }
+function repEsc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function repExLine(ex){
+  const mets=metricsFor(ex);
+  const sets=ex.sets.map(st=>{
+    const parts=mets.map(m=>{ const v=st[m.key]; return (v===""||v==null)?null:(repEsc(v)+unitShort(m.key)); }).filter(Boolean);
+    if(!parts.length && !st.done) return null;
+    return (st.done?"✓ ":"")+(parts.join(" · ")||"done");
+  }).filter(Boolean);
+  return `<li><b>${repEsc(ex.name)}</b>${sets.length?`<div class="rep-sets">${sets.join("<br>")}</div>`:``}</li>`;
+}
+function repRangeTotal(map,s,e){ let t=0; for(const [d,v] of Object.entries(map||{})) if(d>=s&&d<=e) t+=Number(v)||0; return t; }
+function renderReport(){
+  $("#repWeek").classList.toggle("primary", reportMode==="week");
+  $("#repMonth").classList.toggle("primary", reportMode==="month");
+  const {start,end}=repRange(), sISO=iso(start), eISO=iso(end);
+  const title = reportMode==="week" ? `${repDayLabel(start)} – ${repDayLabel(end)} ${end.getFullYear()}` : `${MON[start.getMonth()]} ${start.getFullYear()}`;
+  const vol=repRangeTotal(dailyVolumeMap(),sISO,eISO), car=repRangeTotal(dailyCardioMap(),sISO,eISO),
+        stp=repRangeTotal(dailyStepsMap(),sISO,eISO), dis=repRangeTotal(dailyDistanceMap(),sISO,eISO);
+  let dayHTML="", trainCount=0, restCount=0;
+  for(let dt=new Date(start); dt<=end; dt.setDate(dt.getDate()+1)){
+    const k=iso(dt), s=state.sessions[k];
+    if(s && !s.rest && s.exercises.length){
+      trainCount++;
+      const anyDone = s.done || s.exercises.some(e=>e.sets.some(x=>x.done));
+      const note = (s.note&&s.note.trim())?`<div class="rep-note">📝 ${repEsc(s.note.trim())}</div>`:``;
+      dayHTML += `<div class="rep-day"><div class="rep-date">${repDayLabel(new Date(dt))} ${anyDone?'<span class="rep-badge">✓ done</span>':''}</div><ul class="rep-ex">${s.exercises.map(repExLine).join("")}</ul>${note}</div>`;
+    } else if(s && s.rest){ restCount++; }
+  }
+  if(!dayHTML) dayHTML = `<div class="rep-day" style="color:#777">No training logged in this period.</div>`;
+  const w=weightsSorted().filter(([d])=>d>=sISO&&d<=eISO);
+  let wTile="";
+  if(w.length){ const b=wDisp(w[w.length-1][1]), ch=b-wDisp(w[0][1]); const sign=(ch>0?"+":"")+ch.toFixed(bodyDp()); wTile=`<div><b>${b.toFixed(bodyDp())} ${bodyUnit()}</b>Weight (${sign})</div>`; }
+  $("#reportSheet").innerHTML = `
+    <h1>${reportMode==="week"?"Weekly":"Monthly"} activity</h1>
+    <p class="rep-sub">${title}  ·  generated ${repDayLabel(new Date())} ${new Date().getFullYear()}</p>
+    <div class="rep-summary">
+      <div><b>${trainCount}</b>Workouts</div>
+      <div><b>${restCount}</b>Rest days</div>
+      <div><b>${Math.round(vol).toLocaleString()}</b>Volume (${state.unit})</div>
+      <div><b>${Math.round(car)}</b>Cardio min</div>
+      <div><b>${Math.round(stp).toLocaleString()}</b>Steps</div>
+      <div><b>${(+dis.toFixed(1)).toLocaleString()} ${distUnit()}</b>Distance</div>
+      ${wTile}
+    </div>
+    ${dayHTML}`;
+}
+function openReport(){ reportMode="week"; reportAnchor=new Date(); renderReport(); $("#reportOverlay").classList.add("open"); }
+$("#openReportBtn").onclick = openReport;
+$("#repWeek").onclick = ()=>{ reportMode="week"; renderReport(); };
+$("#repMonth").onclick = ()=>{ reportMode="month"; renderReport(); };
+$("#repPrev").onclick = ()=>{ const a=reportAnchor||new Date(); reportMode==="week"?a.setDate(a.getDate()-7):a.setMonth(a.getMonth()-1); reportAnchor=new Date(a); renderReport(); };
+$("#repNext").onclick = ()=>{ const a=reportAnchor||new Date(); reportMode==="week"?a.setDate(a.getDate()+7):a.setMonth(a.getMonth()+1); reportAnchor=new Date(a); renderReport(); };
+$("#reportPrint").onclick = ()=> window.print();
+$("#reportClose").onclick = $("#reportClose2").onclick = ()=> $("#reportOverlay").classList.remove("open");
+$("#reportOverlay").onclick = (e)=>{ if(e.target.id==="reportOverlay") $("#reportOverlay").classList.remove("open"); };
 
 /* ---------- Init ---------- */
 function initAll(){
