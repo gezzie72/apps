@@ -337,11 +337,12 @@
   #spendReport .sr-profit b{color:var(--teal)}
   #spendReport .sr-profit span{color:var(--brandgrey)}
   #printHead{display:none;margin-bottom:14px;color:#111}
-  #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+  #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  #printHead .phtop > div:first-child{flex:1 1 auto;min-width:0}   /* give the address column the room it needs */
   #printHead .col-logo{max-height:64px;max-width:200px;margin-bottom:10px;display:block}
   #printHead .co{font-size:20px;font-weight:800;color:var(--teal)}
   #printHead .coaddr{font-size:11.5px;color:var(--brandgrey);margin-top:4px;white-space:pre-line;line-height:1.55}
-  #printHead .qtitle{font-size:24px;font-weight:800;letter-spacing:2px;color:var(--teal)}
+  #printHead .qtitle{flex:0 0 auto;max-width:200px;text-align:right;font-size:22px;font-weight:800;letter-spacing:1.5px;color:var(--teal)}
   #printHead .qmeta{display:flex;justify-content:space-between;gap:24px;margin-top:10px;
     border-top:3px solid var(--cyan);padding-top:12px}
   #printHead .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--teal);font-weight:700}
@@ -2164,7 +2165,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v65 · 2026-10-29 · chase signed from Geraint";
+const VERSION = "v66 · 2026-10-29 · print header: wider address, title right";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
