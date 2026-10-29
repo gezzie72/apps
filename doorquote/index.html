@@ -301,6 +301,8 @@
     #printTerms{display:block!important}
     #printNotes{display:block!important}
     #printNotes:empty{display:none!important}   /* no stray heading/line when there are no notes */
+    #printChase{display:block!important}
+    #printChase:empty{display:none!important}
     /* spend-by-customer report prints on its own (hide the quote app + any open modal) */
     #modalRoot,#toast{display:none!important}
     body.spendmode #app{display:none!important}
@@ -357,6 +359,9 @@
   #printNotes{display:none;margin-top:16px;padding-top:10px;border-top:1px solid var(--brandgrey);
     font-size:10px;color:var(--brandgrey);line-height:1.5;white-space:pre-wrap;page-break-inside:avoid}
   #printNotes h4{margin:0 0 6px;font-size:10.5px;color:var(--teal);text-transform:uppercase;letter-spacing:.5px}
+  #printChase{display:none;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--brandgrey);color:#111;font-size:13px;line-height:1.6}
+  #printChase .valid{margin-top:10px;font-weight:700;color:var(--teal)}
+  #printChase .sign{margin-top:12px}
   #printNotes .pf-note{font-size:14px;font-weight:800;color:var(--teal)}   /* proforma note — stands out on the quote */
 </style>
 </head>
@@ -373,6 +378,7 @@
     <button class="btn accent" id="saveBtn" title="Save this quote to your library">💾 Save</button>
     <button class="btn" id="printBtn" title="Print or save as PDF">🖨 Print / PDF</button>
     <button class="btn" id="savePdfBtn" title="Save this quote as a PDF file (works even with no printer)">⤓ Save as PDF</button>
+    <button class="btn" id="chaseBtn" title="Print / save a polite follow-up reminder for this quote">🔔 Chase</button>
     <button class="btn" id="emailBtn" title="Open your email app with this quote pre-filled">✉ Email</button>
     <button class="btn" id="newBtn" title="Start a fresh quote">✚ New quote</button>
     <button class="btn" id="setupBtn" title="Sync, backup, theme & text size">⚙ Setup</button>
@@ -394,7 +400,7 @@
         <div class="co" id="phCo"></div>
         <div class="coaddr" id="phAddr"></div>
       </div>
-      <div class="qtitle">QUOTATION</div>
+      <div class="qtitle" id="phTitle">QUOTATION</div>
     </div>
     <div class="qmeta">
       <div class="qfor">
@@ -409,6 +415,9 @@
       </div>
     </div>
   </div>
+
+  <!-- chase / follow-up cover letter (only populated and shown for the Chase print) -->
+  <div id="printChase"></div>
 
   <!-- quote details (screen only; the printed quote uses the header block above) -->
   <div class="panel noprint">
@@ -532,6 +541,28 @@ const DEFAULT_TERMS_PAYMENT = [
 ];
 const termsGeneral = () => (company.terms && Array.isArray(company.terms.general)) ? company.terms.general : DEFAULT_TERMS_GENERAL;
 const termsPayment = () => (company.terms && Array.isArray(company.terms.payment)) ? company.terms.payment : DEFAULT_TERMS_PAYMENT;
+const QUOTE_VALID_DAYS = 30;   // how long a quotation stays valid (used on the quote footer and the Chase letter)
+// Build the follow-up ("chase") cover letter shown above the quote details on the Chase print.
+function chaseLetterHTML(){
+  const coName = company.name || "us";
+  const cust = (quote.customer||"").trim();
+  const greet = cust ? "Dear "+esc(cust)+"," : "Dear Sir or Madam,";
+  const ref = quote.ref || "";
+  const dateStr = quote.date ? new Date(quote.date).toLocaleDateString("en-GB") : "";
+  let validLine = "This quotation remains valid for "+QUOTE_VALID_DAYS+" days from the date above.";
+  if(quote.date){
+    const until = new Date(quote.date); until.setDate(until.getDate()+QUOTE_VALID_DAYS);
+    validLine = "This quotation remains valid for "+QUOTE_VALID_DAYS+" days from the quote date — up to <b>"+
+                until.toLocaleDateString("en-GB")+"</b>.";
+  }
+  const refBit = ref ? " (ref <b>"+esc(ref)+"</b>"+(dateStr?", dated "+esc(dateStr):"")+")" : (dateStr?" (dated "+esc(dateStr)+")":"");
+  return "<p>"+esc(greet)+"</p>"
+    + "<p>Thank you for the opportunity to quote for your project. We're following up on the quotation set out below"+refBit+" to see whether you've had a chance to consider it, and to ask if there's anything further we can do to help.</p>"
+    + "<p>We'd be glad to answer any questions, revise specifications, or talk through lead times and delivery to suit your programme — just let us know what works best for you.</p>"
+    + "<p class=\"valid\">"+validLine+"</p>"
+    + "<p>We genuinely value your business and would be delighted to work with you. Please get in touch using the details below and we'll be happy to help.</p>"
+    + "<p class=\"sign\">Kind regards,<br><b>"+esc(coName)+"</b></p>";
+}
 
 let catalogue = [];      // hardware items you maintain
 let quote = null;        // current working quote
@@ -1448,7 +1479,13 @@ function saveAsPdf(){
   toast("Choose ‘Save as PDF’ / ‘Save to Files’ as the destination");
   doPrint();
 }
-function doPrint(){
+// Chase: same quotation layout, with a polite follow-up cover letter on top.
+function doChase(){
+  toast("Follow-up reminder — print or save as PDF");
+  doPrint(true);
+}
+function doPrint(chase){
+  chase = chase===true;                           // printBtn.onclick passes an event — only treat explicit true as chase
   document.body.classList.remove("spendmode");   // ensure the quote prints, not the spend report
   // company header
   const logo = $("phLogo");
@@ -1465,6 +1502,9 @@ function doPrint(){
   $("phCustEmail").textContent = quote.email || "";
   $("phRef").textContent = quote.ref || "—";
   $("phDate").textContent = quote.date ? new Date(quote.date).toLocaleDateString("en-GB") : "";
+  // chase mode: flag the title and drop in the follow-up cover letter; normal print clears it
+  $("phTitle").textContent = chase ? "QUOTATION · REMINDER" : "QUOTATION";
+  $("printChase").innerHTML = chase ? chaseLetterHTML() : "";
   // per-quote notes block (only when the user has entered something)
   const notes = (quote.notes||"").trim();
   $("printNotes").innerHTML = notes
@@ -1480,13 +1520,13 @@ function doPrint(){
   // footer: company contact line + a standard validity note
   const foot = [company.name, company.contact].filter(Boolean).join("  ·  ");
   $("printFoot").innerHTML = (foot ? esc(foot)+"<br>" : "") +
-    "This quotation is valid for 30 days from the date above. Prices in GBP. E&amp;OE.";
+    "This quotation is valid for "+QUOTE_VALID_DAYS+" days from the date above. Prices in GBP. E&amp;OE.";
   // static VAT rate for print + refresh rows so unit prices show formatted £ values
   document.querySelector(".vatrate-print").textContent = (Number(quote.vatRate)||0);
   renderLines();
   // Set a good default PDF filename (browsers use document.title), restored after.
   const prevTitle = document.title;
-  document.title = pdfFileName();
+  document.title = pdfFileName() + (chase ? " Reminder" : "");
   const restore = ()=>{ document.title = prevTitle; window.removeEventListener("afterprint", restore); };
   window.addEventListener("afterprint", restore);
   setTimeout(restore, 60000);   // fallback if afterprint never fires
@@ -2106,6 +2146,7 @@ $("saveBtn").onclick = saveCurrentQuote;
 $("emailBtn").onclick = emailQuote;
 $("printBtn").onclick = doPrint;
 $("savePdfBtn").onclick = saveAsPdf;
+$("chaseBtn").onclick = doChase;
 $("setupBtn").onclick = openSetup;              // Sync, Backup, Restore, theme & text size live here
 $("clearCustBtn").onclick = clearCustomer;
 $("importFile").addEventListener("change", handleImport);
@@ -2119,7 +2160,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v62 · 2026-10-29 · Collected flag + badge";
+const VERSION = "v63 · 2026-10-29 · Chase follow-up PDF";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
