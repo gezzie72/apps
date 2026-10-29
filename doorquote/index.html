@@ -546,9 +546,9 @@ const DEFAULT_TERMS_PAYMENT = [
 const termsGeneral = () => (company.terms && Array.isArray(company.terms.general)) ? company.terms.general : DEFAULT_TERMS_GENERAL;
 const termsPayment = () => (company.terms && Array.isArray(company.terms.payment)) ? company.terms.payment : DEFAULT_TERMS_PAYMENT;
 const QUOTE_VALID_DAYS = 30;   // how long a quotation stays valid (used on the quote footer and the Chase letter)
+const CHASE_SIGNATORY = "Geraint";   // who the follow-up / chase letter is signed from
 // Build the follow-up ("chase") cover letter shown above the quote details on the Chase print.
 function chaseLetterHTML(){
-  const coName = company.name || "us";
   const cust = (quote.customer||"").trim();
   const greet = cust ? "Dear "+esc(cust)+"," : "Dear Sir or Madam,";
   const ref = quote.ref || "";
@@ -565,7 +565,7 @@ function chaseLetterHTML(){
     + "<p>We'd be glad to answer any questions, revise specifications, or talk through lead times and delivery to suit your programme — just let us know what works best for you.</p>"
     + "<p class=\"valid\">"+validLine+"</p>"
     + "<p>We genuinely value your business and would be delighted to work with you. Please get in touch using the details below and we'll be happy to help.</p>"
-    + "<p class=\"sign\">Kind regards,<br><b>"+esc(coName)+"</b></p>";
+    + "<p class=\"sign\">Kind regards,<br><b>"+esc(CHASE_SIGNATORY)+"</b>"+(company.name?"<br>"+esc(company.name):"")+"</p>";
 }
 
 let catalogue = [];      // hardware items you maintain
@@ -2164,7 +2164,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v64 · 2026-10-29 · compact print + page numbers";
+const VERSION = "v65 · 2026-10-29 · chase signed from Geraint";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
