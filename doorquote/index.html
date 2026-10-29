@@ -101,6 +101,9 @@
   .ind.on{background:rgba(22,163,74,.2);color:#4ade80}
   .ind.off{background:rgba(255,255,255,.04);color:var(--faint);border:1px dashed var(--line)}
   .catrow .cdesc .inds{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+  .collectrow{display:flex;align-items:center;gap:9px;margin-top:12px;cursor:pointer;font-size:14px;font-weight:600}
+  .collectrow input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--accent2,#4ade80)}
+  .collectrow .hint{color:var(--faint);font-weight:400}
   /* backup reminder banner */
   .backupbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
     background:rgba(255,183,77,.12);border:1px solid rgba(255,183,77,.45);
@@ -426,6 +429,7 @@
       <div class="field"><label>Invoice number</label><input id="qInvoice" placeholder="e.g. INV-2043"></div>
       <div class="field"><label>Tracking number</label><input id="qTracking" placeholder="e.g. courier ref"></div>
     </div>
+    <label class="collectrow"><input type="checkbox" id="qCollected"><span>Collected <span class="hint">— picked up in person (shows on the quote summary)</span></span></label>
   </div>
 
   <!-- line items -->
@@ -575,6 +579,7 @@ function fixQuote(q){
   if(typeof q.email !== "string") q.email = "";
   if(typeof q.invoiceNo !== "string") q.invoiceNo = "";
   if(typeof q.trackingNo !== "string") q.trackingNo = "";
+  if(typeof q.collected !== "boolean") q.collected = false;
   if(typeof q.notes !== "string") q.notes = "";
   if(!("savedId" in q)) q.savedId = null;
   if(typeof q.locked !== "boolean") q.locked = false;
@@ -591,7 +596,7 @@ function blankQuote(){
   const deliv = (company && Number.isFinite(company.defaultDelivery)) ? company.defaultDelivery : 30;
   return { customer:"", ref:"", email:"", project:"", date:todayLocal(),
            delivery:deliv, vatRate:(quote?quote.vatRate:20), vatOn:(quote?quote.vatOn:true),
-           invoiceNo:"", trackingNo:"", notes:"", lines:[], savedId:null, locked:false };
+           invoiceNo:"", trackingNo:"", collected:false, notes:"", lines:[], savedId:null, locked:false };
 }
 function _putCat(){ try{ localStorage.setItem(LS_CAT, JSON.stringify(catalogue)); }catch(e){ toast("⚠ Save failed"); } }
 function _putQuotes(){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(savedQuotes)); }catch(e){ toast("⚠ Save failed"); } }
@@ -652,6 +657,8 @@ function bindQuoteFields(){
   $("qDate").value = quote.date||"";
   $("qInvoice").value = quote.invoiceNo||"";
   $("qTracking").value = quote.trackingNo||"";
+  $("qCollected").checked = !!quote.collected;
+  $("qCollected").onchange = e=>{ quote.collected = e.target.checked; saveQuote(); };
   const delivIsTBC = String(quote.delivery).toUpperCase()==="TBC";
   $("qDelivery").value = delivIsTBC ? 0 : (quote.delivery||0);
   syncDelivUI();
@@ -1303,9 +1310,10 @@ function quoteRowHtml(q){
               : st==="lost" ? ' <span class="stbadge lost">Lost</span>' : "";
   let inds = "";
   if(st==="won"){
-    const inv=(q.invoiceNo||"").trim(), trk=(q.trackingNo||"").trim();
+    const inv=(q.invoiceNo||"").trim(), trk=(q.trackingNo||"").trim(), coll=!!q.collected;
     inds = ` <span class="ind inv ${inv?"on":"off"}" title="${inv?"Invoice "+esc(inv)+" allocated — goods can be sent from suppliers":"No invoice yet — goods can&#39;t be sent from suppliers"}">INV${inv?" ✓":""}</span>`
-         + ` <span class="ind trk ${trk?"on":"off"}" title="${trk?"Tracking "+esc(trk):"No tracking number yet"}">TRK${trk?" ✓":""}</span>`;
+         + ` <span class="ind trk ${trk?"on":"off"}" title="${trk?"Tracking "+esc(trk):"No tracking number yet"}">TRK${trk?" ✓":""}</span>`
+         + ` <span class="ind coll ${coll?"on":"off"}" title="${coll?"Collected — picked up in person":"Not collected yet"}">COLLECTED${coll?" ✓":""}</span>`;
   }
   const lk = q.locked ? ' <span class="lockmark" title="Locked — protected from overwrite &amp; delete">🔒</span>' : "";
   return `<div class="catrow qrow${q.locked?" locked":""}" data-id="${q.savedId}">
@@ -2111,7 +2119,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v61 · 2026-10-09 · mobile: list buttons on own row, no word breaks";
+const VERSION = "v62 · 2026-10-29 · Collected flag + badge";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
