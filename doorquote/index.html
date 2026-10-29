@@ -254,15 +254,18 @@
   }
 
   /* ---------- print ---------- */
+  /* Page numbers in the bottom margin — only show once the document runs past one
+     page (page 1 is left clean, so a single-page quote shows no numbering). */
+  @page{ margin:12mm 13mm 13mm; @bottom-center{ content:"Page " counter(page) " of " counter(pages); font-size:9pt; color:#555; } }
+  @page:first{ @bottom-center{ content:""; } }
   @media print{
-    @page{margin:14mm}
     html{zoom:1!important}                     /* text-size control never affects the PDF */
     .linewrap{overflow:visible!important}      /* let the table flow normally on paper */
     body{background:#fff!important;color:#222!important;font-size:12px;
       -webkit-print-color-adjust:exact;print-color-adjust:exact}
     #app{max-width:none;padding:0}
     .noprint{display:none!important}
-    .panel{border:none;background:none;padding:0;margin:0 0 16px}
+    .panel{border:none;background:none;padding:0;margin:0 0 10px}
     .panel h2{display:none!important}          /* drop the emoji section headings */
     .ver{display:none!important}               /* drop the build-version footer */
     #printHead{display:block!important}
@@ -275,7 +278,7 @@
     table.lines td:first-child input{text-align:left!important}
     .desccol input{display:none!important}
     .desc-print{display:inline!important;white-space:normal;overflow-wrap:break-word;word-break:normal}
-    table.lines td{border-top:1px solid #e2e2e2;padding:7px 8px}
+    table.lines td{border-top:1px solid #e2e2e2;padding:5px 8px}
     table.lines tr{page-break-inside:avoid}
     table.lines input{border:none;background:none;color:#000;padding:0;-webkit-appearance:none;appearance:none}
     td.num input{text-align:right}
@@ -333,13 +336,13 @@
   #spendReport .sr-profit{margin-top:8px;font-size:11px;color:#222}
   #spendReport .sr-profit b{color:var(--teal)}
   #spendReport .sr-profit span{color:var(--brandgrey)}
-  #printHead{display:none;margin-bottom:22px;color:#111}
+  #printHead{display:none;margin-bottom:14px;color:#111}
   #printHead .phtop{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
   #printHead .col-logo{max-height:64px;max-width:200px;margin-bottom:10px;display:block}
   #printHead .co{font-size:20px;font-weight:800;color:var(--teal)}
   #printHead .coaddr{font-size:11.5px;color:var(--brandgrey);margin-top:4px;white-space:pre-line;line-height:1.55}
   #printHead .qtitle{font-size:24px;font-weight:800;letter-spacing:2px;color:var(--teal)}
-  #printHead .qmeta{display:flex;justify-content:space-between;gap:24px;margin-top:16px;
+  #printHead .qmeta{display:flex;justify-content:space-between;gap:24px;margin-top:10px;
     border-top:3px solid var(--cyan);padding-top:12px}
   #printHead .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--teal);font-weight:700}
   #printHead .qfor .cust{font-size:15px;font-weight:700;margin-top:2px}
@@ -348,7 +351,7 @@
   #printHead .qnums > div{margin-bottom:6px}
   #printHead .qnums .lbl{display:block}
   #printHead .qnums b{font-size:15px}
-  #printTerms{display:none;margin-top:24px;padding-top:12px;border-top:2px solid var(--cyan);
+  #printTerms{display:none;margin-top:14px;padding-top:10px;border-top:2px solid var(--cyan);
     font-size:9.5px;color:var(--brandgrey);line-height:1.5;page-break-inside:avoid}
   #printTerms h4{margin:0 0 6px;font-size:10.5px;color:var(--teal);text-transform:uppercase;letter-spacing:.5px}
   #printTerms ul{margin:0;padding-left:15px}
@@ -359,9 +362,10 @@
   #printNotes{display:none;margin-top:16px;padding-top:10px;border-top:1px solid var(--brandgrey);
     font-size:10px;color:var(--brandgrey);line-height:1.5;white-space:pre-wrap;page-break-inside:avoid}
   #printNotes h4{margin:0 0 6px;font-size:10.5px;color:var(--teal);text-transform:uppercase;letter-spacing:.5px}
-  #printChase{display:none;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--brandgrey);color:#111;font-size:13px;line-height:1.6}
-  #printChase .valid{margin-top:10px;font-weight:700;color:var(--teal)}
-  #printChase .sign{margin-top:12px}
+  #printChase{display:none;margin-bottom:12px;padding-bottom:9px;border-bottom:1px solid var(--brandgrey);color:#111;font-size:12px;line-height:1.45}
+  #printChase p{margin:0 0 6px}
+  #printChase .valid{margin:8px 0;font-weight:700;color:var(--teal)}
+  #printChase .sign{margin-top:10px}
   #printNotes .pf-note{font-size:14px;font-weight:800;color:var(--teal)}   /* proforma note — stands out on the quote */
 </style>
 </head>
@@ -2160,7 +2164,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v63 · 2026-10-29 · Chase follow-up PDF";
+const VERSION = "v64 · 2026-10-29 · compact print + page numbers";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
