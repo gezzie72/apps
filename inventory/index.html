@@ -1094,8 +1094,8 @@
       </div>
       <div><label>Colour / finish</label><input id="ceColour" list="colourOpts" autocomplete="off" placeholder="optional"></div>
       <div class="duo">
-        <div><label>Unit cost £</label><input id="ceCost" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
-        <div><label>Sale price £</label><input id="cePrice" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></div>
+        <div><label>Unit cost £</label><input id="ceCost" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" oninput="autoPrice('ceCost','cePrice')"></div>
+        <div><label>Sale price £</label><input id="cePrice" type="number" step="0.01" min="0" inputmode="decimal" placeholder="auto from markup" oninput="priceEdited('ceCost','cePrice')"><div class="hint" id="cePriceHint" style="margin:4px 0 0"></div></div>
       </div>
       <div><label>Supplier</label><input id="ceSup" list="supOpts" autocomplete="off" placeholder="optional"></div>
       <div>
@@ -1375,7 +1375,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v74 · 2026-10-29 · live sale price from cost';
+const APP_VER='v75 · 2026-10-29 · catalogue markup too';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -2078,6 +2078,8 @@ function openCatEdit(id){
   $('ceName').value=c?c.name:''; $('ceSku').value=c?c.sku:''; $('ceCat').value=c?c.category:'';
   $('ceColour').value=c?c.colour:''; $('ceCost').value=c&&num(c.cost)?num(c.cost).toFixed(2):''; $('cePrice').value=c&&num(c.price)?num(c.price).toFixed(2):'';
   $('ceSup').value=c?c.supplier:''; $('ceBarcode').value=c?c.barcode||'':'';
+  $('cePrice').dataset.auto = (c && num(c.price)) ? 'off' : 'on';   // keep an existing price; auto-fill only when blank
+  autoPrice('ceCost','cePrice');
   $('ceDelete').style.display=c?'block':'none';
   fillOptionLists();
   $('catEditDlg').showModal();
@@ -2086,8 +2088,11 @@ function openCatEdit(id){
 function saveCatEdit(){
   const name=clean($('ceName').value), sku=clean($('ceSku').value);
   if(!name && !sku){ $('ceName').focus(); toast('Give it a name or a SKU.'); return; }
+  const ceCost=Math.max(0,num($('ceCost').value));
+  let cePrice=Math.max(0,num($('cePrice').value));
+  if(!cePrice && ceCost>0) cePrice=markupPrice(ceCost);   // blank sale price → apply default markup
   const rec={ name, sku, category:clean($('ceCat').value), colour:clean($('ceColour').value),
-    cost:Math.max(0,num($('ceCost').value)), price:Math.max(0,num($('cePrice').value)), supplier:clean($('ceSup').value), barcode:clean($('ceBarcode').value) };
+    cost:ceCost, price:cePrice, supplier:clean($('ceSup').value), barcode:clean($('ceBarcode').value) };
   state.catalogue=state.catalogue||[];
   if(catEditId){ const c=state.catalogue.find(x=>x.id===catEditId); if(c) Object.assign(c,rec); }
   else{ state.catalogue.push(Object.assign({id:'c'+Date.now()+Math.random().toString(36).slice(2,6)},rec)); }
