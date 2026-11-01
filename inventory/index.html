@@ -598,6 +598,7 @@
       <div class="listhead" style="margin:0 0 10px"><span class="ttl">Items</span>
         <span class="right">
           <button class="btn ghost sm" onclick="openPick('po')">＋ Add item</button>
+          <button class="btn ghost sm" onclick="addSupplierProducts('po')">Add supplier's products</button>
           <button class="btn ghost sm" onclick="addReorder('po')">Add reorder items</button>
         </span></div>
       <div id="poLines"></div>
@@ -915,6 +916,17 @@
     <div class="hint" style="margin:0 0 12px">Stock items already show in the Catalogue, so a product entered in <b>both</b> lists appears twice. This finds products in both (matched by name &amp; colour), keeps the <b>stock</b> version with its quantity, and removes the duplicate catalogue copy — you confirm first.</div>
     <div class="syncrow">
       <button class="btn ghost sm" onclick="mergeDuplicates()">Merge duplicate products into stock</button>
+    </div>
+  </div>
+
+  <div class="card pad">
+    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Suppliers</span></div>
+    <div class="hint" style="margin:0 0 12px">A spreadsheet database of your suppliers (account no, address, payment terms, delivery). These auto-fill a <b>Purchase Order</b> when you type the supplier's name, and the PO can pull in every product linked to that supplier with <b>Add supplier's products</b>. Link a product to a supplier via its <b>Supplier</b> field.</div>
+    <div class="syncrow">
+      <button class="btn ghost sm" onclick="exportSuppliersCSV()">Export suppliers CSV</button>
+      <button class="btn ghost sm" onclick="downloadSuppliersTemplate()">Download template</button>
+      <button class="btn ghost sm" onclick="$('supImport').click()">Import suppliers CSV</button>
+      <input id="supImport" type="file" accept=".csv,text/csv" hidden onchange="importSuppliersCSV(this.files[0]); this.value='';">
     </div>
   </div>
 
@@ -1400,7 +1412,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v86 · 2026-11-01 · catalogue category filter chips';
+const APP_VER='v87 · 2026-11-01 · supplier CSV database + PO supplier products';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -2457,6 +2469,53 @@ function parseCSV(text){
   if(cur.length||row.length){ row.push(cur); rows.push(row); }
   return rows.filter(r=>r.some(c=>clean(c)!==''));
 }
+/* ---------- SUPPLIERS CSV DATABASE ---------- */
+// Supplier details are stored in state.parties (shared with the PO/invoice
+// autofill). These let you manage the whole list in a spreadsheet.
+const SUP_COLS=[['name','Supplier'],['account','Account no'],['accountStatus','Account status'],['address','Address / details'],['payment','Payment terms'],['deliverTo','Deliver to']];
+function supplierList(){ const ps=state.parties||{}; return Object.keys(ps).map(k=>ps[k]||{}).filter(v=>clean(v.name)).sort((a,b)=>clean(a.name).localeCompare(clean(b.name))); }
+function exportSuppliersCSV(){
+  const list=supplierList();
+  if(!list.length){ toast('No suppliers saved yet. Import some, or add one on a PO.'); return; }
+  const rows=[SUP_COLS.map(c=>c[1])].concat(list.map(v=>SUP_COLS.map(c=>v[c[0]]||'')));
+  const csv=rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  bkSaveFile('suppliers-'+new Date().toISOString().slice(0,10)+'.csv', new Blob([csv],{type:'text/csv'}));
+  toast('Exported '+list.length+' supplier'+(list.length===1?'':'s')+'.');
+}
+function downloadSuppliersTemplate(){
+  const header=SUP_COLS.map(c=>c[1]);
+  const example=['BoltCo Ltd','ACC-1234','On account','Unit 5, Trade Park, Cardiff CF1 1AA','30 days net · BACS','Deliver direct to site'];
+  const csv=[header,example].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  bkSaveFile('suppliers-template.csv', new Blob([csv],{type:'text/csv'}));
+}
+function importSuppliersCSV(file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let rows; try{ rows=parseCSV(r.result); }catch(e){ rows=[]; }
+    if(rows.length<2){ toast('That CSV looks empty.'); return; }
+    const header=rows[0].map(h=>clean(h).toLowerCase());
+    const find=(...names)=>{ for(const n of names){ const i=header.findIndex(h=>h===n); if(i>=0) return i; } for(const n of names){ const i=header.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+    const ci={ name:find('supplier','name'), account:find('account no','account number','account'), accountStatus:find('account status','status'), address:find('address','details'), payment:find('payment','terms'), deliverTo:find('deliver to','delivery') };
+    if(ci.name<0){ alert('Couldn’t find a “Supplier” (name) column.\n\nExpected headers:\nSupplier, Account no, Account status, Address / details, Payment terms, Deliver to.\n\nUse “Download template” for the exact columns.'); return; }
+    const g=(row,i)=> i<0?'':clean(row[i]);
+    state.parties=state.parties||{};
+    let added=0, upd=0;
+    for(let ri=1;ri<rows.length;ri++){ const row=rows[ri]; const name=g(row,ci.name); if(!name) continue;
+      const k=name.toLowerCase(), cur=state.parties[k]||{}, had=!!state.parties[k];
+      state.parties[k]={ name,
+        account:g(row,ci.account)||cur.account||'',
+        accountStatus:g(row,ci.accountStatus)||cur.accountStatus||'',
+        address:g(row,ci.address)||cur.address||'',
+        payment:g(row,ci.payment)||cur.payment||'',
+        deliverTo:g(row,ci.deliverTo)||cur.deliverTo||'' };
+      if(had) upd++; else added++;
+    }
+    save(); if(!$('viewSetup').hidden) renderSetup();
+    toast('Suppliers imported — '+added+' new, '+upd+' updated.');
+  };
+  r.readAsText(file);
+}
 function downloadCatalogueTemplate(){
   const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier','Qty','Reorder','Location','Barcode'];
   const example=['M6 x 20 bolt (example row)','B0002','Zinc','Fixings','2.24','4.00','BoltCo','100','20','Bay A1',''];
@@ -2610,6 +2669,24 @@ function addReorder(kind){
     d.lines.push({ itemId:it.id, name:(clean(it.colour)?it.name+' — '+clean(it.colour):it.name), sku:clean(it.sku), qty, price:num(it.cost) }); added++; });
   save(); renderDoc(kind);
   toast(added?('Added '+added+' item'+(added===1?'':'s')):'Already on the order.');
+}
+// Add every product linked to this doc's supplier (stock + catalogue, deduped).
+function addSupplierProducts(kind){
+  const d=docState(kind), party=clean(d.party).toLowerCase();
+  if(!party){ toast('Enter the supplier name first.'); return; }
+  const list=catMerged().filter(c=>clean(c.supplier).toLowerCase()===party);
+  if(!list.length){ toast('No products are linked to “'+clean(d.party)+'”. Set the Supplier field on those products first.'); return; }
+  let added=0;
+  list.forEach(c=>{
+    const id = c._src==='stock' ? c.id : 'cat:'+c.id;
+    if(d.lines.some(l=>l.itemId===id)) return;
+    const price = kind==='po' ? num(c.cost) : (num(c.price)||num(c.cost));
+    d.lines.push({ itemId:id, name:(clean(c.colour)?c.name+' — '+clean(c.colour):c.name), sku:clean(c.sku), qty:1, price });
+    added++;
+  });
+  if(!added){ toast('Those products are already on the order.'); return; }
+  save(); renderDoc(kind);
+  toast('Added '+added+' product'+(added===1?'':'s')+' from '+clean(d.party)+'.');
 }
 function clearDoc(kind){
   if(docState(kind).lines.length && !confirm('Clear this '+docLabel(kind)+'?')) return;
