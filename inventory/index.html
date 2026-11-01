@@ -902,10 +902,18 @@
   </div>
 
   <div class="card pad">
-    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Stock codes</span></div>
-    <div class="hint" style="margin:0 0 12px">New items auto-fill the next <b>INS-####</b> code. Use this to give any existing stock or catalogue items that have <b>no code</b> the next INS-#### numbers.</div>
+    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Stock numbers (INS barcode)</span></div>
+    <div class="hint" style="margin:0 0 12px">New items auto-fill the next <b>INS-####</b> in the <b>Barcode</b> field (your internal stock number). The <b>SKU / code</b> field is for the supplier's own code. Use this to give any existing items that have <b>no barcode</b> the next INS-#### numbers.</div>
     <div class="syncrow">
-      <button class="btn ghost sm" onclick="assignInsCodes()">Give code-less items an INS-#### code</button>
+      <button class="btn ghost sm" onclick="assignInsCodes()">Give items without a barcode an INS-#### number</button>
+    </div>
+  </div>
+
+  <div class="card pad">
+    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Duplicates</span></div>
+    <div class="hint" style="margin:0 0 12px">Stock items already show in the Catalogue, so a product entered in <b>both</b> lists appears twice. This finds products in both (matched by name &amp; colour), keeps the <b>stock</b> version with its quantity, and removes the duplicate catalogue copy — you confirm first.</div>
+    <div class="syncrow">
+      <button class="btn ghost sm" onclick="mergeDuplicates()">Merge duplicate products into stock</button>
     </div>
   </div>
 
@@ -1391,7 +1399,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v84 · 2026-11-01 · edit shows real code (no fake suggestion)';
+const APP_VER='v85 · 2026-11-01 · INS in barcode + merge duplicates';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -1568,28 +1576,58 @@ function priceEdited(costId, priceId){
 // Next sequential stock code: INS-0000, INS-0001, … counting up from the
 // highest existing INS-#### across stock items and the catalogue.
 const INS_PREFIX='INS-';
+// INS-#### is the internal stock/barcode number — it lives in the Barcode field
+// (the SKU field is for the supplier's own code).
 function maxInsNum(){
   let max=-1;
-  const scan=arr=>{ (arr||[]).forEach(o=>{ const m=/^INS-(\d+)$/i.exec(clean(o.sku)); if(m){ const n=parseInt(m[1],10); if(n>max) max=n; } }); };
+  const scan=arr=>{ (arr||[]).forEach(o=>{ const m=/^INS-(\d+)$/i.exec(clean(o.barcode)); if(m){ const n=parseInt(m[1],10); if(n>max) max=n; } }); };
   scan(state.items); scan(state.catalogue);
   return max;
 }
 const insCode=n=>INS_PREFIX+String(n).padStart(4,'0');
 function nextInsCode(){ return insCode(maxInsNum()+1); }
-function prefillStockCode(){ const el=$('fSku'); if(el && !el.value.trim()) el.value=nextInsCode(); }
-// Give every existing stock / catalogue item that has no stock code the next
-// sequential INS-#### codes (continuing from the highest already in use).
+function prefillStockCode(){ const el=$('fBarcode'); if(el && !el.value.trim()) el.value=nextInsCode(); }
+// Give every existing stock / catalogue item that has no barcode the next
+// sequential INS-#### numbers (continuing from the highest already in use).
 function assignInsCodes(){
-  const items=(state.items||[]).filter(i=>!clean(i.sku));
-  const cats=(state.catalogue||[]).filter(c=>!clean(c.sku));
+  const items=(state.items||[]).filter(i=>!clean(i.barcode));
+  const cats=(state.catalogue||[]).filter(c=>!clean(c.barcode));
   const total=items.length+cats.length;
-  if(!total){ toast('Every item already has a stock code.'); return; }
-  if(!confirm('Give '+total+' item'+(total===1?'':'s')+' with no stock code the next INS-#### code?\n\n('+items.length+' stock, '+cats.length+' catalogue)')) return;
+  if(!total){ toast('Every item already has an INS barcode.'); return; }
+  if(!confirm('Give '+total+' item'+(total===1?'':'s')+' with no barcode the next INS-#### number?\n\n('+items.length+' stock, '+cats.length+' catalogue)')) return;
   let n=maxInsNum()+1;
-  items.forEach(i=>{ i.sku=insCode(n++); });
-  cats.forEach(c=>{ c.sku=insCode(n++); });
+  items.forEach(i=>{ i.barcode=insCode(n++); });
+  cats.forEach(c=>{ c.barcode=insCode(n++); });
   save(); render(); if(!$('viewSetup').hidden) renderSetup();
-  toast('Assigned '+total+' INS code'+(total===1?'':'s')+'.');
+  toast('Assigned '+total+' INS barcode'+(total===1?'':'s')+'.');
+}
+// Merge products entered in BOTH Stock and Catalogue (matched by name + colour):
+// keep the stock record (with quantity), fill any blank fields from the catalogue
+// copy, then remove the redundant catalogue entry.
+function dupePairs(){
+  const norm=s=>clean(s).toLowerCase();
+  const key=o=>norm(o.name)+'|'+norm(o.colour);
+  const byKey={};
+  (state.items||[]).forEach(i=>{ const k=key(i); (byKey[k]=byKey[k]||[]).push(i); });
+  const pairs=[];
+  (state.catalogue||[]).forEach(c=>{ const s=byKey[key(c)]; if(s&&s.length) pairs.push({cat:c, stock:s[0]}); });
+  return pairs;
+}
+function mergeDuplicates(){
+  const pairs=dupePairs();
+  if(!pairs.length){ toast('No duplicates found — nothing is in both Stock and Catalogue.'); return; }
+  const names=[...new Set(pairs.map(p=>clean(p.cat.name)||'(no name)'))];
+  const shown=names.slice(0,10).join('\n')+(names.length>10?'\n…and '+(names.length-10)+' more':'');
+  if(!confirm('Found '+pairs.length+' product'+(pairs.length===1?'':'s')+' in both Stock and Catalogue:\n\n'+shown+'\n\nKeep the stock version (with quantity) and remove the duplicate catalogue copy? Any blank details on the stock item (supplier code, supplier, price…) are filled from the catalogue copy first.\n\nThis can’t be undone.')) return;
+  pairs.forEach(({cat,stock})=>{
+    ['sku','supplier','category','colour','barcode','location'].forEach(k=>{ if(!clean(stock[k]) && clean(cat[k])) stock[k]=cat[k]; });
+    if(!(num(stock.cost)>0) && num(cat.cost)>0) stock.cost=cat.cost;
+    if(!(num(stock.price)>0) && num(cat.price)>0) stock.price=cat.price;
+  });
+  const drop=new Set(pairs.map(p=>p.cat.id));
+  state.catalogue=(state.catalogue||[]).filter(c=>!drop.has(c.id));
+  save(); render(); if(!$('viewSetup').hidden) renderSetup();
+  toast('Merged '+pairs.length+' duplicate'+(pairs.length===1?'':'s')+' into Stock.');
 }
 function addItem(){
   const name=clean($('fName').value);
@@ -2172,9 +2210,9 @@ function openCatEdit(id){
   catEditId=id||null;
   const c=id ? (state.catalogue||[]).find(x=>x.id===id) : null;
   $('catEditTitle').textContent = c ? 'Edit catalogue item' : 'New catalogue item';
-  $('ceName').value=c?c.name:''; $('ceSku').value=c?(c.sku||''):nextInsCode(); $('ceCat').value=c?c.category:'';
+  $('ceName').value=c?c.name:''; $('ceSku').value=c?(c.sku||''):''; $('ceCat').value=c?c.category:'';
   $('ceColour').value=c?c.colour:''; $('ceCost').value=c&&num(c.cost)?num(c.cost).toFixed(2):''; $('cePrice').value=c&&num(c.price)?num(c.price).toFixed(2):'';
-  $('ceSup').value=c?c.supplier:''; $('ceBarcode').value=c?c.barcode||'':'';
+  $('ceSup').value=c?c.supplier:''; $('ceBarcode').value=c?(c.barcode||''):nextInsCode();
   $('cePrice').dataset.auto = (c && num(c.price)) ? 'off' : 'on';   // keep an existing price; auto-fill only when blank
   autoPrice('ceCost','cePrice');
   $('ceDelete').style.display=c?'block':'none';
