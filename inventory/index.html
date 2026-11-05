@@ -280,6 +280,11 @@
   .crow .cprice small{color:var(--muted); font-weight:500; font-size:11px}
   .crow .csub{font-size:11.5px; color:var(--muted); margin-top:2px}
   .crow .cflag{display:inline-block; font-size:10px; font-weight:700; vertical-align:middle; margin-left:7px; padding:2px 7px; border-radius:999px; background:var(--accent-soft,rgba(45,212,191,.15)); color:var(--accent); white-space:nowrap}
+  .cfs-log{max-height:42vh; overflow:auto; margin-top:12px; display:flex; flex-direction:column; gap:4px}
+  .cfs-log .cfs-line{font-size:13px; padding:5px 9px; border-radius:7px; background:var(--card2,rgba(255,255,255,.04))}
+  .cfs-log .cfs-line.good{color:#34d399}
+  .cfs-log .cfs-line.skip{color:var(--muted)}
+  .cfs-log .cfs-line.bad{color:#f87171}
   .crow .cacts{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
   .ordrow{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid var(--line)}
   .ordrow:last-child{border-bottom:none}
@@ -538,6 +543,7 @@
     <div class="chips" id="catFilterChips"></div>
     <div class="syncrow" style="margin:0 0 12px">
       <button class="btn sm" onclick="openCatEdit()"><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New catalogue item</button>
+      <button class="btn sm" onclick="openCatFromStock()"><svg class="ico sm" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg> Add from stock</button>
       <button class="btn ghost sm" onclick="printCatalogue()">Print price list</button>
       <button class="btn ghost sm" onclick="printCatalogueBooklet()">Print booklet</button>
       <button class="btn ghost sm" onclick="exportCatalogueCSV()">Export CSV</button>
@@ -1153,6 +1159,19 @@
   </div>
 </dialog>
 
+<dialog id="cfsDlg">
+  <div class="modal">
+    <h3>Add to catalogue from stock</h3>
+    <p class="hint" style="margin:0 0 10px">Scan or type a barcode (INS number) and press Enter. Each match is copied from your stock into the catalogue. Already-catalogued items are skipped.</p>
+    <div class="inputbtn">
+      <input id="cfsInput" placeholder="scan or type a barcode…" autocomplete="off" inputmode="text" onkeydown="cfsInputKey(event)">
+      <button type="button" class="btn ghost" onclick="openScanner('catalogue')"><svg class="ico sm" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg> Camera</button>
+    </div>
+    <div id="cfsLog" class="cfs-log"></div>
+    <button class="btn full" style="margin-top:12px" onclick="cfsDone()">Done</button>
+  </div>
+</dialog>
+
 <dialog id="pickDlg">
   <div class="modal">
     <h3>Add item from inventory</h3>
@@ -1414,7 +1433,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v90 · 2026-11-01 · per-colour supplier codes';
+const APP_VER='v91 · 2026-11-05 · add to catalogue from stock by barcode';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -2256,6 +2275,33 @@ function clearCatalogue(){
   if(!confirm('Clear the catalogue? Your stock items and documents aren\'t affected.')) return;
   state.catalogue=[]; save(); render(); if(!$('viewSetup').hidden) renderSetup(); toast('Catalogue cleared.');
 }
+/* ---------- ADD TO CATALOGUE FROM STOCK (by barcode) ---------- */
+let cfsCount=0;
+function openCatFromStock(keep){
+  if(!keep){ cfsCount=0; const l=$('cfsLog'); if(l) l.innerHTML=''; }
+  const dlg=$('cfsDlg'); if(dlg && !dlg.open) dlg.showModal();
+  const inp=$('cfsInput'); if(inp){ inp.value=''; setTimeout(()=>inp.focus(),40); }
+}
+function cfsLogLine(msg,cls){ const l=$('cfsLog'); if(l) l.insertAdjacentHTML('afterbegin','<div class="cfs-line '+(cls||'')+'">'+escapeHtml(msg)+'</div>'); }
+function cfsAdd(code){
+  code=clean(code); if(!code) return;
+  const lc=code.toLowerCase();
+  const it=state.items.find(i=>clean(i.barcode).toLowerCase()===lc || clean(i.sku).toLowerCase()===lc);
+  if(!it){ cfsLogLine('✗ '+code+' — no stock item with that barcode', 'bad'); return; }
+  const cat=state.catalogue||(state.catalogue=[]);
+  const nm=clean(it.name).toLowerCase(), col=clean(it.colour).toLowerCase();
+  const dup=cat.find(c=> (clean(c.barcode) && clean(c.barcode).toLowerCase()===clean(it.barcode).toLowerCase())
+                      || (clean(c.name).toLowerCase()===nm && clean(c.colour).toLowerCase()===col));
+  const label=(clean(it.name)||code)+(clean(it.colour)?' — '+clean(it.colour):'');
+  if(dup){ cfsLogLine('• '+label+' — already in catalogue', 'skip'); return; }
+  cat.push({ id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name:clean(it.name), sku:clean(it.sku),
+    category:clean(it.category), colour:clean(it.colour), cost:num(it.cost), price:num(it.price),
+    supplier:clean(it.supplier), barcode:clean(it.barcode) });
+  cfsCount++; cfsLogLine('✓ '+label+' added', 'good'); save();
+}
+function cfsInputKey(e){ if(e.key==='Enter'){ e.preventDefault(); const inp=$('cfsInput'); cfsAdd(inp.value); inp.value=''; inp.focus(); } }
+function cfsDone(){ const dlg=$('cfsDlg'); if(dlg) dlg.close(); render(); if(!$('viewSetup').hidden) renderSetup();
+  toast(cfsCount?('Added '+cfsCount+' item'+(cfsCount===1?'':'s')+' to the catalogue.'):'Nothing added.'); cfsCount=0; }
 function stockFromCatalogue(catId){
   const c=(state.catalogue||[]).find(x=>x.id===catId); if(!c) return;
   const existing=state.items.find(i=>clean(i.sku)&&clean(i.sku).toLowerCase()===clean(c.sku).toLowerCase());
@@ -3402,6 +3448,7 @@ function handleCode(code){
     prefillFromCode(code);
     return;
   }
+  if(scanMode==='catalogue'){ cfsAdd(code); openCatFromStock(true); return; }
   const lc=code.toLowerCase();
   const it=state.items.find(i=> (i.barcode && i.barcode.toLowerCase()===lc) || (i.sku && i.sku.toLowerCase()===lc));
   if(it){ openFound(it.id); return; }
