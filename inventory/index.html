@@ -163,6 +163,13 @@
   /* ---- item rows (table-like) ---- */
   .list{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow)}
   .item{display:flex; align-items:center; gap:12px; padding:11px 14px; border-bottom:1px solid var(--line); position:relative}
+  .item .thumb{flex:0 0 auto; width:40px; height:40px; border-radius:7px; object-fit:cover; background:var(--card2); cursor:pointer}
+  .crow .cmain{flex:1; min-width:0}
+  .crow .cthumb{flex:0 0 auto; width:46px; height:46px; border-radius:8px; object-fit:cover; background:var(--card2); cursor:pointer}
+  .photobox{display:flex; align-items:center; gap:12px; margin-bottom:12px}
+  .photobox .pv{width:64px; height:64px; border-radius:10px; object-fit:cover; background:var(--card2); border:1px solid var(--line2); flex:0 0 auto}
+  .photobox .pv.empty{display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:22px}
+  .photobox .pbtns{display:flex; flex-wrap:wrap; gap:6px}
   .item:last-child{border-bottom:none}
   .item::before{content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:transparent}
   .item.low::before{background:var(--amber)}
@@ -272,7 +279,7 @@
   .assign-item .abc{font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; flex:none}
   .assign-empty{padding:16px 12px; text-align:center; color:var(--muted); font-size:13px; font-weight:500}
   .pickhdr{position:sticky; top:0; background:var(--card); font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); padding:8px 12px 4px; border-bottom:1px solid var(--line)}
-  .crow{padding:12px 0; border-bottom:1px solid var(--line)}
+  .crow{padding:12px 0; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:flex-start}
   .crow:last-child{border-bottom:none}
   .crow .ctop{display:flex; justify-content:space-between; align-items:baseline; gap:12px}
   .crow .cname{font-weight:600; font-size:14px; min-width:0}
@@ -989,6 +996,7 @@
   <div class="modal">
     <h3 id="editTitle">Edit item</h3>
     <div class="row">
+      <div class="photobox" id="ePhotoBox"></div>
       <div><label>Item name</label><input id="eName"></div>
       <div class="duo">
         <div><label>SKU / code</label><input id="eSku" autocomplete="off"></div>
@@ -1131,6 +1139,7 @@
   <div class="modal">
     <h3 id="catEditTitle">New catalogue item</h3>
     <div class="row">
+      <div class="photobox" id="cePhotoBox"></div>
       <div><label>Product name</label><input id="ceName" autocomplete="off" placeholder="e.g. CISA C2000 Cylinder"></div>
       <div class="duo">
         <div><label>SKU / code</label><input id="ceSku" autocomplete="off" placeholder="optional"></div>
@@ -1194,6 +1203,7 @@
 </dialog>
 
 <div id="printArea"></div>
+<input id="photoFile" type="file" accept="image/*" hidden onchange="onPhotoPicked(this.files[0]); this.value='';">
 
 <script>
 /* ---- Inline QR Code generator (byte mode, ECL L/M/Q/H). Validated against segno + OpenCV decode. ---- */
@@ -1433,7 +1443,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v92 · 2026-11-05 · catalogue shows all variants (colour in key)';
+const APP_VER='v93 · 2026-11-05 · item photos (thumbnails)';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -1502,7 +1512,7 @@ function normalize(s){
     id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
     name:clean(c.name), sku:clean(c.sku), colour:clean(c.colour),
     category:clean(c.category), supplier:clean(c.supplier), barcode:clean(c.barcode),
-    cost:num(c.cost), price:num(c.price)
+    cost:num(c.cost), price:num(c.price), photo:(typeof c.photo==='string'?c.photo:'')
   })):[];
   s.items.forEach(it=>{
     it.qty=int(it.qty); it.reorder=int(it.reorder);
@@ -1701,6 +1711,7 @@ function openEdit(id){
   $('eBarcode').value=it.barcode||''; $('eNotes').value=it.notes||'';
   $('ePrice').dataset.auto = it.price ? 'off' : 'on';   // keep an existing price; auto-fill only when blank
   autoPrice('eCost','ePrice');
+  editPhoto = clean(it.photo); renderPhotoBox('ePhotoBox','edit');
   fillOptionLists();
   $('editDlg').showModal();
 }
@@ -1714,9 +1725,43 @@ function saveEdit(){
   let ep=Math.max(0,num($('ePrice').value)); if(!ep && it.cost>0) ep=markupPrice(it.cost);   // blank price → apply default markup
   it.price=ep; it.location=clean($('eLoc').value);
   it.supplier=clean($('eSup').value); it.barcode=clean($('eBarcode').value); it.notes=clean($('eNotes').value);
+  it.photo=editPhoto||'';
   it.qty=newQty;
   if(diff!==0) addLog(it, diff, newQty, 'set count');
   save(); $('editDlg').close(); render();
+}
+/* ---------- item photos (synced thumbnails) ---------- */
+let editPhoto='', catEditPhoto='', photoTarget='edit';
+// Shrink a chosen image to a small JPEG thumbnail (keeps storage/sync light).
+function makeThumb(file, cb){
+  if(!file || !/^image\//.test(file.type||'')){ cb(null); return; }
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=()=>{ const max=320; let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    const sc=Math.min(1, max/Math.max(w,h)); w=Math.max(1,Math.round(w*sc)); h=Math.max(1,Math.round(h*sc));
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    try{ cv.getContext('2d').drawImage(img,0,0,w,h); const data=cv.toDataURL('image/jpeg',0.6); URL.revokeObjectURL(url); cb(data); }
+    catch(e){ URL.revokeObjectURL(url); cb(null); } };
+  img.onerror=()=>{ URL.revokeObjectURL(url); cb(null); };
+  img.src=url;
+}
+function pickPhoto(target){ photoTarget=target; const f=$('photoFile'); if(f) f.click(); }
+function onPhotoPicked(file){
+  if(!file) return;
+  makeThumb(file, data=>{
+    if(!data){ toast('Couldn’t read that image.'); return; }
+    if(photoTarget==='catedit'){ catEditPhoto=data; renderPhotoBox('cePhotoBox','catedit'); }
+    else { editPhoto=data; renderPhotoBox('ePhotoBox','edit'); }
+  });
+}
+function clearPhoto(target){ if(target==='catedit'){ catEditPhoto=''; renderPhotoBox('cePhotoBox','catedit'); } else { editPhoto=''; renderPhotoBox('ePhotoBox','edit'); } }
+function renderPhotoBox(boxId, target){
+  const box=$(boxId); if(!box) return;
+  const data = target==='catedit' ? catEditPhoto : editPhoto;
+  const pv = data ? `<img class="pv" src="${data}" alt="">` : `<div class="pv empty">📷</div>`;
+  box.innerHTML = pv + `<div class="pbtns">`
+    + `<button type="button" class="btn ghost sm" onclick="pickPhoto('${target}')">${data?'Change photo':'Add photo'}</button>`
+    + (data?`<button type="button" class="btn ghost sm" onclick="clearPhoto('${target}')">Remove</button>`:'')
+    + `</div>`;
 }
 function deleteItem(){
   const it=state.items.find(i=>i.id===editId); if(!it) return;
@@ -1892,6 +1937,7 @@ function itemRow(i){
   if(i.reorder>0) meta.push('reorder ≤'+i.reorder);
   if(i.cost>0) meta.push(money(i.qty*i.cost));
   return `<div class="item ${cls}" data-id="${i.id}">
+    ${clean(i.photo)?`<img class="thumb" src="${i.photo}" alt="" onclick="openEdit('${i.id}')">`:''}
     <div class="body" onclick="openEdit('${i.id}')">
       <div class="name">${escapeHtml(i.name)}${tag}</div>
       ${meta.length?`<div class="meta">${meta.join('  ·  ')}</div>`:''}
@@ -2322,6 +2368,7 @@ function openCatEdit(id){
   autoPrice('ceCost','cePrice');
   $('ceDelete').style.display=c?'block':'none';
   $('cePrintLabel').style.display=c?'block':'none';
+  catEditPhoto = c ? clean(c.photo) : ''; renderPhotoBox('cePhotoBox','catedit');
   fillOptionLists();
   $('catEditDlg').showModal();
   setTimeout(()=>$('ceName').focus(),40);
@@ -2333,7 +2380,7 @@ function saveCatEdit(){
   let cePrice=Math.max(0,num($('cePrice').value));
   if(!cePrice && ceCost>0) cePrice=markupPrice(ceCost);   // blank sale price → apply default markup
   const rec={ name, sku, category:clean($('ceCat').value), colour:clean($('ceColour').value),
-    cost:ceCost, price:cePrice, supplier:clean($('ceSup').value), barcode:clean($('ceBarcode').value) };
+    cost:ceCost, price:cePrice, supplier:clean($('ceSup').value), barcode:clean($('ceBarcode').value), photo:catEditPhoto||'' };
   state.catalogue=state.catalogue||[];
   if(catEditId){ const c=state.catalogue.find(x=>x.id===catEditId); if(c) Object.assign(c,rec); }
   else{ state.catalogue.push(Object.assign({id:'c'+Date.now()+Math.random().toString(36).slice(2,6)},rec)); }
@@ -2460,6 +2507,8 @@ function renderCatalogueView(){
     const costLine = (num(c.cost)>0 && num(c.price)>0) ? '<div class="csub">Cost '+money(c.cost)+'</div>' : '';
     const editCall = stock ? `openEdit('${c.id}')` : `openCatEdit('${c.id}')`;
     return `<div class="crow">
+      ${clean(c.photo)?`<img class="cthumb" src="${c.photo}" alt="" onclick="${editCall}">`:''}
+      <div class="cmain">
       <div class="ctop"><div class="cname">${escapeHtml(c.name)||'(no name)'}${tag}</div><div class="cprice">${priceBlk}</div></div>
       ${sub?`<div class="csub">${sub}</div>`:''}${costLine}
       <div class="cacts">
@@ -2467,6 +2516,7 @@ function renderCatalogueView(){
         <button class="btn ghost" onclick="catToDoc('inv','${src}','${c.id}')">＋ Invoice</button>
         ${stock?'':`<button class="btn ghost" onclick="stockFromCatalogue('${c.id}')">＋ Stock</button>`}
         <button class="btn ghost" onclick="${editCall}">Edit</button>
+      </div>
       </div>
     </div>`;
   }).join('');
