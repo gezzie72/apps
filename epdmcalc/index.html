@@ -297,7 +297,7 @@ const PASTE_PER_ROLL = 12, PRIMER_PER_ROLL = 1, ROLL_REF_M = 20; // 12 × 600ml 
 // Consumables scale with the actual metres of EPDM used (rounded up to whole packs — you order whole tubes/tubs).
 const pasteForM  = m => m > 0 ? Math.ceil(m * PASTE_PER_ROLL  / ROLL_REF_M - 1e-9) : 0;
 const primerForM = m => m > 0 ? Math.ceil(m * PRIMER_PER_ROLL / ROLL_REF_M - 1e-9) : 0;
-const APP_VER = 'v3 · 2026-10-14';
+const APP_VER = 'v4 · 2026-11-07 · auto-pull on focus';
 const $ = id => document.getElementById(id);
 const now = () => new Date().toISOString();
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
@@ -598,6 +598,18 @@ function badge(text){
   else b.textContent = cfg.lastSync ? (cfg.pass ? '🔒 ' : '') + 'Synced ' + new Date(cfg.lastSync).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : 'Not synced';
 }
 $('syncBadge').onclick = () => (cfg.token && cfg.gistId) ? sync() : show('sync');
+// Auto-pull remote changes: when you return to the app, and every 60s while it's
+// open and visible — so edits made on another device appear without reopening.
+let _lastAutoPull = 0;
+function autoPull(){
+  if (document.visibilityState !== 'visible') return;
+  if (!cfg.token || !cfg.gistId || !cfg.autoSync || syncing) return;
+  if (Date.now() - _lastAutoPull < 3000) return;   // debounce (focus + visibility can both fire)
+  _lastAutoPull = Date.now(); sync();
+}
+document.addEventListener('visibilitychange', autoPull);
+window.addEventListener('focus', autoPull);
+setInterval(autoPull, 60000);
 $('connectBtn').onclick = () => {
   cfg.token = $('token').value.trim(); cfg.gistId = parseGistId($('gistId').value); cfg.autoSync = $('autoSync').checked;
   $('gistId').value = cfg.gistId; sync();
