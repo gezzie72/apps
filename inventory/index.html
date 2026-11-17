@@ -286,6 +286,35 @@
   .crow .cprice{font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--accent)}
   .crow .cprice small{color:var(--muted); font-weight:500; font-size:11px}
   .crow .csub{font-size:11.5px; color:var(--muted); margin-top:2px}
+  .catmodes .seg[hidden], .custhead[hidden], .custgrid[hidden], #catActions[hidden], #catHint[hidden]{display:none}
+  .catmodes{display:flex; flex-wrap:wrap; gap:8px 12px; margin:0 0 12px}
+  .catmodes .seg{flex:0 1 auto}
+  .catmodes .seg button{padding:7px 14px; white-space:nowrap}
+  .custhead{display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; justify-content:space-between; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; margin:0 0 12px}
+  .custhead .cb{display:flex; align-items:center; gap:10px; min-width:0}
+  .custhead .lg{background:#fff; border-radius:8px; padding:4px 8px; display:inline-flex}
+  .custhead .lg img{height:38px; width:auto; max-width:100%}
+  .custhead .cn{font-weight:800; font-size:16px; line-height:1.2}
+  .custhead .cc{font-size:12px; color:var(--muted)}
+  .custgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin:0 0 12px}
+  .ccard{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; display:flex; flex-direction:column}
+  .ccard .ccph{aspect-ratio:4/3; max-width:100%; background:#fff; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:#9aa3ab; font-size:12px}
+  .ccard .ccph img{width:100%; height:100%; object-fit:contain; padding:8px}
+  .ccard .ccb{padding:12px 14px 14px; display:flex; flex-direction:column; gap:8px; flex:1}
+  .ccard .cce{font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--accent)}
+  .ccard .ccn{font-weight:700; font-size:15px; line-height:1.25}
+  .ccard .ccd{font-size:12.5px; color:var(--muted); line-height:1.5; margin:0}
+  .ccard .cco{display:flex; flex-wrap:wrap; gap:6px}
+  .ccard .cco button{border:1px solid var(--line2); background:var(--card2); color:var(--ink); border-radius:999px; padding:4px 10px; font:inherit; font-size:12px; cursor:pointer}
+  .ccard .cco button.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-ink); font-weight:600}
+  .ccard .ccp{display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 8px; margin-top:auto; padding-top:2px}
+  .ccard .ccp b{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums}
+  .ccard .ccp small{font-size:11.5px; color:var(--muted)}
+  .ccard .ccp .fr{flex-basis:100%; font-size:11.5px; color:var(--muted)}
+  .ccard .ccm{display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; font-size:11.5px; color:var(--muted)}
+  .ccard .ccav{display:inline-block; border-radius:999px; padding:2px 9px; font-weight:600; background:var(--amber-soft); color:var(--amber)}
+  .ccard .ccav.ok{background:var(--accent-soft); color:var(--accent-ink)}
+  .ccard .cccode{font-family:ui-monospace,Menlo,Consolas,monospace}
   .celink{background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
   .celink select{width:100%}
   .cesec{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border-top:1px solid var(--line); padding-top:12px; margin-top:4px}
@@ -561,6 +590,17 @@
 
   <!-- CATALOGUE TAB -->
   <div id="paneCatalogue" hidden>
+    <div class="catmodes">
+      <div class="seg" id="catModeSeg" role="group" aria-label="Catalogue view">
+        <button type="button" id="catModeManage" class="on" onclick="setCatMode('manage')">Manage</button>
+        <button type="button" id="catModeCust" onclick="setCatMode('customer')">Customer view</button>
+      </div>
+      <div class="seg" id="catVatSeg" role="group" aria-label="Prices" hidden>
+        <button type="button" id="catVatEx" class="on" onclick="setCatVat(false)">Ex VAT</button>
+        <button type="button" id="catVatInc" onclick="setCatVat(true)">Inc VAT</button>
+      </div>
+    </div>
+    <div class="custhead" id="catCustHead" hidden></div>
     <div class="toolbar">
       <div class="search">
         <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -569,7 +609,7 @@
       <span class="count" id="catPill">0 items</span>
     </div>
     <div class="chips" id="catFilterChips"></div>
-    <div class="syncrow" style="margin:0 0 12px">
+    <div class="syncrow" id="catActions" style="margin:0 0 12px">
       <button class="btn sm" onclick="openCatEdit()"><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New catalogue item</button>
       <button class="btn sm" onclick="openCatFromStock()"><svg class="ico sm" viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M4 12h16"/></svg> Add from stock</button>
       <button class="btn ghost sm" onclick="linkCatalogueToStock()">Link to stock</button>
@@ -578,7 +618,8 @@
       <button class="btn ghost sm" onclick="exportCatalogueCSV()">Export CSV</button>
     </div>
     <div id="catList"></div>
-    <div class="hint c">Your price list for quotes &amp; orders, plus everything you hold in stock. Entries marked <b>linked</b> take their price, codes, stock and photo from the stock item, so a price change in Stock shows here too. Use <b>Details</b> or <b>Edit</b> to add a description, lead time or product group (entries in the same group print as one product with options). <b>Link to stock</b> links copied entries to their stock items in one go.</div>
+    <div class="custgrid" id="catCust" hidden></div>
+    <div class="hint c" id="catHint">Your price list for quotes &amp; orders, plus everything you hold in stock. Entries marked <b>linked</b> take their price, codes, stock and photo from the stock item, so a price change in Stock shows here too. Use <b>Details</b> or <b>Edit</b> to add a description, lead time or product group (entries in the same group print as one product with options). <b>Link to stock</b> links copied entries to their stock items in one go.</div>
   </div>
 
   <!-- REPORTS TAB -->
@@ -1482,7 +1523,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v95 · 2026-11-17 · catalogue linked to stock, descriptions, variants, lead times';
+const APP_VER='v96 · 2026-11-17 · catalogue customer view';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -2615,6 +2656,32 @@ function printCatalogue(){
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
   setTimeout(()=>window.print(),80);
 }
+/* ---------- CUSTOMER-FACING PRODUCTS (booklet + customer view) ----------
+   Entries sharing a product group (or, with none, the same name within a
+   category) become one product with its options. */
+function catPhotoRow(c){ return c._src==='stock'?clean(c.photo):catPhotoOf(c); }
+function catAvail(c){ const q=catQty(c); if(q!=null && q>0) return {txt:'In stock', ok:true};
+  return clean(c.lead)?{txt:'Lead time '+clean(c.lead), ok:false}:(q!=null?{txt:'To order', ok:false}:null); }
+function catOptLabel(c){ return clean(c.variant)||(clean(c.group)?clean(c.name):'')||[clean(c.colour), clean(c.sku)&&!clean(c.colour)?'#'+clean(c.sku):''].filter(Boolean).join(' ')||clean(c.name); }
+// → { cats:[category names], groups:{category:[product]}, count }
+function catProducts(list){
+  const products={};
+  list.forEach(c=>{
+    const cat=clean(c.category)||'Other';
+    const gname=clean(c.group)||clean(c.name)||'—';
+    const k=cat+'|'+gname.toLowerCase();
+    const p=products[k]||(products[k]={key:k, cat, name:gname, vars:[], desc:'', photo:''});
+    p.vars.push(c);
+    if(!p.desc && clean(c.desc)) p.desc=clean(c.desc);
+    const ph=catPhotoRow(c); if(!p.photo && ph) p.photo=ph;
+  });
+  const groups={};
+  Object.values(products).forEach(p=>{ (groups[p.cat]=groups[p.cat]||[]).push(p);
+    p.vars.sort((a,b)=>num(a.price)-num(b.price)||catOptLabel(a).localeCompare(catOptLabel(b))); });
+  const cats=Object.keys(groups).sort((a,b)=> a==='Other'?1 : b==='Other'?-1 : a.localeCompare(b));
+  cats.forEach(k=>groups[k].sort((a,b)=>a.name.localeCompare(b.name)));
+  return {cats, groups, count:Object.keys(products).length};
+}
 function printCatalogueBooklet(){
   // catFiltered() already returns catalogue + stock items (deduped, one place).
   const list=catFiltered();
@@ -2622,27 +2689,8 @@ function printCatalogueBooklet(){
   const biz=state.biz||{};
   const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   const logoSrc=clean(biz.logo)||DEFAULT_LOGO;
-  // Build products: entries sharing a product group (or, with none, the same name
-  // within a category) print as one product with its options listed.
-  const products={};
-  list.forEach(c=>{
-    const cat=clean(c.category)||'Other';
-    const gname=clean(c.group)||clean(c.name)||'—';
-    const k=cat+'|'+gname.toLowerCase();
-    const p=products[k]||(products[k]={cat, name:gname, vars:[], desc:'', lead:'', photo:''});
-    p.vars.push(c);
-    if(!p.desc && clean(c.desc)) p.desc=clean(c.desc);
-    const ph=c._src==='stock'?clean(c.photo):catPhotoOf(c); if(!p.photo && ph) p.photo=ph;
-  });
-  const avail=c=>{ const q=catQty(c); if(q!=null && q>0) return {txt:'In stock', ok:true};
-    return clean(c.lead)?{txt:'Lead time '+clean(c.lead), ok:false}:(q!=null?{txt:'To order', ok:false}:null); };
-  const optLabel=c=> clean(c.variant)||(clean(c.group)?clean(c.name):'')||[clean(c.colour), clean(c.sku)&&!clean(c.colour)?'#'+clean(c.sku):''].filter(Boolean).join(' ')||clean(c.name);
-  const groups={};
-  Object.values(products).forEach(p=>{ (groups[p.cat]=groups[p.cat]||[]).push(p);
-    p.vars.sort((a,b)=>num(a.price)-num(b.price)||optLabel(a).localeCompare(optLabel(b))); });
-  const cats=Object.keys(groups).sort((a,b)=> a==='Other'?1 : b==='Other'?-1 : a.localeCompare(b));
-  cats.forEach(k=>groups[k].sort((a,b)=>a.name.localeCompare(b.name)));
-  const nProducts=Object.keys(products).length;
+  const {cats, groups, count:nProducts}=catProducts(list);
+  const avail=catAvail, optLabel=catOptLabel;
   const contact=[clean(biz.phone), clean(biz.email)].filter(Boolean).join(' · ');
   // cover
   let html='<div class="cbk-cover">'+(logoSrc?'<img src="'+logoSrc+'" alt="">':'')
@@ -2681,10 +2729,62 @@ function printCatalogueBooklet(){
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
   setTimeout(()=>window.print(),80);
 }
+/* ---------- CUSTOMER VIEW (Catalogue tab) ----------
+   A read-only product grid to show customers on a phone or tablet: photo,
+   description, option chips, price ex/inc VAT and "In stock" or lead time.
+   No costs or stock counts. Remembered per device. */
+let catMode=(()=>{ try{ return localStorage.getItem('inventory.catView')==='customer'?'customer':'manage'; }catch(e){ return 'manage'; } })();
+let catVat=false, catSel={}, _custProducts=[];
+function setCatMode(m){ catMode=m==='customer'?'customer':'manage'; try{ localStorage.setItem('inventory.catView',catMode); }catch(e){} renderCatalogueView(); }
+function setCatVat(on){ catVat=!!on; renderCatalogueView(); }
+function catVatRate(){ const r=num((state.inv||{}).vatRate); return r>0?r:20; }
+function custMoney(n){ return money(Math.round((catVat?n*(1+catVatRate()/100):n)*100)/100); }
+function catCustPick(n,i){ const p=_custProducts[n]; if(!p) return; catSel[p.key]=i; renderCatalogueView(); }
+function renderCatCustomer(list){
+  const biz=state.biz||{};
+  const contact=[clean(biz.phone), clean(biz.email)].filter(Boolean).map(escapeHtml).join(' · ');
+  const logo=clean(biz.logo)||DEFAULT_LOGO;
+  $('catCustHead').innerHTML='<div class="cb">'+(logo?'<span class="lg"><img src="'+logo+'" alt="Safe Secure Wales"></span>':'<div class="cn">Safe Secure Wales</div>')+'<div class="cc">Product catalogue<br>Prices '+(catVat?'include VAT at '+catVatRate()+'%':'exclude VAT')+'</div></div>'
+    +(contact?'<div class="cc">'+contact+'</div>':'');
+  const {cats, groups, count}=catProducts(list);
+  $('catPill').textContent=count+' product'+(count===1?'':'s');
+  _custProducts=[];
+  const el=$('catCust');
+  if(!count){ el.innerHTML='<div class="assign-empty">Nothing to show.</div>'; return; }
+  el.innerHTML=cats.map(k=>groups[k].map(p=>{
+    const n=_custProducts.push(p)-1;
+    let i=catSel[p.key]; if(!(i>=0 && i<p.vars.length)) i=0;
+    const v=p.vars[i], a=catAvail(v), code=clean(v.barcode)||clean(v.sku);
+    const photo=catPhotoRow(v)||p.photo;
+    const prices=p.vars.map(c=>num(c.price)).filter(x=>x>0);
+    const opts=p.vars.length>1 ? '<div class="cco">'+p.vars.map((c,j)=>'<button type="button" class="'+(j===i?'on':'')+'" aria-pressed="'+(j===i)+'" onclick="catCustPick('+n+','+j+')">'+escapeHtml(catOptLabel(c))+'</button>').join('')+'</div>' : '';
+    const single = p.vars.length===1 ? [clean(v.variant)||clean(v.colour)].filter(Boolean).join('') : '';
+    return '<article class="ccard">'
+      +'<div class="ccph">'+(photo?'<img src="'+photo+'" alt="'+escapeHtml(p.name)+'">':'No photo')+'</div>'
+      +'<div class="ccb">'
+      +'<div class="cce">'+escapeHtml(p.cat)+'</div>'
+      +'<div class="ccn">'+escapeHtml(p.name)+'</div>'
+      +(p.desc?'<p class="ccd">'+escapeHtml(p.desc)+'</p>':'')
+      +opts
+      +'<div class="ccp">'+(num(v.price)>0?'<b>'+custMoney(v.price)+'</b><small>'+(catVat?'inc VAT':'ex VAT')+'</small>':'<small>Price on request</small>')
+      +(prices.length>1?'<span class="fr">'+p.vars.length+' options from '+custMoney(Math.min(...prices))+'</span>':'')+'</div>'
+      +'<div class="ccm">'+(a?'<span class="ccav'+(a.ok?' ok':'')+'">'+escapeHtml(a.txt)+'</span>':'')
+      +(single?'<span>'+escapeHtml(single)+'</span>':'')
+      +(code?'<span class="cccode">'+escapeHtml(code)+'</span>':'')+'</div>'
+      +'</div></article>';
+  }).join('')).join('');
+}
 function renderCatalogueView(){
   // reset a category filter that no longer exists (e.g. after a merge/delete)
   if(catFilterCat!=='all' && catFilterCat!=='__uncat__' && !catCategories().includes(catFilterCat)) catFilterCat='all';
   renderCatFilterChips();
+  const cust=catMode==='customer';
+  $('catModeManage').classList.toggle('on',!cust); $('catModeCust').classList.toggle('on',cust);
+  $('catModeManage').setAttribute('aria-pressed',String(!cust)); $('catModeCust').setAttribute('aria-pressed',String(cust));
+  $('catVatEx').classList.toggle('on',!catVat); $('catVatInc').classList.toggle('on',catVat);
+  ['catVatSeg','catCustHead','catCust'].forEach(id=>{ $(id).hidden=!cust; });
+  ['catActions','catHint','catList'].forEach(id=>{ $(id).hidden=cust; });
+  if(cust){ renderCatCustomer(catFiltered()); return; }
   const list=catFiltered();
   const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
   $('catPill').textContent=list.length+' item'+(list.length===1?'':'s');
