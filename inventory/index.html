@@ -1097,6 +1097,10 @@
       </div>
       <div><label>Supplier</label><input id="eSup" list="supOpts" autocomplete="off"></div>
       <div><label>Notes</label><textarea id="eNotes" placeholder="optional"></textarea></div>
+      <div>
+        <label class="chk" for="eHideCat" style="text-transform:none; letter-spacing:0"><input type="checkbox" id="eHideCat"> Hide from catalogue and booklet</label>
+        <div class="hint" style="margin:4px 0 0">For stock you don't sell, such as fixings, labels or consumables. It stays in Stock and can still go on orders and invoices.</div>
+      </div>
       <div class="duo" style="margin-top:4px">
         <button class="btn ghost" onclick="editDlg.close()">Cancel</button>
         <button class="btn" onclick="saveEdit()">Save changes</button>
@@ -1535,7 +1539,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v97 · 2026-11-17 · booklet company cover page';
+const APP_VER='v98 · 2026-11-17 · hide stock items from the catalogue';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -1614,6 +1618,7 @@ function normalize(s){
     it.cost=num(it.cost); it.price=num(it.price);
     it.barcode=clean(it.barcode);
     it.colour=clean(it.colour);
+    it.hideCat=!!it.hideCat;                     // ticked: not for sale — left out of the catalogue and booklet
   });
   syncLinkedCat(s);
   return s;
@@ -1828,6 +1833,7 @@ function openEdit(id){
   $('eQty').value=it.qty; $('eReorder').value=it.reorder; $('eCost').value=it.cost?num(it.cost).toFixed(2):'';
   $('ePrice').value=it.price?num(it.price).toFixed(2):''; $('eLoc').value=it.location||''; $('eSup').value=it.supplier||'';
   $('eBarcode').value=it.barcode||''; $('eNotes').value=it.notes||'';
+  $('eHideCat').checked=!!it.hideCat;
   $('ePrice').dataset.auto = it.price ? 'off' : 'on';   // keep an existing price; auto-fill only when blank
   autoPrice('eCost','ePrice');
   editPhoto = clean(it.photo); renderPhotoBox('ePhotoBox','edit');
@@ -1845,6 +1851,7 @@ function saveEdit(){
   it.price=ep; it.location=clean($('eLoc').value);
   it.supplier=clean($('eSup').value); it.barcode=clean($('eBarcode').value); it.notes=clean($('eNotes').value);
   it.photo=editPhoto||'';
+  it.hideCat=$('eHideCat').checked;
   it.qty=newQty;
   if(diff!==0) addLog(it, diff, newQty, 'set count');
   save(); $('editDlg').close(); render();
@@ -2464,6 +2471,7 @@ function cfsAdd(code){
   const cat=state.catalogue||(state.catalogue=[]);
   const nm=clean(it.name).toLowerCase(), col=clean(it.colour).toLowerCase();
   const label=(clean(it.name)||code)+(clean(it.colour)?' — '+clean(it.colour):'');
+  if(it.hideCat){ it.hideCat=false; save(); cfsLogLine('• '+label+' — no longer hidden from the catalogue', 'good'); }
   if(catLinkOf(it.id)){ cfsLogLine('• '+label+' — already in catalogue', 'skip'); return; }
   // an unlinked copy of the same product → link it rather than add another
   const dup=cat.find(c=> !c.itemId && clean(c.name).toLowerCase()===nm && clean(c.colour).toLowerCase()===col);
@@ -2616,10 +2624,11 @@ const _catKey=o=>{ const bc=clean(o.barcode).toLowerCase(); if(bc) return 'b:'+b
   return base+'|'+clean(o.colour).toLowerCase(); };
 function catMerged(){
   // linked entries carry their stock item as _item (live qty) and stand in for it
-  const out=(state.catalogue||[]).map(c=>Object.assign({_src:'cat', _item:linkedItem(c)},c));
+  // _hidden: the stock item is ticked "Hide from catalogue and booklet"
+  const out=(state.catalogue||[]).map(c=>{ const it=linkedItem(c); return Object.assign({_src:'cat', _item:it, _hidden:!!(it&&it.hideCat)},c); });
   const linked=new Set(out.map(c=>c.itemId).filter(Boolean));
   const seen=new Set(out.map(_catKey));
-  (state.items||[]).forEach(i=>{ if(linked.has(i.id)) return; const k=_catKey(i); if(seen.has(k)) return; seen.add(k); out.push(Object.assign({_src:'stock'},i)); });
+  (state.items||[]).forEach(i=>{ if(linked.has(i.id)) return; const k=_catKey(i); if(seen.has(k)) return; seen.add(k); out.push(Object.assign({_src:'stock', _hidden:!!i.hideCat},i)); });
   return out;
 }
 // Stock on hand for a merged row: a number for stock rows / linked entries, null for catalogue-only.
@@ -2627,25 +2636,29 @@ const catQty=c=> c._src==='stock' ? int(c.qty) : (c._item ? int(c._item.qty) : n
 let catFilterCat='all';   // 'all' | '__uncat__' | a category name — catalogue tab category chip
 function catFiltered(){
   let list=catMerged().sort((a,b)=>clean(a.name).localeCompare(clean(b.name)));
+  if(catFilterCat==='__hidden__') list=list.filter(c=>c._hidden);
+  else list=list.filter(c=>!c._hidden);
   if(catFilterCat==='__uncat__') list=list.filter(c=>!clean(c.category));
-  else if(catFilterCat!=='all') list=list.filter(c=>clean(c.category)===catFilterCat);
+  else if(catFilterCat!=='all' && catFilterCat!=='__hidden__') list=list.filter(c=>clean(c.category)===catFilterCat);
   const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
   if(q) list=list.filter(c=>[c.name,c.sku,c.colour,c.category,c.barcode,c.group,c.variant,c.desc].some(v=>(v||'').toLowerCase().includes(q)));
   return list;
 }
-function catCategories(){ return [...new Set(catMerged().map(c=>clean(c.category)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function catCategories(){ return [...new Set(catMerged().filter(c=>!c._hidden).map(c=>clean(c.category)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function setCatFilter(c){ catFilterCat=c; renderCatalogueView(); }
 function renderCatFilterChips(){
   const el=$('catFilterChips'); if(!el) return;
   const cats=catCategories();
-  const uncatN=catMerged().filter(c=>!clean(c.category)).length;
+  const uncatN=catMerged().filter(c=>!c._hidden && !clean(c.category)).length;
+  const hiddenN=catMerged().filter(c=>c._hidden).length;
   let html=`<button class="${catFilterCat==='all'?'on':''}" onclick="setCatFilter('all')">All</button>`;
   html+=cats.map(c=>`<button class="${catFilterCat===c?'on':''}" onclick="setCatFilter('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`).join('');
   if(uncatN) html+=`<button class="${catFilterCat==='__uncat__'?'on':''}" onclick="setCatFilter('__uncat__')">Uncategorised (${uncatN})</button>`;
+  if(hiddenN && catMode!=='customer') html+=`<button class="${catFilterCat==='__hidden__'?'on':''}" onclick="setCatFilter('__hidden__')">Hidden (${hiddenN})</button>`;
   el.innerHTML=html;
 }
 function exportCatalogueCSV(){
-  const list=catFiltered();
+  const list=catFiltered().filter(c=>!c._hidden);
   if(!list.length){ toast('Catalogue is empty — nothing to export.'); return; }
   const header=['Product','SKU','Colour','Category','Cost','Sale price','Supplier','Barcode','Product group','Option','Description','Lead time','In stock','Linked to stock'];
   const rows=[header].concat(list.map(c=>{ const q=catQty(c); return [c.name,c.sku,c.colour,c.category,(num(c.cost)||0).toFixed(2),(num(c.price)||0).toFixed(2),c.supplier,c.barcode,
@@ -2655,7 +2668,7 @@ function exportCatalogueCSV(){
   toast('Exported '+list.length+' item'+(list.length===1?'':'s')+'.');
 }
 function printCatalogue(){
-  const list=catFiltered();
+  const list=catFiltered().filter(c=>!c._hidden);
   if(!list.length){ toast('Catalogue is empty — nothing to print.'); return; }
   const biz=state.biz||{};
   const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
@@ -2696,7 +2709,7 @@ function catProducts(list){
 }
 function printCatalogueBooklet(){
   // catFiltered() already returns catalogue + stock items (deduped, one place).
-  const list=catFiltered();
+  const list=catFiltered().filter(c=>!c._hidden);
   if(!list.length){ toast('Nothing to print — no catalogue or stock items.'); return; }
   const biz=state.biz||{};
   const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
@@ -2802,7 +2815,8 @@ function renderCatCustomer(list){
 }
 function renderCatalogueView(){
   // reset a category filter that no longer exists (e.g. after a merge/delete)
-  if(catFilterCat!=='all' && catFilterCat!=='__uncat__' && !catCategories().includes(catFilterCat)) catFilterCat='all';
+  if(catFilterCat!=='all' && catFilterCat!=='__uncat__' && !catCategories().includes(catFilterCat)
+     && !(catFilterCat==='__hidden__' && catMode!=='customer' && catMerged().some(c=>c._hidden))) catFilterCat='all';
   renderCatFilterChips();
   const cust=catMode==='customer';
   $('catModeManage').classList.toggle('on',!cust); $('catModeCust').classList.toggle('on',cust);
@@ -2810,7 +2824,7 @@ function renderCatalogueView(){
   $('catVatEx').classList.toggle('on',!catVat); $('catVatInc').classList.toggle('on',catVat);
   ['catVatSeg','catCustHead','catCust'].forEach(id=>{ $(id).hidden=!cust; });
   ['catActions','catHint','catList'].forEach(id=>{ $(id).hidden=cust; });
-  if(cust){ renderCatCustomer(catFiltered()); return; }
+  if(cust){ renderCatCustomer(catFiltered().filter(c=>!c._hidden)); return; }
   const list=catFiltered();
   const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
   $('catPill').textContent=list.length+' item'+(list.length===1?'':'s');
@@ -2824,9 +2838,9 @@ function renderCatalogueView(){
     const src = (stock||linked) ? 'item' : 'cat';
     const docId = linked ? c._item.id : c.id;
     const qty = catQty(c);
-    const tag = qty==null ? '' : (qty>0
+    const tag = (c._hidden?' <span class="cflag out">hidden</span>':'') + (qty==null ? '' : (qty>0
       ? ' <span class="cflag">'+(linked?'linked · ':'')+'in stock ·&nbsp;'+qty+'</span>'
-      : ' <span class="cflag out">'+(linked?'linked · ':'')+'none in stock</span>');
+      : ' <span class="cflag out">'+(linked?'linked · ':'')+'none in stock</span>'));
     const opt = clean(c.group) ? escapeHtml(clean(c.group))+(clean(c.variant)?' › '+escapeHtml(clean(c.variant)):'') : (clean(c.variant)?escapeHtml(clean(c.variant)):'');
     const sub=[opt, c.sku?'#'+escapeHtml(c.sku):'', c.colour?escapeHtml(c.colour):'', c.category?escapeHtml(c.category):'', clean(c.barcode)?'▯ '+escapeHtml(clean(c.barcode)):'', (qty!=null&&qty<=0&&clean(c.lead))?'lead '+escapeHtml(clean(c.lead)):''].filter(Boolean).join(' · ');
     const priceBlk = num(c.price)>0 ? money(c.price)+' <small>sale</small>' : (num(c.cost)>0 ? money(c.cost)+' <small>cost</small>' : '');
