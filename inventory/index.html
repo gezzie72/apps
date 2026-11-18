@@ -439,13 +439,18 @@
     #printArea .cbk-cover .cq{display:flex; flex-direction:column; align-items:center}
     #printArea .cbk-cover .cq img{height:30mm}
     #printArea .cbk-cover .cq span{font-size:9px; letter-spacing:.3px; color:#666; margin-top:2px; text-transform:uppercase}
-    #printArea .cbk-end{break-inside:avoid; page-break-inside:avoid; text-align:center; color:#1c2a36; margin-top:12mm; padding:10mm 0 6mm}
-    #printArea .cbk-end .ce-rule{width:40mm; height:3px; background:#1F3B54; margin:0 auto 7mm}
+    #printArea .cbk-end{break-inside:avoid; page-break-inside:avoid; text-align:center; color:#1c2a36; margin-top:8mm; padding:4mm 0 2mm}
+    #printArea .cbk-end .ce-rule{width:40mm; height:3px; background:#1F3B54; margin:0 auto 5mm}
     #printArea .cbk-end .ce-t{font-size:22px; font-weight:800; letter-spacing:-.3px; color:#1F3B54}
-    #printArea .cbk-end .ce-s{font-size:13px; margin-top:3mm}
-    #printArea .cbk-end .ce-c{font-size:12px; color:#5E7690; margin-top:1.5mm}
-    #printArea .cbk-end .ce-d{font-size:12px; font-weight:600; margin-top:5mm; white-space:pre-wrap}
-    #printArea .cbk-end .ce-f{font-size:10px; color:#5E7690; margin-top:3mm}
+    #printArea .cbk-end .ce-row{display:flex; align-items:center; justify-content:center; gap:10mm; margin-top:5mm; text-align:left}
+    #printArea .cbk-end .ce-s{font-size:13px}
+    #printArea .cbk-end .ce-c{font-size:12px; color:#5E7690; margin:1mm 0 3mm}
+    #printArea .cbk-end .ce-d{font-size:12px; line-height:1.55}
+    #printArea .cbk-end .ce-d b{display:inline-block; min-width:12mm; color:#5E7690; font-size:10.5px; letter-spacing:.04em; text-transform:uppercase}
+    #printArea .cbk-end .ce-q{display:flex; flex-direction:column; align-items:center}
+    #printArea .cbk-end .ce-q img{height:28mm; width:auto}
+    #printArea .cbk-end .ce-q span{font-size:9px; letter-spacing:.3px; color:#666; margin-top:2px; text-transform:uppercase}
+    #printArea .cbk-end .ce-f{font-size:10px; color:#5E7690; margin-top:4mm}
     #printArea .cbk-cover .cv-foot{font-size:10.5px; color:#5E7690; margin-top:6mm}
     #printArea .cbk-cat{break-before:page; page-break-before:always; font-size:17px; font-weight:800; border-bottom:2px solid #000; padding-bottom:4px; margin:0 0 6mm}
     #printArea .cbk-cat.first{break-before:auto; page-break-before:auto}
@@ -1549,7 +1554,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v99 · 2026-11-17 · booklet end page, print on white';
+const APP_VER='v100 · 2026-11-18 · QR code on the booklet end page';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -2778,9 +2783,12 @@ function printCatalogueBooklet(){
   html+='<div class="cbk-end">'
     +'<div class="ce-rule"></div>'
     +'<div class="ce-t">End of catalogue</div>'
+    +'<div class="ce-row"><div class="ce-txt">'
     +'<div class="ce-s">Thank you for choosing Safe Secure Wales.</div>'
     +'<div class="ce-c">Can’t see what you need? Get in touch.</div>'
-    +'<div class="ce-d">'+[clean(biz.phone), clean(biz.email), 'safesecurewales.co.uk'].filter(Boolean).map(escapeHtml).join('  ·  ')+'</div>'
+    +[clean(biz.phone)?'<b>Tel</b> '+escapeHtml(clean(biz.phone)):'', clean(biz.email)?'<b>Email</b> '+escapeHtml(clean(biz.email)):'', '<b>Web</b> safesecurewales.co.uk'].filter(Boolean).map(l=>'<div class="ce-d">'+l+'</div>').join('')
+    +'</div>'
+    +'<div class="ce-q"><img src="'+BRAND_QR+'" alt="QR code for safesecurewales.co.uk"><span>Scan to visit our website</span></div></div>'
     +'<div class="ce-f">All prices exclude VAT · Prices correct at '+escapeHtml(dateStr)+'</div>'
     +'</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
