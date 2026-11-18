@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2a52">
+<meta name="description" content="Take the pictures and the text out of PDFs and Word files, right on your device.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>PDF Extractor</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..800&display=swap">
+<style>
+/* Layout: a navy band carries the name; below it a single column on light paper:
+   the drop area, then (once a file is read) a summary card and two tabs, Pictures and Text. */
+:root{
+  --paper:#f3f4f8; --panel:#ffffff; --ink:#151a2e; --muted:#5b6380; --line:#d9dce8;
+  --band:#1f2a52; --band-ink:#f4f6fc; --band-muted:#b4bcd8;
+  --accent:#2f55d4; --accent-ink:#ffffff; --amber:#ffb84d; --amber-soft:#fff4e0; --amber-line:#f0c47a;
+  --good:#1f8a5b; --good-soft:#e5f5ec; --bad:#c53030; --bad-soft:#fdeceb;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0e1222; --panel:#171c31; --ink:#e8ebf6; --muted:#9aa2c0; --line:#2a3150;
+    --band:#1a2347; --band-ink:#f4f6fc; --band-muted:#a9b2d4;
+    --accent:#8aa5ff; --accent-ink:#0e1222; --amber:#ffb84d; --amber-soft:#2e2412; --amber-line:#6b5223;
+    --good:#5fd39b; --good-soft:#14291f; --bad:#ff8a80; --bad-soft:#2e1517;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;background:var(--paper);color:var(--ink);font:16px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+h1,h2,p{margin:0}
+
+.top{background:var(--band);color:var(--band-ink);padding:calc(14px + env(safe-area-inset-top)) 16px 18px}
+.top-in{max-width:860px;margin:0 auto;display:flex;align-items:center;gap:14px}
+.top img{width:46px;height:46px;border-radius:12px;flex:none}
+.top h1{font-size:1.45rem;font-weight:800;letter-spacing:.2px;line-height:1.15}
+.top p{color:var(--band-muted);font-size:.92rem}
+.top a{margin-left:auto;color:var(--band-ink);text-decoration:none;font-size:.85rem;font-weight:600;border:1px solid rgba(255,255,255,.25);padding:6px 12px;border-radius:999px;white-space:nowrap}
+.top a:hover{background:rgba(255,255,255,.1)}
+
+main{max-width:860px;margin:0 auto;padding:18px 16px 60px;display:flex;flex-direction:column;gap:14px}
+
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:34px 18px;border:2px dashed var(--line);border-radius:18px;background:var(--panel);cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over,body.dragging .drop{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--panel))}
+.drop svg{width:52px;height:52px;color:var(--accent);margin-bottom:4px}
+.drop strong{font-size:1.15rem}
+.drop span{color:var(--muted)}
+.drop small{color:var(--muted);font-size:.82rem;margin-top:6px;max-width:440px}
+.private{text-align:center;color:var(--muted);font-size:.86rem}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.busy{display:flex;flex-direction:column;gap:10px}
+.busy-row{display:flex;align-items:center;gap:12px;font-weight:600}
+.spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+
+.notice{border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;border:1px solid}
+.notice.warn{background:var(--amber-soft);border-color:var(--amber-line)}
+.notice.good{background:var(--good-soft);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.notice.bad{background:var(--bad-soft);border-color:color-mix(in srgb,var(--bad) 40%,transparent)}
+.notice b{font-size:1.02rem}
+.notice p{color:var(--ink)}
+.notice small{color:var(--muted)}
+
+.btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:650;font-size:.92rem;padding:9px 15px;border-radius:11px;display:inline-flex;align-items:center;gap:7px;line-height:1.2}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn svg{width:17px;height:17px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.file{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;justify-content:space-between}
+.file-name{font-weight:750;font-size:1.08rem;word-break:break-word}
+.file-meta{color:var(--muted);font-size:.9rem}
+
+.tabs{display:flex;gap:4px;background:var(--line);padding:4px;border-radius:13px;align-self:flex-start}
+.tab{border:0;background:transparent;padding:8px 16px;border-radius:10px;font-weight:650;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.tab .n{font-weight:500;opacity:.8}
+
+.panel{display:flex;flex-direction:column;gap:12px}
+.panel-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.hint{color:var(--muted);font-size:.86rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.pic{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.thumb{appearance:none;border:0;padding:0;background:repeating-conic-gradient(color-mix(in srgb,var(--line) 70%,transparent) 0 25%,transparent 0 50%) 0 0/16px 16px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.thumb img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.thumb .noprev{color:var(--muted);font-size:.85rem;padding:10px;text-align:center}
+.pic-info{padding:9px 10px 10px;display:flex;flex-direction:column;gap:7px}
+.pic-cap{font-size:.82rem;color:var(--muted);line-height:1.3}
+.pic-cap b{color:var(--ink);font-weight:650}
+.pic .btn{justify-content:center;padding:7px 10px;font-size:.85rem}
+.empty{color:var(--muted);text-align:center;padding:26px 10px;background:var(--panel);border:1px dashed var(--line);border-radius:14px}
+
+textarea{width:100%;min-height:52vh;resize:vertical;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px;font-size:.95rem;line-height:1.55;white-space:pre-wrap}
+
+dialog{border:0;border-radius:16px;padding:0;background:var(--panel);color:var(--ink);max-width:min(94vw,1000px);width:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(8,10,20,.72)}
+.view{display:flex;flex-direction:column}
+.view img{max-width:min(94vw,1000px);max-height:72vh;object-fit:contain;display:block;margin:0 auto;background:repeating-conic-gradient(color-mix(in srgb,var(--line) 70%,transparent) 0 25%,transparent 0 50%) 0 0/16px 16px}
+.view-foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:12px 14px}
+
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-weight:600;font-size:.9rem;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:9}
+
+@media (max-width:520px){
+  .top a{padding:5px 10px}
+  .top p{display:none}
+  .grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .tabs{align-self:stretch}
+  .tab{flex:1}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <img src="icon-192.png" alt="">
+    <div>
+      <h1>PDF Extractor</h1>
+      <p>Take the pictures and the words out of a document.</p>
+    </div>
+    <a href="../">My apps</a>
+  </div>
+</header>
+
+<main>
+  <label class="drop" id="drop" tabindex="0">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 17v-6"/><path d="m9 14 3 3 3-3"/></svg>
+    <strong id="dropTitle">Drop a file here</strong>
+    <span id="dropSub">or click to choose one</span>
+    <small>PDF, Word (.docx), PowerPoint (.pptx), OpenDocument (.odt, .odp), or a photo of a page</small>
+    <input id="fileIn" type="file" hidden accept=".pdf,.docx,.docm,.pptx,.odt,.odp,.doc,.ppt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.presentation,image/*">
+  </label>
+  <p class="private" id="private">🔒 Everything happens on this device. Your file is never uploaded.</p>
+
+  <section class="card busy" id="busy" hidden aria-live="polite">
+    <div class="busy-row"><span class="spin"></span><span id="busyText">Reading…</span></div>
+    <div class="bar"><i id="busyBar"></i></div>
+  </section>
+
+  <section class="notice bad" id="err" hidden role="alert"></section>
+
+  <section id="result" class="panel" hidden>
+    <div class="card file">
+      <div>
+        <div class="file-name" id="fileName"></div>
+        <div class="file-meta" id="fileMeta"></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="allZip" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>Download everything (ZIP)</button>
+        <button class="btn" id="another" type="button">Open another file</button>
+      </div>
+    </div>
+
+    <div class="notice" id="scan" hidden>
+      <b id="scanTitle"></b>
+      <p id="scanText"></p>
+      <div class="row" id="scanRow"><button class="btn primary" id="ocrBtn" type="button">Read the text (OCR)</button></div>
+      <small id="scanSmall"></small>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tabPics" aria-selected="true" aria-controls="panelPics" type="button">Pictures <span class="n" id="nPics"></span></button>
+      <button class="tab" role="tab" id="tabText" aria-selected="false" aria-controls="panelText" type="button">Text <span class="n" id="nWords"></span></button>
+    </div>
+
+    <div class="panel" id="panelPics" role="tabpanel" aria-labelledby="tabPics">
+      <div class="panel-head">
+        <p class="hint" id="picsHint"></p>
+        <button class="btn" id="picsZip" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>All pictures (ZIP)</button>
+      </div>
+      <div class="grid" id="grid"></div>
+      <p class="empty" id="picsEmpty" hidden>No pictures were found in this file.</p>
+    </div>
+
+    <div class="panel" id="panelText" role="tabpanel" aria-labelledby="tabText" hidden>
+      <div class="panel-head">
+        <p class="hint" id="textHint"></p>
+        <div class="row">
+          <button class="btn" id="copyText" type="button">Copy text</button>
+          <button class="btn" id="saveText" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>Download .txt</button>
+        </div>
+      </div>
+      <textarea id="text" readonly spellcheck="false" aria-label="Text from the document"></textarea>
+      <p class="empty" id="textEmpty" hidden>No text found yet.</p>
+    </div>
+  </section>
+</main>
+
+<dialog id="viewer">
+  <div class="view">
+    <img id="viewImg" alt="">
+    <div class="view-foot">
+      <span class="pic-cap" id="viewCap"></span>
+      <div class="row">
+        <button class="btn primary" id="viewSave" type="button">Download</button>
+        <button class="btn" id="viewClose" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+/* Reading libraries, pinned. They load only when a file needs them, straight
+   from the CDN into this page; the document itself is never sent anywhere. */
+var PDFJS_ROOT = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/";
+var JSZIP_URL  = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+var TESS_URL   = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+var TINY = 16;            // pictures smaller than this (px) are decorations: skipped
+var $ = function(id){ return document.getElementById(id); };
+
+var state = null;         // the file currently shown
+var run = 0;              // bumps each time a new file starts, so old work stops
+
+/* ---------- small helpers ---------- */
+function loadScript(src){
+  return new Promise(function(res, rej){
+    var s = document.createElement("script"); s.src = src; s.async = true;
+    s.onload = res; s.onerror = function(){ rej(new Error("load")); };
+    document.head.appendChild(s);
+  });
+}
+var pdfjsP = null, zipP = null, tessP = null;
+function getPdfjs(){
+  if(!pdfjsP) pdfjsP = import(PDFJS_ROOT + "build/pdf.min.mjs").then(function(lib){
+    lib.GlobalWorkerOptions.workerSrc = PDFJS_ROOT + "build/pdf.worker.min.mjs"; return lib;
+  }).catch(function(e){ pdfjsP = null; throw e; });
+  return pdfjsP;
+}
+function getZip(){
+  if(!zipP) zipP = (window.JSZip ? Promise.resolve() : loadScript(JSZIP_URL)).then(function(){ return window.JSZip; })
+    .catch(function(e){ zipP = null; throw e; });
+  return zipP;
+}
+function getTess(){
+  if(!tessP) tessP = (window.Tesseract ? Promise.resolve() : loadScript(TESS_URL)).then(function(){ return window.Tesseract; })
+    .catch(function(e){ tessP = null; throw e; });
+  return tessP;
+}
+function Friendly(msg){ this.friendly = msg; }
+function offlineMsg(){ return "Couldn’t load the reading tools. Check you’re online and try again — they’re saved for offline use after the first time."; }
+function pad(n, w){ n = String(n); while(n.length < w) n = "0" + n; return n; }
+function plural(n, one, many){ return n + " " + (n === 1 ? one : (many || one + "s")); }
+function baseName(name){ return (name || "document").replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|]+/g, "_").trim() || "document"; }
+function extOf(name){ var m = /\.([a-z0-9]+)$/i.exec(name || ""); return m ? m[1].toLowerCase() : ""; }
+function fmtBytes(b){ if(b < 1024) return b + " B"; if(b < 1048576) return Math.round(b/1024) + " KB"; return (b/1048576).toFixed(1) + " MB"; }
+function words(t){ var m = (t || "").match(/\S+/g); return m ? m.length : 0; }
+function tidy(t){ return (t || "").replace(/\r\n?/g, "\n").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); }
+var MIME = { png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg", gif:"image/gif", webp:"image/webp", bmp:"image/bmp", svg:"image/svg+xml",
+  tif:"image/tiff", tiff:"image/tiff", emf:"image/emf", wmf:"image/wmf", heic:"image/heic", avif:"image/avif", ico:"image/x-icon" };
+var SHOWABLE = { png:1, jpg:1, jpeg:1, gif:1, webp:1, bmp:1, svg:1, avif:1, ico:1 };
+
+function saveBlob(blob, name){
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+var toastT = 0;
+function toast(msg){
+  var t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(function(){ t.hidden = true; }, 2200);
+}
+function busy(text, frac){
+  $("busy").hidden = false; $("busyText").textContent = text;
+  $("busyBar").style.width = (frac == null ? 0 : Math.max(0, Math.min(1, frac)) * 100) + "%";
+}
+function idle(){ $("busy").hidden = true; }
+function showError(html){ var e = $("err"); e.innerHTML = html; e.hidden = false; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+/* ---------- start / reset ---------- */
+function reset(){
+  if(state){
+    state.images.forEach(function(im){ if(im.url) URL.revokeObjectURL(im.url); });
+    if(state.pdf) try{ state.pdf.destroy(); }catch(e){}
+  }
+  state = null;
+  $("result").hidden = true; $("err").hidden = true; idle();
+  $("grid").innerHTML = ""; $("text").value = "";
+}
+function showPicker(show){
+  $("drop").hidden = !show; $("private").hidden = !show;
+}
+
+async function openFile(file){
+  if(!file) return;
+  var my = ++run;
+  reset(); showPicker(false);
+  state = { file:file, name:file.name || "document", base:baseName(file.name), kind:"", unit:"page",
+            pages:[], images:[], tiny:0, ocrDone:false, pdf:null };
+  busy("Opening " + state.name + "…", 0);
+  try{
+    var head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+    var ext = extOf(file.name);
+    var isPdf = head[0]===0x25 && head[1]===0x50 && head[2]===0x44 && head[3]===0x46;     // %PDF
+    var isZip = head[0]===0x50 && head[1]===0x4b;                                       // PK
+    var isOle = head[0]===0xd0 && head[1]===0xcf && head[2]===0x11 && head[3]===0xe0;   // old Office
+    if(isPdf || (ext === "pdf" && !isZip)) await readPdf(file, my);
+    else if(isZip) await readZipDoc(file, my);
+    else if(isOle || ext === "doc" || ext === "ppt")
+      throw new Friendly("This is an older Office file (." + (ext || "doc") + "), which can’t be opened here. Open it in Word or PowerPoint and use <b>Save As</b> to save it as a PDF or a .docx / .pptx, then try again.");
+    else if(/^image\//.test(file.type) || MIME[ext]) await readImage(file, my);
+    else throw new Friendly("This kind of file isn’t supported. Try a PDF, a Word (.docx) or PowerPoint (.pptx) file, or a photo of a page.");
+    if(my !== run) return;
+    idle(); render();
+  }catch(e){
+    if(my !== run) return;
+    console.error(e);
+    var msg = e && e.friendly ? e.friendly : "Sorry, something went wrong reading this file. It may be damaged, or in a format this app can’t read.";
+    reset(); showPicker(true);
+    showError("<b>Couldn’t read that file</b><p>" + msg + "</p>");
+  }
+}
+
+/* ---------- PDF ---------- */
+async function readPdf(file, my){
+  var lib;
+  try{ lib = await getPdfjs(); }catch(e){ throw new Friendly(offlineMsg()); }
+  var data = new Uint8Array(await file.arrayBuffer());
+  var task = lib.getDocument({ data:data, isEvalSupported:false,
+    cMapUrl:PDFJS_ROOT + "cmaps/", cMapPacked:true, standardFontDataUrl:PDFJS_ROOT + "standard_fonts/" });
+  var gaveUp = false;
+  task.onPassword = function(update, reason){
+    idle();
+    var again = reason === lib.PasswordResponses.INCORRECT_PASSWORD;
+    var p = prompt(again ? "That password didn’t work. Try again:" : "This PDF is locked. Type its password to open it:");
+    if(p === null){ gaveUp = true; task.destroy(); return; }
+    busy("Opening " + state.name + "…", 0);
+    update(p);
+  };
+  var pdf;
+  try{ pdf = await task.promise; }
+  catch(e){
+    if(gaveUp || (e && e.name === "PasswordException")) throw new Friendly("This PDF is password-protected and wasn’t unlocked.");
+    throw new Friendly("This PDF couldn’t be opened — it may be damaged or not really a PDF.");
+  }
+  if(my !== run){ pdf.destroy(); return; }
+  state.pdf = pdf; state.kind = "pdf"; state.unit = "page";
+  var OPS = lib.OPS, n = pdf.numPages, w = String(n).length, seen = {};
+  for(var p = 1; p <= n; p++){
+    busy("Reading page " + p + " of " + n + "…", (p - 1) / n);
+    var page = await pdf.getPage(p);
+    if(my !== run) return;
+    var tc = await page.getTextContent();
+    var txt = "";
+    tc.items.forEach(function(it){ if(typeof it.str === "string"){ txt += it.str; if(it.hasEOL) txt += "\n"; } });
+    state.pages.push({ label:"Page " + p, text:tidy(txt), ocr:false });
+
+    var ops = await page.getOperatorList();
+    var k = 0;
+    for(var i = 0; i < ops.fnArray.length; i++){
+      var fn = ops.fnArray[i], args = ops.argsArray[i], img = null, id = null;
+      if(fn === OPS.paintImageXObject || fn === OPS.paintImageXObjectRepeat){
+        id = args[0];
+        if(typeof id !== "string") continue;
+        if(id.indexOf("g_") === 0 && seen[id]) continue;          // shared picture already taken
+        img = await getObj(id.indexOf("g_") === 0 ? page.commonObjs : page.objs, id);
+      }else if(fn === OPS.paintInlineImageXObject || fn === OPS.paintInlineImageXObjectGroup){
+        img = args[0];
+      }
+      if(!img) continue;
+      if(id) seen[id] = 1;
+      var out = await pdfImageToBlob(img);
+      if(!out) continue;
+      if(out.tiny){ state.tiny++; continue; }
+      if(seen["fp:" + out.fp]) continue;                          // same picture on another page
+      seen["fp:" + out.fp] = 1;
+      k++;
+      state.images.push({ blob:out.blob, name:state.base + "-page" + pad(p, w) + "-" + pad(k, 2) + "." + out.ext,
+        w:out.w, h:out.h, where:"Page " + p, show:true });
+    }
+    page.cleanup();
+    if(my !== run) return;
+  }
+}
+function getObj(store, id){
+  return new Promise(function(res){
+    var done = false, finish = function(v){ if(!done){ done = true; res(v || null); } };
+    try{ store.get(id, finish); }catch(e){ finish(null); }
+    setTimeout(function(){ finish(null); }, 8000);
+  });
+}
+/* Draw a pdf.js picture onto a canvas and save it as PNG, which keeps every pixel.
+   Big photos, where PNG would be huge, are saved as a high-quality JPEG instead. */
+async function pdfImageToBlob(img){
+  var w = img.width, h = img.height;
+  if(!w || !h) return null;
+  if(w < TINY || h < TINY) return { tiny:true };
+  var c = document.createElement("canvas"); c.width = w; c.height = h;
+  var x = c.getContext("2d", { willReadFrequently:true });
+  if(img.bitmap){ x.drawImage(img.bitmap, 0, 0); }
+  else if(img.data){
+    var id = x.createImageData(w, h), d = id.data, s = img.data, i, j, n = w * h;
+    if(img.kind === 3){ d.set(s.subarray(0, n * 4)); }
+    else if(img.kind === 2){ for(i = 0, j = 0; i < n; i++, j += 3){ d[i*4] = s[j]; d[i*4+1] = s[j+1]; d[i*4+2] = s[j+2]; d[i*4+3] = 255; } }
+    else if(img.kind === 1){
+      var stride = (w + 7) >> 3;
+      for(var yy = 0; yy < h; yy++) for(var xx = 0; xx < w; xx++){
+        var v = (s[yy * stride + (xx >> 3)] >> (7 - (xx & 7))) & 1 ? 255 : 0, o = (yy * w + xx) * 4;
+        d[o] = d[o+1] = d[o+2] = v; d[o+3] = 255;
+      }
+    }else return null;
+    x.putImageData(id, 0, 0);
+  }else return null;
+
+  // Does it use transparency? Check a spread of pixels (all of them for small pictures).
+  var opaque = true, all = x.getImageData(0, 0, w, h).data, step = Math.max(1, Math.floor((w * h) / 400000)) * 4;
+  for(var a = 3; a < all.length; a += step){ if(all[a] < 255){ opaque = false; break; } }
+  // Fingerprint from the real pixels (a spread of up to ~1 million values), so the
+  // same picture repeated on many pages is only listed once.
+  var hsh = 2166136261, hs = Math.max(1, Math.floor(all.length / 1000000));
+  for(var q = 0; q < all.length; q += hs){ hsh ^= all[q]; hsh = Math.imul(hsh, 16777619); }
+  var fp = w + "x" + h + ":" + (hsh >>> 0).toString(36);
+
+  var enc = function(type, q){ return new Promise(function(res){ c.toBlob(res, type, q); }); };
+  var blob = await enc("image/png"), ext = "png";
+  if(blob && opaque && blob.size > 300000){            // a big PNG of a photo: JPEG is far smaller
+    var jpg = await enc("image/jpeg", 0.92);
+    if(jpg && jpg.size < blob.size * 0.6){ blob = jpg; ext = "jpg"; }
+  }
+  c.width = c.height = 0;
+  if(!blob) return null;
+  return { blob:blob, ext:ext, w:w, h:h, fp:fp };
+}
+
+/* ---------- Word / PowerPoint / OpenDocument (they are ZIP files inside) ---------- */
+async function readZipDoc(file, my){
+  var JSZip;
+  try{ JSZip = await getZip(); }catch(e){ throw new Friendly(offlineMsg()); }
+  var zip;
+  try{ zip = await JSZip.loadAsync(file); }catch(e){ throw new Friendly("This file looks damaged and couldn’t be opened."); }
+  if(my !== run) return;
+  if(zip.file("word/document.xml")) return readDocx(zip, my);
+  if(zip.file("ppt/presentation.xml")) return readPptx(zip, my);
+  if(zip.file("content.xml") && zip.file("mimetype")) return readOdf(zip, my);
+  throw new Friendly("This file isn’t a document this app can read. Try a PDF, .docx, .pptx, .odt or .odp file.");
+}
+function parseXml(s){ return new DOMParser().parseFromString(s, "application/xml"); }
+async function xmlOf(zip, path){ var f = zip.file(path); return f ? parseXml(await f.async("string")) : null; }
+function kids(node){ return Array.prototype.slice.call(node.childNodes).filter(function(n){ return n.nodeType === 1; }); }
+function resolvePath(dir, target){
+  if(/^\//.test(target)) return target.slice(1);
+  var parts = (dir ? dir.split("/") : []).concat(target.split("/")), out = [];
+  parts.forEach(function(p){ if(p === "..") out.pop(); else if(p && p !== ".") out.push(p); });
+  return out.join("/");
+}
+async function relsOf(zip, partPath){
+  var i = partPath.lastIndexOf("/"), dir = partPath.slice(0, i), file = partPath.slice(i + 1);
+  var doc = await xmlOf(zip, dir + "/_rels/" + file + ".rels"), map = {};
+  if(doc) Array.prototype.forEach.call(doc.getElementsByTagName("Relationship"), function(r){
+    if(r.getAttribute("TargetMode") === "External") return;
+    map[r.getAttribute("Id")] = resolvePath(dir, r.getAttribute("Target") || "");
+  });
+  return map;
+}
+/* Picture references in reading order: <a:blip r:embed>, <v:imagedata r:id>. */
+function embedIds(doc){
+  var ids = [];
+  (function walk(n){
+    kids(n).forEach(function(k){
+      if(k.localName === "blip" || k.localName === "imagedata"){
+        for(var a = 0; a < k.attributes.length; a++){
+          var at = k.attributes[a];
+          if((at.localName === "embed" || at.localName === "id") && /relationships/.test(at.namespaceURI || "")) ids.push(at.value);
+        }
+      }
+      walk(k);
+    });
+  })(doc.documentElement);
+  return ids;
+}
+async function addZipImage(zip, path, where, done){
+  if(done[path]) return; done[path] = 1;
+  var f = zip.file(path); if(!f) return;
+  var ext = extOf(path); if(!MIME[ext]) return;
+  var bytes = await f.async("uint8array");
+  var blob = new Blob([bytes], { type:MIME[ext] });
+  var im = { blob:blob, name:state.base + "-" + path.split("/").pop(), w:0, h:0, where:where, show:!!SHOWABLE[ext] };
+  if(im.show){
+    var dim = await imageSize(blob);
+    if(dim){ im.w = dim.w; im.h = dim.h; if(dim.w < TINY && dim.h < TINY){ state.tiny++; return; } }
+  }
+  state.images.push(im);
+}
+function imageSize(blob){
+  return new Promise(function(res){
+    var u = URL.createObjectURL(blob), i = new Image();
+    i.onload = function(){ res({ w:i.naturalWidth, h:i.naturalHeight }); URL.revokeObjectURL(u); };
+    i.onerror = function(){ res(null); URL.revokeObjectURL(u); };
+    i.src = u;
+  });
+}
+async function remainingMedia(zip, prefix, where, done){
+  var paths = Object.keys(zip.files).filter(function(p){ return p.indexOf(prefix) === 0 && !zip.files[p].dir; })
+    .sort(function(a, b){ return a.localeCompare(b, undefined, { numeric:true }); });
+  for(var i = 0; i < paths.length; i++) await addZipImage(zip, paths[i], where, done);
+}
+
+/* Word: paragraphs become lines; table cells are separated by tabs. */
+function wordText(node){
+  var out = "";
+  (function walk(n){
+    kids(n).forEach(function(k){
+      var l = k.localName;
+      if(l === "t") out += k.textContent;
+      else if(l === "tab") out += "\t";
+      else if(l === "br" || l === "cr") out += "\n";
+      else if(l === "delText" || l === "instrText") return;
+      else walk(k);
+    });
+  })(node);
+  return out;
+}
+function wordBlocks(node, lines){
+  kids(node).forEach(function(k){
+    var l = k.localName;
+    if(l === "p") lines.push(wordText(k));
+    else if(l === "tbl"){
+      kids(k).filter(function(r){ return r.localName === "tr"; }).forEach(function(tr){
+        var cells = kids(tr).filter(function(c){ return c.localName === "tc"; }).map(function(tc){
+          var inner = []; wordBlocks(tc, inner); return inner.join(" ").replace(/\s+/g, " ").trim();
+        });
+        lines.push(cells.join("\t"));
+      });
+      lines.push("");
+    }
+    else wordBlocks(k, lines);
+  });
+}
+async function readDocx(zip, my){
+  state.kind = "docx"; state.unit = "";
+  busy("Reading the Word document…", .3);
+  var doc = await xmlOf(zip, "word/document.xml");
+  var body = doc.getElementsByTagNameNS("*", "body")[0] || doc.documentElement, lines = [];
+  wordBlocks(body, lines);
+  var notes = [];
+  for(var nf of ["word/footnotes.xml", "word/endnotes.xml"]){
+    var nd = await xmlOf(zip, nf);
+    if(nd) Array.prototype.forEach.call(nd.getElementsByTagNameNS("*", "footnote").length ? nd.getElementsByTagNameNS("*", "footnote") : nd.getElementsByTagNameNS("*", "endnote"), function(fnode){
+      var t = []; wordBlocks(fnode, t); t = tidy(t.join("\n")); if(t) notes.push(t);
+    });
+  }
+  var text = lines.join("\n");
+  if(notes.length) text += "\n\n— Notes —\n" + notes.join("\n");
+  state.pages.push({ label:"", text:tidy(text), ocr:false });
+  if(my !== run) return;
+  busy("Collecting pictures…", .6);
+  var rels = await relsOf(zip, "word/document.xml"), done = {};
+  var ids = embedIds(doc);
+  for(var i = 0; i < ids.length; i++) if(rels[ids[i]]) await addZipImage(zip, rels[ids[i]], "In the document", done);
+  await remainingMedia(zip, "word/media/", "Header, footer or unused", done);
+}
+
+/* PowerPoint: one block of text per slide, pictures listed slide by slide. */
+async function readPptx(zip, my){
+  state.kind = "pptx"; state.unit = "slide";
+  var slides = Object.keys(zip.files).filter(function(p){ return /^ppt\/slides\/slide\d+\.xml$/.test(p); })
+    .sort(function(a, b){ return a.localeCompare(b, undefined, { numeric:true }); });
+  var done = {};
+  for(var s = 0; s < slides.length; s++){
+    busy("Reading slide " + (s + 1) + " of " + slides.length + "…", s / slides.length);
+    var doc = await xmlOf(zip, slides[s]);
+    var paras = Array.prototype.map.call(doc.getElementsByTagNameNS("*", "p"), function(p){
+      var t = ""; Array.prototype.forEach.call(p.getElementsByTagNameNS("*", "t"), function(x){ t += x.textContent; });
+      return t;
+    }).filter(function(t){ return t.trim(); });
+    state.pages.push({ label:"Slide " + (s + 1), text:tidy(paras.join("\n")), ocr:false });
+    var rels = await relsOf(zip, slides[s]), ids = embedIds(doc);
+    for(var i = 0; i < ids.length; i++) if(rels[ids[i]]) await addZipImage(zip, rels[ids[i]], "Slide " + (s + 1), done);
+    if(my !== run) return;
+  }
+  await remainingMedia(zip, "ppt/media/", "Layouts or unused", done);
+}
+
+/* OpenDocument (.odt / .odp) */
+function odfText(node){
+  var out = "";
+  (function walk(n){
+    Array.prototype.forEach.call(n.childNodes, function(k){
+      if(k.nodeType === 3){ out += k.nodeValue; return; }
+      if(k.nodeType !== 1) return;
+      var l = k.localName;
+      if(l === "s"){ out += " ".repeat(+(k.getAttribute("text:c") || 1)); }
+      else if(l === "tab") out += "\t";
+      else if(l === "line-break") out += "\n";
+      else if(l === "note" || l === "annotation") return;
+      else walk(k);
+    });
+  })(node);
+  return out;
+}
+function odfLines(node, lines){
+  kids(node).forEach(function(k){
+    if(k.localName === "p" || k.localName === "h") lines.push(odfText(k));
+    else odfLines(k, lines);
+  });
+}
+async function readOdf(zip, my){
+  var mt = (await zip.file("mimetype").async("string")).trim();
+  var isPres = /presentation/.test(mt);
+  state.kind = isPres ? "odp" : "odt"; state.unit = isPres ? "slide" : "";
+  busy("Reading the document…", .3);
+  var doc = await xmlOf(zip, "content.xml"), done = {};
+  var bodyEl = doc.getElementsByTagNameNS("*", "body")[0] || doc.documentElement;
+  var pics = function(scope, where){
+    return Array.prototype.map.call(scope.getElementsByTagNameNS("*", "image"), function(im){
+      return { path:resolvePath("", im.getAttribute("xlink:href") || ""), where:where };
+    });
+  };
+  var list = [];
+  if(isPres){
+    var pages = bodyEl.getElementsByTagNameNS("*", "page");
+    Array.prototype.forEach.call(pages, function(pg, i){
+      var lines = []; odfLines(pg, lines);
+      state.pages.push({ label:"Slide " + (i + 1), text:tidy(lines.join("\n")), ocr:false });
+      list = list.concat(pics(pg, "Slide " + (i + 1)));
+    });
+  }else{
+    var lines = []; odfLines(bodyEl, lines);
+    state.pages.push({ label:"", text:tidy(lines.join("\n")), ocr:false });
+    list = pics(bodyEl, "In the document");
+  }
+  if(my !== run) return;
+  busy("Collecting pictures…", .6);
+  for(var i = 0; i < list.length; i++) await addZipImage(zip, list[i].path, list[i].where, done);
+  await remainingMedia(zip, "Pictures/", "Unused", done);
+}
+
+/* ---------- a photo of a page ---------- */
+async function readImage(file, my){
+  state.kind = "image"; state.unit = "";
+  var dim = await imageSize(file);
+  if(!dim) throw new Friendly("This picture can’t be shown in this browser (for example, iPhone HEIC photos). Save it as a JPEG or PNG and try again.");
+  state.images.push({ blob:file, name:file.name || "picture.png", w:dim.w, h:dim.h, where:"The picture you opened", show:true });
+  state.pages.push({ label:"", text:"", ocr:false });
+}
+
+/* ---------- OCR: read words from pictures of pages ---------- */
+function ocrTargets(){
+  if(!state) return [];
+  if(state.kind === "image") return state.ocrDone ? [] : [0];
+  if(state.kind !== "pdf") return [];
+  var t = [];
+  state.pages.forEach(function(p, i){ if(!p.ocr && words(p.text) < 3) t.push(i); });
+  return t;
+}
+async function runOcr(){
+  var my = run, targets = ocrTargets();
+  if(!targets.length) return;
+  $("ocrBtn").disabled = true;
+  var worker = null;
+  try{
+    busy("Getting the text reader ready (first time only)…", 0);
+    var T;
+    try{ T = await getTess(); }catch(e){ throw new Friendly("OCR needs an internet connection the first time, to download the text reader. Connect and try again."); }
+    worker = await T.createWorker("eng", 1, { logger:function(m){
+      if(my !== run) return;
+      if(/loading|initializ/.test(m.status) && m.progress != null) busy("Getting the text reader ready (first time only)…", m.progress);
+    }});
+    for(var i = 0; i < targets.length; i++){
+      if(my !== run) return;
+      var pi = targets[i], label = state.kind === "pdf" ? "page " + (pi + 1) : "the picture";
+      busy("Reading the words on " + label + (targets.length > 1 ? " (" + (i + 1) + " of " + targets.length + ")" : "") + "…", i / targets.length);
+      var src = state.kind === "pdf" ? await renderPage(pi + 1) : state.images[0].blob;
+      var r = await worker.recognize(src);
+      if(my !== run) return;
+      state.pages[pi].text = tidy(r.data.text);
+      state.pages[pi].ocr = true;
+    }
+    state.ocrDone = true;
+    idle(); render();
+    var got = targets.filter(function(i){ return words(state.pages[i].text); }).length;
+    toast(got ? "Text read — see the Text tab" : "No readable words were found");
+    if(got) selectTab("text");
+  }catch(e){
+    console.error(e);
+    if(my !== run) return;
+    idle();
+    showError("<b>OCR didn’t work</b><p>" + (e && e.friendly ? e.friendly : "Something went wrong while reading the words. Please try again.") + "</p>");
+  }finally{
+    if(worker) worker.terminate().catch(function(){});
+    $("ocrBtn").disabled = false;
+  }
+}
+async function renderPage(n){
+  var page = await state.pdf.getPage(n);
+  var vp1 = page.getViewport({ scale:1 });
+  var scale = Math.max(1, Math.min(3, 2200 / Math.max(vp1.width, vp1.height)));
+  var vp = page.getViewport({ scale:scale });
+  var c = document.createElement("canvas"); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height);
+  await page.render({ canvasContext:x, viewport:vp }).promise;
+  page.cleanup();
+  return c;
+}
+
+/* ---------- show the result ---------- */
+function fullText(){
+  if(!state) return "";
+  var multi = state.pages.length > 1;
+  return state.pages.map(function(p){
+    var t = p.text || (multi ? "(no text on this " + (state.unit || "page") + ")" : "");
+    return multi && p.label ? "— " + p.label + " —\n" + t : t;
+  }).join("\n\n").trim() + "\n";
+}
+var tab = "pics";
+function selectTab(which){
+  tab = which;
+  $("tabPics").setAttribute("aria-selected", which === "pics"); $("tabText").setAttribute("aria-selected", which === "text");
+  $("panelPics").hidden = which !== "pics"; $("panelText").hidden = which !== "text";
+}
+function render(){
+  var s = state; if(!s) return;
+  var nW = s.pages.reduce(function(a, p){ return a + words(p.text); }, 0);
+  var nI = s.images.length;
+  $("fileName").textContent = s.name;
+  var kindName = { pdf:"PDF", docx:"Word document", pptx:"PowerPoint", odt:"OpenDocument text", odp:"OpenDocument slides", image:"Picture" }[s.kind] || "Document";
+  var bits = [kindName];
+  if(s.kind === "pdf") bits.push(plural(s.pages.length, "page"));
+  if(s.kind === "pptx" || s.kind === "odp") bits.push(plural(s.pages.length, "slide"));
+  bits.push(plural(nI, "picture"), plural(nW, "word"), fmtBytes(s.file.size));
+  $("fileMeta").textContent = bits.join(" · ");
+  $("nPics").textContent = "(" + nI + ")";
+  $("nWords").textContent = "(" + nW.toLocaleString() + " words)";
+
+  // pictures
+  var g = $("grid"); g.innerHTML = "";
+  s.images.forEach(function(im, i){
+    if(!im.url) im.url = URL.createObjectURL(im.blob);
+    var card = document.createElement("div"); card.className = "pic";
+    var th = document.createElement("button"); th.type = "button"; th.className = "thumb";
+    th.setAttribute("aria-label", "View picture " + (i + 1));
+    if(im.show){
+      var img = document.createElement("img"); img.src = im.url; img.alt = ""; img.loading = "lazy"; img.decoding = "async";
+      th.appendChild(img);
+      th.addEventListener("click", function(){ view(i); });
+    }else{
+      th.innerHTML = '<span class="noprev">' + esc(extOf(im.name).toUpperCase()) + " picture<br>(no preview, but you can download it)</span>";
+      th.disabled = true;
+    }
+    var info = document.createElement("div"); info.className = "pic-info";
+    var cap = document.createElement("div"); cap.className = "pic-cap";
+    cap.innerHTML = "<b>" + esc(im.where) + "</b><br>" + (im.w ? im.w + " × " + im.h + " · " : "") + extOf(im.name).toUpperCase() + " · " + fmtBytes(im.blob.size);
+    var b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Download";
+    b.addEventListener("click", function(){ saveBlob(im.blob, im.name); });
+    info.appendChild(cap); info.appendChild(b);
+    card.appendChild(th); card.appendChild(info); g.appendChild(card);
+  });
+  $("picsEmpty").hidden = nI > 0; $("picsZip").hidden = nI < 2;
+  var hint = nI ? (nI === 1 ? "1 picture." : nI + " pictures, in the order they appear.") + " Tap one to see it bigger." : "";
+  if(s.tiny) hint += (hint ? " " : "") + plural(s.tiny, "tiny decoration") + " (lines, dots, bullets) left out.";
+  $("picsHint").textContent = hint;
+
+  // text
+  var t = nW ? fullText() : "";
+  $("text").value = t; $("text").hidden = !nW; $("textEmpty").hidden = !!nW;
+  $("copyText").disabled = $("saveText").disabled = !nW;
+  var ocrPages = s.pages.filter(function(p){ return p.ocr; }).length;
+  $("textHint").textContent = nW ? (ocrPages ? "Some of this text was read by OCR, so check names and numbers." : "This is the text exactly as stored in the file.") : "";
+
+  // scanned / OCR notice
+  var sc = $("scan"), need = ocrTargets(), total = s.pages.length;
+  sc.className = "notice"; sc.hidden = true; $("scanRow").hidden = false; $("scanSmall").textContent = "";
+  if(need.length){
+    sc.hidden = false; sc.classList.add("warn");
+    if(s.kind === "image"){
+      $("scanTitle").textContent = "This is a picture, so there’s no text to copy yet";
+      $("scanText").textContent = "OCR can read the words in it for you.";
+    }else if(need.length === total){
+      $("scanTitle").textContent = "This PDF looks scanned";
+      $("scanText").textContent = (total === 1 ? "Its page is a picture" : "Its pages are pictures") + ", so there’s no text to copy. OCR can read the words from the " + (total === 1 ? "page" : "pages") + " for you.";
+    }else{
+      $("scanTitle").textContent = need.length + " of " + total + " pages have no text";
+      $("scanText").textContent = "Those pages are probably scanned pictures. OCR can read the words on them for you.";
+    }
+    $("ocrBtn").textContent = "Read the text (OCR)";
+    $("scanSmall").textContent = "OCR works in English and takes a few seconds a page. The first time, it downloads a text reader (about 15 MB). Your file still stays on this device.";
+  }else if(ocrPages){
+    sc.hidden = false; sc.classList.add("good"); $("scanRow").hidden = true;
+    $("scanTitle").textContent = "Text read by OCR";
+    $("scanText").textContent = "The words on " + (s.kind === "image" ? "the picture" : plural(ocrPages, "page")) + " were read by OCR. It’s usually good, but check names and numbers before relying on them.";
+  }
+
+  $("result").hidden = false;
+  selectTab(nI ? tab : "text");
+}
+function view(i){
+  var im = state.images[i];
+  $("viewImg").src = im.url;
+  $("viewCap").innerHTML = "<b>" + esc(im.where) + "</b> · " + (im.w ? im.w + " × " + im.h + " · " : "") + fmtBytes(im.blob.size);
+  $("viewSave").onclick = function(){ saveBlob(im.blob, im.name); };
+  $("viewer").showModal();
+}
+
+async function zipUp(withText){
+  var s = state; if(!s) return;
+  var JSZip;
+  try{ JSZip = await getZip(); }catch(e){ toast("Couldn’t make the ZIP — check you’re online"); return; }
+  busy("Making the ZIP…", 0);
+  var z = new JSZip(), names = {};
+  var folder = withText ? z.folder("pictures") : z;
+  s.images.forEach(function(im){
+    var n = im.name, k = 2;
+    while(names[n]) n = im.name.replace(/(\.[^.]+)?$/, "-" + (k++) + "$1");
+    names[n] = 1; folder.file(n, im.blob);
+  });
+  if(withText && $("text").value) z.file(s.base + ".txt", $("text").value);
+  try{
+    var blob = await z.generateAsync({ type:"blob", compression:"STORE" }, function(m){ busy("Making the ZIP…", m.percent / 100); });
+    saveBlob(blob, s.base + (withText ? "-extracted.zip" : "-pictures.zip"));
+  }finally{ idle(); }
+}
+
+/* ---------- wire up ---------- */
+var fileIn = $("fileIn");
+fileIn.addEventListener("change", function(){ var f = fileIn.files[0]; fileIn.value = ""; openFile(f); });
+$("drop").addEventListener("keydown", function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); fileIn.click(); } });
+$("another").addEventListener("click", function(){ run++; reset(); showPicker(true); fileIn.click(); });
+$("allZip").addEventListener("click", function(){ zipUp(true); });
+$("picsZip").addEventListener("click", function(){ zipUp(false); });
+$("ocrBtn").addEventListener("click", runOcr);
+$("tabPics").addEventListener("click", function(){ selectTab("pics"); });
+$("tabText").addEventListener("click", function(){ selectTab("text"); });
+$("viewClose").addEventListener("click", function(){ $("viewer").close(); });
+$("viewer").addEventListener("click", function(e){ if(e.target === this) this.close(); });
+$("saveText").addEventListener("click", function(){
+  saveBlob(new Blob([$("text").value], { type:"text/plain;charset=utf-8" }), state.base + ".txt");
+});
+$("copyText").addEventListener("click", function(){
+  var t = $("text").value;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast("Text copied"); }, function(){
+    var ta = $("text"); ta.focus(); ta.select();
+    try{ document.execCommand("copy"); toast("Text copied"); }catch(e){ toast("Select the text and copy it yourself"); }
+  });
+});
+/* Drop a file anywhere on the page (phones can't drag, so the box just says "choose"). */
+var TOUCH = window.matchMedia && matchMedia("(hover: none) and (pointer: coarse)").matches;
+var DROP_TITLE = TOUCH ? "Choose a file" : "Drop a file here";
+$("dropTitle").textContent = DROP_TITLE;
+if(TOUCH) $("dropSub").textContent = "Tap here to pick one";
+var depth = 0;
+window.addEventListener("dragenter", function(e){ if(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types, "Files") > -1){ depth++; document.body.classList.add("dragging"); $("dropTitle").textContent = "Let go to open it"; showPicker(true); } });
+window.addEventListener("dragleave", function(){ if(--depth <= 0){ depth = 0; document.body.classList.remove("dragging"); $("dropTitle").textContent = DROP_TITLE; if(state && !$("result").hidden) showPicker(false); } });
+window.addEventListener("dragover", function(e){ e.preventDefault(); });
+window.addEventListener("drop", function(e){
+  e.preventDefault(); depth = 0; document.body.classList.remove("dragging"); $("dropTitle").textContent = DROP_TITLE;
+  var f = e.dataTransfer && e.dataTransfer.files[0];
+  if(f) openFile(f); else if(state && !$("result").hidden) showPicker(false);
+});
+/* Opened from the phone's Share menu or "Open with" (where supported). */
+if("launchQueue" in window) window.launchQueue.setConsumer(function(p){ if(p.files && p.files[0]) p.files[0].getFile().then(openFile); });
+
+window.PDFX = { openFile:openFile };   // handy for testing from the console
+
+if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").then(function(reg){
+      document.addEventListener("visibilitychange", function(){ if(!document.hidden) reg.update().catch(function(){}); });
+    }).catch(function(){});
+  });
+}
+})();
+</script>
+</body>
+</html>
