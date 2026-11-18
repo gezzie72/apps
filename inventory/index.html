@@ -320,6 +320,8 @@
   .cesec{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border-top:1px solid var(--line); padding-top:12px; margin-top:4px}
   #catEditDlg input:disabled{opacity:.7}
   .crow .cdesc{font-size:12px; color:var(--muted); margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .crow.hid .cthumb, .crow.hid .ctop, .crow.hid .csub, .crow.hid .cdesc{opacity:.5}
+  .crow.hid .cflag{opacity:1}
   .crow .cflag.out{background:rgba(245,158,11,.15); color:#d97706}
   .crow .cflag{display:inline-block; font-size:10px; font-weight:700; vertical-align:middle; margin-left:7px; padding:2px 7px; border-radius:999px; background:var(--accent-soft,rgba(45,212,191,.15)); color:var(--accent); white-space:nowrap}
   .cfs-log{max-height:42vh; overflow:auto; margin-top:12px; display:flex; flex-direction:column; gap:4px}
@@ -646,7 +648,7 @@
     </div>
     <div id="catList"></div>
     <div class="custgrid" id="catCust" hidden></div>
-    <div class="hint c" id="catHint">Your price list for quotes &amp; orders, plus everything you hold in stock. Entries marked <b>linked</b> take their price, codes, stock and photo from the stock item, so a price change in Stock shows here too. Use <b>Details</b> or <b>Edit</b> to add a description, lead time or product group (entries in the same group print as one product with options). <b>Link to stock</b> links copied entries to their stock items in one go.</div>
+    <div class="hint c" id="catHint">Your price list for quotes &amp; orders, plus everything you hold in stock. Entries marked <b>linked</b> take their price, codes, stock and photo from the stock item, so a price change in Stock shows here too. Use <b>Details</b> or <b>Edit</b> to add a description, lead time or product group (entries in the same group print as one product with options). <b>Link to stock</b> links copied entries to their stock items in one go. Greyed entries are <b>hidden from customers</b>: they stay here for you but aren't in Customer view, the booklet, price list or CSV.</div>
   </div>
 
   <!-- REPORTS TAB -->
@@ -1114,7 +1116,7 @@
       <div><label>Notes</label><textarea id="eNotes" placeholder="optional"></textarea></div>
       <div>
         <label class="chk" for="eHideCat" style="text-transform:none; letter-spacing:0"><input type="checkbox" id="eHideCat"> Hide from catalogue and booklet</label>
-        <div class="hint" style="margin:4px 0 0">For stock you don't sell, such as fixings, labels or consumables. It stays in Stock and can still go on orders and invoices.</div>
+        <div class="hint" style="margin:4px 0 0">For stock you don't sell, such as fixings, labels or consumables. Customers won't see it in Customer view, the booklet, price list or CSV. It stays in Stock, in your catalogue Manage list (greyed), and on orders and invoices.</div>
       </div>
       <div class="duo" style="margin-top:4px">
         <button class="btn ghost" onclick="editDlg.close()">Cancel</button>
@@ -1269,7 +1271,7 @@
       <div><label for="ceLead">Lead time <span class="muted" style="font-weight:500">(when out of stock)</span></label><input id="ceLead" list="leadOpts" autocomplete="off" placeholder="e.g. 2–3 working days"></div>
       <div>
         <label class="chk" for="ceHide" style="text-transform:none; letter-spacing:0"><input type="checkbox" id="ceHide"> Hide from catalogue and booklet</label>
-        <div class="hint" id="ceHideHint" style="margin:4px 0 0">Keeps the entry for quotes, orders and invoices, but leaves it out of the catalogue list, Customer view, booklet, price list and CSV.</div>
+        <div class="hint" id="ceHideHint" style="margin:4px 0 0">Not shown to customers: left out of Customer view, the booklet, price list and CSV. It stays in your Manage list (greyed) and on quotes, orders and invoices.</div>
       </div>
       <datalist id="groupOpts"></datalist>
       <datalist id="leadOpts"><option value="Next working day"><option value="2–3 working days"><option value="3–5 working days"><option value="5–7 working days"><option value="1–2 weeks"><option value="2–3 weeks"><option value="Call for lead time"></datalist>
@@ -1558,7 +1560,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v101 · 2026-11-18 · hide catalogue entries';
+const APP_VER='v102 · 2026-11-18 · hidden items stay in the Manage list';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -2575,7 +2577,7 @@ function ceLinkChanged(initial){
   CE_LINKED_INPUTS.forEach(k=>{ const el=$(k); if(el) el.disabled=!!it; });
   const hh=$('ceHideHint'); if(hh) hh.innerHTML = (it && it.hideCat)
     ? '<b>Hidden already:</b> the linked stock item is ticked “Hide from catalogue and booklet”. Untick it there to show this entry.'
-    : 'Keeps the entry for quotes, orders and invoices, but leaves it out of the catalogue list, Customer view, booklet, price list and CSV.';
+    : 'Not shown to customers: left out of Customer view, the booklet, price list and CSV. It stays in your Manage list (greyed) and on quotes, orders and invoices.';
   $('ceOpenStock').style.display=it?'inline-flex':'none';
   const ph=$('cePriceHint'); if(ph && it) ph.textContent='';
   renderPhotoBox('cePhotoBox','catedit');
@@ -2663,20 +2665,21 @@ const catQty=c=> c._src==='stock' ? int(c.qty) : (c._item ? int(c._item.qty) : n
 let catFilterCat='all';   // 'all' | '__uncat__' | a category name — catalogue tab category chip
 function catFiltered(){
   let list=catMerged().sort((a,b)=>clean(a.name).localeCompare(clean(b.name)));
+  // Manage view lists hidden rows too (greyed); Customer view, booklet, price list and CSV drop them.
   if(catFilterCat==='__hidden__') list=list.filter(c=>c._hidden);
-  else list=list.filter(c=>!c._hidden);
+  else if(catMode==='customer') list=list.filter(c=>!c._hidden);
   if(catFilterCat==='__uncat__') list=list.filter(c=>!clean(c.category));
   else if(catFilterCat!=='all' && catFilterCat!=='__hidden__') list=list.filter(c=>clean(c.category)===catFilterCat);
   const q=clean($('catSearch')?$('catSearch').value:'').toLowerCase();
   if(q) list=list.filter(c=>[c.name,c.sku,c.colour,c.category,c.barcode,c.group,c.variant,c.desc].some(v=>(v||'').toLowerCase().includes(q)));
   return list;
 }
-function catCategories(){ return [...new Set(catMerged().filter(c=>!c._hidden).map(c=>clean(c.category)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
+function catCategories(){ return [...new Set(catMerged().filter(c=>catMode!=='customer' || !c._hidden).map(c=>clean(c.category)).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function setCatFilter(c){ catFilterCat=c; renderCatalogueView(); }
 function renderCatFilterChips(){
   const el=$('catFilterChips'); if(!el) return;
   const cats=catCategories();
-  const uncatN=catMerged().filter(c=>!c._hidden && !clean(c.category)).length;
+  const uncatN=catMerged().filter(c=>(catMode!=='customer' || !c._hidden) && !clean(c.category)).length;
   const hiddenN=catMerged().filter(c=>c._hidden).length;
   let html=`<button class="${catFilterCat==='all'?'on':''}" onclick="setCatFilter('all')">All</button>`;
   html+=cats.map(c=>`<button class="${catFilterCat===c?'on':''}" onclick="setCatFilter('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`).join('');
@@ -2877,7 +2880,7 @@ function renderCatalogueView(){
     const src = (stock||linked) ? 'item' : 'cat';
     const docId = linked ? c._item.id : c.id;
     const qty = catQty(c);
-    const tag = (c._hidden?' <span class="cflag out">hidden</span>':'') + (qty==null ? '' : (qty>0
+    const tag = (c._hidden?' <span class="cflag out" title="Not shown to customers: left out of Customer view, the booklet, price list and CSV">hidden from customers</span>':'') + (qty==null ? '' : (qty>0
       ? ' <span class="cflag">'+(linked?'linked · ':'')+'in stock ·&nbsp;'+qty+'</span>'
       : ' <span class="cflag out">'+(linked?'linked · ':'')+'none in stock</span>'));
     const opt = clean(c.group) ? escapeHtml(clean(c.group))+(clean(c.variant)?' › '+escapeHtml(clean(c.variant)):'') : (clean(c.variant)?escapeHtml(clean(c.variant)):'');
@@ -2886,7 +2889,7 @@ function renderCatalogueView(){
     const costLine = (num(c.cost)>0 && num(c.price)>0) ? '<div class="csub">Cost '+money(c.cost)+'</div>' : '';
     const editCall = stock ? `openEdit('${c.id}')` : `openCatEdit('${c.id}')`;
     const photo = stock ? clean(c.photo) : catPhotoOf(c);
-    return `<div class="crow">
+    return `<div class="crow${c._hidden?' hid':''}">
       ${photo?`<img class="cthumb" src="${photo}" alt="" onclick="${editCall}">`:''}
       <div class="cmain">
       <div class="ctop"><div class="cname">${escapeHtml(c.name)||'(no name)'}${tag}</div><div class="cprice">${priceBlk}</div></div>
