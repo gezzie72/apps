@@ -1267,6 +1267,10 @@
       </div>
       <div class="hint" style="margin:-2px 0 0">Entries with the same product group print as one product with options. Leave blank to group by product name.</div>
       <div><label for="ceLead">Lead time <span class="muted" style="font-weight:500">(when out of stock)</span></label><input id="ceLead" list="leadOpts" autocomplete="off" placeholder="e.g. 2–3 working days"></div>
+      <div>
+        <label class="chk" for="ceHide" style="text-transform:none; letter-spacing:0"><input type="checkbox" id="ceHide"> Hide from catalogue and booklet</label>
+        <div class="hint" id="ceHideHint" style="margin:4px 0 0">Keeps the entry for quotes, orders and invoices, but leaves it out of the catalogue list, Customer view, booklet, price list and CSV.</div>
+      </div>
       <datalist id="groupOpts"></datalist>
       <datalist id="leadOpts"><option value="Next working day"><option value="2–3 working days"><option value="3–5 working days"><option value="5–7 working days"><option value="1–2 weeks"><option value="2–3 weeks"><option value="Call for lead time"></datalist>
       <div class="duo" style="margin-top:4px">
@@ -1554,7 +1558,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v100 · 2026-11-18 · QR code on the booklet end page';
+const APP_VER='v101 · 2026-11-18 · hide catalogue entries';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -1626,7 +1630,8 @@ function normalize(s){
     cost:num(c.cost), price:num(c.price), photo:(typeof c.photo==='string'?c.photo:''),
     itemId:clean(c.itemId),                      // linked stock item: price, codes & stock come from it
     group:clean(c.group), variant:clean(c.variant),   // product group + this entry's option label (variants)
-    desc:clean(c.desc), lead:clean(c.lead)       // catalogue-only: sales description + lead time
+    desc:clean(c.desc), lead:clean(c.lead),      // catalogue-only: sales description + lead time
+    hidden:!!c.hidden                            // ticked: left out of the catalogue and booklet
   })):[];
   s.items.forEach(it=>{
     it.qty=int(it.qty); it.reorder=int(it.reorder);
@@ -2487,7 +2492,9 @@ function cfsAdd(code){
   const nm=clean(it.name).toLowerCase(), col=clean(it.colour).toLowerCase();
   const label=(clean(it.name)||code)+(clean(it.colour)?' — '+clean(it.colour):'');
   if(it.hideCat){ it.hideCat=false; save(); cfsLogLine('• '+label+' — no longer hidden from the catalogue', 'good'); }
-  if(catLinkOf(it.id)){ cfsLogLine('• '+label+' — already in catalogue', 'skip'); return; }
+  const ex=catLinkOf(it.id);
+  if(ex){ if(ex.hidden){ ex.hidden=false; save(); cfsLogLine('✓ '+label+' — no longer hidden from the catalogue', 'good'); cfsCount++; return; }
+    cfsLogLine('• '+label+' — already in catalogue', 'skip'); return; }
   // an unlinked copy of the same product → link it rather than add another
   const dup=cat.find(c=> !c.itemId && clean(c.name).toLowerCase()===nm && clean(c.colour).toLowerCase()===col);
   if(dup){ dup.itemId=it.id; cfsCount++; cfsLogLine('✓ '+label+' — linked to stock', 'good'); save(); return; }
@@ -2528,6 +2535,7 @@ function openCatEdit(id, itemId){
   $('ceSup').value=c?c.supplier:''; $('ceBarcode').value=c?(c.barcode||''):(itemId?'':nextInsCode());
   $('cePrice').dataset.auto = (c && num(c.price)) ? 'off' : 'on';   // keep an existing price; auto-fill only when blank
   $('ceDesc').value=c?(c.desc||''):''; $('ceGroup').value=c?(c.group||''):''; $('ceVariant').value=c?(c.variant||''):''; $('ceLead').value=c?(c.lead||''):'';
+  $('ceHide').checked=!!(c && c.hidden);
   $('ceDelete').style.display=c?'block':'none';
   $('cePrintLabel').style.display=c?'block':'none';
   catEditPhoto = c ? clean(c.photo) : '';
@@ -2565,6 +2573,9 @@ function ceLinkChanged(initial){
     $('ceLinkHint').textContent='Link it to a stock item so its price and stock stay up to date.';
   }
   CE_LINKED_INPUTS.forEach(k=>{ const el=$(k); if(el) el.disabled=!!it; });
+  const hh=$('ceHideHint'); if(hh) hh.innerHTML = (it && it.hideCat)
+    ? '<b>Hidden already:</b> the linked stock item is ticked “Hide from catalogue and booklet”. Untick it there to show this entry.'
+    : 'Keeps the entry for quotes, orders and invoices, but leaves it out of the catalogue list, Customer view, booklet, price list and CSV.';
   $('ceOpenStock').style.display=it?'inline-flex':'none';
   const ph=$('cePriceHint'); if(ph && it) ph.textContent='';
   renderPhotoBox('cePhotoBox','catedit');
@@ -2581,7 +2592,8 @@ function saveCatEdit(){
   if(!link && !cePrice && ceCost>0) cePrice=markupPrice(ceCost);   // blank sale price → apply default markup
   const rec={ name, sku, category:clean($('ceCat').value), colour:clean($('ceColour').value),
     cost:ceCost, price:cePrice, supplier:clean($('ceSup').value), barcode:clean($('ceBarcode').value), photo:catEditPhoto||'',
-    itemId:link?link.id:'', desc:clean($('ceDesc').value), group:clean($('ceGroup').value), variant:clean($('ceVariant').value), lead:clean($('ceLead').value) };
+    itemId:link?link.id:'', desc:clean($('ceDesc').value), group:clean($('ceGroup').value), variant:clean($('ceVariant').value), lead:clean($('ceLead').value),
+    hidden:$('ceHide').checked };
   state.catalogue=state.catalogue||[];
   if(catEditId){ const c=state.catalogue.find(x=>x.id===catEditId); if(c) Object.assign(c,rec); }
   else{ state.catalogue.push(Object.assign({id:'c'+Date.now()+Math.random().toString(36).slice(2,6)},rec)); }
@@ -2640,7 +2652,7 @@ const _catKey=o=>{ const bc=clean(o.barcode).toLowerCase(); if(bc) return 'b:'+b
 function catMerged(){
   // linked entries carry their stock item as _item (live qty) and stand in for it
   // _hidden: the stock item is ticked "Hide from catalogue and booklet"
-  const out=(state.catalogue||[]).map(c=>{ const it=linkedItem(c); return Object.assign({_src:'cat', _item:it, _hidden:!!(it&&it.hideCat)},c); });
+  const out=(state.catalogue||[]).map(c=>{ const it=linkedItem(c); return Object.assign({_src:'cat', _item:it, _hidden:!!c.hidden || !!(it&&it.hideCat)},c); });
   const linked=new Set(out.map(c=>c.itemId).filter(Boolean));
   const seen=new Set(out.map(_catKey));
   (state.items||[]).forEach(i=>{ if(linked.has(i.id)) return; const k=_catKey(i); if(seen.has(k)) return; seen.add(k); out.push(Object.assign({_src:'stock', _hidden:!!i.hideCat},i)); });
