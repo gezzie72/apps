@@ -41,10 +41,19 @@ On iOS use Safari → Share → **Add to Home Screen**.
 ## Maintaining these apps — service-worker cache convention
 
 Each app's `sw.js` has a cache name of the form `<app>-v<N>` (e.g. `healthlog-v7`).
-On activation the service worker **deletes every cache except its own current
-`<app>-v<N>`**, so bumping that number is what forces installed devices to pick up
-a new version. To avoid collisions when more than one person/session edits this
-repo, follow these rules:
+On activation the service worker **deletes its own older `<app>-v*` caches**, so
+bumping that number is what forces installed devices to pick up a new version.
+All the apps share one origin (`gezzie72.github.io`) and so one cache store: a
+service worker must never delete another app's cache, or opening one app breaks
+the others offline. The cleanup line every `sw.js` uses is:
+
+```js
+const OWN = CACHE.replace(/\d+$/, "");   // e.g. "healthlog-v"
+e.waitUntil(caches.keys().then(ks=>Promise.all(ks.map(k=> (k.startsWith(OWN) && k!==CACHE) ? caches.delete(k) : null))).then(()=>self.clients.claim()));
+```
+
+To avoid collisions when more than one person/session edits this repo, follow
+these rules:
 
 1. **One namespace per app.** Only ever bump the cache for the app whose files you
    changed. Never do a blanket "bump every app's cache" in a single commit — that
@@ -58,6 +67,8 @@ repo, follow these rules:
    a reason to touch this app's cache.
 4. **Monotonic, never reused.** Cache numbers only go up. If unsure of the highest
    ever used for an app, check `git log -- apps/<app>/sw.js`.
+5. **Unique prefix.** A new app's `<app>-v` must not be the start of another app's
+   cache name, since the cleanup matches by prefix.
 
 Current cache versions (keep this list roughly in step when you bump one):
-`financemanager-v12` · `fitplan-v13` · `fitcoach-v18` · `ideapad-v4` · `healthlog-v15` · `vault-v8` · `recipebox-v25` · `officereport-v11` · `shopfloorreport-v3` · `masticcalc-v5` · `qualityreport-v1` · `sealcoverage-v5` · `epdmcalc-v3` · `stockplanner-v5` · `pdf-extractor-v1`.
+`myapps-v14` (launcher) · `doorphotos-v19` · `doorquote-v70` · `epdmcalc-v6` · `financemanager-v18` · `fitcoach-v24` · `fitplan-v32` · `healthlog-v17` · `ideapad-v10` · `inventory-v104` · `masticcalc-v11` · `officereport-v16` · `pdf-extractor-v1` · `qualityreport-v7` · `recipebox-v32` · `rp193-v19` · `sealcoverage-v16` · `shopfloorreport-v12` · `shoplist-v19` · `stockplanner-v5` · `vault-v13`.

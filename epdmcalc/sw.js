@@ -7,7 +7,9 @@ self.addEventListener("install", e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL.map(u=> new Request(u, {cache:"reload"})))).then(()=>self.skipWaiting()));
 });
 self.addEventListener("activate", e=>{
-  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.map(k=> k===CACHE?null:caches.delete(k)))).then(()=>self.clients.claim()));
+  // Clear only this app's own older caches: every app on this site shares one cache store.
+  const OWN = CACHE.replace(/\d+$/, "");
+  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.map(k=> (k.startsWith(OWN) && k!==CACHE) ? caches.delete(k) : null))).then(()=>self.clients.claim()));
 });
 self.addEventListener("fetch", e=>{
   const url = new URL(e.request.url);
