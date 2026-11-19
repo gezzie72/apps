@@ -577,6 +577,19 @@ let company = null;      // your company details (shown on print)
 let nextSeq = 1001;      // next auto quote number (synced by max)
 let tombs = {cat:{}, quote:{}, cust:{}};   // tombstones: id -> deletedAt (synced so deletes stick)
 
+/* ---------- keep Inventory (Safe Secure Wales) INS stock codes out of Door Quote ----------
+   INS-#### codes belong to the separate Inventory system. Strip any that got into the
+   catalogue or quote lines. Runs after load and after every sync merge. Returns true if anything changed. */
+const INS_CODE_RE = /^\s*INS-?\s*\d+\s*$/i;
+function stripInsCodes(){
+  let n=0;
+  const clr = o=>{ if(o && typeof o.code==="string" && INS_CODE_RE.test(o.code)){ o.code=""; n++; } };
+  catalogue.forEach(clr);
+  if(quote && Array.isArray(quote.lines)) quote.lines.forEach(clr);
+  savedQuotes.forEach(q=>{ if(q && Array.isArray(q.lines)) q.lines.forEach(clr); });
+  return n>0;
+}
+
 /* ---------- persistence ---------- */
 function loadAll(){
   try{ catalogue = JSON.parse(localStorage.getItem(LS_CAT)) || []; }catch{ catalogue = []; }
@@ -598,6 +611,7 @@ function loadAll(){
   if(typeof company.defaultMarkup !== "number") company.defaultMarkup = 0;
   let s; try{ s = parseInt(localStorage.getItem(LS_SEQ),10); }catch{ s = NaN; }
   nextSeq = Number.isFinite(s) && s>0 ? s : 1001;
+  if(stripInsCodes()){ _putCat(); saveQuote(); _putQuotes(); }
 }
 function saveSeq(){ try{ localStorage.setItem(LS_SEQ, String(nextSeq)); }catch(e){} }
 function quoteNum(ref){ const m = String(ref||"").match(/(\d+)\s*$/); return m ? parseInt(m[1],10) : NaN; }
@@ -1935,6 +1949,7 @@ function mergeSync(remote){
   // prune tombstones older than 60 days so the map can't grow forever
   const cutoff = now - 60*86400*1000;
   ["cat","quote","cust"].forEach(kind=>{ const m=tombs[kind]; Object.keys(m).forEach(id=>{ if((m[id]||0)<cutoff) delete m[id]; }); });
+  if(stripInsCodes()) saveQuote();   // never let Inventory INS codes back in via sync
   _putCat(); _putQuotes(); _putCust(); _putCo(); _putDel();
   return _sig() !== before;
 }
@@ -2165,7 +2180,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v67 · 2026-11-19 · stock codes shown in Add from catalogue";
+const VERSION = "v68 · 2026-11-19 · remove Inventory INS codes";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
