@@ -1040,9 +1040,8 @@
 
   <div class="card pad">
     <div class="listhead" style="margin:0 0 10px"><span class="ttl">Catalogue (price list)</span><span class="chip2" id="catCount">0</span></div>
-    <div class="hint" style="margin:0 0 14px">Your full product list for <b>quotes &amp; orders</b> — you don't have to keep any of it in stock. Import it from Door Quote (or a CSV) in one go, then add lines straight onto a <b>purchase order</b> or <b>invoice</b> from the catalogue. Great when items go <b>direct supplier → customer</b>.</div>
+    <div class="hint" style="margin:0 0 14px">Your full product list for <b>quotes &amp; orders</b> — you don't have to keep any of it in stock. Import it from a CSV in one go, then add lines straight onto a <b>purchase order</b> or <b>invoice</b> from the catalogue. Great when items go <b>direct supplier → customer</b>.</div>
     <div class="syncrow">
-      <button class="btn" onclick="importCatalogueFromDoorQuote()">Import catalogue from Door Quote</button>
       <button class="btn ghost sm" onclick="document.getElementById('catCsvFile').click()">Import CSV</button>
       <button class="btn ghost sm" onclick="downloadCatalogueListTemplate()">Download template</button>
       <button class="btn ghost sm" onclick="linkCatalogueToStock()">Link to stock</button>
@@ -1050,16 +1049,6 @@
       <input id="catCsvFile" type="file" accept=".csv,text/csv" hidden onchange="importCatalogueListCSV(this.files[0]); this.value='';">
     </div>
     <div class="hint" style="margin:12px 0 0">Imports <b>merge</b> — matching items (by SKU or name) are updated and new ones added; your hand-added items stay. Use <b>Clear</b> first if you want to fully replace it. CSV columns: Product, SKU, Colour, Category, Cost, Sale price, Supplier.</div>
-  </div>
-
-  <div class="card pad">
-    <div class="listhead" style="margin:0 0 10px"><span class="ttl">Prices from Door Quote</span></div>
-    <div class="hint" style="margin:0 0 14px">For the items you <b>do keep in stock</b>: update their unit cost &amp; sale price from Door Quote, matched by <b>SKU / stock code</b> (or item name). Open Door Quote on this device first. Quantities aren't touched. (For everything else, use the <b>Catalogue</b> above.)</div>
-    <div class="syncrow">
-      <button class="btn" onclick="importDoorQuotePrices()">Import prices from Door Quote</button>
-      <button class="btn ghost sm" onclick="openMatcher()">Match items manually…</button>
-    </div>
-    <div class="hint" style="margin:12px 0 0">Some items won't auto-match if their SKU/name differs from Door Quote. Use <b>Match items manually…</b> to link them by hand — it saves the stock code so they match automatically after that.</div>
   </div>
 
   <div class="card pad">
@@ -1309,18 +1298,6 @@
   </div>
 </dialog>
 
-<dialog id="matchDlg">
-  <div class="modal">
-    <h3>Match to Door Quote</h3>
-    <div class="found-meta" style="margin-bottom:12px">Pick the matching Door Quote catalogue item for each. That copies its cost, sale price &amp; colour, and saves its stock code onto your item so it matches automatically next time.</div>
-    <div id="matchList" style="max-height:52vh; overflow:auto"></div>
-    <div class="duo" style="margin-top:16px">
-      <button class="btn ghost" onclick="matchDlg.close()">Cancel</button>
-      <button class="btn" onclick="applyMatches()">Apply matches</button>
-    </div>
-  </div>
-</dialog>
-
 <div id="printArea"></div>
 <input id="photoFile" type="file" accept="image/*" hidden onchange="onPhotoPicked(this.files[0]); this.value='';">
 
@@ -1562,7 +1539,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v105 · 2026-11-18 · fix start-up load with linked catalogue entries';
+const APP_VER='v106 · 2026-11-19 · Door Quote imports removed';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -1628,7 +1605,7 @@ function normalize(s){
   s.packing={ ref:clean(s.packing.ref), date:clean(s.packing.date), party:clean(s.packing.party),
     orderRef:clean(s.packing.orderRef), deliverTo:clean(s.packing.deliverTo), notes:clean(s.packing.notes),
     lines:Array.isArray(s.packing.lines)?s.packing.lines.map(l=>({name:clean(l.name),sku:clean(l.sku),qty:int(l.qty)||0})):[] };
-  s.dqMatch=(s.dqMatch&&typeof s.dqMatch==='object')?s.dqMatch:{};   // itemId -> Door Quote description (manual link when no stock code)
+  delete s.dqMatch;   // old links to Door Quote items (Door Quote import removed: the two systems stay separate)
   s.catalogue=Array.isArray(s.catalogue)?s.catalogue.map(c=>({          // price list for quotes/orders (not held stock)
     id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
     name:clean(c.name), sku:clean(c.sku), colour:clean(c.colour),
@@ -2360,43 +2337,6 @@ function docDeliv(kind,val){ docState(kind).delivery=Math.max(0,num(val)); save(
 function docVat(kind,on){ docState(kind).vatOn=!!on; save(); renderDocTotals(kind); }
 function docRate(kind,val){ docState(kind).vatRate=Math.max(0,num(val)); save(); renderDocTotals(kind); }
 function bizField(key,val){ state.biz[key]=clean(val); save(); }
-function importDoorQuotePrices(){
-  let cat=[];
-  try{ cat=JSON.parse(localStorage.getItem('dhq.catalogue.v1'))||[]; }catch(e){ cat=[]; }
-  if(!Array.isArray(cat)||!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
-  const norm=s=>clean(s).toLowerCase();
-  const loose=s=>norm(s).replace(/[^a-z0-9]/g,'');   // ignore spaces/hyphens/dots when matching
-  const bySku={}, byName={}, byLoose={};
-  cat.forEach(c=>{ const k=norm(c.code); if(k&&!(k in bySku)) bySku[k]=c; const n=norm(c.desc); if(n&&!(n in byName)) byName[n]=c;
-    const lk=loose(c.code); if(lk&&!(lk in byLoose)) byLoose[lk]=c; const ln=loose(c.desc); if(ln&&!(ln in byLoose)) byLoose[ln]=c; });
-  let matched=0; const changes=[], unmatched=[];
-  state.items.forEach(i=>{
-    let c = norm(i.sku) ? bySku[norm(i.sku)] : null;
-    if(!c) c = byName[norm(i.name)];              // fallback: item name = catalogue description
-    if(!c && loose(i.sku)) c = byLoose[loose(i.sku)];   // fallback: SKU ignoring punctuation/spacing
-    if(!c && loose(i.name)) c = byLoose[loose(i.name)]; // fallback: name ignoring punctuation/spacing
-    if(!c && state.dqMatch[i.id]) c = byName[norm(state.dqMatch[i.id])] || byLoose[loose(state.dqMatch[i.id])]; // manual link
-    if(!c){ unmatched.push(i); return; }
-    matched++;
-    const newCost=num(c.cost), newPrice=num(c.unit), newColour=clean(c.finish);
-    if((newCost>0 && newCost!==i.cost) || (newPrice>0 && newPrice!==i.price) || (newColour && newColour!==clean(i.colour))) changes.push({i,newCost,newPrice,newColour});
-  });
-  if(!matched){
-    const withSku=state.items.filter(i=>clean(i.sku)).length;
-    const withCode=cat.filter(c=>clean(c.code)).length;
-    const egSku=(state.items.find(i=>clean(i.sku))||{}).sku||'—';
-    const egCode=(cat.find(c=>clean(c.code))||{}).code||'—';
-    alert('No matches found.\n\nYour inventory: '+state.items.length+' item'+(state.items.length===1?'':'s')+' ('+withSku+' with a SKU).\nDoor Quote catalogue: '+cat.length+' items ('+withCode+' with a stock code).\n\nItems are matched by SKU = Door Quote stock code, or by exact item name = catalogue description.\n\nExample of your SKU: "'+egSku+'"\nExample Door Quote code: "'+egCode+'"\n\nMake these line up (in either app), then try again.');
-    return;
-  }
-  const unmatchedNote=()=>{ if(!unmatched.length) return; if(confirm(unmatched.length+' of your item'+(unmatched.length===1?'':'s')+" didn't match Door Quote:\n\n"+unmatched.map(i=>'• '+(clean(i.name)||'(no name)')+(clean(i.sku)?'  [SKU '+clean(i.sku)+']':'  [no SKU]')).join('\n')+"\n\nMatch them to the catalogue by hand now?")) openMatcher(); };
-  if(!changes.length){ toast(matched+' item'+(matched===1?'':'s')+' matched — prices already up to date.'); unmatchedNote(); return; }
-  if(!confirm(matched+' of your items match Door Quote (by SKU or name).\nUpdate cost & sale price on '+changes.length+' item'+(changes.length===1?'':'s')+'?'+(unmatched.length?'\n\n('+unmatched.length+" won't match — you'll see which after.)":''))) return;
-  changes.forEach(({i,newCost,newPrice,newColour})=>{ if(newCost>0) i.cost=newCost; if(newPrice>0) i.price=newPrice; if(newColour) i.colour=newColour; });
-  save(); render();
-  toast('Updated '+changes.length+' item'+(changes.length===1?'':'s')+' from Door Quote.');
-  unmatchedNote();
-}
 
 /* ---------- CATALOGUE (price list for quotes & orders — not held stock) ---------- */
 /* Merge incoming rows into the catalogue: update matches (by SKU, then name,
@@ -2431,19 +2371,6 @@ function mergeCatalogue(incoming){
     }
   });
   return {upd, add};
-}
-function importCatalogueFromDoorQuote(){
-  const cat=loadDQCatalogue();
-  if(!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
-  const incoming=cat.map(c=>({ name:clean(c.desc), sku:clean(c.code), colour:clean(c.finish), category:'', supplier:'', cost:num(c.cost), price:num(c.unit) })).filter(c=>c.name||c.sku);
-  const existing=(state.catalogue||[]).length;
-  const msg = existing
-    ? 'Merge '+incoming.length+' item'+(incoming.length===1?'':'s')+' from Door Quote into your catalogue?\n\nUpdates matching items and adds new ones — your hand-added and other items stay. (Use “Clear” first if you want to replace everything.)'
-    : 'Import '+incoming.length+' item'+(incoming.length===1?'':'s')+' from Door Quote as your catalogue?';
-  if(!confirm(msg)) return;
-  const {upd,add}=mergeCatalogue(incoming);
-  save(); render(); if(!$('viewSetup').hidden) renderSetup();
-  toast('Catalogue: '+add+' added'+(upd?', '+upd+' updated':'')+'.');
 }
 function importCatalogueListCSV(file){
   if(!file) return;
@@ -2917,71 +2844,6 @@ function renderCatalogueView(){
       </div>
     </div>`;
   }).join('');
-}
-
-/* ---------- MANUAL MATCH to Door Quote ---------- */
-let matchCat=[], matchItems=[];
-function loadDQCatalogue(){ try{ const c=JSON.parse(localStorage.getItem('dhq.catalogue.v1')); return Array.isArray(c)?c:[]; }catch(e){ return []; } }
-function openMatcher(){
-  const cat=loadDQCatalogue();
-  if(!cat.length){ toast('No Door Quote catalogue found on this device. Open Door Quote first, then try again.'); return; }
-  const norm=s=>clean(s).toLowerCase(), loose=s=>norm(s).replace(/[^a-z0-9]/g,'');
-  const bySku={}, byName={}, byLoose={};
-  cat.forEach(c=>{ const k=norm(c.code); if(k&&!(k in bySku))bySku[k]=c; const n=norm(c.desc); if(n&&!(n in byName))byName[n]=c;
-    const lk=loose(c.code); if(lk&&!(lk in byLoose))byLoose[lk]=c; const ln=loose(c.desc); if(ln&&!(ln in byLoose))byLoose[ln]=c; });
-  matchCat=cat.slice().sort((a,b)=>(clean(a.desc)).localeCompare(clean(b.desc)));
-  matchItems=state.items.filter(i=>{
-    let c = norm(i.sku)?bySku[norm(i.sku)]:null;
-    if(!c) c=byName[norm(i.name)];
-    if(!c && loose(i.sku)) c=byLoose[loose(i.sku)];
-    if(!c && loose(i.name)) c=byLoose[loose(i.name)];
-    if(!c && state.dqMatch[i.id]) c=byName[norm(state.dqMatch[i.id])]||byLoose[loose(state.dqMatch[i.id])];
-    return !c;
-  });
-  if(!matchItems.length){ toast('All your items already match Door Quote. 🎉'); return; }
-  renderMatcher();
-  $('matchDlg').showModal();
-}
-function guessMatch(item){
-  const toks=(clean(item.name).toLowerCase().match(/[a-z0-9]+/g)||[]).filter(t=>t.length>=2);
-  if(!toks.length) return -1;
-  let best=-1, bestScore=0;
-  matchCat.forEach((c,idx)=>{ const d=clean(c.desc).toLowerCase(); let s=0; toks.forEach(t=>{ if(d.includes(t)) s+=/\d/.test(t)?2:1; }); if(s>bestScore){ bestScore=s; best=idx; } });
-  return bestScore>=2 ? best : -1;
-}
-function renderMatcher(){
-  const box=$('matchList');
-  const opt=(c,idx,sel)=>`<option value="${idx}"${idx===sel?' selected':''}>${escapeHtml(clean(c.desc)||'(no name)')}${clean(c.code)?' · '+escapeHtml(clean(c.code)):''} · ${money(c.unit)}</option>`;
-  box.innerHTML=matchItems.map((it,ii)=>{
-    const g=guessMatch(it);
-    const opts='<option value="-1">— skip —</option>'+matchCat.map((c,idx)=>opt(c,idx,g)).join('');
-    return `<div class="matchrow">
-      <div class="mr-name">${escapeHtml(clean(it.name))||'(no name)'}</div>
-      <div class="mr-sub">${clean(it.sku)?'SKU '+escapeHtml(clean(it.sku)):'no SKU'} · now ${money(it.price)}</div>
-      <select class="mr-sel" data-ii="${ii}">${opts}</select>
-    </div>`;
-  }).join('');
-}
-function applyMatches(){
-  const sels=$('matchList').querySelectorAll('select.mr-sel');
-  let n=0;
-  sels.forEach(sel=>{
-    const ii=+sel.dataset.ii, ci=+sel.value;
-    if(!(ci>=0)) return;
-    const it=matchItems[ii], c=matchCat[ci];
-    if(!it||!c) return;
-    const nc=num(c.cost), np=num(c.unit), col=clean(c.finish);
-    if(nc>0) it.cost=nc;
-    if(np>0) it.price=np;
-    if(col) it.colour=col;
-    if(clean(c.code)) it.sku=clean(c.code);            // write real stock code so future imports auto-match
-    else if(clean(c.desc)) state.dqMatch[it.id]=clean(c.desc);  // no code: remember the link by description
-    n++;
-  });
-  if(!n){ toast('Nothing selected — pick a Door Quote item for at least one row.'); return; }
-  save(); render();
-  $('matchDlg').close();
-  toast('Matched & updated '+n+' item'+(n===1?'':'s')+'. Saved for next time.');
 }
 
 /* ---------- CATALOGUE CSV (shared format) ---------- */

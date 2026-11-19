@@ -837,10 +837,12 @@ function addStandardSetup(){
 let catSearch = "";
 function exportCatalogueCSV(){
   if(!catalogue.length){ toast("Catalogue is empty — nothing to export."); return; }
-  const header=["Product","SKU","Colour","Category","Cost","Sale price","Supplier","Qty","Reorder","Location","Barcode"];
+  // Same 8 columns, in the same order, as the catalogue "Download template" CSV.
+  const header=["Product","SKU","Colour","Category","Cost","Sale price","Supplier","Barcode"];
   const rows=[header];
+  const n2=v=>(Number(v)||0).toFixed(2);
   catalogue.slice().sort((a,b)=>(a.desc||"").localeCompare(b.desc||"")).forEach(c=>{
-    rows.push([c.desc||"", c.code||"", c.finish||"", "", (Number(c.cost)||0), (Number(c.unit)||0), "", "", "", "", ""]);
+    rows.push([c.desc||"", c.code||"", c.finish||"", "", n2(c.cost), n2(c.unit), "", ""]);
   });
   const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
   bkSaveFile("door-quote-catalogue-"+new Date().toISOString().slice(0,10)+".csv", new Blob([csv],{type:"text/csv"}));
@@ -2180,7 +2182,7 @@ if(GH.connected && GH.auto) syncPull(false, true).catch(()=>{});
 
 window.addEventListener("error",e=>{ try{ toast("⚠ "+(e.message||e.type)); }catch{} });
 
-const VERSION = "v68 · 2026-11-19 · remove Inventory INS codes";
+const VERSION = "v69 · 2026-11-19 · Export CSV in catalogue template format";
 $("ver").textContent = VERSION;
 
 /* PWA service worker — auto-update: when a new version activates, reload once
