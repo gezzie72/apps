@@ -1,7 +1,7 @@
 /* PDF Extractor service worker - offline app shell, network-first so updates land.
    The reading libraries (pdf.js, JSZip, Tesseract) come from CDNs at pinned versions;
    they are kept in this cache too so the app still opens files when offline. */
-const CACHE = "pdf-extractor-v1";
+const CACHE = "pdf-extractor-v2";
 const PREFIX = "pdf-extractor-";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 const CDN = /^https:\/\/(cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)$/;

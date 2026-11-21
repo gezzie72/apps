@@ -71,4 +71,4 @@ these rules:
    cache name, since the cleanup matches by prefix.
 
 Current cache versions (keep this list roughly in step when you bump one):
-`myapps-v14` (launcher) · `doorphotos-v19` · `doorquote-v70` · `epdmcalc-v6` · `financemanager-v18` · `fitcoach-v24` · `fitplan-v32` · `healthlog-v17` · `ideapad-v10` · `inventory-v104` · `masticcalc-v11` · `officereport-v16` · `pdf-extractor-v1` · `qualityreport-v7` · `recipebox-v32` · `rp193-v19` · `sealcoverage-v16` · `shopfloorreport-v12` · `shoplist-v19` · `stockplanner-v5` · `vault-v13`.
+`myapps-v14` (launcher) · `doorphotos-v19` · `doorquote-v70` · `epdmcalc-v6` · `financemanager-v18` · `fitcoach-v24` · `fitplan-v32` · `healthlog-v17` · `ideapad-v10` · `inventory-v104` · `masticcalc-v11` · `officereport-v16` · `pdf-extractor-v2` · `qualityreport-v7` · `recipebox-v32` · `rp193-v19` · `sealcoverage-v16` · `shopfloorreport-v12` · `shoplist-v19` · `stockplanner-v5` · `vault-v13`.
