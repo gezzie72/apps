@@ -201,6 +201,7 @@
   .stat{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px}
   /* ledger tab */
   .stat.led3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .stat.led3 .box small.ledmargin{margin-top:2px; text-transform:none; letter-spacing:0; font-size:11.5px}
   #ledBtns{grid-template-columns:1fr}
   #ledBtns.editing{grid-template-columns:1fr 1fr}
   #ledCancelBtn[hidden]{display:none}
@@ -974,7 +975,7 @@
     <div class="stat led3">
       <div class="box"><b id="ledInTot">£0.00</b><small>Money in</small></div>
       <div class="box"><b id="ledOutTot">£0.00</b><small>Money out</small></div>
-      <div class="box"><b id="ledBal">£0.00</b><small>Balance</small></div>
+      <div class="box"><b id="ledBal">£0.00</b><small>Profit / loss</small><small id="ledMargin" class="ledmargin">Margin —</small></div>
     </div>
     <details class="addbox" id="ledAddBox">
       <summary><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> <span id="ledAddTitle">Add an entry</span></summary>
@@ -1613,7 +1614,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v108 · 2026-11-25 · new Ledger tab (purchase ledger)';
+const APP_VER='v109 · 2026-11-25 · ledger profit / loss and margin %';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -2204,6 +2205,10 @@ function ledRows(kind){
     .sort((a,b)=>clean(a.date).localeCompare(clean(b.date)) || (a.created||0)-(b.created||0));
 }
 const ledSum=rows=>rows.reduce((t,e)=>t+num(e.amount),0);
+// Profit / loss = money in − money out; margin = profit as a % of money in (none when nothing came in)
+const ledSigned=v=>(v<0?'−':'')+money(Math.abs(v));
+function ledMarginPct(tin,tout){ if(!(tin>0)) return null; return Math.round((tin-tout)/tin*1000)/10; }
+const ledMarginTxt=pct=> pct==null ? '—' : (pct<0?'−':'')+Math.abs(pct).toLocaleString('en-GB',{maximumFractionDigits:1})+'%';
 function setLedKind(k){ ledKind=k==='out'?'out':'in'; $('ledKindIn').classList.toggle('on',ledKind==='in'); $('ledKindOut').classList.toggle('on',ledKind==='out'); }
 function setLedPeriod(v){ ledPeriod=v||'all'; renderLedger(); }
 function ledResetForm(){
@@ -2253,8 +2258,9 @@ function renderLedger(){
   sel.value=ledPeriod;
   const ins=ledRows('in'), outs=ledRows('out'), tin=ledSum(ins), tout=ledSum(outs), bal=tin-tout;
   $('ledInTot').textContent=money(tin); $('ledOutTot').textContent=money(tout);
-  $('ledBal').textContent=(bal<0?'−':'')+money(Math.abs(bal));
+  $('ledBal').textContent=ledSigned(bal);
   $('ledBal').style.color= bal<0 ? 'var(--danger)' : (bal>0 ? 'var(--ok)' : '');
+  $('ledMargin').textContent='Margin '+ledMarginTxt(ledMarginPct(tin,tout));
   const col=(kind,rows,tot)=>`<div class="ledcard">
       <div class="ledhead"><b>${LED_TITLE[kind]}</b><span class="muted" style="font-size:12px">${rows.length} entr${rows.length===1?'y':'ies'}</span></div>
       ${rows.length ? `<table class="ledtbl"><thead><tr><th>Date</th><th>Items</th><th class="n">Amount</th><th></th></tr></thead><tbody>`
@@ -2281,7 +2287,7 @@ function printLedger(){
   for(let i=0;i<n;i++) html+='<tr>'+cell(ins[i])+'<td class="gap"></td>'+cell(outs[i])+'</tr>';
   html+='<tr class="ltot"><td>Total</td><td></td><td class="n">'+money(tin)+'</td><td class="gap"></td><td>Total</td><td></td><td class="n">'+money(tout)+'</td></tr>';
   html+='</tbody></table>';
-  html+='<div class="ledbal"><b>Balance (in − out):</b> '+(bal<0?'−':'')+money(Math.abs(bal))+'</div>';
+  html+='<div class="ledbal"><b>Profit / loss (in − out):</b> '+ledSigned(bal)+'  ·  <b>Margin:</b> '+ledMarginTxt(ledMarginPct(tin,tout))+'</div>';
   const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
   const sd=$('shareDlg'); if(sd && sd.open) sd.close();
   setTimeout(()=>window.print(),80);
@@ -2291,7 +2297,10 @@ function exportLedgerCSV(){
   if(!rows.length){ toast('No ledger entries to export.'); return; }
   const out=[['Date','Type','Items','Money in','Money out']];
   rows.forEach(e=>out.push([e.date, LED_TITLE[e.kind], e.items, e.kind==='in'?(+e.amount).toFixed(2):'', e.kind==='out'?(+e.amount).toFixed(2):'']));
-  out.push(['','Total','',ledSum(ledRows('in')).toFixed(2),ledSum(ledRows('out')).toFixed(2)]);
+  const tin=ledSum(ledRows('in')), tout=ledSum(ledRows('out')), pct=ledMarginPct(tin,tout);
+  out.push(['','Total','',tin.toFixed(2),tout.toFixed(2)]);
+  out.push(['','Profit / loss','',(tin-tout).toFixed(2),'']);
+  out.push(['','Margin','',pct==null?'':pct+'%','']);
   const csv=out.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\n');
   bkSaveFile('ledger-'+(ledPeriod==='all'?'all':ledPeriod)+'-'+todayISO()+'.csv', new Blob([csv],{type:'text/csv'}));
   toast('Ledger exported ('+rows.length+' entr'+(rows.length===1?'y':'ies')+').');
