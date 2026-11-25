@@ -199,6 +199,31 @@
 
   /* ---- reports ---- */
   .stat{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px}
+  /* ledger tab */
+  .stat.led3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #ledBtns{grid-template-columns:1fr}
+  #ledBtns.editing{grid-template-columns:1fr 1fr}
+  #ledCancelBtn[hidden]{display:none}
+  .stat.led3 .box{padding:12px 10px; min-width:0}
+  .stat.led3 .box b{font-size:clamp(13px,3.6vw,23px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .ledcols{display:grid; grid-template-columns:1fr; gap:14px; margin-bottom:14px}
+  @media (min-width:820px){ .ledcols{grid-template-columns:1fr 1fr} }
+  .ledcard{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden}
+  .ledhead{display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line)}
+  .ledhead b{font-size:14px}
+  .ledtbl{width:100%; border-collapse:collapse; font-size:13px}
+  .ledtbl th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line)}
+  .ledtbl td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top}
+  .ledtbl .n{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .ledtbl td.d{white-space:nowrap; color:var(--muted); font-variant-numeric:tabular-nums}
+  .ledtbl td.it{overflow-wrap:anywhere; width:100%}
+  .ledtbl tr.lrow{cursor:pointer}
+  .ledtbl tr.lrow:hover td{background:var(--card2)}
+  .ledtbl tr.lrow.editing td{background:var(--card2)}
+  .ledtbl tfoot td{font-weight:700; border-bottom:none}
+  .ledtbl .x{background:none; border:none; color:var(--muted); cursor:pointer; font-size:15px; padding:0 2px; line-height:1}
+  .ledtbl .x:hover{color:var(--danger)}
+  .led-empty{padding:14px; color:var(--muted); font-size:13px}
   .stat .box{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow)}
   .stat .box b{display:block; font-size:23px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.5px; line-height:1.1}
   .stat .box small{color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.4px; font-weight:600; margin-top:4px; display:block}
@@ -401,6 +426,12 @@
     body > *{display:none !important}
     body > #printArea{display:block !important; color:#000; background:#fff; padding:6px 10px}
     #printArea h2{font-size:19px; margin:0 0 2px}
+    #printArea table.ledp th.n{text-align:right}
+    #printArea table.ledp td.gap,#printArea table.ledp th.gap{border:none; width:4%}
+    #printArea table.ledp td.it{white-space:normal; word-break:break-word}
+    #printArea table.ledp tr.ltot td{font-weight:700; border-top:1.5px solid #000; border-bottom:none}
+    #printArea table.ledp tr.ltot td.gap{border-top:none}
+    #printArea .ledbal{margin-top:12px; font-size:13px}
     #printArea .pmeta{color:#555; font-size:12px; margin-bottom:14px}
     #printArea table{width:100%; border-collapse:collapse; font-size:12px}
     #printArea thead{display:table-header-group}
@@ -548,6 +579,7 @@
     <button id="tabInv" onclick="setTab('inv')">Invoice</button>
     <button id="tabOrders" onclick="setTab('orders')">Orders</button>
     <button id="tabPacking" onclick="setTab('packing')">Packing list</button>
+    <button id="tabLedger" onclick="setTab('ledger')">Ledger</button>
   </div>
 
   <!-- STOCK TAB -->
@@ -935,6 +967,44 @@
     </div>
     <div id="pkList"></div>
     <div class="hint c">Headed <b>Safe Secure Wales</b> with a scannable <b>QR code</b> (list no., customer &amp; totals). Build it from an <b>order</b> or add lines by hand, then <b>Print / PDF</b>.</div>
+  </div>
+
+  <!-- LEDGER TAB: a simple purchase ledger — money in (orders) and money out (invoiced) -->
+  <div id="paneLedger" hidden>
+    <div class="stat led3">
+      <div class="box"><b id="ledInTot">£0.00</b><small>Money in</small></div>
+      <div class="box"><b id="ledOutTot">£0.00</b><small>Money out</small></div>
+      <div class="box"><b id="ledBal">£0.00</b><small>Balance</small></div>
+    </div>
+    <details class="addbox" id="ledAddBox">
+      <summary><svg class="ico sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> <span id="ledAddTitle">Add an entry</span></summary>
+      <div class="inner">
+        <div class="row">
+          <div class="seg" role="group" aria-label="Entry type">
+            <button type="button" id="ledKindIn" class="on" onclick="setLedKind('in')">Money In (orders)</button>
+            <button type="button" id="ledKindOut" onclick="setLedKind('out')">Money Out (Invoiced)</button>
+          </div>
+          <div class="duo">
+            <div><label for="ledDate">Date</label><input id="ledDate" type="date"></div>
+            <div><label for="ledAmt">Amount £</label><input id="ledAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+          </div>
+          <div><label for="ledItems">Items</label><input id="ledItems" placeholder="What it was for" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();ledSave();}"></div>
+          <div class="duo" id="ledBtns">
+            <button class="btn full" id="ledSaveBtn" onclick="ledSave()">Add to ledger</button>
+            <button class="btn ghost full" id="ledCancelBtn" onclick="ledCancel()" hidden>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </details>
+    <div class="toolbar">
+      <select id="ledPeriod" onchange="setLedPeriod(this.value)" aria-label="Period"></select>
+    </div>
+    <div class="syncrow" style="margin:0 0 12px">
+      <button class="btn" onclick="printLedger()">Print / PDF</button>
+      <button class="btn ghost sm" onclick="exportLedgerCSV()">Export CSV</button>
+    </div>
+    <div class="ledcols" id="ledCols"></div>
+    <div class="hint c">Record <b>money in</b> from orders and <b>money out</b> you've been invoiced for. Tap an entry to edit it. <b>Print / PDF</b> gives the two columns side by side with totals.</div>
   </div>
   <datalist id="supList"></datalist>
   <datalist id="custList"></datalist>
@@ -1543,7 +1613,7 @@
   root.QR={ generate:encodeText };
 })(typeof module!=='undefined'?module.exports:(this.window=this.window||this));
 
-const APP_VER='v107 · 2026-11-24 · all stock in catalogue; catalogue supplier filter';
+const APP_VER='v108 · 2026-11-25 · new Ledger tab (purchase ledger)';
 const DEFAULT_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MjAgMjAwIiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiI+IDxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNDNUU3OSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzIwMzc0QSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPiA8cmVjdCB4PSIxMiIgeT0iMjQiIHdpZHRoPSIxNTIiIGhlaWdodD0iMTUyIiByeD0iMzIiIGZpbGw9InVybCgjZykiLz4gPHJlY3QgeD0iNjAiIHk9IjUyIiB3aWR0aD0iNTYiIGhlaWdodD0iOTIiIHJ4PSI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNSIvPiA8cmVjdCB4PSI3MCIgeT0iNjMiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxyZWN0IHg9IjcwIiB5PSIxMDIiIHdpZHRoPSIzNiIgaGVpZ2h0PSIzMyIgcng9IjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjY1Ii8+IDxjaXJjbGUgY3g9IjEwOCIgY3k9Ijk5IiByPSIzLjQiIGZpbGw9IiNmZmYiLz4gPGcgc3Ryb2tlPSIjOUZCQkQ0IiBzdHJva2Utd2lkdGg9IjQuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4gPGxpbmUgeDE9IjU0IiB5MT0iMTYwIiB4Mj0iMTIyIiB5Mj0iMTYwIi8+IDxwYXRoIGQ9Ik02MyAxNTEgTDUzIDE2MCBMNjMgMTY5Ii8+IDxwYXRoIGQ9Ik0xMTMgMTUxIEwxMjMgMTYwIEwxMTMgMTY5Ii8+IDwvZz4gPHRleHQgeD0iMTkwIiB5PSI5MiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzI2NDI1QSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+U0FGRSBTRUNVUkUgV0FMRVM8L3RleHQ+IDx0ZXh0IHg9IjE5MyIgeT0iMTMwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjNUU3NjkwIiBsZXR0ZXItc3BhY2luZz0iMi42Ij5ET09SIEhBUkRXQVJFIFNPTFVUSU9OUzwvdGV4dD4gPC9zdmc+";  // Safe Secure Wales default letterhead logo (used until a custom logo is uploaded)
 const BRAND_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQAQAAAACoxAthAAACpklEQVR42u2cTY6bQBCFXwES3jk3YHKSHikHA58scJLADTw7LDW8LLppiCeayWDLSTSvFxhhf5tSqerVDzbioyeDECFChPxDCMhNJCvZAACcj1dHkux/+bmMLOQ2ZHGzcDqzp98iJcN503mTf8rInxkpwocBKMf4LPddAeQeIJgN2QxgeAJAWUzI49JryRDNUJIjkLPN2YYka+yNPUIEY6/0KuRm5HQkL1ZfrPZAzpbmZllMyB3iWNRjKY4ByJlOj+2NjPzp9djF3vuZvR3HGkQ36wp0GYZMRhZyaxy7Ph6ObHOSbIHq+msZWcjHc+WRHNcnNdku947kjIpB+UMtNSG72x0I7Y7LITY9ct998wA6Q/UDYBYS7PEsiwnZg3AwlOSL2ZEccTKrfdJu7NMVPMtiQh6F2Jel0bFJspjsebI69TpojngxWUzIrjLhDAD1CJRs0sQqtDvmGPdCsXCWhBOytxSNXbVxHXeGmhSmybuQOyEXs8OSLiezAp3ZM+Amsyx5miSckP0bREGJ1eHqY65sc3JGNad6QblSyG258lWidGRrUZVVc+rfyshC9sSxEMTqETXZIC5AhtFATJTGHjjKx4TsRkoGPWYHIOfJzAp0BdyMKkgymiMH9S6EPFLCkRxRM3bVnIfzcf5ezWunV+lVyE0+xthMqxf9Ro+rFTWlVyG7y4R0GsTwlRY8+qWrpjJByO7J+7q1FsbukzlfYCoAc98zGIavsywm5I5I3CDK1z2iRZKZpTLh/RemZGQhGz22eTOlWZ4Hzc9NAFOuFHLfONaVbCezbG3Y9nGnQxYTchNSk7bdUgNg7GmWYTCtAwn5Sy9MhSHCUo2mqWg1A5qKCvnTF6Ze+dhairIJk/d82SACYFHIScIJ2YWY/udKiBAh/znyEy1OWGwyhIUpAAAAAElFTkSuQmCC";  // Safe Secure Wales website QR — shown on all printed/PDF documents
 const $=id=>document.getElementById(id);
@@ -1610,6 +1680,11 @@ function normalize(s){
     orderRef:clean(s.packing.orderRef), deliverTo:clean(s.packing.deliverTo), notes:clean(s.packing.notes),
     lines:Array.isArray(s.packing.lines)?s.packing.lines.map(l=>({name:clean(l.name),sku:clean(l.sku),qty:int(l.qty)||0})):[] };
   delete s.dqMatch;   // old links to Door Quote items (Door Quote import removed: the two systems stay separate)
+  // simple purchase ledger: kind 'in' = Money In (orders), 'out' = Money Out (Invoiced)
+  s.ledger=Array.isArray(s.ledger)?s.ledger.filter(e=>e&&typeof e==='object').map(e=>({
+    id:clean(e.id)||('l'+Date.now()+Math.random().toString(36).slice(2,6)),
+    kind:e.kind==='out'?'out':'in', date:clean(e.date), items:clean(e.items), amount:num(e.amount), created:+e.created||0
+  })):[];
   s.catalogue=Array.isArray(s.catalogue)?s.catalogue.map(c=>({          // price list for quotes/orders (not held stock)
     id:clean(c.id)||('c'+Date.now()+Math.random().toString(36).slice(2,6)),
     name:clean(c.name), sku:clean(c.sku), colour:clean(c.colour),
@@ -1985,6 +2060,7 @@ function setTab(t){
   $('tabInv').classList.toggle('on', t==='inv');
   $('tabOrders').classList.toggle('on', t==='orders');
   $('tabPacking').classList.toggle('on', t==='packing');
+  $('tabLedger').classList.toggle('on', t==='ledger');
   $('paneStock').hidden=t!=='stock';
   $('paneCatalogue').hidden=t!=='catalogue';
   $('paneReports').hidden=t!=='reports';
@@ -1993,6 +2069,7 @@ function setTab(t){
   $('paneInv').hidden=t!=='inv';
   $('paneOrders').hidden=t!=='orders';
   $('panePacking').hidden=t!=='packing';
+  $('paneLedger').hidden=t!=='ledger';
   render();
 }
 function cycleSort(){
@@ -2055,6 +2132,7 @@ function render(){
   if(tab==='inv'){ renderDoc('inv'); return; }
   if(tab==='orders'){ renderOrders(); return; }
   if(tab==='packing'){ renderPacking(); return; }
+  if(tab==='ledger'){ renderLedger(); return; }
 
   const list=visibleItems();
   $('listPill').textContent=list.length+' item'+(list.length===1?'':'s');
@@ -2110,6 +2188,113 @@ function renderSupplierFilter(){
   sel.innerHTML='<option value="all">All suppliers</option>'+sups.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
   sel.value=filterSupplier;
   sel.classList.toggle('on', filterSupplier!=='all');
+}
+
+/* ---------- LEDGER (simple purchase ledger) ----------
+   Two columns, as on the paper sheet: Money In (orders) and Money Out (Invoiced),
+   each a list of Date · Items · Amount with a total. Filter by month; print or export. */
+let ledKind='in', ledEditId='', ledPeriod='all';
+const LED_TITLE={in:'Money In (orders)', out:'Money Out (Invoiced)'};
+const ledDate=iso=> iso ? new Date(iso+'T00:00:00').toLocaleDateString('en-GB') : '';
+const ledMonth=iso=> clean(iso).slice(0,7);
+function ledMonthLabel(k){ const [y,m]=k.split('-').map(Number); return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
+function ledPeriodLabel(){ return ledPeriod==='all' ? 'All dates' : ledMonthLabel(ledPeriod); }
+function ledRows(kind){
+  return (state.ledger||[]).filter(e=>e.kind===kind && (ledPeriod==='all' || ledMonth(e.date)===ledPeriod))
+    .sort((a,b)=>clean(a.date).localeCompare(clean(b.date)) || (a.created||0)-(b.created||0));
+}
+const ledSum=rows=>rows.reduce((t,e)=>t+num(e.amount),0);
+function setLedKind(k){ ledKind=k==='out'?'out':'in'; $('ledKindIn').classList.toggle('on',ledKind==='in'); $('ledKindOut').classList.toggle('on',ledKind==='out'); }
+function setLedPeriod(v){ ledPeriod=v||'all'; renderLedger(); }
+function ledResetForm(){
+  ledEditId=''; $('ledItems').value=''; $('ledAmt').value=''; $('ledDate').value=todayISO();
+  $('ledAddTitle').textContent='Add an entry'; $('ledSaveBtn').textContent='Add to ledger'; $('ledCancelBtn').hidden=true; $('ledBtns').classList.remove('editing');
+}
+function ledSave(){
+  const date=clean($('ledDate').value)||todayISO(), items=clean($('ledItems').value), amount=Math.round(num($('ledAmt').value)*100)/100;
+  if(!items && !amount){ $('ledItems').focus(); toast('Enter the items and an amount.'); return; }
+  if(amount<0){ $('ledAmt').focus(); toast('Enter the amount as a positive number.'); return; }
+  state.ledger=state.ledger||[];
+  if(ledEditId){
+    const e=state.ledger.find(x=>x.id===ledEditId);
+    if(e){ e.kind=ledKind; e.date=date; e.items=items; e.amount=amount; }
+    toast('Entry updated.');
+  } else {
+    state.ledger.push({ id:'l'+Date.now()+Math.random().toString(36).slice(2,6), kind:ledKind, date, items, amount, created:Date.now() });
+    toast('Added to '+LED_TITLE[ledKind]+'.');
+  }
+  // keep the new/edited entry in view if a different month is showing
+  if(ledPeriod!=='all' && ledMonth(date)!==ledPeriod) ledPeriod=ledMonth(date);
+  save(); ledResetForm(); renderLedger(); $('ledItems').focus();
+}
+function ledEdit(id){
+  const e=(state.ledger||[]).find(x=>x.id===id); if(!e) return;
+  ledEditId=id; setLedKind(e.kind);
+  $('ledDate').value=e.date||''; $('ledItems').value=e.items||''; $('ledAmt').value=e.amount?(+e.amount).toFixed(2):'';
+  $('ledAddTitle').textContent='Edit entry'; $('ledSaveBtn').textContent='Save changes'; $('ledCancelBtn').hidden=false; $('ledBtns').classList.add('editing');
+  const box=$('ledAddBox'); box.open=true; box.scrollIntoView({behavior:'smooth', block:'start'});
+  renderLedger(); setTimeout(()=>$('ledItems').focus(),250);
+}
+function ledCancel(){ ledResetForm(); renderLedger(); }
+function ledDelete(id){
+  const e=(state.ledger||[]).find(x=>x.id===id); if(!e) return;
+  if(!confirm('Delete this entry?\n\n'+ledDate(e.date)+'  '+(e.items||'')+'  '+money(e.amount))) return;
+  state.ledger=state.ledger.filter(x=>x.id!==id);
+  if(ledEditId===id) ledResetForm();
+  save(); renderLedger(); toast('Entry deleted.');
+}
+function renderLedger(){
+  if(!$('ledDate').value) $('ledDate').value=todayISO();
+  // period: all dates + every month that has an entry (newest first)
+  const months=[...new Set((state.ledger||[]).map(e=>ledMonth(e.date)).filter(k=>/^\d{4}-\d{2}$/.test(k)))].sort().reverse();
+  if(ledPeriod!=='all' && !months.includes(ledPeriod)) ledPeriod='all';
+  const sel=$('ledPeriod');
+  sel.innerHTML='<option value="all">All dates</option>'+months.map(k=>`<option value="${k}">${escapeHtml(ledMonthLabel(k))}</option>`).join('');
+  sel.value=ledPeriod;
+  const ins=ledRows('in'), outs=ledRows('out'), tin=ledSum(ins), tout=ledSum(outs), bal=tin-tout;
+  $('ledInTot').textContent=money(tin); $('ledOutTot').textContent=money(tout);
+  $('ledBal').textContent=(bal<0?'−':'')+money(Math.abs(bal));
+  $('ledBal').style.color= bal<0 ? 'var(--danger)' : (bal>0 ? 'var(--ok)' : '');
+  const col=(kind,rows,tot)=>`<div class="ledcard">
+      <div class="ledhead"><b>${LED_TITLE[kind]}</b><span class="muted" style="font-size:12px">${rows.length} entr${rows.length===1?'y':'ies'}</span></div>
+      ${rows.length ? `<table class="ledtbl"><thead><tr><th>Date</th><th>Items</th><th class="n">Amount</th><th></th></tr></thead><tbody>`
+        + rows.map(e=>`<tr class="lrow${e.id===ledEditId?' editing':''}" onclick="ledEdit('${e.id}')" title="Tap to edit">
+            <td class="d">${escapeHtml(ledDate(e.date))}</td><td class="it">${escapeHtml(e.items||'')}</td>
+            <td class="n">${money(e.amount)}</td>
+            <td><button class="x" title="Delete" aria-label="Delete entry" onclick="event.stopPropagation(); ledDelete('${e.id}')">✕</button></td></tr>`).join('')
+        + `</tbody><tfoot><tr><td>Total</td><td></td><td class="n">${money(tot)}</td><td></td></tr></tfoot></table>`
+        : `<div class="led-empty">No entries${ledPeriod==='all'?'':' for '+escapeHtml(ledPeriodLabel())} yet.</div>`}
+    </div>`;
+  $('ledCols').innerHTML=col('in',ins,tin)+col('out',outs,tout);
+}
+function printLedger(){
+  const ins=ledRows('in'), outs=ledRows('out');
+  if(!ins.length && !outs.length){ toast('No ledger entries'+(ledPeriod==='all'?'':' for '+ledPeriodLabel())+' to print.'); return; }
+  const biz=state.biz||{}, tin=ledSum(ins), tout=ledSum(outs), bal=tin-tout;
+  const n=Math.max(ins.length, outs.length, 1);
+  const cell=e=> e ? '<td>'+escapeHtml(ledDate(e.date))+'</td><td class="it">'+escapeHtml(e.items||'')+'</td><td class="n">'+money(e.amount)+'</td>'
+                   : '<td></td><td></td><td></td>';
+  let html='<h2>Purchase Ledger</h2><div class="pmeta">'+(biz.name?'<b>'+escapeHtml(biz.name)+'</b>  ·  ':'')+escapeHtml(ledPeriodLabel())
+    +'  ·  printed '+escapeHtml(new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}))+'</div>';
+  html+='<table class="ledp"><thead><tr><th>Date</th><th>Items</th><th class="n">Money In (orders)</th><th class="gap"></th>'
+      +'<th>Date</th><th>Items</th><th class="n">Money Out (Invoiced)</th></tr></thead><tbody>';
+  for(let i=0;i<n;i++) html+='<tr>'+cell(ins[i])+'<td class="gap"></td>'+cell(outs[i])+'</tr>';
+  html+='<tr class="ltot"><td>Total</td><td></td><td class="n">'+money(tin)+'</td><td class="gap"></td><td>Total</td><td></td><td class="n">'+money(tout)+'</td></tr>';
+  html+='</tbody></table>';
+  html+='<div class="ledbal"><b>Balance (in − out):</b> '+(bal<0?'−':'')+money(Math.abs(bal))+'</div>';
+  const pa=$('printArea'); pa.classList.remove('land'); pa.innerHTML=html;
+  const sd=$('shareDlg'); if(sd && sd.open) sd.close();
+  setTimeout(()=>window.print(),80);
+}
+function exportLedgerCSV(){
+  const rows=[...ledRows('in'), ...ledRows('out')].sort((a,b)=>clean(a.date).localeCompare(clean(b.date)) || (a.created||0)-(b.created||0));
+  if(!rows.length){ toast('No ledger entries to export.'); return; }
+  const out=[['Date','Type','Items','Money in','Money out']];
+  rows.forEach(e=>out.push([e.date, LED_TITLE[e.kind], e.items, e.kind==='in'?(+e.amount).toFixed(2):'', e.kind==='out'?(+e.amount).toFixed(2):'']));
+  out.push(['','Total','',ledSum(ledRows('in')).toFixed(2),ledSum(ledRows('out')).toFixed(2)]);
+  const csv=out.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  bkSaveFile('ledger-'+(ledPeriod==='all'?'all':ledPeriod)+'-'+todayISO()+'.csv', new Blob([csv],{type:'text/csv'}));
+  toast('Ledger exported ('+rows.length+' entr'+(rows.length===1?'y':'ies')+').');
 }
 
 /* ---------- REPORTS ---------- */
